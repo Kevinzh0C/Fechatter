@@ -1,0 +1,21 @@
+[package]
+name = "notify-server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { workspace = true }
+axum = { workspace = true }
+sqlx = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tokio-util = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+futures = { workspace = true }
+axum-extra = { version = "0.10.0", features = ["typed-header"] }
+tokio-stream = "0.1.17"
