@@ -1,0 +1,40 @@
+### signup
+
+POST http://localhost:6688/api/signup
+Content-Type: application/json
+
+{
+  "fullname": "Alice",
+  "email": "alice@acmn.com",
+  "password": "password"
+}
+
+### signin
+
+POST http://localhost:6688/api/signin
+Content-Type: application/json
+
+{
+  "email": "alice@acmn.com",
+  "password": "password"
+}
+
+### signin(invalid user)
+
+POST http://localhost:6688/api/signin
+Content-Type: application/json
+
+{
+  "email": "bob@acmn.com",
+  "password": "password"
+}
+
+### signin(invalid password)
+
+POST http://localhost:6688/api/signin
+Content-Type: application/json
+
+{
+  "email": "alice@acmn.com",
+  "password": "invalid"
+}
