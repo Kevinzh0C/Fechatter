@@ -10,6 +10,8 @@ use argon2::{
 
 use crate::{AppError, User};
 
+use super::UserStatus;
+
 impl User {
   /// Check if a user with the given email exists in the database.
   pub async fn email_user_exists(email: &str, pool: &PgPool) -> Result<Option<Self>, AppError> {
@@ -114,6 +116,15 @@ pub struct CreateUser {
   pub password: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthUser {
+  pub id: i64,
+  pub fullname: String,
+  pub email: String,
+  pub status: UserStatus,
+  pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
 #[cfg(test)]
 impl CreateUser {
   pub fn new(fullname: &str, email: &str, password: &str) -> Self {
@@ -144,9 +155,8 @@ impl SigninUser {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::setup_test_users;
   use anyhow::Result;
-  use sqlx_db_tester::TestPg;
-  use std::path::Path;
 
   #[test]
   fn hashed_password_should_work() -> Result<()> {
@@ -160,54 +170,44 @@ mod tests {
 
   #[tokio::test]
   async fn create_user_should_work() -> Result<()> {
-    let tdb = TestPg::new(
-      "postgres://postgres:postgres@localhost:5432/postgres".to_string(),
-      Path::new("./migrations"),
-    );
-    let pool = tdb.get_pool().await;
+    let (_tdb, state, _users) = setup_test_users!(0).await;
+    let pool = &state.pool;
 
-    let input = CreateUser::new("Alice", "alice@acmn.com", "hunter4332");
-    let user = User::create(&input, &pool).await?;
+    let input = CreateUser::new("Alice", "alice1@acme.test", "hunter4332");
+    let user = User::create(&input, pool).await?;
 
-    assert_eq!(user.email, "alice@acmn.com");
+    assert_eq!(user.email, "alice1@acme.test");
     assert_eq!(user.fullname, "Alice");
     assert!(user.id > 0);
 
-    let user = User::email_user_exists(&input.email, &pool).await?;
-    assert!(user.is_some());
-    let user = user.unwrap();
-    assert_eq!(user.email, input.email);
-    assert_eq!(user.fullname, input.fullname);
+    let user_check = User::email_user_exists(&input.email, pool).await?;
+    assert!(user_check.is_some());
+    let user_check_unwrapped = user_check.unwrap();
+    assert_eq!(user_check_unwrapped.email, input.email);
+    assert_eq!(user_check_unwrapped.fullname, input.fullname);
 
     let signin_user = SigninUser::new(&input.email, &input.password);
 
-    let user = User::authenticate(&signin_user, &pool).await?;
-    assert!(user.is_some());
-    let user = user.unwrap();
-    assert_eq!(user.email, input.email);
-    assert_eq!(user.fullname, input.fullname);
+    let auth_result = User::authenticate(&signin_user, pool).await?;
+    assert!(auth_result.is_some());
+    let auth_user_unwrapped = auth_result.unwrap();
+    assert_eq!(auth_user_unwrapped.email, input.email);
+    assert_eq!(auth_user_unwrapped.fullname, input.fullname);
 
     Ok(())
   }
 
   #[tokio::test]
   async fn create_duplicate_user_should_fail() -> Result<()> {
-    let tdb = TestPg::new(
-      "postgres://postgres:postgres@localhost:5432/postgres".to_string(),
-      Path::new("./migrations"),
-    );
-    let pool = tdb.get_pool().await;
+    let (_tdb, state, users) = setup_test_users!(1).await;
+    let pool = &state.pool;
+    let user1 = users.into_iter().next().unwrap();
 
-    let input = CreateUser::new("Alice", "alice@acmn.com", "hunter4332");
-    let user = User::create(&input, &pool).await?;
-    assert_eq!(user.email, input.email);
-    assert_eq!(user.fullname, input.fullname);
-
-    let duplicate_input = input.clone();
-    let result = User::create(&duplicate_input, &pool).await;
+    let duplicate_input = CreateUser::new("Another Alice", &user1.email, "newpassword");
+    let result = User::create(&duplicate_input, pool).await;
     match result {
       Err(AppError::UserAlreadyExists(email)) => {
-        assert_eq!(email, input.email);
+        assert_eq!(email, user1.email);
       }
       _ => panic!("Expected UserAlreadyExists error"),
     }
