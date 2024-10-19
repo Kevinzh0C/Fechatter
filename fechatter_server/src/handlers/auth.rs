@@ -1,4 +1,4 @@
-use crate::{error::AppError, models::CreateUser, AppState, ErrorOutput, SigninUser, User};
+use crate::{AppState, ErrorOutput, SigninUser, User, error::AppError, models::CreateUser};
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
 
@@ -41,96 +41,82 @@ pub(crate) async fn signin_handler(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::AppConfig;
+  use crate::ErrorOutput;
+  use crate::{assert_handler_error, assert_handler_success, setup_test_users};
   use anyhow::Result;
+  use axum::{Json, http::StatusCode};
   use http_body_util::BodyExt;
 
   #[tokio::test]
   async fn signup_handler_should_work() -> Result<()> {
-    let config = AppConfig::load()?;
-    let (_tdb, state) = AppState::test_new(config).await?;
+    let (_tdb, state, _users) = setup_test_users!(0).await;
 
     let payload = CreateUser {
-      fullname: "test".to_string(),
-      email: "test@test.com".to_string(),
+      fullname: "Test User".to_string(),
+      email: "testuser1@acme.test".to_string(),
       password: "password".to_string(),
     };
 
-    let response = signup_handler(State(state), Json(payload))
-      .await
-      .into_response();
-    assert_eq!(response.status(), StatusCode::CREATED);
+    let auth_response = assert_handler_success!(
+      signup_handler(State(state), Json(payload)),
+      StatusCode::CREATED,
+      AuthResponse
+    );
 
-    let body = response.into_body();
-    let bytes = body.collect().await?.to_bytes();
-    let body: AuthResponse = serde_json::from_slice(&bytes).unwrap();
-    assert_ne!(body.token, "");
+    assert_ne!(auth_response.token, "");
     Ok(())
   }
 
   #[tokio::test]
   async fn signin_handler_should_work() -> Result<()> {
-    let config = AppConfig::load()?;
+    let (_tdb, state, users) = setup_test_users!(1).await;
+    let user1 = &users[0];
 
-    let (_tdb, state) = AppState::test_new(config).await?;
-    let name = "Alice";
-    let email = "alice@acme.com";
-    let password = "password";
-    let user = CreateUser::new(name, email, password);
-    User::create(&user, &state.pool).await?;
+    let input = SigninUser::new(&user1.email, "password");
 
-    let input = SigninUser::new(email, password);
+    let auth_response = assert_handler_success!(
+      signin_handler(State(state), Json(input)),
+      StatusCode::OK,
+      AuthResponse
+    );
 
-    let ret = signin_handler(State(state), Json(input))
-      .await
-      .into_response();
-    assert_eq!(ret.status(), StatusCode::OK);
-
-    let body = ret.into_body().collect().await?.to_bytes();
-    let ret: AuthResponse = serde_json::from_slice(&body).unwrap();
-    assert_ne!(ret.token, "");
+    assert_ne!(auth_response.token, "");
     Ok(())
   }
 
   #[tokio::test]
   async fn signup_user_duplicate_should_409() -> Result<()> {
-    let config = AppConfig::load()?;
-    let (_tdb, state) = AppState::test_new(config).await?;
+    let (_tdb, state, users) = setup_test_users!(1).await;
+    let user1 = users.into_iter().next().unwrap();
 
     let payload = CreateUser {
-      fullname: "Alice".to_string(),
-      email: "alice@acme.com".to_string(),
-      password: "password".to_string(),
+      fullname: user1.fullname.clone(),
+      email: user1.email.clone(),
+      password: "newpassword".to_string(),
     };
 
-    signup_handler(State(state.clone()), Json(payload.clone())).await?;
+    assert_handler_error!(
+        signup_handler(State(state.clone()), Json(payload.clone())),
+        AppError::UserAlreadyExists(email) if email == user1.email
+    );
 
-    let response = signup_handler(State(state.clone()), Json(payload.clone()))
-      .await
-      .into_response();
-    assert_eq!(response.status(), StatusCode::CONFLICT);
-
-    let body = response.into_body();
-    let bytes = body.collect().await?.to_bytes();
-    let res: ErrorOutput = serde_json::from_slice(&bytes).unwrap();
-    assert_eq!(res.error, format!("user already exists: {}", payload.email));
     Ok(())
   }
 
   #[tokio::test]
   async fn signin_non_existing_user_should_403() -> Result<()> {
-    let config = AppConfig::load()?;
-    let (_tdb, state) = AppState::test_new(config).await?;
+    let (_tdb, state, _users) = setup_test_users!(0).await;
 
-    let input = SigninUser::new("bob@acme.com", "newclaude");
+    let input = SigninUser::new("nonexistent@acme.test", "password");
+
     let response = signin_handler(State(state), Json(input))
-      .await
+      .await?
       .into_response();
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
-
-    let body = response.into_body().collect().await?.to_bytes();
-    let res: ErrorOutput = serde_json::from_slice(&body).unwrap();
+    let body = BodyExt::collect(response.into_body()).await?.to_bytes();
+    let res: ErrorOutput = serde_json::from_slice(&body)?;
     assert_eq!(res.error, "Invalid credentials");
+
     Ok(())
   }
 }

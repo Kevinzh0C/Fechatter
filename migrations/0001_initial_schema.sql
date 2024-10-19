@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS chats (
     -- chat_members is a list of user ids
     chat_members BIGINT[] NOT NULL,
     description TEXT,
-    created_by BIGINT REFERENCES users(id) ON DELETE RESTRICT,
+    created_by BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
