@@ -121,10 +121,7 @@ impl AppState {
     let token_manager = TokenManager::from_config(&config.auth)?;
     let post = config.server.db_url.rfind('/').expect("invalid db_url");
     let server_url = &config.server.db_url[..post];
-    let tdb = TestPg::new(
-      server_url.to_string(),
-      std::path::Path::new("../migrations"),
-    );
+    let tdb = TestPg::new(server_url.to_string(), std::path::Path::new("./migrations"));
 
     let pool = tdb.get_pool().await;
     let chat_list_cache = DashMap::new();

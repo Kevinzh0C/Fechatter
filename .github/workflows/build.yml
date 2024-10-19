@@ -13,23 +13,14 @@ jobs:
   build-rust:
     strategy:
       matrix:
-        include:
-          - os: "ubuntu-latest"
-            rust-version: "stable"
-          - os: "ubuntu-latest"
-            rust-version: "nightly"
-    runs-on: ${{ matrix.os }}
-    env:
-      MAKE_FEATURES_FLAG: "--all-features"
-      DATABASE_URL: ${{ secrets.DATABASE_URL}}
-    defaults:
-      run:
-        shell: bash
-    
+        platform: [ubuntu-latest]
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 30
     services:
       postgres:
-        image: postgres
+        image: postgres:15
         env:
+          POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
         options: >-
           --health-cmd pg_isready
@@ -38,7 +29,7 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-    
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -49,51 +40,58 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: ${{ matrix.rust-version }}
+          toolchain: stable
           components: rustfmt, clippy
           override: true
- 
+      
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
       
       - name: Install nextest
         uses: taiki-e/install-action@nextest
       
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-      
       - name: Install sqlx-cli
         uses: taiki-e/install-action@v2
         with:
-          tool: sqlx-cli
+          tool: sqlx-cli@0.7.3
       
-      - name: Create database
-        run: sqlx database create
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
       
-      - name: Run database migrations
-        run: sqlx migrate run --source migrations
+      - name: Set up database schema
+        run: |
+          sleep 5
+          export DATABASE_URL="postgres://postgres:postgres@localhost:5432/postgres"
+          sqlx database create
+        
+      - name: Generate SQLx prepare data
+        run: |
+          export DATABASE_URL="postgres://postgres:postgres@localhost:5432/postgres"
+          cargo sqlx prepare --workspace
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SQLX_OFFLINE: false
       
       - name: Check code format
         run: cargo fmt -- --check
+        timeout-minutes: 5
       
       - name: Check the package for errors
         run: cargo check --all
         env:
-          SQLX_OFFLINE: true
+          DATABASE_URL: "postgres://postgres:postgres@localhost:5432/postgres"
+        timeout-minutes: 10
       
       - name: Lint rust source
         run: cargo clippy --all-targets --all-features --tests --benches -- -D warnings
         env:
-          SQLX_OFFLINE: true
+          DATABASE_URL: "postgres://postgres:postgres@localhost:5432/postgres"
+        timeout-minutes: 10
       
       - name: Execute rust tests
-        run: cargo nextest run --features ci
+        run: cargo nextest run --all-features
         env:
-          SQLX_OFFLINE: true
+          DATABASE_URL: "postgres://postgres:postgres@localhost:5432/postgres"
+        timeout-minutes: 15
       
       - name: Generate a changelog
         uses: orhun/git-cliff-action@v2
