@@ -1,6 +1,8 @@
-### signup
+### Variables
+@baseUrl = http://localhost:6688
 
-POST http://localhost:6688/api/signup
+### signup
+POST {{baseUrl}}/api/signup
 Content-Type: application/json
 
 {
@@ -10,8 +12,8 @@ Content-Type: application/json
 }
 
 ### signin
-
-POST http://localhost:6688/api/signin
+# @name login
+POST {{baseUrl}}/api/signin
 Content-Type: application/json
 
 {
@@ -19,9 +21,11 @@ Content-Type: application/json
   "password": "password"
 }
 
-### signin(invalid user)
+### Use the token from the login response
+@authToken = {{login.response.body.token}}
 
-POST http://localhost:6688/api/signin
+### signin(invalid user)
+POST {{baseUrl}}/api/signin
 Content-Type: application/json
 
 {
@@ -30,11 +34,51 @@ Content-Type: application/json
 }
 
 ### signin(invalid password)
-
-POST http://localhost:6688/api/signin
+POST {{baseUrl}}/api/signin
 Content-Type: application/json
 
 {
   "email": "alice@acmn.com",
   "password": "invalid"
 }
+
+### list chats
+GET {{baseUrl}}/api/chat
+Authorization: Bearer {{authToken}}
+
+### create chat
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "title": "Test Chat",
+  "description": "This is a test chat"
+}
+
+### update chat
+PATCH {{baseUrl}}/api/chat/1
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "title": "Updated Chat",
+  "description": "This is an updated test chat"
+}
+
+### delete chat
+DELETE {{baseUrl}}/api/chat/1
+Authorization: Bearer {{authToken}}
+
+### send message
+POST {{baseUrl}}/api/chat/1
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "content": "Hello, this is a test message"
+}
+
+### list messages
+GET {{baseUrl}}/api/chat/1/messages
+Authorization: Bearer {{authToken}}

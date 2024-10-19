@@ -9,20 +9,15 @@ tokio = { version = "1.32", features = [
   "rt",
   "rt-multi-thread",
 ] }
-axum = { version = "0.8.1", features = [
-  "http2",
-  "query",
-  "tracing",
-  "multipart",
-  # "macros"
-] }
+axum = { version = "0.8.3", features = ["http2", "query", "tracing", "multipart", "tower-log"] }
+axum-extra = { version = "0.10.0", features = ["typed-header"] }
 sqlx = { version = "0.8.3", features = [
   "postgres",
   "runtime-tokio",
   "tls-rustls",
   "chrono"
 ] }
-uuid = { version = "1.4", features = ["v4", "serde"] }
+uuid = { version = "1.4", features = ["v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2.0.12"
 tracing = "0.1"
@@ -33,3 +28,6 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9"
 futures = "0.3"
+tower = { version = "0.5.2", features = ["util"] }
+tower-service = "0.3"
+tower-http = { version = "0.6.2", features = ["compression-full", "cors", "trace"] }
