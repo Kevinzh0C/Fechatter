@@ -45,7 +45,7 @@ impl Claims {
       user: UserClaims {
         id: user.id,
         email: user.email.clone(),
-        status: user.status.clone(),
+        status: user.status,
         fullname: user.fullname.clone(),
         created_at: user.created_at,
       },

@@ -32,6 +32,15 @@ pub enum AppError {
 
   #[error("http header error: {0}")]
   HttpHeaderError(#[from] axum::http::header::InvalidHeaderValue),
+
+  #[error("chat validation error: {0}")]
+  ChatValidationError(String),
+
+  #[error("chat not found: {0}")]
+  ChatNotFound(i64),
+
+  #[error("chat permission error: {0}")]
+  ChatPermissionError(String),
 }
 
 impl ErrorOutput {
@@ -51,6 +60,9 @@ impl IntoResponse for AppError {
       AppError::JwtError(_) => StatusCode::FORBIDDEN,
       AppError::AnyError(_) => StatusCode::INTERNAL_SERVER_ERROR,
       AppError::HttpHeaderError(_) => StatusCode::UNPROCESSABLE_ENTITY,
+      AppError::ChatValidationError(_) => StatusCode::BAD_REQUEST,
+      AppError::ChatNotFound(_) => StatusCode::NOT_FOUND,
+      AppError::ChatPermissionError(_) => StatusCode::FORBIDDEN,
     };
 
     (status_code, Json(ErrorOutput::new(self.to_string()))).into_response()
