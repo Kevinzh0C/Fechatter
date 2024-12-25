@@ -510,6 +510,7 @@ mod tests {
       ChatType::Group,
       Some(vec![user2.id, user3.id]),
       None,
+      user1.workspace_id,
     )
     .await?;
 

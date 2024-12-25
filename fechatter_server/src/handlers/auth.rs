@@ -27,7 +27,7 @@ fn set_refresh_token_cookie(
     expires_at.format("%a, %d %b %Y %H:%M:%S GMT")
   );
 
-  headers.insert(header::SET_COOKIE, HeaderValue::from_str(&cookie)?);
+  headers.append(header::SET_COOKIE, HeaderValue::from_str(&cookie)?);
 
   Ok(())
 }
