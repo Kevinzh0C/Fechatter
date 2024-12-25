@@ -26,3 +26,5 @@ CREATE TRIGGER set_chats_timestamp
 BEFORE UPDATE ON chats
 FOR EACH ROW
 EXECUTE PROCEDURE update_chats_timestamp();
+
+DROP TRIGGER IF EXISTS update_users_timestamp ON users;

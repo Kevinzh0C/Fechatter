@@ -21,7 +21,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       MAKE_FEATURES_FLAG: "--all-features"
-      DATABASE_URL: ${{ secrets.DATABASE_URL}}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     defaults:
       run:
         shell: bash
@@ -46,18 +46,20 @@ jobs:
           submodules: recursive
       
       - name: Setup Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: ${{ matrix.rust-version }}
           components: rustfmt, clippy
-          override: true
  
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
       
       - name: Install nextest
-        uses: taiki-e/install-action@nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
       
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
@@ -66,7 +68,6 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: sqlx-cli
-          cache: true
       
       - name: Create database
         run: sqlx database create
@@ -83,7 +84,6 @@ jobs:
       
       - name: Check code format
         run: cargo fmt -- --check
-    
       
       - name: Check the package for errors
         run: cargo check --all
@@ -91,7 +91,7 @@ jobs:
       - name: Lint rust source
         run: cargo clippy --all-targets --all-features --tests --benches -- -D warnings
         continue-on-error: true
-        
+          
       - name: Execute rust tests
         run: cargo nextest run --all-features
       

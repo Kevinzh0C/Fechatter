@@ -6,6 +6,7 @@ macro_rules! auth_user {
   ($user:expr) => {
     $crate::models::AuthUser {
       id: $user.id,
+      workspace_id: $user.workspace_id,
       fullname: $user.fullname.clone(),
       email: $user.email.clone(),
       status: $user.status.clone(),

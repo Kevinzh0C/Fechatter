@@ -55,6 +55,7 @@ mod tests {
       fullname: "Test User".to_string(),
       email: "testuser1@acme.test".to_string(),
       password: "password".to_string(),
+      workspace: "Acme".to_string(),
     };
 
     let auth_response = assert_handler_success!(
@@ -93,6 +94,7 @@ mod tests {
       fullname: user1.fullname.clone(),
       email: user1.email.clone(),
       password: "newpassword".to_string(),
+      workspace: "Acme".to_string(),
     };
 
     assert_handler_error!(
