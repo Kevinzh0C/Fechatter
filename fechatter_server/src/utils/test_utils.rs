@@ -24,7 +24,8 @@ macro_rules! setup_test_users {
         // Use index for uniqueness within the test run
         let email = format!("{}{}@acme.test", email_name_part, i + 1);
         let password = "password";
-        let user_payload = $crate::models::CreateUser::new(&fullname, &email, password);
+        let workspace = "Acme";
+        let user_payload = $crate::models::CreateUser::new(&fullname, &email, &workspace, password);
         let user = $crate::models::User::create(&user_payload, &state.pool)
           .await
           .expect(&format!("Failed to create user {}", fullname));
@@ -162,18 +163,11 @@ macro_rules! assert_chat_member_count {
 }
 
 #[cfg(test)]
-pub fn add(left: usize, right: usize) -> usize {
-  left + right
-}
-
-#[cfg(test)]
 mod tests {
 
-  use super::add;
-
-  #[test]
-  fn it_works() {
-    let result = add(2, 2);
-    assert_eq!(result, 4);
+  #[tokio::test]
+  async fn zero_users_ok() {
+    let (_, _, users) = setup_test_users!(0).await;
+    assert!(users.is_empty());
   }
 }

@@ -8,7 +8,30 @@ Content-Type: application/json
 {
   "fullname": "Alice",
   "email": "alice@acmn.com",
-  "password": "password"
+  "password": "password",
+  "workspace": "Acme"
+}
+
+### signup (second user)
+POST {{baseUrl}}/api/signup
+Content-Type: application/json
+
+{
+  "fullname": "Bob",
+  "email": "bob@acmn.com",
+  "password": "rhunter48",
+  "workspace": "Acme"
+}
+
+### signup (third user)
+POST {{baseUrl}}/api/signup
+Content-Type: application/json
+
+{
+  "fullname": "Charlie",
+  "email": "charlie@acmn.com",
+  "password": "paf334200",
+  "workspace": "Acme"
 }
 
 ### signin
@@ -23,6 +46,10 @@ Content-Type: application/json
 
 ### Use the token from the login response
 @authToken = {{login.response.body.token}}
+
+### list users
+GET {{baseUrl}}/api/users
+Authorization: Bearer {{authToken}}
 
 ### signin(invalid user)
 POST {{baseUrl}}/api/signin
@@ -42,6 +69,8 @@ Content-Type: application/json
   "password": "invalid"
 }
 
+
+
 ### list chats
 GET {{baseUrl}}/api/chat
 Authorization: Bearer {{authToken}}
@@ -52,7 +81,9 @@ Content-Type: application/json
 Authorization: Bearer {{authToken}}
 
 {
-  "title": "Test Chat",
+  "name": "Test2 Chat",
+  "chat_type": "Group",
+  "chat_members": [2, 5],
   "description": "This is a test chat"
 }
 

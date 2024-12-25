@@ -6,7 +6,7 @@ use tokio::time::Instant;
 
 use crate::{AppError, AppState, models::ChatType};
 
-use super::{Chat, CreateChatMember, insert_chat_members_relation, is_creator_in_chat};
+use super::{Chat, CreateChatMember, User, insert_chat_members_relation, is_creator_in_chat};
 
 const CHAT_LIST_CACHE_TTL: Duration = Duration::from_secs(30);
 
@@ -164,6 +164,8 @@ pub async fn create_new_chat(
 
   let chat_members = process_chat_members(&chat_type, creator_id, target_members.as_ref())?;
 
+  User::validate_users_exists_by_ids(&chat_members, &state.pool).await?;
+
   let mut tx = state.pool.begin().await?;
 
   let chat = insert_chat_record(
@@ -174,7 +176,18 @@ pub async fn create_new_chat(
     description.unwrap_or(""),
     creator_id,
   )
-  .await?;
+  .await
+  .map_err(|e| {
+    if let Some(db_error) = e.as_database_error() {
+      if db_error.is_unique_violation() {
+        AppError::ChatAlreadyExists(format!("Chat {} already exists", name))
+      } else {
+        e.into()
+      }
+    } else {
+      e.into()
+    }
+  })?;
 
   let chat_id = chat.id;
   insert_chat_members_relation(chat_id, &chat_members, &mut tx).await?;
@@ -1168,5 +1181,200 @@ mod tests {
     assert_eq!(chats.len(), 12);
 
     Ok(())
+  }
+
+  #[tokio::test]
+  async fn create_duplicate_chat_should_fail() -> Result<()> {
+    let (_tdb, state, users) = setup_test_users!(3).await;
+    let user1 = &users[0];
+    let user2 = &users[1];
+    let user3 = &users[2];
+
+    // 创建第一个聊天
+    let chat_name = "Unique Test Chat";
+    let members = vec![user2.id, user3.id];
+    let first_chat = create_new_chat(
+      &state,
+      user1.id,
+      chat_name,
+      ChatType::Group,
+      Some(members.clone()),
+      Some("First chat description"),
+    )
+    .await?;
+
+    assert_eq!(first_chat.name, chat_name);
+
+    // Attempt to create a second chat with the same name
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      chat_name, // same name
+      ChatType::Group,
+      Some(members.clone()),
+      Some("Second chat description"),
+    )
+    .await;
+
+    // Verify creation fails and returns the correct error
+    match result {
+      Err(AppError::ChatAlreadyExists(error_message)) => {
+        let expected_error_message = format!("Chat {} already exists", chat_name);
+        assert_eq!(error_message, expected_error_message);
+      }
+      Ok(_) => panic!("Expected chat creation to fail, but it succeeded."),
+      Err(e) => panic!("Expected ChatAlreadyExists error, but got {:?}", e),
+    }
+
+    Ok(())
+  }
+}
+
+#[cfg(test)]
+mod process_chat_members_data_driven_test {
+  use super::*;
+  use crate::AppError;
+  use crate::models::ChatType;
+  use anyhow::Result;
+
+  const CREATOR_ID: i64 = 1;
+  const USER_2: i64 = 2;
+  const USER_3: i64 = 3;
+
+  struct TestCase<'a> {
+    desc: &'a str,
+    chat_type: ChatType,
+    input_members: Option<Vec<i64>>,
+    expected: Result<Vec<i64>, String>,
+  }
+
+  #[test]
+  fn process_chat_members_edge_cases_should_pass() -> Result<()> {
+    let test_cases = vec![
+      // --- Single Chat Edge Cases ---
+      TestCase {
+        desc: "Single: Target member is creator",
+        chat_type: ChatType::Single,
+        input_members: Some(vec![CREATOR_ID]),
+        expected: Err("Single chat must have exactly one member".to_string()),
+      },
+      TestCase {
+        desc: "Single: target_members is None",
+        chat_type: ChatType::Single,
+        input_members: None,
+        expected: Err("Invalid single chat members".to_string()),
+      },
+      TestCase {
+        desc: "Single: target_members is empty",
+        chat_type: ChatType::Single,
+        input_members: Some(vec![]),
+        expected: Err("Invalid single chat members".to_string()),
+      },
+      TestCase {
+        desc: "Single: target_members has multiple members",
+        chat_type: ChatType::Single,
+        input_members: Some(vec![USER_2, USER_3]),
+        expected: Err("Invalid single chat members".to_string()),
+      },
+      TestCase {
+        // Add a successful Single case for comparison
+        desc: "Single: Valid case",
+        chat_type: ChatType::Single,
+        input_members: Some(vec![USER_2]),
+        expected: Ok(vec![CREATOR_ID, USER_2]), // Order is fixed
+      },
+      // --- Group Chat Edge Cases ---
+      TestCase {
+        desc: "Group: Exactly 2 members total (fails minimum)",
+        chat_type: ChatType::Group,
+        input_members: Some(vec![USER_2]),
+        expected: Err("Group chat must have at least three members".to_string()),
+      },
+      TestCase {
+        desc: "Group: Input includes creator & duplicates, results in 3 (passes)",
+        chat_type: ChatType::Group,
+        input_members: Some(vec![USER_2, CREATOR_ID, USER_3, USER_2]),
+        expected: Ok(vec![CREATOR_ID, USER_2, USER_3]), // Expected result needs to be sorted for comparison
+      },
+      TestCase {
+        desc: "Group: target_members is None (fails minimum)",
+        chat_type: ChatType::Group,
+        input_members: None,
+        expected: Err("Group chat must have at least three members".to_string()),
+      },
+      TestCase {
+        desc: "Group: target_members is empty (fails minimum)",
+        chat_type: ChatType::Group,
+        input_members: Some(vec![]),
+        expected: Err("Group chat must have at least three members".to_string()),
+      },
+      // --- Private Channel Edge Cases ---
+      TestCase {
+        desc: "Private: target_members is None (passes)",
+        chat_type: ChatType::PrivateChannel,
+        input_members: None,
+        expected: Ok(vec![CREATOR_ID]),
+      },
+      TestCase {
+        desc: "Private: target_members is empty (passes)",
+        chat_type: ChatType::PrivateChannel,
+        input_members: Some(vec![]),
+        expected: Ok(vec![CREATOR_ID]),
+      },
+      TestCase {
+        desc: "Private: Input includes creator & duplicates (passes, deduplicated)",
+        chat_type: ChatType::PrivateChannel,
+        input_members: Some(vec![USER_2, CREATOR_ID, USER_3, USER_2]),
+        expected: Ok(vec![CREATOR_ID, USER_2, USER_3]), // Expected result needs to be sorted for comparison
+      },
+      // --- Public Channel Edge Cases ---
+      TestCase {
+        desc: "Public: Ignores provided members",
+        chat_type: ChatType::PublicChannel,
+        input_members: Some(vec![USER_2, USER_3]), // These should be ignored
+        expected: Ok(vec![CREATOR_ID]),
+      },
+    ];
+
+    for case in test_cases {
+      println!("Testing case: {}", case.desc);
+
+      // Call the function, note that .as_ref() converts Option<Vec> to Option<&Vec>
+      let actual_result =
+        process_chat_members(&case.chat_type, CREATOR_ID, case.input_members.as_ref());
+
+      match (actual_result, case.expected) {
+        // Case 1: Both Ok - Compare vectors (sort for Group/Private)
+        (Ok(mut actual_vec), Ok(mut expected_vec)) => {
+          // For Group and PrivateChannel, member order doesn't matter, sort before comparing
+          if case.chat_type == ChatType::Group || case.chat_type == ChatType::PrivateChannel {
+            actual_vec.sort();
+            expected_vec.sort();
+          }
+          assert_eq!(
+            actual_vec, expected_vec,
+            "Mismatch in OK case: {}",
+            case.desc
+          );
+        }
+        // Case 2: Both Err - Compare error messages
+        (Err(AppError::ChatValidationError(actual_msg)), Err(expected_msg)) => {
+          assert_eq!(
+            actual_msg, expected_msg,
+            "Mismatch in ERR case: {}",
+            case.desc
+          );
+        }
+        // Case 3: Mismatched Ok/Err or different Err type - Panic
+        (actual, expected) => {
+          panic!(
+            "Test case failed: '{}'\nExpected: {:?}\nActual: {:?}",
+            case.desc, expected, actual
+          );
+        }
+      }
+    }
+
+    Ok(()) // Indicate overall test success
   }
 }

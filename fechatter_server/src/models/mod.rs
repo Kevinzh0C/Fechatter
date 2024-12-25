@@ -2,6 +2,7 @@ mod chat;
 mod chat_member;
 mod message;
 mod user;
+mod workspace;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -9,8 +10,9 @@ use sqlx::FromRow;
 
 pub use chat::*;
 pub use chat_member::*;
-// pub use message::*;
 pub use user::{AuthUser, CreateUser, SigninUser};
+
+// pub use message::*;
 
 #[derive(Debug, Serialize, Deserialize, sqlx::Type, Clone, Copy, PartialEq, Eq)]
 #[sqlx(type_name = "user_status", rename_all = "lowercase")]
@@ -28,6 +30,22 @@ pub struct User {
   #[serde(skip)]
   pub password_hash: Option<String>,
   pub status: UserStatus,
+  pub created_at: DateTime<Utc>,
+  pub workspace_id: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow, PartialEq, Eq, Clone)]
+pub struct ChatUser {
+  pub id: i64,
+  pub fullname: String,
+  pub email: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow, PartialEq, Eq, Clone)]
+pub struct Workspace {
+  pub id: i64,
+  pub name: String,
+  pub owner_id: i64,
   pub created_at: DateTime<Utc>,
 }
 

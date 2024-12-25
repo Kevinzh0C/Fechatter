@@ -38,6 +38,7 @@ pub async fn verify_token_middleware(
         email: claims.email,
         status: claims.status,
         created_at: claims.created_at,
+        workspace_id: claims.workspace_id,
       };
       let mut req = Request::from_parts(parts, body);
       req.extensions_mut().insert(user);

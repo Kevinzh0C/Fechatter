@@ -1,4 +1,5 @@
 -- Add migration script here
+
 -- Create enum for user status
 CREATE TYPE user_status AS ENUM (
     'suspended',
@@ -13,7 +14,8 @@ CREATE TABLE IF NOT EXISTS users (
     -- hashed argon2 password, length is 97
     password_hash VARCHAR(97) NOT NULL,
     status user_status NOT NULL DEFAULT 'active',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Create index for users for email
@@ -63,5 +65,7 @@ CREATE INDEX IF NOT EXISTS chat_id_created_at_index ON messages(chat_id, created
 
 -- Create index for messages for send_id and created_at order by created_at desc
 CREATE INDEX IF NOT EXISTS sender_id_index ON messages(sender_id, created_at DESC);
+
+
 
 
