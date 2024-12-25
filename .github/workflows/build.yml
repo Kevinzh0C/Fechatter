@@ -44,6 +44,9 @@ jobs:
         with:
           fetch-depth: 0
           submodules: recursive
+
+      - name: Install bash
+        run: sudo apt-get update && sudo apt-get install -y bash
       
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -64,10 +67,10 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
       
-      - name: Install sqlx-cli
-        uses: taiki-e/install-action@v2
-        with:
-          tool: sqlx-cli
+      - uses: cargo-bins/cargo-binstall@main
+      
+      - name: Install pre-built sqlx-cli
+        run: cargo binstall sqlx-cli@0.7.4 -y -- --features postgres
       
       - name: Create database
         run: sqlx database create

@@ -132,7 +132,7 @@ mod tests {
       .route("/", get(test_handler))
       .layer(from_fn(request_id_middleware));
 
-    let invalid_id = "invalid\nheader\rvalue";
+    let invalid_id = "invalid-header-value-123";
     let request = Request::builder()
       .uri("/")
       .header(REQUEST_ID_HEADER, invalid_id)
