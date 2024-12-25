@@ -28,7 +28,7 @@ jobs:
     
     services:
       postgres:
-        image: postgres
+        image: postgres:16-alpine 
         env:
           POSTGRES_PASSWORD: postgres
         options: >-
@@ -54,22 +54,23 @@ jobs:
           toolchain: ${{ matrix.rust-version }}
           components: rustfmt, clippy
  
-      - name: Install cargo-llvm-cov
+      - name: Install tools
         uses: taiki-e/install-action@v2
         with:
-          tool: cargo-llvm-cov
+          tool: cargo-llvm-cov nextest
       
-      - name: Install nextest
-        uses: taiki-e/install-action@v2
-        with:
-          tool: nextest
-      
-      - name: Rust Cache
+      - name: Cargo + sqlx cache
         uses: Swatinem/rust-cache@v2
+        id: rust-cache
+        with:
+          shared-key: "main"
+          save-if: ${{ github.ref == 'refs/heads/master' }}
+          cache-targets: true
+          cache-directories: |
+            ~/.cargo/bin/sqlx  
       
-      - uses: cargo-bins/cargo-binstall@main
-      
-      - name: Install pre-built sqlx-cli
+      - name: Install sqlx-cli if missing
+        if: steps.rust-cache.outputs.cache-hit != 'true' || !hashFiles('~/.cargo/bin/sqlx')
         run: cargo binstall sqlx-cli@0.7.4 -y -- --features postgres
       
       - name: Create database
