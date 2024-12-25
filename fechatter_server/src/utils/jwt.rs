@@ -21,6 +21,7 @@ pub struct Claims {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UserClaims {
   pub id: i64,
+  pub workspace_id: i64,
   pub fullname: String,
   pub email: String,
   pub status: UserStatus,
@@ -44,6 +45,7 @@ impl Claims {
       iss: JWT_ISSUER.to_string(),
       user: UserClaims {
         id: user.id,
+        workspace_id: user.workspace_id,
         email: user.email.clone(),
         status: user.status,
         fullname: user.fullname.clone(),
@@ -87,6 +89,7 @@ impl TokenManager {
     let token_data = decode::<Claims>(token, &self.decoding_key, &self.validation)?;
     let user_claims = UserClaims {
       id: token_data.claims.user.id,
+      workspace_id: token_data.claims.user.workspace_id,
       fullname: token_data.claims.user.fullname,
       email: token_data.claims.user.email,
       status: token_data.claims.user.status,
@@ -117,9 +120,11 @@ mod tests {
       password_hash: Default::default(),
       status: UserStatus::Active,
       created_at: chrono::Utc::now(),
+      workspace_id: 1,
     };
     let user_claims = UserClaims {
       id: user.id,
+      workspace_id: user.workspace_id,
       fullname: user.fullname.clone(),
       email: user.email.clone(),
       status: user.status,
