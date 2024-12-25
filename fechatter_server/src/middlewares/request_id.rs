@@ -132,11 +132,24 @@ mod tests {
       .route("/", get(test_handler))
       .layer(from_fn(request_id_middleware));
 
-    let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+    let invalid_id = "invalid\nheader\rvalue";
+    let request = Request::builder()
+      .uri("/")
+      .header(REQUEST_ID_HEADER, invalid_id)
+      .body(Body::empty())
+      .unwrap();
 
     let response = app.oneshot(request).await.unwrap();
 
-    assert!(response.headers().contains_key(REQUEST_ID_HEADER));
+    assert_eq!(
+      response
+        .headers()
+        .get(REQUEST_ID_HEADER)
+        .unwrap()
+        .to_str()
+        .unwrap(),
+      invalid_id
+    );
   }
 
   #[tokio::test]
