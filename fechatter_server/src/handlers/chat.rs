@@ -35,6 +35,7 @@ pub(crate) async fn create_chat_handler(
     payload.chat_type,
     Some(payload.chat_members),
     Some(&payload.description),
+    user.workspace_id,
   )
   .await?;
 
