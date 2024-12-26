@@ -409,7 +409,7 @@ pub async fn transfer_chat_ownership(
   let chat = sqlx::query_as::<_, Chat>(
     "SELECT id, created_by, type as chat_type, chat_members, 
      chat_name as name, COALESCE(description, '') as description,
-     created_at, updated_at
+     created_at, updated_at, workspace_id
      FROM chats
      WHERE id = $1
      FOR UPDATE",
@@ -510,6 +510,7 @@ mod tests {
       ChatType::Group,
       Some(vec![user2.id, user3.id]),
       None,
+      user1.workspace_id,
     )
     .await?;
 
@@ -568,6 +569,7 @@ mod tests {
       ChatType::Group,
       Some(vec![user2.id, user3.id]),
       Some("Test Description"),
+      user1.workspace_id,
     )
     .await?;
 
@@ -612,6 +614,7 @@ mod tests {
       ChatType::Group,
       Some(vec![user2.id, user3.id]),
       None,
+      user1.workspace_id,
     )
     .await?;
 
@@ -677,6 +680,7 @@ mod tests {
       ChatType::Group,
       Some(vec![user2.id, user3.id]),
       None,
+      user1.workspace_id,
     )
     .await?;
 
@@ -759,6 +763,7 @@ mod tests {
       ChatType::Group,
       Some(vec![user2.id, user3.id]),
       None,
+      user1.workspace_id,
     )
     .await?;
 

@@ -7,7 +7,15 @@ macro_rules! setup_test_users {
         .await
         .expect("Failed to create test state");
 
-      tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+      // Add a longer delay to ensure database is ready
+      tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+
+      // Verify database connection
+      sqlx::query("SELECT 1")
+        .execute(&state.pool)
+        .await
+        .expect("Failed to verify database connection");
+
       let mut users = Vec::with_capacity($num_users);
       let names = vec![
         "Alice", "Bob", "Charlie", "David", "Eve", "Frank", "Grace", "Hank", "Ivy", "Judy",
@@ -51,7 +59,8 @@ macro_rules! create_new_test_chat {
                 $name,
                 $chat_type,
                 Some(member_ids),
-                description_opt
+                description_opt,
+                $creator.workspace_id
             ).await.expect(&format!("Failed to create test chat '{}'", $name))
         }
     }};
