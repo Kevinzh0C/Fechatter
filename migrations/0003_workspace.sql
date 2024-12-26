@@ -12,6 +12,14 @@ CREATE TABLE IF NOT EXISTS workspaces (
 ALTER TABLE users 
   ADD COLUMN workspace_id bigint REFERENCES workspaces(id);
 
+-- Add workspace_id column to chats table
+ALTER TABLE chats ADD COLUMN workspace_id bigint NOT NULL DEFAULT 1;
+
+-- Add foreign key constraint
+ALTER TABLE chats ADD CONSTRAINT fk_chats_workspace
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(id)
+    ON DELETE CASCADE; 
+
 -- add super user 0 and workspace 0 
 BEGIN;
 INSERT INTO users (id, fullname, email, password_hash, status)

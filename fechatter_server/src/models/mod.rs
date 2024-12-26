@@ -74,6 +74,7 @@ impl std::fmt::Display for ChatType {
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct Chat {
   pub id: i64,
+  pub workspace_id: i64,
   pub name: String,
   pub chat_type: ChatType,
   pub chat_members: Vec<i64>,
