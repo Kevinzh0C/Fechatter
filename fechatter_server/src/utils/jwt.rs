@@ -1,8 +1,8 @@
 use crate::{AppError, User, config::AuthConfig, models::UserStatus};
 use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
-use sqlx::PgPool;
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 
 const JWT_ISSUER: &str = "fechatter-server";
 const JWT_AUDIENCE: &str = "fechatter-web";
@@ -68,7 +68,7 @@ pub fn generate_refresh_token() -> String {
   use rand::{Rng, thread_rng};
 
   let mut rng = thread_rng();
-  let random_bytes: [u8; 32] = rng.gen();
+  let random_bytes: [u8; 32] = rng.r#gen::<[u8; 32]>();
   hex::encode(random_bytes)
 }
 
@@ -268,21 +268,16 @@ impl TokenManager {
   ) -> Result<AuthTokens, AppError> {
     let access_token = self.generate_token(user)?;
     let refresh_token = generate_refresh_token();
-    
-    let token_record = RefreshToken::create(
-      user.id,
-      &refresh_token,
-      user_agent,
-      ip_address,
-      pool,
-    ).await?;
-    
+
+    let token_record =
+      RefreshToken::create(user.id, &refresh_token, user_agent, ip_address, pool).await?;
+
     let refresh_token_data = RefreshTokenData {
       token: refresh_token,
       expires_at: token_record.expires_at,
       absolute_expires_at: token_record.absolute_expires_at,
     };
-    
+
     Ok(AuthTokens {
       access_token,
       refresh_token: refresh_token_data,

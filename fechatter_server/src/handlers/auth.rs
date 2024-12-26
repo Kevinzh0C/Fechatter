@@ -1,9 +1,9 @@
-use crate::{models::AuthUser};
+use crate::models::AuthUser;
+use crate::services::auth_service;
 use crate::utils::jwt::{ACCESS_TOKEN_EXPIRATION, RefreshToken, generate_refresh_token};
 use crate::{AppState, ErrorOutput, SigninUser, User, error::AppError, models::CreateUser};
 use axum::{
-  Extension,
-  Json,
+  Extension, Json,
   extract::State,
   http::{HeaderMap, HeaderValue, StatusCode, header},
   response::IntoResponse,
@@ -18,13 +18,13 @@ struct AuthResponse {
 }
 
 fn set_refresh_token_cookie(
-  refresh_token: &str,
-  expires_at: &chrono::DateTime<chrono::Utc>,
   headers: &mut HeaderMap,
+  token_str: &str,
+  expires_at: &chrono::DateTime<chrono::Utc>,
 ) -> Result<(), AppError> {
   let cookie = format!(
     "refresh_token={}; HttpOnly; Secure; SameSite=Lax; Path=/api; Expires={}",
-    refresh_token,
+    token_str,
     expires_at.format("%a, %d %b %Y %H:%M:%S GMT")
   );
 
@@ -45,21 +45,13 @@ pub(crate) async fn signup_handler(
   State(state): State<AppState>,
   Json(payload): Json<CreateUser>,
 ) -> Result<impl IntoResponse, AppError> {
-  let user = User::create(&payload, &state.pool).await?;
-
-  let user_agent = None;
-  let ip_address = None;
-
-  let tokens = state
-    .token_manager
-    .generate_auth_tokens(&user, user_agent, ip_address, &state.pool)
-    .await?;
+  let tokens = auth_service::signup(&state.pool, &state.token_manager, &payload).await?;
 
   let mut headers = HeaderMap::new();
   set_refresh_token_cookie(
+    &mut headers,
     &tokens.refresh_token.token,
     &tokens.refresh_token.expires_at,
-    &mut headers,
   )?;
 
   let body = Json(AuthResponse {
@@ -74,23 +66,13 @@ pub(crate) async fn signin_handler(
   State(state): State<AppState>,
   Json(payload): Json<SigninUser>,
 ) -> Result<impl IntoResponse, AppError> {
-  let user = User::authenticate(&payload, &state.pool).await?;
-
-  match user {
-    Some(user) => {
-      let user_agent = None;
-      let ip_address = None;
-
-      let tokens = state
-        .token_manager
-        .generate_auth_tokens(&user, user_agent, ip_address, &state.pool)
-        .await?;
-
+  match auth_service::signin(&state.pool, &state.token_manager, &payload).await? {
+    Some(tokens) => {
       let mut headers = HeaderMap::new();
       set_refresh_token_cookie(
+        &mut headers,
         &tokens.refresh_token.token,
         &tokens.refresh_token.expires_at,
-        &mut headers,
       )?;
 
       let body = Json(AuthResponse {
@@ -111,8 +93,8 @@ pub(crate) async fn refresh_token_handler(
   State(state): State<AppState>,
   cookies: CookieJar,
 ) -> Result<impl IntoResponse, AppError> {
-  let refresh_token = match cookies.get("refresh_token") {
-    Some(cookie) => cookie.value(),
+  let refresh_token_str = match cookies.get("refresh_token") {
+    Some(cookie) => cookie.value().to_string(),
     None => {
       return Ok(
         (
@@ -124,55 +106,36 @@ pub(crate) async fn refresh_token_handler(
     }
   };
 
-  let token_record = match RefreshToken::find_by_token(refresh_token, &state.pool).await? {
-    Some(token) => token,
-    None => {
-      return Ok(
+  match auth_service::refresh_token(&state.pool, &state.token_manager, &refresh_token_str).await {
+    Ok(tokens) => {
+      let mut headers = HeaderMap::new();
+      set_refresh_token_cookie(
+        &mut headers,
+        &tokens.refresh_token.token,
+        &tokens.refresh_token.expires_at,
+      )?;
+
+      let body = Json(AuthResponse {
+        access_token: tokens.access_token,
+        expires_in: ACCESS_TOKEN_EXPIRATION,
+      });
+
+      Ok((StatusCode::OK, headers, body).into_response())
+    }
+    Err(AppError::InvalidInput(msg)) => {
+      let mut headers = HeaderMap::new();
+      clear_refresh_token_cookie(&mut headers)?;
+      Ok(
         (
           StatusCode::UNAUTHORIZED,
-          Json(ErrorOutput::new("Invalid or expired refresh token")),
+          headers,
+          Json(ErrorOutput::new(msg)),
         )
           .into_response(),
-      );
+      )
     }
-  };
-
-  let user = match User::find_by_id(token_record.user_id, &state.pool).await? {
-    Some(user) => user,
-    None => {
-      return Ok(
-        (
-          StatusCode::UNAUTHORIZED,
-          Json(ErrorOutput::new("User not found")),
-        )
-          .into_response(),
-      );
-    }
-  };
-
-  let user_agent = None;
-  let ip_address = None;
-
-  let new_refresh_token = generate_refresh_token();
-  let new_token_record = token_record
-    .replace(&new_refresh_token, user_agent, ip_address, &state.pool)
-    .await?;
-
-  let access_token = state.token_manager.generate_token(&user)?;
-
-  let mut headers = HeaderMap::new();
-  set_refresh_token_cookie(
-    &new_refresh_token,
-    &new_token_record.expires_at,
-    &mut headers,
-  )?;
-
-  let body = Json(AuthResponse {
-    access_token,
-    expires_in: ACCESS_TOKEN_EXPIRATION,
-  });
-
-  Ok((StatusCode::OK, headers, body).into_response())
+    Err(e) => Err(e),
+  }
 }
 
 pub(crate) async fn logout_handler(
@@ -184,12 +147,8 @@ pub(crate) async fn logout_handler(
   clear_refresh_token_cookie(&mut headers)?;
 
   if let Some(cookie) = cookies.get("refresh_token") {
-    if let Some(token_record) = RefreshToken::find_by_token(cookie.value(), &state.pool).await? {
-      token_record.revoke(&state.pool).await?;
-    }
+    let _ = auth_service::logout(&state.pool, cookie.value()).await;
   }
-
-  // RefreshToken::revoke_all_for_user(auth_user.id, &state.pool).await?;
 
   Ok(
     (
@@ -202,14 +161,15 @@ pub(crate) async fn logout_handler(
       .into_response(),
   )
 }
+
 #[cfg(test)]
+mod tests {
   use super::*;
   use crate::ErrorOutput;
   use crate::{assert_handler_error, assert_handler_success, setup_test_users};
   use anyhow::Result;
   use axum::{Json, http::StatusCode};
   use http_body_util::BodyExt;
-
   #[tokio::test]
   async fn signup_handler_should_work() -> Result<()> {
     let (_tdb, state, _users) = setup_test_users!(0).await;

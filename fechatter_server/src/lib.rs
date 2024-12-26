@@ -3,6 +3,7 @@ mod error;
 mod handlers;
 mod middlewares;
 mod models;
+mod services;
 mod utils;
 
 use std::sync::Arc;
@@ -19,8 +20,7 @@ use tokio::time::Instant;
 use utils::jwt::TokenManager;
 
 pub use error::{AppError, ErrorOutput};
-use handlers::auth::{refresh_token_handler, logout_handler};
-use handlers::*;
+use handlers::{logout_handler, refresh_token_handler, *};
 use middlewares::{SetAuthLayer, SetLayer};
 pub use models::{ChatSidebar, CreateUser, SigninUser, User};
 
