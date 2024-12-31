@@ -1,4 +1,4 @@
-use sqlx::{Executor, PgPool, Postgres, query_as};
+use sqlx::{Executor, Postgres, query_as};
 
 use crate::{AppError, AppState};
 
@@ -194,7 +194,8 @@ impl AppState {
     self.create_workspace(name, user_id, pool).await
   }
 
-  pub async fn update_owner_with_pool(
+  /// Update the owner of a workspace.
+  pub async fn update_workspace_owner<'e, E>(
     &self,
     workspace_id: i64,
     owner_id: i64,
@@ -233,7 +234,7 @@ impl AppState {
     Ok(workspace)
   }
 
-  pub async fn add_to_workspace_with_pool(
+  pub async fn add_user_to_workspace<'e, E>(
     &self,
     workspace_id: i64,
     user_id: i64,
@@ -322,4 +323,7 @@ mod tests {
     assert_eq!(updated_workspace.owner_id, user2.id);
     Ok(())
   }
+
+
+  
 }

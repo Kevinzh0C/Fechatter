@@ -147,16 +147,16 @@ mod tests {
     let user3 = &users[2];
 
     // Create a chat first
-    let chat = create_new_chat(
-      &state,
-      user1.id,
-      "Test Chat",
-      ChatType::Group,
-      Some(vec![user1.id, user2.id, user3.id]),
-      Some("Test chat for messages"),
-      user1.workspace_id,
-    )
-    .await?;
+    let chat = state
+      .create_new_chat(
+        user1.id,
+        "Test Chat",
+        ChatType::Group,
+        Some(vec![user1.id, user2.id, user3.id]),
+        Some("Test chat for messages"),
+        user1.workspace_id,
+      )
+      .await?;
 
     let message_payload1 = ServerCreateMessage {
       content: "test".to_string(),
@@ -219,16 +219,16 @@ mod tests {
     let user1 = &users[0];
 
     // Create a chat first
-    let chat = create_new_chat(
-      &state,
-      user1.id,
-      "Test Chat",
-      ChatType::Group,
-      Some(users.iter().map(|u| u.id).collect()),
-      Some("Test chat for messages"),
-      user1.workspace_id,
-    )
-    .await?;
+    let chat = state
+      .create_new_chat(
+        user1.id,
+        "Test Chat",
+        ChatType::Group,
+        Some(users.iter().map(|u| u.id).collect()),
+        Some("Test chat for messages"),
+        user1.workspace_id,
+      )
+      .await?;
 
     let mut messages_payload = Vec::with_capacity(10);
     for _i in 0..10 {

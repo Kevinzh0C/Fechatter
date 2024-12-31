@@ -2,8 +2,8 @@
 macro_rules! setup_test_users {
   ($num_users:expr) => {{
     async {
-      let config = $crate::AppConfig::load().expect("Failed to load config");
-      let (tdb, state) = $crate::AppState::test_new(config)
+      
+      let (tdb, state) = $crate::AppState::test_new()
         .await
         .expect("Failed to create test state");
 
@@ -33,10 +33,10 @@ macro_rules! setup_test_users {
         let email = format!("{}{}@acme.test", email_name_part, i + 1);
         let password = "password";
         let workspace = "Acme";
-
-        let user_payload = fechatter_core::CreateUser::new(&fullname, &email, workspace, password);
-
-        let user = state.create(&user_payload).await.expect(&format!("Failed to create user {}", fullname));
+        let user_payload = $crate::models::CreateUser::new(&fullname, &email, &workspace, password);
+        let user = state.create(&user_payload)
+          .await
+          .expect(&format!("Failed to create user {}", fullname));
         users.push(user);
       }
       (tdb, state, users)
@@ -55,8 +55,7 @@ macro_rules! create_new_test_chat {
             // Handle optional description
             let description_opt: Option<&str> = None $(.or(Some($desc)))?;
 
-            create_new_chat(
-                &$state,
+            $state.create_new_chat(
                 $creator.id,
                 $name,
                 $chat_type,

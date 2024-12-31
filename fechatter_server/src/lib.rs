@@ -118,7 +118,7 @@ impl WithCache<i64, (Arc<Vec<ChatSidebar>>, Instant)> for AppState {
 pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
   let state = AppState::try_new(config).await?;
 
-  // Public routes - no authentication required
+  // Public routes - no authentication required but apply token refresh
   let public_routes = Router::new()
     .route("/signin", post(signin_handler))
     .route("/signup", post(signup_handler))
@@ -126,7 +126,9 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
       "/refresh",
       post(|state, cookies, headers| refresh_token_handler(state, cookies, headers)),
     )
-    .with_state(state.clone());
+    .with_middlewares(state.clone())
+    .with_token_refresh()
+    .build();
 
   // Protected routes - authentication required
   let protected_routes = Router::new()
@@ -170,9 +172,27 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
     )
     .with_state(state.clone())
     .with_state(state.clone());
+    .with_middlewares(state.clone())
+    .with_token_refresh()
+    .with_auth()
+    .build();
 
-  // For now, just use the protected routes without middleware
-  let api = Router::new().merge(public_routes).merge(protected_routes);
+  // 使用工作区中间件的路由
+  let workspace_routes = Router::new()
+    .route(
+      "/workspace/users",
+      get(list_workspace_users_with_middleware),
+    )
+    .with_middlewares(state.clone())
+    .with_token_refresh()
+    .with_auth()
+    .with_workspace()
+    .build();
+
+  let api = Router::new()
+    .merge(public_routes)
+    .merge(protected_routes)
+    .merge(workspace_routes);
 
   // Create main app with all middleware
   let app = Router::new()
@@ -220,9 +240,10 @@ impl AppState {
 
 #[cfg(test)]
 impl AppState {
-  pub async fn test_new(config: AppConfig) -> Result<(sqlx_db_tester::TestPg, Self), AppError> {
+  pub async fn test_new() -> Result<(sqlx_db_tester::TestPg, Self), AppError> {
     use sqlx_db_tester::TestPg;
 
+    let config = AppConfig::load().expect("Failed to load config");
     fs::create_dir_all(&config.server.base_dir)
       .await
       .map_err(|e| AppError::IOError(e))?;

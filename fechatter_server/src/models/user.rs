@@ -21,7 +21,7 @@ impl AppState {
       "SELECT id, fullname, email, status, created_at, workspace_id FROM users WHERE email = $1",
     )
     .bind(email)
-    .fetch_optional(pool)
+    .fetch_optional(&self.pool)
     .await?;
 
     Ok(user)
@@ -43,7 +43,7 @@ impl AppState {
       "#,
       ids
     )
-    .fetch_all(pool)
+    .fetch_all(&self.pool)
     .await?;
 
     if !missing_ids.is_empty() {

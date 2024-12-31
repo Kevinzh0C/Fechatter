@@ -1,6 +1,9 @@
 mod bearer_auth;
+mod builder;
 mod request_id;
 mod server_time;
+mod token_refresh;
+mod workspace;
 
 use axum::{Router, middleware::from_fn};
 
@@ -15,8 +18,10 @@ use tracing::Level;
 use crate::models::AuthUser;
 
 pub(crate) use self::bearer_auth::verify_token_middleware;
+pub use self::builder::RouterExt;
 pub(crate) use self::request_id::request_id_middleware;
 pub(crate) use self::server_time::ServerTimeLayer;
+use crate::AppState;
 
 pub const REQUEST_ID_HEADER: &str = "x-request-id";
 pub const SERVER_TIME_HEADER: &str = "x-server-time";

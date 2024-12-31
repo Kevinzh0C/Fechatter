@@ -490,7 +490,7 @@ pub struct CreateChatMember {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{models::chat::create_new_chat, setup_test_users};
+  use crate::setup_test_users;
 
   #[tokio::test]
   async fn transfer_chat_ownership_should_work() -> anyhow::Result<()> {
@@ -500,16 +500,16 @@ mod tests {
     let user3 = &users[2];
 
     // Create a group chat with user1 as creator and user2, user3 as members
-    let chat = create_new_chat(
-      &state,
-      user1.id,
-      "Test Chat",
-      ChatType::Group,
-      Some(vec![user2.id, user3.id]),
-      None,
-      user1.workspace_id,
-    )
-    .await?;
+    let chat = state
+      .create_new_chat(
+        user1.id,
+        "Test Chat",
+        ChatType::Group,
+        Some(vec![user2.id, user3.id]),
+        None,
+        user1.workspace_id,
+      )
+      .await?;
 
     // Verify initial creator
     let initial_is_creator = is_creator_in_chat(
@@ -559,8 +559,7 @@ mod tests {
     let user3 = &users[2];
 
     // Create a chat with the user as creator
-    let chat = create_new_chat(
-      &state,
+    let chat = state.create_new_chat(
       user1.id,
       "Test Chat",
       ChatType::Group,
@@ -604,8 +603,7 @@ mod tests {
     let user3 = &users[2];
 
     // Create a chat with user1 as creator and user2, user3 as members
-    let chat = create_new_chat(
-      &state,
+    let chat = state.create_new_chat( 
       user1.id,
       "Test Chat",
       ChatType::Group,
@@ -670,8 +668,7 @@ mod tests {
     let user5 = &users[4];
 
     // Create a chat with user1 as creator and initial members
-    let chat = create_new_chat(
-      &state,
+    let chat = state.create_new_chat(
       user1.id,
       "Test Chat",
       ChatType::Group,
@@ -753,8 +750,7 @@ mod tests {
     let user3 = &users[2];
 
     // Create a chat with user1 as creator and user2, user3 as members
-    let chat = create_new_chat(
-      &state,
+    let chat = state.create_new_chat(
       user1.id,
       "Test Chat",
       ChatType::Group,

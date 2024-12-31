@@ -267,6 +267,7 @@ fn check_file_size(size: usize, filename: &str, max_size: usize) -> Result<(), A
     return Err(AppError::InvalidInput(format!(
       "File '{}' too large: {} bytes (max: {} bytes)",
       filename, size, max_size
+      filename, size, max_size
     )));
   }
   Ok(())
@@ -782,8 +783,7 @@ mod tests {
     assert_eq!(&body_bytes[..], b"hello world");
   }
   #[tokio::test]
-  async fn send_message_handlershould_work() {
-    // Create 3 users instead of 2
+  async fn send_message_handler_should_work() {
     let (_tdb, state, users) = setup_test_users!(3).await;
     let user1 = &users[0];
     let user2 = &users[1];
@@ -799,17 +799,17 @@ mod tests {
     });
 
     // Create a chat with 3 members
-    let chat = create_new_chat(
-      &state,
-      user1.id,
-      "Test Chat",
-      fechatter_core::ChatType::Group,
-      Some(vec![user1.id, user2.id, user3.id]), // Include user3
-      Some("Test chat for sending messages"),
-      user1.workspace_id,
-    )
-    .await
-    .expect("Failed to create chat");
+    let chat = state
+      .create_new_chat(
+        user1.id,
+        "Test Chat",
+        crate::models::ChatType::Group,
+        Some(vec![user1.id, user2.id, user3.id]), // Include user3
+        Some("Test chat for sending messages"),
+        user1.workspace_id,
+      )
+      .await
+      .expect("Failed to create chat");
 
     let chat_id = chat.id;
     let message_request = CreateMessage {
@@ -889,7 +889,7 @@ mod tests {
     eprintln!("Using test dir: {}", config.server.base_dir.display());
 
     // Create AppState with custom config
-    let (_tdb, state) = crate::AppState::test_new(config)
+    let (_tdb, state) = crate::AppState::test_new()
       .await
       .expect("Failed to create test state");
 
@@ -899,8 +899,7 @@ mod tests {
     let email = "test_user@example.com".to_string();
     let workspace = "TestWorkspace".to_string();
     let user_payload = crate::models::CreateUser::new(&fullname, &email, &workspace, "password");
-    let user = state
-      .create(&user_payload)
+    let user = state.create(&user_payload)
       .await
       .expect("Failed to create test user");
     users.push(user);
@@ -984,7 +983,7 @@ mod tests {
     eprintln!("Using test dir: {}", config.server.base_dir.display());
 
     // Create AppState with custom config
-    let (_tdb, state) = crate::AppState::test_new(config)
+    let (_tdb, state) = crate::AppState::test_new()
       .await
       .expect("Failed to create test state");
 
@@ -994,8 +993,7 @@ mod tests {
     let email = "test_user@example.com".to_string();
     let workspace = "TestWorkspace".to_string();
     let user_payload = crate::models::CreateUser::new(&fullname, &email, &workspace, "password");
-    let user = state
-      .create(&user_payload)
+    let user = state.create(&user_payload)
       .await
       .expect("Failed to create test user");
     users.push(user);
@@ -1160,17 +1158,17 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(10).await;
     let user1 = &users[0];
 
-    let chat = create_new_chat(
-      &state,
-      user1.id,
-      "Large Message Test",
-      fechatter_core::ChatType::Group,
-      Some(users.iter().map(|u| u.id).collect()),
-      Some("Chat for testing large message volumes"),
-      user1.workspace_id,
-    )
-    .await
-    .expect("Failed to create chat");
+    let chat = state
+      .create_new_chat(
+        user1.id,
+        "Large Message Test",
+        crate::models::ChatType::Group,
+        Some(users.iter().map(|u| u.id).collect()),
+        Some("Chat for testing large message volumes"),
+        user1.workspace_id,
+      )
+      .await
+      .expect("Failed to create chat");
 
     info!("Created test chat successfully, ID: {}", chat.id);
 

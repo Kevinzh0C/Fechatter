@@ -31,7 +31,7 @@ impl ChatFile {
   }
 
   /// split hash into 3 parts, first 2 with 3 chars, last with 2 chars
-  /// 例如： "1/943/a70/2d06f34599aee1f8da8ef9f7296031d699.txt",
+  /// For example: "1/943/a70/2d06f34599aee1f8da8ef9f7296031d699.txt",
   pub fn hash_to_path(&self) -> String {
     let (part1, part2) = self.hash.split_at(3);
     let (part2, part3) = part2.split_at(3);

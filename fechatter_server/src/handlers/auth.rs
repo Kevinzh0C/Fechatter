@@ -58,19 +58,7 @@ pub(crate) async fn signup_handler(
     .and_then(|h| h.to_str().ok())
     .map(String::from);
 
-  let auth_service = AuthService::new(state);
-
-  // Check if user already exists
-  if let Ok(exists) = auth_service.check_user_exists(&payload.email).await {
-    if exists {
-      let body = Json(ErrorOutput::new(&format!(
-        "User with email {} already exists",
-        payload.email
-      )));
-      return Ok((StatusCode::CONFLICT, body).into_response());
-    }
-  }
-
+  let auth_service = AuthService::new(&state.service_provider);
   let tokens = auth_service
     .signup(&payload, user_agent, ip_address)
     .await?;
@@ -237,7 +225,7 @@ pub(crate) async fn logout_handler(
 
   let auth_service = AuthService::new(state);
 
-  // 首先尝试从cookie中获取刷新令牌
+  // First try to get refresh token from cookie
   let refresh_token_str = if let Some(cookie) = cookies.get("refresh_token") {
     let token = cookie.value().to_string();
     let _ = auth_service.logout(&token).await;
@@ -246,7 +234,7 @@ pub(crate) async fn logout_handler(
     None
   };
 
-  // 如果cookie中没有，尝试从Authorization头中获取
+  // If not found in cookie, try to get from Authorization header
   if refresh_token_str.is_none() {
     if let Some(auth_header) = headers.get("Authorization") {
       if let Ok(auth_value) = auth_header.to_str() {

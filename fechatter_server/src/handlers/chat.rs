@@ -9,10 +9,7 @@ use tracing::info;
 
 use crate::{
   AppError, AppState,
-  models::{
-    AuthUser,
-    chat::{CreateChat, UpdateChat, create_new_chat, delete_chat, list_chats_of_user, update_chat},
-  },
+  models::{AuthUser, CreateChat, UpdateChat},
 };
 
 pub(crate) async fn list_chats_handler(
@@ -20,7 +17,7 @@ pub(crate) async fn list_chats_handler(
   Extension(user): Extension<AuthUser>,
 ) -> Result<impl IntoResponse, AppError> {
   info!("User {} listing chats", user.id);
-  let chats_arc = list_chats_of_user(&state, user.id).await?;
+  let chats_arc = state.list_chats_of_user(user.id).await?;
   Ok((StatusCode::OK, Json(chats_arc)))
 }
 
@@ -29,8 +26,7 @@ pub(crate) async fn create_chat_handler(
   Extension(user): Extension<AuthUser>,
   Json(payload): Json<CreateChat>,
 ) -> Result<impl IntoResponse, AppError> {
-  let chat = create_new_chat(
-    &state,
+  let chat = state.create_new_chat(
     user.id,
     &payload.name,
     payload.chat_type,
@@ -51,7 +47,7 @@ pub(crate) async fn update_chat_handler(
 ) -> Result<impl IntoResponse, AppError> {
   info!("User {} updating chat: {}", user.id, chat_id);
 
-  let updated_chat = update_chat(&state, chat_id, user.id, payload).await?;
+  let updated_chat = state.update_chat(chat_id, user.id, payload).await?;
 
   Ok((StatusCode::OK, Json(updated_chat)))
 }
@@ -63,7 +59,7 @@ pub(crate) async fn delete_chat_handler(
 ) -> Result<impl IntoResponse, AppError> {
   info!("User {} deleting chat: {}", user.id, chat_id);
 
-  let deleted = delete_chat(&state, chat_id, user.id).await?;
+  let deleted = state.delete_chat(chat_id, user.id).await?;
 
   if deleted {
     Ok(StatusCode::NO_CONTENT.into_response())
