@@ -1,6 +1,9 @@
 mod bearer_auth;
+mod builder;
 mod request_id;
 mod server_time;
+mod token_refresh;
+mod workspace;
 
 use axum::{
   Router,
@@ -16,8 +19,13 @@ use tower_http::{
 use tracing::Level;
 
 pub(crate) use self::bearer_auth::verify_token_middleware;
+pub use self::builder::RouterExt;
 pub(crate) use self::request_id::request_id_middleware;
 pub(crate) use self::server_time::ServerTimeLayer;
+pub(crate) use self::token_refresh::refresh_token_middleware;
+pub(crate) use self::workspace::{
+  WorkspaceContext, ensure_workspace_member, with_workspace_context,
+};
 use crate::AppState;
 
 pub const REQUEST_ID_HEADER: &str = "x-request-id";
@@ -62,6 +70,39 @@ where
   S: Clone + Send + Sync + 'static,
 {
   fn set_auth_layer(self, state: AppState) -> Self {
-    self.layer(from_fn_with_state(state, verify_token_middleware))
+    self
+      .layer(from_fn_with_state(state.clone(), refresh_token_middleware))
+      .layer(from_fn_with_state(state, verify_token_middleware))
+  }
+}
+
+/// Apply workspace middleware to a router
+pub trait SetWorkspaceLayer {
+  fn set_workspace_layer(self, state: AppState) -> Self;
+}
+
+impl<S> SetWorkspaceLayer for Router<S>
+where
+  S: Clone + Send + Sync + 'static,
+{
+  fn set_workspace_layer(self, state: AppState) -> Self {
+    self
+      .layer(from_fn_with_state(state.clone(), refresh_token_middleware))
+      .layer(from_fn_with_state(state.clone(), verify_token_middleware))
+      .layer(from_fn_with_state(state, with_workspace_context))
+  }
+}
+
+/// Apply token refresh middleware to a router
+pub trait SetTokenRefreshLayer {
+  fn set_token_refresh_layer(self, state: AppState) -> Self;
+}
+
+impl<S> SetTokenRefreshLayer for Router<S>
+where
+  S: Clone + Send + Sync + 'static,
+{
+  fn set_token_refresh_layer(self, state: AppState) -> Self {
+    self.layer(from_fn_with_state(state, refresh_token_middleware))
   }
 }

@@ -122,8 +122,7 @@ mod tests {
     let user3 = &users[2];
 
     // Create a chat first
-    let chat = crate::models::create_new_chat(
-      &state,
+    let chat = state.create_new_chat(
       user1.id,
       "Test Chat",
       crate::models::ChatType::Group,
@@ -194,8 +193,7 @@ mod tests {
     let user1 = &users[0];
 
     // Create a chat first
-    let chat = crate::models::create_new_chat(
-      &state,
+    let chat = state.create_new_chat(
       user1.id,
       "Test Chat",
       crate::models::ChatType::Group,

@@ -1,11 +1,11 @@
-use sqlx::{Executor, PgPool, Postgres, query_as};
+use sqlx::{Executor, Postgres, query_as};
 
-use crate::AppError;
+use crate::{AppError, AppState};
 
 use super::{ChatUser, Workspace};
 
-#[allow(dead_code)]
 impl Workspace {
+  /// Create a new workspace
   pub async fn create<'e, E>(name: &str, user_id: i64, executor: E) -> Result<Self, AppError>
   where
     E: Executor<'e, Database = Postgres> + Copy,
@@ -55,6 +55,7 @@ impl Workspace {
     Ok(workspace)
   }
 
+  /// Update the owner of a workspace
   pub async fn update_owner<'e, E>(&self, owner_id: i64, executor: E) -> Result<Self, AppError>
   where
     E: Executor<'e, Database = Postgres>,
@@ -75,7 +76,11 @@ impl Workspace {
     Ok(workspace)
   }
 
-  pub async fn fetch_all_users<'e, E>(id: i64, executor: E) -> Result<Vec<ChatUser>, AppError>
+  /// Get all users for a workspace
+  pub async fn fetch_all_users<'e, E>(
+    workspace_id: i64,
+    executor: E,
+  ) -> Result<Vec<ChatUser>, AppError>
   where
     E: Executor<'e, Database = Postgres>,
   {
@@ -86,13 +91,14 @@ impl Workspace {
       WHERE u.workspace_id = $1
       "#,
     )
-    .bind(id)
+    .bind(workspace_id)
     .fetch_all(executor)
     .await?;
 
     Ok(users)
   }
 
+  /// Find a workspace by name
   pub async fn find_by_name<'e, E>(name: &str, executor: E) -> Result<Option<Self>, AppError>
   where
     E: Executor<'e, Database = Postgres>,
@@ -109,6 +115,7 @@ impl Workspace {
     Ok(workspace)
   }
 
+  /// Find a workspace by ID
   pub async fn find_by_id<'e, E>(id: i64, executor: E) -> Result<Option<Self>, AppError>
   where
     E: Executor<'e, Database = Postgres>,
@@ -125,6 +132,7 @@ impl Workspace {
     Ok(workspace)
   }
 
+  /// Add a user to the workspace
   pub async fn add_to_workspace<'e, E>(&self, user_id: i64, executor: E) -> Result<Self, AppError>
   where
     E: Executor<'e, Database = Postgres> + Copy,
@@ -160,44 +168,90 @@ impl Workspace {
   }
 }
 
+// Compatibility methods for AppState
+// These are kept for backward compatibility during transition
 #[allow(dead_code)]
-impl Workspace {
-  pub async fn create_with_pool(name: &str, user_id: i64, pool: &PgPool) -> Result<Self, AppError> {
-    Self::create(name, user_id, pool).await
-  }
-
-  pub async fn update_owner_with_pool(
+impl AppState {
+  /// Create a workspace with the given name and owner.
+  pub async fn create_workspace<'e, E>(
     &self,
-    owner_id: i64,
-    pool: &PgPool,
-  ) -> Result<Self, AppError> {
-    self.update_owner(owner_id, pool).await
-  }
-
-  pub async fn fetch_all_users_with_pool(
-    workspace_id: i64,
-    pool: &PgPool,
-  ) -> Result<Vec<ChatUser>, AppError> {
-    Self::fetch_all_users(workspace_id, pool).await
-  }
-
-  pub async fn find_by_name_with_pool(name: &str, pool: &PgPool) -> Result<Option<Self>, AppError> {
-    Self::find_by_name(name, pool).await
-  }
-
-  pub async fn find_by_id_with_pool(
-    workspace_id: i64,
-    pool: &PgPool,
-  ) -> Result<Option<Self>, AppError> {
-    Self::find_by_id(workspace_id, pool).await
-  }
-
-  pub async fn add_to_workspace_with_pool(
-    &self,
+    name: &str,
     user_id: i64,
-    pool: &PgPool,
-  ) -> Result<Self, AppError> {
-    self.add_to_workspace(user_id, pool).await
+    executor: E,
+  ) -> Result<Workspace, AppError>
+  where
+    E: Executor<'e, Database = Postgres> + Copy,
+  {
+    Workspace::create(name, user_id, executor).await
+  }
+
+  /// Update the owner of a workspace.
+  pub async fn update_workspace_owner<'e, E>(
+    &self,
+    workspace_id: i64,
+    owner_id: i64,
+    executor: E,
+  ) -> Result<Workspace, AppError>
+  where
+    E: Executor<'e, Database = Postgres> + Copy,
+  {
+    let workspace = Workspace::find_by_id(workspace_id, executor)
+      .await?
+      .ok_or_else(|| AppError::NotFound(vec![workspace_id.to_string()]))?;
+
+    workspace.update_owner(owner_id, executor).await
+  }
+
+  /// Fetch all users from a workspace.
+  pub async fn fetch_workspace_users<'e, E>(
+    &self,
+    workspace_id: i64,
+    executor: E,
+  ) -> Result<Vec<ChatUser>, AppError>
+  where
+    E: Executor<'e, Database = Postgres> + Copy,
+  {
+    Workspace::fetch_all_users(workspace_id, executor).await
+  }
+
+  /// Find a workspace by name.
+  pub async fn find_workspace_by_name<'e, E>(
+    &self,
+    name: &str,
+    executor: E,
+  ) -> Result<Option<Workspace>, AppError>
+  where
+    E: Executor<'e, Database = Postgres> + Copy,
+  {
+    Workspace::find_by_name(name, executor).await
+  }
+
+  /// Find a workspace by ID.
+  pub async fn find_workspace_by_id<'e, E>(
+    &self,
+    id: i64,
+    executor: E,
+  ) -> Result<Option<Workspace>, AppError>
+  where
+    E: Executor<'e, Database = Postgres> + Copy,
+  {
+    Workspace::find_by_id(id, executor).await
+  }
+
+  pub async fn add_user_to_workspace<'e, E>(
+    &self,
+    workspace_id: i64,
+    user_id: i64,
+    executor: E,
+  ) -> Result<Workspace, AppError>
+  where
+    E: Executor<'e, Database = Postgres> + Copy,
+  {
+    let workspace = Workspace::find_by_id(workspace_id, executor)
+      .await?
+      .ok_or_else(|| AppError::NotFound(vec![workspace_id.to_string()]))?;
+
+    workspace.add_to_workspace(user_id, executor).await
   }
 }
 
@@ -268,4 +322,7 @@ mod tests {
     assert_eq!(updated_workspace.owner_id, user2.id);
     Ok(())
   }
+
+
+  
 }

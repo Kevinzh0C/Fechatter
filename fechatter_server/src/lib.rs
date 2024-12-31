@@ -23,7 +23,7 @@ use utils::jwt::TokenManager;
 
 pub use error::{AppError, ErrorOutput};
 use handlers::*;
-use middlewares::{SetAuthLayer, SetLayer};
+use middlewares::{RouterExt, SetLayer};
 pub use models::{ChatSidebar, CreateUser, SigninUser, User};
 
 #[derive(Debug, Clone)]
@@ -41,7 +41,7 @@ pub(crate) struct AppStateInner {
 pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
   let state = AppState::try_new(config).await?;
 
-  // Public routes - no authentication required
+  // Public routes - no authentication required but apply token refresh
   let public_routes = Router::new()
     .route("/signin", post(signin_handler))
     .route("/signup", post(signup_handler))
@@ -49,7 +49,9 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
       "/refresh",
       post(|state, cookies, headers| refresh_token_handler(state, cookies, headers)),
     )
-    .with_state(state.clone());
+    .with_middlewares(state.clone())
+    .with_token_refresh()
+    .build();
 
   // Protected routes - authentication required
   let protected_routes = Router::new()
@@ -91,10 +93,27 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
       "/chat/{id}/messages",
       get(list_messages_handler).post(send_message_handler),
     )
-    .set_auth_layer(state.clone())
-    .with_state(state.clone());
+    .with_middlewares(state.clone())
+    .with_token_refresh()
+    .with_auth()
+    .build();
 
-  let api = Router::new().merge(public_routes).merge(protected_routes);
+  // 使用工作区中间件的路由
+  let workspace_routes = Router::new()
+    .route(
+      "/workspace/users",
+      get(list_workspace_users_with_middleware),
+    )
+    .with_middlewares(state.clone())
+    .with_token_refresh()
+    .with_auth()
+    .with_workspace()
+    .build();
+
+  let api = Router::new()
+    .merge(public_routes)
+    .merge(protected_routes)
+    .merge(workspace_routes);
 
   // Create main app with all middleware
   let app = Router::new()
@@ -145,9 +164,10 @@ impl AppState {
 
 #[cfg(test)]
 impl AppState {
-  pub async fn test_new(config: AppConfig) -> Result<(sqlx_db_tester::TestPg, Self), AppError> {
+  pub async fn test_new() -> Result<(sqlx_db_tester::TestPg, Self), AppError> {
     use sqlx_db_tester::TestPg;
 
+    let config = AppConfig::load().expect("Failed to load config");
     fs::create_dir_all(&config.server.base_dir)
       .await
       .context("failed to create base dir")?;
