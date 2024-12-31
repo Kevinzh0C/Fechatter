@@ -179,6 +179,7 @@ fn hashed_password(password: &str) -> Result<String, AppError> {
   Ok(password_hash)
 }
 
+#[allow(unused)]
 fn verify_password(password: &str, password_hash: &str) -> Result<bool, AppError> {
   let argon2 = Argon2::default();
   let parsed_hash = PasswordHash::new(password_hash)?;
@@ -242,17 +243,7 @@ pub struct CreateUser {
   pub password: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AuthUser {
-  pub id: i64,
-  pub fullname: String,
-  pub email: String,
-  pub status: UserStatus,
-  pub created_at: chrono::DateTime<chrono::Utc>,
-  pub workspace_id: i64,
-}
-
-#[cfg(test)]
+// Constructor for CreateUser is now generally available
 impl CreateUser {
   pub fn new(fullname: &str, email: &str, workspace: &str, password: &str) -> Self {
     Self {
@@ -265,11 +256,22 @@ impl CreateUser {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthUser {
+  pub id: i64,
+  pub fullname: String,
+  pub email: String,
+  pub status: UserStatus,
+  pub created_at: chrono::DateTime<chrono::Utc>,
+  pub workspace_id: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SigninUser {
   pub email: String,
   pub password: String,
 }
 
+// Keep the test-only constructor for SigninUser
 #[cfg(test)]
 impl SigninUser {
   pub fn new(email: &str, password: &str) -> Self {

@@ -1,25 +1,20 @@
-use anyhow::Result;
-use fechatter_server::{
-  AppState,
-  models::{SigninUser, User, UserStatus},
-  services::{AuthServiceTrait, auth_service::AuthService},
-  utils::jwt::RefreshToken,
-};
-use sqlx::Executor;
-use std::sync::Arc;
-use tokio::sync::Semaphore;
-
 #[cfg(test)]
 mod refresh_token_tests {
-  use super::*;
-  use fechatter_server::setup_test_users;
+  use crate::setup_test_users;
+  use crate::token::TokenValidator as _;
+  use crate::{
+    models::{SigninUser, UserStatus},
+    services::AuthServiceTrait,
+  };
+  use anyhow::Result;
+  use std::sync::Arc;
+  use tokio::sync::Semaphore;
 
   #[tokio::test]
   async fn concurrent_token_refresh_should_not_violate_constraints() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
-    let auth_service: Box<dyn AuthServiceTrait> =
-      state.service_provider.create_service::<AuthService>();
+    let auth_service: Box<dyn AuthServiceTrait> = state.service_provider.create_service();
 
     let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
     let refresh_token = tokens.refresh_token.token;
@@ -33,9 +28,9 @@ mod refresh_token_tests {
       let token_clone = refresh_token.clone();
       let sem = sem_clone.clone();
 
-      let handle = tokio::spawn(async move {
+      let handle: tokio::task::JoinHandle<_> = tokio::spawn(async move {
         let _permit = sem.acquire().await.unwrap();
-        let service: Box<dyn AuthServiceTrait> = service_provider.create_service::<AuthService>();
+        let service: Box<dyn AuthServiceTrait> = service_provider.create_service();
         service.refresh_token(&token_clone, None, None).await
       });
 
@@ -46,10 +41,7 @@ mod refresh_token_tests {
 
     let results = futures::future::join_all(handles).await;
 
-    let success_count = results
-      .iter()
-      .filter(|r| r.as_ref().map_or(false, |inner| inner.is_ok()))
-      .count();
+    let success_count = results.iter().filter(|r| matches!(r, Ok(Ok(_)))).count();
 
     assert_eq!(success_count, 1);
 
@@ -60,8 +52,7 @@ mod refresh_token_tests {
   async fn disabled_user_should_not_get_refresh_token() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
-    let auth_service: Box<dyn AuthServiceTrait> =
-      state.service_provider.create_service::<AuthService>();
+    let auth_service: Box<dyn AuthServiceTrait> = state.service_provider.create_service();
 
     let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
     let refresh_token = tokens.refresh_token.token;
@@ -94,8 +85,7 @@ mod refresh_token_tests {
       password: "password".to_string(), // Default test password
     };
 
-    let auth_service: Box<dyn AuthServiceTrait> =
-      state.service_provider.create_service::<AuthService>();
+    let auth_service: Box<dyn AuthServiceTrait> = state.service_provider.create_service();
     let result = auth_service.authenticate(&signin_user).await?;
     assert!(result.is_some());
 
@@ -106,8 +96,7 @@ mod refresh_token_tests {
   async fn token_validation_should_work_with_trait() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
-    let auth_service: Box<dyn AuthServiceTrait> =
-      state.service_provider.create_service::<AuthService>();
+    let auth_service: Box<dyn AuthServiceTrait> = state.service_provider.create_service();
 
     let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
 

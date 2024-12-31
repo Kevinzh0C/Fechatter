@@ -1,10 +1,11 @@
-mod config;
-mod error;
-mod handlers;
-mod middlewares;
-mod models;
-mod services;
-mod utils;
+pub mod config;
+pub mod error;
+pub mod handlers;
+pub mod middlewares;
+pub mod models;
+pub mod services;
+pub mod utils;
+pub mod tests;
 
 use std::sync::Arc;
 use std::{fmt, ops::Deref};
@@ -16,23 +17,25 @@ use axum::{
 };
 pub use config::AppConfig;
 use dashmap::DashMap;
+use services::ServiceProvider;
 use sqlx::PgPool;
 use tokio::fs;
 use tokio::time::Instant;
-use utils::jwt::TokenManager;
+pub use utils::jwt::TokenManager;
 
 pub use error::{AppError, ErrorOutput};
 use handlers::*;
-use middlewares::{RouterExt, SetLayer};
-pub use models::{ChatSidebar, CreateUser, SigninUser, User};
-use services::ServiceProvider;
+pub use middlewares::{RouterExt, SetLayer, WorkspaceContext};
+pub use models::{ChatSidebar, ChatUser, CreateUser, SigninUser, User, UserStatus, Workspace};
+pub use services::{AuthServiceTrait, auth_service::AuthService};
+pub use utils::*;
 
 #[derive(Debug, Clone)]
-pub(crate) struct AppState {
+pub struct AppState {
   inner: Arc<AppStateInner>,
 }
 
-pub(crate) struct AppStateInner {
+pub struct AppStateInner {
   pub(crate) config: AppConfig,
   pub(crate) token_manager: TokenManager,
   pub(crate) pool: PgPool,
@@ -40,7 +43,7 @@ pub(crate) struct AppStateInner {
   pub(crate) service_provider: ServiceProvider,
 }
 
-pub async fn get_router(config: AppConfig) -> Result<Router<AppState>, AppError> {
+pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
   let state = AppState::try_new(config).await?;
 
   // Public routes - no authentication required but apply token refresh
@@ -100,7 +103,7 @@ pub async fn get_router(config: AppConfig) -> Result<Router<AppState>, AppError>
     .with_auth()
     .build();
 
-  // 使用工作区中间件的路由
+  // Routes using workspace middleware
   let workspace_routes = Router::new()
     .route(
       "/workspace/users",
@@ -117,11 +120,10 @@ pub async fn get_router(config: AppConfig) -> Result<Router<AppState>, AppError>
     .merge(protected_routes)
     .merge(workspace_routes);
 
-  // Create main app with all middleware
   let app = Router::new()
     .route("/", get(index_handler))
     .nest("/api", api)
-    .layer(axum::extract::Extension(state))
+    .with_state(state)
     .set_layer();
 
   Ok(app)

@@ -7,9 +7,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 pub mod auth_service;
-mod service_provider;
-mod workspace_service;
-
+pub mod service_provider;
 pub use service_provider::ServiceProvider;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

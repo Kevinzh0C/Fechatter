@@ -7,13 +7,13 @@ use super::{
   workspace::with_workspace_context,
 };
 
-// 类型状态标记
+// Type state markers
 pub struct WithoutAuth;
 pub struct WithAuth;
 pub struct WithRefresh;
 pub struct WithWorkspace;
 
-/// 中间件构建器，使用类型状态模式确保中间件安装顺序
+/// Middleware builder that uses type state pattern to ensure correct middleware installation order
 pub struct MiddlewareBuilder<S, AuthState = WithoutAuth, WorkspaceState = WithoutAuth> {
   router: Router<S>,
   state: AppState,
@@ -25,7 +25,7 @@ impl<S> MiddlewareBuilder<S, WithoutAuth, WithoutAuth>
 where
   S: Clone + Send + Sync + 'static,
 {
-  /// 创建新的中间件构建器
+
   pub fn new(router: Router<S>, state: AppState) -> Self {
     Self {
       router,
@@ -35,7 +35,7 @@ where
     }
   }
 
-  /// 应用令牌刷新中间件
+
   pub fn with_token_refresh(self) -> MiddlewareBuilder<S, WithRefresh, WithoutAuth> {
     let router = self.router.layer(from_fn_with_state(
       self.state.clone(),
@@ -55,7 +55,7 @@ impl<S> MiddlewareBuilder<S, WithRefresh, WithoutAuth>
 where
   S: Clone + Send + Sync + 'static,
 {
-  /// 应用认证中间件（需要先应用令牌刷新）
+
   pub fn with_auth(self) -> MiddlewareBuilder<S, WithAuth, WithoutAuth> {
     let router = self.router.layer(from_fn_with_state(
       self.state.clone(),
@@ -70,7 +70,7 @@ where
     }
   }
 
-  /// 构建路由器，仅应用令牌刷新
+
   pub fn build(self) -> Router<S> {
     self.router
   }
@@ -80,7 +80,7 @@ impl<S> MiddlewareBuilder<S, WithAuth, WithoutAuth>
 where
   S: Clone + Send + Sync + 'static,
 {
-  /// 应用工作区上下文中间件（需要先应用认证）
+
   pub fn with_workspace(self) -> MiddlewareBuilder<S, WithAuth, WithWorkspace> {
     let router = self.router.layer(from_fn_with_state(
       self.state.clone(),
@@ -95,7 +95,7 @@ where
     }
   }
 
-  /// 构建路由器，应用了认证和刷新
+
   pub fn build(self) -> Router<S> {
     self.router
   }
@@ -105,15 +105,15 @@ impl<S> MiddlewareBuilder<S, WithAuth, WithWorkspace>
 where
   S: Clone + Send + Sync + 'static,
 {
-  /// 构建路由器，应用了认证、刷新和工作区上下文
+
   pub fn build(self) -> Router<S> {
     self.router
   }
 }
 
-/// 路由器扩展特征，简化中间件应用
+
 pub trait RouterExt<S> {
-  /// 使用中间件构建器添加中间件
+
   fn with_middlewares(self, state: AppState) -> MiddlewareBuilder<S, WithoutAuth, WithoutAuth>;
 }
 

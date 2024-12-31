@@ -1,11 +1,8 @@
 use anyhow::Result;
-use axum::serve;
+use fechatter_server::{AppConfig, get_router};
 use tokio::net::TcpListener;
 use tracing::{info, level_filters::LevelFilter};
 use tracing_subscriber::{Layer as _, fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt};
-
-// Import everything from the crate
-use fechatter_server::{AppConfig, get_router};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -21,7 +18,7 @@ async fn main() -> Result<()> {
   let listener = TcpListener::bind(&addr).await?;
   info!("Listening on: {}", addr);
 
-  serve(listener, app).await?;
+  axum::serve(listener, app.into_make_service()).await?;
 
   Ok(())
 }

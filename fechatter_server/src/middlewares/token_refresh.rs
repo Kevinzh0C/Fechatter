@@ -9,11 +9,7 @@ use axum::{
   response::Response,
 };
 
-use crate::{
-  AppState,
-  services::{AuthServiceTrait, auth_service::AuthService},
-  utils::jwt::RefreshTokenData,
-};
+use crate::{AppState, services::AuthServiceTrait, utils::jwt::RefreshTokenData};
 
 const AUTH_HEADER: &str = "Authorization";
 const AUTH_COOKIE_NAME: &str = "refresh_token";
@@ -59,8 +55,7 @@ pub async fn refresh_token_middleware(
     .map(String::from);
 
   // Create auth service using trait-based approach
-  let auth_service: Box<dyn AuthServiceTrait> =
-    state.service_provider.create_service::<AuthService>();
+  let auth_service: Box<dyn AuthServiceTrait> = state.service_provider.create_service();
 
   // Try to refresh the token
   match auth_service

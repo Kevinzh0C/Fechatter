@@ -1,5 +1,6 @@
 use crate::models::AuthUser;
-use crate::services::{AuthServiceTrait, auth_service::AuthService};
+use crate::services::AuthServiceTrait;
+use crate::services::auth_service::AuthService;
 use crate::utils::jwt::ACCESS_TOKEN_EXPIRATION;
 use crate::{AppState, ErrorOutput, SigninUser, error::AppError, models::CreateUser};
 use axum::{
@@ -92,8 +93,7 @@ pub(crate) async fn signin_handler(
     .and_then(|h| h.to_str().ok())
     .map(String::from);
 
-  let auth_service: Box<dyn AuthServiceTrait> =
-    state.service_provider.create_service::<AuthService>();
+  let auth_service = AuthService::new(&state.service_provider);
   match auth_service
     .signin(&payload, user_agent, ip_address)
     .await?
@@ -172,8 +172,7 @@ pub(crate) async fn refresh_token_handler(
     }
   };
 
-  let auth_service: Box<dyn AuthServiceTrait> =
-    state.service_provider.create_service::<AuthService>();
+  let auth_service = AuthService::new(&state.service_provider);
   match auth_service
     .refresh_token(&refresh_token_str, user_agent, ip_address)
     .await
@@ -219,8 +218,7 @@ pub(crate) async fn logout_handler(
   let mut response_headers = HeaderMap::new();
   clear_refresh_token_cookie(&mut response_headers)?;
 
-  let auth_service: Box<dyn AuthServiceTrait> =
-    state.service_provider.create_service::<AuthService>();
+  let auth_service = AuthService::new(&state.service_provider);
 
   // First try to get refresh token from cookie
   let refresh_token_str = if let Some(cookie) = cookies.get("refresh_token") {
@@ -231,7 +229,7 @@ pub(crate) async fn logout_handler(
     None
   };
 
-  // If not found in cookie, try to get from Authorization header
+  // If not in cookie, try to get from Authorization header
   if refresh_token_str.is_none() {
     if let Some(auth_header) = headers.get("Authorization") {
       if let Ok(auth_value) = auth_header.to_str() {
@@ -265,8 +263,7 @@ pub(crate) async fn logout_all_handler(
   // Clear refresh_token cookie
   clear_refresh_token_cookie(&mut response_headers)?;
 
-  let auth_service: Box<dyn AuthServiceTrait> =
-    state.service_provider.create_service::<AuthService>();
+  let auth_service = AuthService::new(&state.service_provider);
   let user_id = _auth_user.id;
 
   // Try to get refresh token from cookie
@@ -346,7 +343,7 @@ mod tests {
       workspace: "Acme".to_string(),
     };
 
-    // 首先为handler创建一个临时函数
+    // First create a temporary function for handler
     let test_handler = |state, payload| async {
       signup_handler(State(state), HeaderMap::new(), Json(payload)).await
     };
@@ -427,8 +424,7 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
 
-    let auth_service: Box<dyn AuthServiceTrait> =
-      state.service_provider.create_service::<AuthService>();
+    let auth_service = AuthService::new(&state.service_provider);
     let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
 
     let mut jar = CookieJar::new();
@@ -440,11 +436,8 @@ mod tests {
     let test_handler =
       |state, jar| async { refresh_token_handler(State(state), HeaderMap::new(), jar).await };
 
-    let auth_response = assert_handler_success!(
-      test_handler(state.clone(), jar),
-      StatusCode::OK,
-      AuthResponse
-    );
+    let auth_response =
+      assert_handler_success!(test_handler(state, jar), StatusCode::OK, AuthResponse);
 
     assert_ne!(auth_response.access_token, "");
     assert_eq!(auth_response.expires_in, ACCESS_TOKEN_EXPIRATION);
@@ -500,8 +493,7 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
 
-    let auth_service: Box<dyn AuthServiceTrait> =
-      state.service_provider.create_service::<AuthService>();
+    let auth_service = AuthService::new(&state.service_provider);
     let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
 
     let mut jar = CookieJar::new();
@@ -538,7 +530,7 @@ mod tests {
     let test_refresh =
       |state, jar| async { refresh_token_handler(State(state), HeaderMap::new(), jar).await };
 
-    let refresh_response = test_refresh(state.clone(), jar2).await;
+    let refresh_response = test_refresh(state, jar2).await;
 
     match refresh_response {
       Ok(resp) => {

@@ -1,6 +1,6 @@
-pub(crate) mod jwt;
-pub(crate) mod test_utils;
-pub(crate) mod token;
+pub mod jwt;
+pub mod test_utils;
+pub mod token;
 
 #[macro_export]
 macro_rules! auth_user {
