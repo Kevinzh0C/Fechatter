@@ -3,6 +3,7 @@ mod error;
 mod handlers;
 mod middlewares;
 mod models;
+mod services;
 mod utils;
 
 use std::sync::Arc;
@@ -19,7 +20,7 @@ use tokio::time::Instant;
 use utils::jwt::TokenManager;
 
 pub use error::{AppError, ErrorOutput};
-use handlers::*;
+use handlers::{logout_handler, refresh_token_handler, *};
 use middlewares::{SetAuthLayer, SetLayer};
 pub use models::{ChatSidebar, CreateUser, SigninUser, User};
 
@@ -42,11 +43,13 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
   let public_routes = Router::new()
     .route("/signin", post(signin_handler))
     .route("/signup", post(signup_handler))
+    .route("/refresh", post(refresh_token_handler))
     .with_state(state.clone());
 
   // Protected routes - authentication required
   let protected_routes = Router::new()
     .route("/users", get(list_all_workspace_users_handler))
+    .route("/logout", post(logout_handler))
     .route("/chat", get(list_chats_handler).post(create_chat_handler).delete(delete_chat_handler))
     .route(
       "/chat/{id}",
