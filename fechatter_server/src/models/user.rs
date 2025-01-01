@@ -151,6 +151,18 @@ impl User {
       None => Ok(None), // User not found, so it's not authenticated
     }
   }
+
+  /// Find a user by their ID
+  pub async fn find_by_id(id: i64, pool: &PgPool) -> Result<Option<Self>, AppError> {
+    let user = sqlx::query_as::<_, User>(
+      "SELECT id, fullname, email, password_hash, status, created_at, workspace_id FROM users WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(user)
+  }
 }
 
 fn hashed_password(password: &str) -> Result<String, AppError> {

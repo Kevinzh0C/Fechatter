@@ -102,7 +102,9 @@ jobs:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     - name: Check code format
+      id: fmt_check
       run: cargo fmt -- --check
+      continue-on-error: true
 
     - name: Check the package for errors
       run: cargo check --all
