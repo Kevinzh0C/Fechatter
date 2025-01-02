@@ -1,11 +1,11 @@
 on:
   push:
     branches:
-      - master
+    - master
   pull_request:
     branches:
-      - master
-  
+    - master
+
 permissions:
   contents: write
 
@@ -14,10 +14,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: "ubuntu-latest"
-            rust-version: "stable"
-          - os: "ubuntu-latest"
-            rust-version: "nightly"
+        - os: "ubuntu-latest"
+          rust-version: "stable"
+        - os: "ubuntu-latest"
+          rust-version: "nightly"
     runs-on: ${{ matrix.os }}
     env:
       MAKE_FEATURES_FLAG: "--all-features"
@@ -25,20 +25,17 @@ jobs:
     defaults:
       run:
         shell: bash
-    
+
     services:
       postgres:
         image: postgres
         env:
           POSTGRES_PASSWORD: postgres
         options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
         ports:
-          - 5432:5432
-    
+        - 5432:5432
+
     steps:
     - uses: actions/checkout@v4
       with:
