@@ -5,8 +5,8 @@ use tracing::{error, info, warn};
 
 use crate::{
   AppError,
-  models::{CreateUser, SigninUser, User},
   utils::jwt::{AuthTokens, RefreshToken, RefreshTokenData, TokenManager, generate_refresh_token},
+  {CreateUser, SigninUser, User},
 };
 
 pub struct AuthService<'a> {
@@ -22,12 +22,15 @@ impl<'a> AuthService<'a> {
     }
   }
 
-  pub async fn signup(
+  pub async fn signup<Err>(
     &self,
     payload: &CreateUser,
     user_agent: Option<String>,
     ip_address: Option<String>,
-  ) -> Result<AuthTokens, AppError> {
+  ) -> Result<AuthTokens, Err
+    where
+      Err: From<AppError>,
+  {
     let user = User::create(payload, self.pool).await?;
 
     let tokens = self

@@ -9,7 +9,9 @@ use argon2::{
 };
 
 use crate::{AppError, AppState};
-use fechatter_core::{ChatUser, User, UserStatus, Workspace};
+use crate::models::{ChatUser, User, UserStatus, Workspace};
+
+use super::{CreateUser, SigninUser};
 
 impl AppState {
   /// Check if a user with the given email exists in the database.

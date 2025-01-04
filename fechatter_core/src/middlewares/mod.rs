@@ -15,13 +15,20 @@ use tower_http::{
 };
 use tracing::Level;
 
+use crate::AuthUser;
+
 pub(crate) use self::bearer_auth::verify_token_middleware;
 pub(crate) use self::request_id::request_id_middleware;
 pub(crate) use self::server_time::ServerTimeLayer;
-use crate::AppState;
+
 
 pub const REQUEST_ID_HEADER: &str = "x-request-id";
 pub const SERVER_TIME_HEADER: &str = "x-server-time";
+
+pub trait TokenVerifier {
+  type Error: std::fmt::Debug;
+  fn verify_token(&self, token: &str) -> Result<AuthUser, Self::Error>;
+}
 
 /// Apply common middleware to a router
 pub trait SetLayer {

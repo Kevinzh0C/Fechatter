@@ -1,10 +1,10 @@
 mod config;
 mod error;
 mod handlers;
-mod middlewares;
+
 mod models;
-mod services;
-mod utils;
+
+mod test_utils;
 
 use std::sync::Arc;
 use std::{fmt, ops::Deref};
@@ -16,15 +16,17 @@ use axum::{
 };
 pub use config::AppConfig;
 use dashmap::DashMap;
+use fechatter_core::TokenVerifier;
 use sqlx::PgPool;
 use tokio::fs;
 use tokio::time::Instant;
 use utils::jwt::TokenManager;
 
+use crate::models::ChatSidebar;
 pub use error::{AppError, ErrorOutput};
+pub use fechatter_core::{CreateUser, SigninUser, User};
 use handlers::*;
 use middlewares::{SetAuthLayer, SetLayer};
-pub use models::{ChatSidebar, CreateUser, SigninUser, User};
 
 #[derive(Debug, Clone)]
 pub(crate) struct AppState {
@@ -36,6 +38,14 @@ pub(crate) struct AppStateInner {
   pub(crate) token_manager: TokenManager,
   pub(crate) pool: PgPool,
   pub(crate) chat_list_cache: DashMap<i64, (Arc<Vec<ChatSidebar>>, Instant)>,
+}
+
+impl TokenVerifier for AppState {
+  type Error = AppError;
+
+  fn verify_token(&self, token: &str) -> Result<UserClaims, Self::Error> {
+    self.inner.token_manager.verify_token(token)
+  }
 }
 
 pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {

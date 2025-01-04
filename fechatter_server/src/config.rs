@@ -28,7 +28,7 @@ pub struct ServerConfig {
 impl AppConfig {
   pub fn load() -> Result<Self> {
     // Attempt to read from ./app.yml, /etc/config/app.yml, or from the environment variable CHAT_CONFIG
-    let ret = match (
+    let ret: std::result::Result<AppConfig, serde_yaml::Error> = match (
       File::open("app.yml"),
       File::open("/etc/config/app.yml"),
       env::var("CHAT_CONFIG"),

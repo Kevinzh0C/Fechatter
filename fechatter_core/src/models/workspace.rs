@@ -2,7 +2,7 @@ use sqlx::{Executor, PgPool, Postgres, query_as};
 
 use crate::{AppError, AppState};
 
-use fechatter_core::{ChatUser, Workspace};
+use crate::models::{ChatUser, Workspace};
 
 impl AppState {
   pub async fn create_workspace<'e, E>(

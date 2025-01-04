@@ -1,4 +1,5 @@
-use crate::{AppError, User, config::AuthConfig, models::UserStatus};
+use crate::{User, UserStatus};
+use crate::{AppError, config::AuthConfig};
 use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
@@ -214,8 +215,9 @@ impl RefreshToken {
     Ok(refresh_token)
   }
 }
+
 impl Claims {
-  fn new(user: &User) -> Self {
+  pub fn new(user: &User) -> Self {
     let now = chrono::Utc::now().timestamp() as usize;
     Self {
       sub: user.id.to_string(),
@@ -308,7 +310,7 @@ impl TokenManager {
 #[cfg(test)]
 mod tests {
 
-  use crate::{AppConfig, models::UserStatus, setup_test_users};
+  use crate::{AppConfig, UserStatus, setup_test_users};
 
   use super::*;
   use anyhow::Result;

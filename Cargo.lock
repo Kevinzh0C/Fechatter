@@ -640,6 +640,7 @@ dependencies = [
  "chrono",
  "dashmap",
  "dotenv",
+ "fechatter_core",
  "futures",
  "hex",
  "http-body-util",
@@ -666,6 +667,30 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "validator",
+]
+
+[[package]]
+name = "fechatter_core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "argon2",
+ "axum",
+ "axum-extra",
+ "chrono",
+ "futures",
+ "hex",
+ "jsonwebtoken",
+ "rand 0.9.1",
+ "serde",
+ "sha1",
+ "sha2",
+ "sqlx",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -1419,6 +1444,7 @@ dependencies = [
  "anyhow",
  "axum",
  "axum-extra",
+ "fechatter_core",
  "futures",
  "serde",
  "serde_json",

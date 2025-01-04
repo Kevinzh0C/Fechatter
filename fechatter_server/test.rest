@@ -131,7 +131,7 @@ Content-Type: application/json
 Authorization: Bearer {{accessToken}}
 
 {
-  "name": "Updated Chat",
+  "name": "Updated Chat2",
   "description": "This is an updated test chat"
 }
 
@@ -181,6 +181,17 @@ Authorization: Bearer {{accessToken}}
 # The following request will fail
 # GET {{baseUrl}}/api/files/366b6ca7f43e61ae1559b372608fe6c170.png
 # Authorization: Bearer {{accessToken}}
+
+
+### send message
+POST {{baseUrl}}/api/chat/1/messages
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "content": "Hello, this is a content message",
+  "files": []
+}
 
 ### send message with file
 POST {{baseUrl}}/api/chat/1/messages

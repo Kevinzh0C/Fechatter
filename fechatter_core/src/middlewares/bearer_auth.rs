@@ -11,14 +11,16 @@ use axum_extra::{
 };
 use tracing::warn;
 
-use crate::AppState;
-use crate::models::AuthUser;
+use crate::{AuthUser, middlewares::TokenVerifier};
 
-pub async fn verify_token_middleware(
-  State(state): State<AppState>,
+pub async fn verify_token_middleware<T>(
+  State(state): State<T>,
   req: Request,
   next: Next,
-) -> Response {
+) -> Response
+where
+  T: TokenVerifier + Clone + Send + Sync + 'static,
+{
   let (mut parts, body) = req.into_parts();
   let token =
     match TypedHeader::<Authorization<Bearer>>::from_request_parts(&mut parts, &state).await {
@@ -30,7 +32,7 @@ pub async fn verify_token_middleware(
       }
     };
 
-  match state.token_manager.verify_token(&token) {
+  match state.verify_token(&token) {
     Ok(claims) => {
       let user = AuthUser {
         id: claims.id,
@@ -51,10 +53,28 @@ pub async fn verify_token_middleware(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::setup_test_users;
+  use crate::{jwt::{TokenManager, UserClaims}, setup_test_users};
   use anyhow::Result;
   use axum::{Router, body::Body, middleware::from_fn_with_state, routing::get};
+  use std::sync::Arc;
   use tower::ServiceExt;
+
+  #[derive(Clone)]
+  struct Appstate {
+    inner: Arc<AppstateInner>,
+  }
+
+  struct AppstateInner {
+    token_manager: TokenManager,
+  }
+
+  impl TokenVerifier for Appstate {
+    type Error = ();
+
+    fn verify_token(&self, token: &str) -> Result<UserClaims, Self::Error> {
+      self.inner.token_manager.verify_token(token)
+    }
+  }
 
   async fn handler(_req: Request) -> impl IntoResponse {
     (StatusCode::OK, "OK")
@@ -62,12 +82,23 @@ mod tests {
 
   #[tokio::test]
   async fn verify_token_middleware_should_work() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1).await;
-    let user1 = users.into_iter().next().unwrap();
+    
+    let token_manager: TokenManager = TokenManager {
+      encoding_key: EncodingKey::new(b"secret"),
+      decoding_key: DecodingKey::new(b"secret"),
+      validation: Validation::default(),
+    }
+
+
+    let state = Appstate {
+      inner: Arc::new(AppstateInner {
+        token_manager,
+      }),
+    };
 
     let app = Router::new()
       .route("/api", get(handler))
-      .layer(from_fn_with_state(state.clone(), verify_token_middleware));
+      .layer(from_fn_with_state(state.clone(), verify_token_middleware::<Appstate>));
 
     let token = state.token_manager.generate_token(&user1)?;
     let req = Request::builder()
