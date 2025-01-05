@@ -1,7 +1,5 @@
-use std::mem;
-
-use serde::{Deserialize, Serialize};
 use sqlx::{Acquire, PgPool};
+use std::mem;
 
 use argon2::{
   Argon2, PasswordHash, PasswordVerifier,
@@ -9,8 +7,9 @@ use argon2::{
 };
 
 use crate::{AppError, AppState};
-use fechatter_core::{ChatUser, User, UserStatus, Workspace};
+use fechatter_core::{User, Workspace};
 
+#[allow(unused)]
 impl AppState {
   /// Check if a user with the given email exists in the database.
   pub async fn email_user_exists(
@@ -59,17 +58,13 @@ impl AppState {
   }
 
   /// Create a new user in the database.
-  pub async fn create(
-    &self,
-    input: &fechatter_core::CreateUser,
-    pool: &PgPool,
-  ) -> Result<User, AppError> {
-    let mut tx = pool.begin().await?;
+  pub async fn create(&self, input: &fechatter_core::CreateUser) -> Result<User, AppError> {
+    let mut tx = self.pool.begin().await?;
 
     let conn = tx.acquire().await?;
 
     let mut is_new_workspace = false;
-    let workspace = match Workspace::find_by_name(&input.workspace, pool).await? {
+    let workspace = match find_workspace_by_name(&input.workspace, &self.pool).await? {
       Some(workspace) => {
         if workspace.owner_id == 0 {
           is_new_workspace = true;
@@ -140,13 +135,12 @@ impl AppState {
   pub async fn authenticate(
     &self,
     input: &fechatter_core::SigninUser,
-    pool: &PgPool,
   ) -> Result<Option<User>, AppError> {
     let user = sqlx::query_as::<_, User>(
       "SELECT id, fullname, email, password_hash, status, created_at, workspace_id FROM users WHERE email = $1",
     )
     .bind(&input.email)
-    .fetch_optional(pool)
+    .fetch_optional(&self.pool)
     .await?;
 
     match user {
@@ -168,12 +162,12 @@ impl AppState {
   }
 
   /// Find a user by their ID
-  pub async fn find_user_by_id(&self, id: i64, pool: &PgPool) -> Result<Option<User>, AppError> {
+  pub async fn find_user_by_id(&self, id: i64) -> Result<Option<User>, AppError> {
     let user = sqlx::query_as::<_, User>(
       "SELECT id, fullname, email, password_hash, status, created_at, workspace_id FROM users WHERE id = $1",
     )
     .bind(id)
-    .fetch_optional(pool)
+    .fetch_optional(&self.pool)
     .await?;
 
     Ok(user)
@@ -224,13 +218,24 @@ impl AppState {
   }
 }
 
+async fn find_workspace_by_name(name: &str, pool: &PgPool) -> Result<Option<Workspace>, AppError> {
+  let workspace = sqlx::query_as::<_, Workspace>(
+    "SELECT id, name, owner_id, created_at FROM workspaces WHERE name = $1",
+  )
+  .bind(name)
+  .fetch_optional(pool)
+  .await?;
+
+  Ok(workspace)
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::error::AppError;
   use crate::setup_test_users;
   use anyhow::Result;
-  use fechatter_core::{CreateUser, DatabaseModel, SigninUser};
-  use crate::error::AppError;
+  use fechatter_core::{CreateUser, SigninUser};
 
   #[test]
   fn hashed_password_should_work() -> Result<()> {
@@ -248,13 +253,13 @@ mod tests {
     let pool = &state.pool;
 
     let input = CreateUser::new("Alice", "alice1@acme.test", "Acme", "hunter4332");
-    let user = User::create(&input, pool).await?;
+    let user = state.create(&input).await?;
 
     assert_eq!(user.email, "alice1@acme.test");
     assert_eq!(user.fullname, "Alice");
     assert!(user.id > 0);
 
-    let user_check = User::email_user_exists(&input.email, pool).await?;
+    let user_check = state.email_user_exists(&input.email, pool).await?;
     assert!(user_check.is_some());
     let user_check_unwrapped = user_check.unwrap();
     assert_eq!(user_check_unwrapped.email, input.email);
@@ -262,7 +267,7 @@ mod tests {
 
     let signin_user = SigninUser::new(&input.email, &input.password);
 
-    let auth_result = User::authenticate(&signin_user, pool).await?;
+    let auth_result = state.authenticate(&signin_user).await?;
     assert!(auth_result.is_some());
     let auth_user_unwrapped = auth_result.unwrap();
     assert_eq!(auth_user_unwrapped.email, input.email);
@@ -274,20 +279,28 @@ mod tests {
   #[tokio::test]
   async fn create_duplicate_user_should_fail() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
-    let pool = &state.pool;
     let user1 = users.into_iter().next().unwrap();
 
     let duplicate_input = CreateUser::new("Another Alice", &user1.email, "acme", "hunter4332");
-    let result = User::create(&duplicate_input, pool).await;
+    let result = state.create(&duplicate_input).await;
     match result {
       Err(e) => {
-        if let AppError::UserAlreadyExists(email) = e {
-          assert_eq!(email, user1.email);
+        let app_error = AppError::from(e);
+        if let AppError::UserAlreadyExists(email_msg) = app_error {
+          assert!(
+            email_msg.contains(&user1.email),
+            "Error message '{}' should contain email '{}'",
+            email_msg,
+            user1.email
+          );
         } else {
-          panic!("Expected UserAlreadyExists error, got {:?}", e);
+          panic!(
+            "Expected AppError::UserAlreadyExists error, got {:?}",
+            app_error
+          );
         }
       }
-      _ => panic!("Expected UserAlreadyExists error"),
+      _ => panic!("Expected error for duplicate user"),
     }
 
     Ok(())

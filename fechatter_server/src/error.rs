@@ -15,9 +15,18 @@ pub struct ErrorOutput {
   pub error: String,
 }
 
+impl ErrorOutput {
+  pub fn new(error: impl Into<String>) -> Self {
+    Self {
+      code: StatusCode::BAD_REQUEST.as_u16(),
+      error: error.into(),
+    }
+  }
+}
+
 #[derive(Error, Debug)]
 #[non_exhaustive]
-pub enum AppError{
+pub enum AppError {
   #[error("sqlx error: {0}")]
   SqlxError(#[from] sqlx::Error),
 
@@ -73,11 +82,31 @@ impl ErrorMapper for AppError {
   fn map_error(error: CoreError) -> Self::Error {
     match error {
       CoreError::Database(e) => AppError::SqlxError(e),
-      CoreError::Validation(msg) => AppError::InvalidInput(msg),
+      CoreError::Validation(msg) => {
+        if msg.contains("chat") || msg.contains("Chat") {
+          AppError::ChatValidationError(msg)
+        } else {
+          AppError::InvalidInput(msg)
+        }
+      }
       CoreError::NotFound(msg) => AppError::NotFound(vec![msg]),
-      CoreError::Conflict(msg) => AppError::ChatAlreadyExists(msg),
+      CoreError::Conflict(msg) => {
+        if msg.contains("User") || msg.contains("email") {
+          AppError::UserAlreadyExists(msg)
+        } else if msg.contains("Workspace") {
+          AppError::WorkspaceAlreadyExists(msg)
+        } else {
+          AppError::ChatAlreadyExists(msg)
+        }
+      }
       CoreError::Authentication(e) => AppError::JwtError(e),
-      CoreError::Unauthorized(msg) => AppError::ChatPermissionError(msg),
+      CoreError::Unauthorized(msg) => {
+        if msg.contains("chat") || msg.contains("Chat") {
+          AppError::ChatPermissionError(msg)
+        } else {
+          AppError::Unauthorized(msg)
+        }
+      }
       CoreError::Internal(e) => AppError::AnyError(e),
     }
   }

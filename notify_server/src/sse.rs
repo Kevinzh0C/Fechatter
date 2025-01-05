@@ -1,23 +1,21 @@
 use axum::{
-  extract::{Query, State},
+  extract::Query,
   http::Request,
   response::{Sse, sse::Event},
 };
-use axum_extra::{TypedHeader, headers};
-use futures::{Stream, stream};
+
+use futures::Stream;
 use serde::Deserialize;
 use std::{
   convert::Infallible,
   pin::Pin,
   task::{Context, Poll},
-  time::Duration,
 };
 use tokio::sync::mpsc::{self, Sender};
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
-use tracing::info;
+use tokio_stream::wrappers::ReceiverStream;
 
-use crate::app_state::NotifyState;
-use fechatter_core::{AuthUser, TokenVerifier};
+use crate::app_state::{NotifyState, TokenVerifier};
+use fechatter_core::AuthUser;
 
 #[derive(Debug, Deserialize)]
 pub struct EventQuery {

@@ -2,8 +2,6 @@
 macro_rules! setup_test_users {
   ($num_users:expr) => {{
     async {
-      use fechatter_core::DatabaseModel;
-
       let config = $crate::AppConfig::load().expect("Failed to load config");
       let (tdb, state) = $crate::AppState::test_new(config)
         .await
@@ -38,9 +36,7 @@ macro_rules! setup_test_users {
 
         let user_payload = fechatter_core::CreateUser::new(&fullname, &email, workspace, password);
 
-        let user = fechatter_core::User::create(&user_payload, &state)
-          .await
-          .expect(&format!("Failed to create user {}", fullname));
+        let user = state.create(&user_payload).await.expect(&format!("Failed to create user {}", fullname));
         users.push(user);
       }
       (tdb, state, users)
@@ -52,12 +48,14 @@ macro_rules! setup_test_users {
 macro_rules! create_new_test_chat {
     ($state:expr, $creator:expr, $chat_type:expr, $members:expr, $name:expr $(, $desc:expr)?) => {{
         async {
+            use crate::models::chat::create_new_chat;
+
             // Convert members Vec<&User> or Vec<User> to Vec<i64>
             let member_ids: Vec<i64> = $members.iter().map(|u| u.id).collect();
             // Handle optional description
             let description_opt: Option<&str> = None $(.or(Some($desc)))?;
 
-            fechatter_core::models::chat::create_new_chat(
+            create_new_chat(
                 &$state,
                 $creator.id,
                 $name,

@@ -8,10 +8,7 @@ use axum::{
   response::{Html, IntoResponse},
   routing::get,
 };
-use fechatter_core::{
-  models::{Chat, ChatMember, Message},
-  state::WithDbPool,
-};
+use fechatter_core::models::{Chat, ChatMember, Message};
 use futures::StreamExt;
 use sqlx::postgres::PgListener;
 use sse::sse_handler;

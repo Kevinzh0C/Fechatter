@@ -1,10 +1,9 @@
 use super::ChatFile;
 use crate::AppError;
 use crate::AppState;
-use fechatter_core::Message;
+use fechatter_core::{Message, error::CoreError, models::CreateMessage};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-use crate::models::ChatType;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerCreateMessage {
@@ -96,11 +95,34 @@ impl AppState {
   }
 }
 
+#[allow(unused)]
+pub fn validate_message(input: &CreateMessage) -> Result<(), CoreError> {
+  // Check if both content is empty and no files are attached
+  if input.content.is_empty() && input.files.is_empty() {
+    return Err(CoreError::Validation(
+      "Message must contain either text content or attachments".to_string(),
+    ));
+  }
+
+  // Validate files exist
+  for s in &input.files {
+    match ChatFile::from_str(s) {
+      Ok(_) => {}
+      Err(e) => return Err(CoreError::Validation(format!("Invalid file URL: {}", e))),
+    }
+  }
+
+  Ok(())
+}
+
+#[cfg(test)]
 mod tests {
   use super::*;
-  use anyhow::Result;
+  use crate::models::ChatFile;
+  use crate::models::ChatType;
   use crate::models::chat::create_new_chat;
-
+  use crate::setup_test_users;
+  use anyhow::Result;
 
   #[allow(unused)]
   async fn upload_dummy_file(state: &AppState) -> Result<String> {
@@ -193,7 +215,7 @@ mod tests {
 
   #[tokio::test]
   async fn list_messages_should_work() -> Result<()> {
-    let (_tdb, state, users) = crate::setup_test_users!(10).await;
+    let (_tdb, state, users) = setup_test_users!(10).await;
     let user1 = &users[0];
 
     // Create a chat first

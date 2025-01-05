@@ -24,3 +24,6 @@ hex = { workspace = true }
 rand = { workspace = true }
 uuid = { workspace = true }
 thiserror = { workspace = true }
+
+[dev-dependencies]
+mockall = "0.12.1"

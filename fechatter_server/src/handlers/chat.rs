@@ -15,8 +15,6 @@ use crate::{
   },
 };
 
-use fechatter_core::Chat;
-
 pub(crate) async fn list_chats_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
@@ -81,11 +79,13 @@ mod tests {
 
   use crate::models::chat::{CreateChat, UpdateChat};
   use crate::{
-    assert_chat_list_count, assert_handler_error, assert_handler_success, auth_user,
-    create_new_test_chat, setup_test_users,
+    assert_chat_list_count, assert_handler_error, assert_handler_success, create_new_test_chat,
+    setup_test_users,
   };
   use anyhow::Result;
   use axum::{Json, extract::Path, http::StatusCode, response::IntoResponse};
+
+  use fechatter_core::auth_user;
 
   #[tokio::test]
   async fn create_chat_handler_should_work() -> Result<()> {

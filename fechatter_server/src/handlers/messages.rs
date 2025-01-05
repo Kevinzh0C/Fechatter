@@ -8,7 +8,7 @@ use axum::{
   http::{StatusCode, header},
   response::{IntoResponse, Json, Response},
 };
-use fechatter_core::{CreateMessage, DatabaseModel, ListMessage};
+use fechatter_core::{CreateMessage, ListMessage};
 
 use bytes::Bytes;
 use futures::{StreamExt, TryStreamExt, stream::BoxStream};
@@ -718,11 +718,13 @@ pub(crate) async fn fix_file_storage_handler(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::models::Message;
+
+  use crate::models::chat::create_new_chat;
   use crate::setup_test_users;
   use axum::extract::FromRequest;
   use axum::http::StatusCode;
 
+  use fechatter_core::Message;
   use tokio::fs;
   use tokio::io::AsyncWriteExt;
 
@@ -797,7 +799,7 @@ mod tests {
     });
 
     // Create a chat with 3 members
-    let chat = fechatter_core::models::chat::create_new_chat(
+    let chat = create_new_chat(
       &state,
       user1.id,
       "Test Chat",
@@ -897,7 +899,8 @@ mod tests {
     let email = "test_user@example.com".to_string();
     let workspace = "TestWorkspace".to_string();
     let user_payload = crate::models::CreateUser::new(&fullname, &email, &workspace, "password");
-    let user = crate::models::User::create(&user_payload, &state.pool)
+    let user = state
+      .create(&user_payload)
       .await
       .expect("Failed to create test user");
     users.push(user);
@@ -991,7 +994,8 @@ mod tests {
     let email = "test_user@example.com".to_string();
     let workspace = "TestWorkspace".to_string();
     let user_payload = crate::models::CreateUser::new(&fullname, &email, &workspace, "password");
-    let user = crate::models::User::create(&user_payload, &state.pool)
+    let user = state
+      .create(&user_payload)
       .await
       .expect("Failed to create test user");
     users.push(user);
@@ -1156,7 +1160,7 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(10).await;
     let user1 = &users[0];
 
-    let chat = fechatter_core::models::chat::create_new_chat(
+    let chat = create_new_chat(
       &state,
       user1.id,
       "Large Message Test",

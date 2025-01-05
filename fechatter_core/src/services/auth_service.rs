@@ -1,175 +1,205 @@
-use anyhow;
-use chrono::Utc;
-use sqlx::PgPool;
-use tracing::{error, info, warn};
-
 use crate::{
   error::CoreError,
-  models::{CreateUser, DatabaseModel, SigninUser, User},
-  state::{WithDbPool, WithTokenManager},
-  utils::jwt::{AuthTokens, RefreshToken, RefreshTokenData, TokenManager, generate_refresh_token},
+  models::{CreateUser, SigninUser},
+  services::AuthContext,
+  utils::jwt::{
+    AuthTokens, RefreshTokenInfo, RefreshTokenRepository, UserClaims, generate_refresh_token,
+  },
 };
 
-pub struct AuthService<S> {
-  state: S,
+// Define interfaces for the dependencies
+pub trait TokenService: Send + Sync {
+  fn generate_token(&self, user_claims: &UserClaims) -> Result<String, CoreError>;
+  fn verify_token(&self, token: &str) -> Result<UserClaims, CoreError>;
+  fn generate_auth_tokens(
+    &self,
+    user_claims: &UserClaims,
+    auth_context: Option<AuthContext>,
+  ) -> impl std::future::Future<Output = Result<AuthTokens, CoreError>> + Send;
 }
 
-impl<S> AuthService<S>
+// Core service that orchestrates the business logic without DB operations
+pub struct CoreAuthService<U, T, R> {
+  user_repository: U,
+  token_service: T,
+  refresh_token_repository: R,
+}
+
+impl<U, T, R> CoreAuthService<U, T, R>
 where
-  S: WithDbPool + WithTokenManager + Sync,
+  U: UserRepository + Sync,
+  T: TokenService + Sync,
+  R: RefreshTokenRepository + Sync,
 {
-  pub fn new(state: S) -> Self {
-    Self { state }
+  pub fn new(user_repository: U, token_service: T, refresh_token_repository: R) -> Self {
+    Self {
+      user_repository,
+      token_service,
+      refresh_token_repository,
+    }
   }
 
   pub async fn signup(
     &self,
     payload: &CreateUser,
-    user_agent: Option<String>,
-    ip_address: Option<String>,
+    auth_context: Option<AuthContext>,
   ) -> Result<AuthTokens, CoreError> {
-    let user = User::create(payload, &self.state).await?;
+    // Create user
+    let user = self.user_repository.create(payload).await?;
 
+    // Generate user claims
+    let user_claims = UserClaims {
+      id: user.id,
+      workspace_id: user.workspace_id,
+      fullname: user.fullname,
+      email: user.email,
+      status: user.status,
+      created_at: user.created_at,
+    };
+
+    // Generate tokens
     let tokens = self
-      .state
-      .token_manager()
-      .generate_auth_tokens(&user, user_agent, ip_address, self.state.db_pool())
-      .await
-      .map_err(|e| CoreError::Internal(e.into()))?;
+      .token_service
+      .generate_auth_tokens(&user_claims, auth_context)
+      .await?;
 
-    info!("User signed up successfully: {}", user.email);
     Ok(tokens)
   }
 
-  /// Handle user login, validate user, generate tokens
   pub async fn signin(
     &self,
     payload: &SigninUser,
-    user_agent: Option<String>,
-    ip_address: Option<String>,
+    auth_context: Option<AuthContext>,
   ) -> Result<Option<AuthTokens>, CoreError> {
-    match User::authenticate(payload, &self.state).await? {
+    match self.user_repository.authenticate(payload).await? {
       Some(user) => {
-        let tokens = self
-          .state
-          .token_manager()
-          .generate_auth_tokens(
-            &user,
-            user_agent.clone(),
-            ip_address.clone(),
-            self.state.db_pool(),
-          )
-          .await
-          .map_err(|e| CoreError::Internal(e.into()))?;
+        let user_claims = UserClaims {
+          id: user.id,
+          workspace_id: user.workspace_id,
+          fullname: user.fullname,
+          email: user.email,
+          status: user.status,
+          created_at: user.created_at,
+        };
 
-        info!(
-          "User signed in successfully: {} from {} with agent {}",
-          user.email,
-          ip_address.as_deref().unwrap_or("unknown IP"),
-          user_agent.as_deref().unwrap_or("unknown agent")
-        );
+        let tokens = self
+          .token_service
+          .generate_auth_tokens(&user_claims, auth_context)
+          .await?;
         Ok(Some(tokens))
       }
-      None => {
-        info!("Sign in failed for email: {}", payload.email);
-        Ok(None)
-      }
+      None => Ok(None),
     }
   }
 
-  /// Handle token refresh, validate old token, generate new token
   pub async fn refresh_token(
     &self,
     refresh_token_str: &str,
-    user_agent: Option<String>,
-    ip_address: Option<String>,
+    auth_context: Option<AuthContext>,
   ) -> Result<AuthTokens, CoreError> {
     // Find and validate refresh token
     let token_record = self.validate_refresh_token(refresh_token_str).await?;
 
-    if let Some(saved) = &token_record.user_agent {
+    if let Some(saved_agent) = &token_record.user_agent {
       // If token has saved user agent, require user agent in request
-      match &user_agent {
-        None => {
-          warn!(
-            "Security check failed: token has user agent but current request has none for user_id: {}",
-            token_record.user_id
-          );
-          return Err(CoreError::Validation(
-            "Security validation failed for token".to_string(),
-          ));
+      if let Some(ctx) = &auth_context {
+        match &ctx.user_agent {
+          None => {
+            return Err(CoreError::Validation(
+              "Security validation failed for token".to_string(),
+            ));
+          }
+          Some(current) if current != saved_agent => {
+            return Err(CoreError::Validation(
+              "Security validation failed for token".to_string(),
+            ));
+          }
+          _ => {} // User agent matches, continue
         }
-        Some(current) if current != saved => {
-          warn!(
-            "Possible token theft attempt: token user_agent doesn't match current request for user_id: {}",
-            token_record.user_id
-          );
-          return Err(CoreError::Validation(
-            "Security validation failed for token".to_string(),
-          ));
-        }
-        _ => {} // User agent matches, continue
+      } else {
+        return Err(CoreError::Validation(
+          "Security validation failed for token".to_string(),
+        ));
       }
     }
 
     // Find associated user
-    let user = self.find_user_by_token(&token_record).await?;
+    let user = self
+      .user_repository
+      .find_by_id(token_record.user_id)
+      .await?
+      .ok_or_else(|| CoreError::NotFound(format!("User linked to refresh token not found")))?;
 
-    // Generate new tokens and replace old token
-    let (access_token, refresh_token_data) = self
-      .rotate_tokens(&token_record, &user, user_agent, ip_address)
+    // Create user claims
+    let user_claims = UserClaims {
+      id: user.id,
+      workspace_id: user.workspace_id,
+      fullname: user.fullname,
+      email: user.email,
+      status: user.status,
+      created_at: user.created_at,
+    };
+
+    // Generate new refresh token
+    let new_token = generate_refresh_token();
+
+    // Get auth context details
+    let user_agent = auth_context.as_ref().and_then(|ctx| ctx.user_agent.clone());
+    let ip_address = auth_context.as_ref().and_then(|ctx| ctx.ip_address.clone());
+
+    // Replace the old token with the new one
+    let new_token_record = self
+      .refresh_token_repository
+      .replace(token_record.id, &new_token, user_agent, ip_address)
       .await?;
 
-    info!("Token refreshed successfully for user: {}", user.email);
-    Ok(AuthTokens {
+    // Generate new access token
+    let access_token = self.token_service.generate_token(&user_claims)?;
+
+    // Create auth tokens response
+    let auth_tokens = AuthTokens {
       access_token,
-      refresh_token: refresh_token_data,
-    })
+      refresh_token: crate::utils::jwt::RefreshTokenData {
+        token: new_token,
+        expires_at: new_token_record.expires_at,
+        absolute_expires_at: new_token_record.absolute_expires_at,
+      },
+    };
+
+    Ok(auth_tokens)
   }
 
-  /// Handle user logout, revoke refresh token
   pub async fn logout(&self, refresh_token_str: &str) -> Result<(), CoreError> {
-    if let Some(token_record) = RefreshToken::find_by_token(refresh_token_str, self.state.db_pool())
-      .await
-      .map_err(|e| CoreError::Internal(e.into()))?
+    if let Some(token_record) = self
+      .refresh_token_repository
+      .find_by_token(refresh_token_str)
+      .await?
     {
-      token_record
-        .revoke(self.state.db_pool())
-        .await
-        .map_err(|e| CoreError::Internal(e.into()))?;
-      info!("Refresh token revoked for user: {}", token_record.user_id);
-    } else {
-      info!("Logout attempt with non-existent or expired refresh token.");
+      self
+        .refresh_token_repository
+        .revoke(token_record.id)
+        .await?;
     }
     Ok(())
   }
 
-  /// logout all sessions by user_id
   pub async fn logout_all(&self, user_id: i64) -> Result<(), CoreError> {
-    RefreshToken::revoke_all_for_user(user_id, self.state.db_pool())
-      .await
-      .map_err(|e| CoreError::Internal(e.into()))?;
-    info!("All sessions revoked for user: {}", user_id);
+    self
+      .refresh_token_repository
+      .revoke_all_for_user(user_id)
+      .await?;
     Ok(())
   }
 
-  async fn validate_refresh_token(&self, token_str: &str) -> Result<RefreshToken, CoreError> {
-    let token_record = RefreshToken::find_by_token(token_str, self.state.db_pool())
-      .await
-      .map_err(|e| CoreError::Internal(e.into()))?
-      .ok_or_else(|| {
-        info!("Refresh token not found or expired");
-        CoreError::Validation("Invalid or expired refresh token".to_string())
-      })?;
+  async fn validate_refresh_token(&self, token_str: &str) -> Result<RefreshTokenInfo, CoreError> {
+    let token_record = self
+      .refresh_token_repository
+      .find_by_token(token_str)
+      .await?
+      .ok_or_else(|| CoreError::Validation("Invalid or expired refresh token".to_string()))?;
 
     // Check if token has expired
-    if token_record.expires_at < Utc::now() {
-      info!(
-        "Refresh token expired for user: {} (Expiry: {}, Now: {})",
-        token_record.user_id,
-        token_record.expires_at,
-        Utc::now()
-      );
+    if token_record.expires_at < chrono::Utc::now() {
       return Err(CoreError::Validation(
         "Invalid or expired refresh token".to_string(),
       ));
@@ -177,10 +207,6 @@ where
 
     // Check if token has been revoked
     if token_record.revoked {
-      warn!(
-        "Attempt to use revoked refresh token for user: {}",
-        token_record.user_id
-      );
       return Err(CoreError::Validation(
         "Invalid or revoked refresh token".to_string(),
       ));
@@ -188,399 +214,6 @@ where
 
     Ok(token_record)
   }
-
-  /// Find user by token
-  async fn find_user_by_token(&self, token: &RefreshToken) -> Result<User, CoreError> {
-    User::find_by_id(token.user_id, &self.state)
-      .await?
-      .ok_or_else(|| {
-        error!(
-          "User not found for valid refresh token: user_id {}",
-          token.user_id
-        );
-        CoreError::NotFound(format!("User linked to refresh token not found"))
-      })
-  }
-
-  /// Rotate tokens
-  async fn rotate_tokens(
-    &self,
-    old_token: &RefreshToken,
-    user: &User,
-    current_user_agent: Option<String>,
-    current_ip_address: Option<String>,
-  ) -> Result<(String, RefreshTokenData), CoreError> {
-    // Generate new refresh and access tokens
-    let new_refresh_token_str = generate_refresh_token();
-
-    // Replace old token - Keep original user agent and IP if not provided in current request
-    let user_agent = current_user_agent.or_else(|| old_token.user_agent.clone());
-    let ip_address = current_ip_address.or_else(|| old_token.ip_address.clone());
-
-    // Replace old token
-    let new_token_db_record = old_token
-      .replace(
-        &new_refresh_token_str,
-        user_agent,
-        ip_address,
-        self.state.db_pool(),
-      )
-      .await
-      .map_err(|e| CoreError::Internal(e.into()))?;
-
-    // Generate new access token
-    let access_token = self
-      .state
-      .token_manager()
-      .generate_token(user)
-      .map_err(|e| CoreError::Internal(e.into()))?;
-
-    // Create refresh token data
-    let refresh_token_data = RefreshTokenData {
-      token: new_refresh_token_str,
-      expires_at: new_token_db_record.expires_at,
-      absolute_expires_at: new_token_db_record.absolute_expires_at,
-    };
-
-    Ok((access_token, refresh_token_data))
-  }
-
-  /// Generate authentication tokens for a user
-  #[allow(unused)]
-  pub async fn generate_auth_tokens(
-    &self,
-    user: &User,
-    user_agent: Option<String>,
-    ip_address: Option<String>,
-  ) -> Result<AuthTokens, CoreError> {
-    self
-      .state
-      .token_manager()
-      .generate_auth_tokens(user, user_agent, ip_address, self.state.db_pool())
-      .await
-      .map_err(|e| CoreError::Internal(e.into()))
-  }
 }
 
-#[cfg(test)]
-mod tests {
-  use std::time::Duration;
-
-  use super::*;
-  use crate::{
-    setup_test_users,
-    state::{WithDbPool, WithTokenManager},
-  };
-  use anyhow::Result;
-  use tokio::time::sleep;
-
-  #[derive(Clone)]
-  struct TestState {
-    pool: PgPool,
-    token_manager: TokenManager,
-  }
-
-  impl WithDbPool for TestState {
-    fn db_pool(&self) -> &PgPool {
-      &self.pool
-    }
-  }
-
-  impl WithTokenManager for TestState {
-    fn token_manager(&self) -> &TokenManager {
-      &self.token_manager
-    }
-  }
-
-  #[tokio::test]
-  async fn refresh_token_service_should_work() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1);
-    let user = &users[0];
-
-    // Create test state that implements required traits
-    let test_state = TestState {
-      pool: state.pool.clone(),
-      token_manager: state.token_manager.clone(),
-    };
-
-    let auth_service = AuthService::new(test_state.clone());
-
-    let initial_tokens = test_state
-      .token_manager()
-      .generate_auth_tokens(user, None, None, test_state.db_pool())
-      .await?;
-
-    sleep(Duration::from_secs(1)).await;
-
-    let refresh_result = auth_service
-      .refresh_token(&initial_tokens.refresh_token.token, None, None)
-      .await?;
-
-    assert_ne!(refresh_result.access_token, initial_tokens.access_token);
-    assert_ne!(
-      refresh_result.refresh_token.token,
-      initial_tokens.refresh_token.token
-    );
-
-    Ok(())
-  }
-
-  #[tokio::test]
-  async fn refresh_token_service_should_fail_with_invalid_token() -> Result<()> {
-    let (_tdb, state, _users) = setup_test_users!(1);
-
-    let test_state = TestState {
-      pool: state.pool.clone(),
-      token_manager: state.token_manager.clone(),
-    };
-
-    let auth_service = AuthService::new(test_state);
-
-    let result = auth_service
-      .refresh_token("invalid_token", None, None)
-      .await;
-
-    assert!(result.is_err());
-    if let Err(CoreError::Validation(_)) = result {
-    } else {
-      panic!("Expected validation error");
-    }
-
-    Ok(())
-  }
-
-  #[tokio::test]
-  async fn logout_service_should_revoke_token() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1);
-    let user = &users[0];
-
-    let test_state = TestState {
-      pool: state.pool.clone(),
-      token_manager: state.token_manager.clone(),
-    };
-
-    let auth_service = AuthService::new(test_state.clone());
-
-    let tokens = test_state
-      .token_manager()
-      .generate_auth_tokens(user, None, None, test_state.db_pool())
-      .await?;
-
-    auth_service.logout(&tokens.refresh_token.token).await?;
-
-    let refresh_result = auth_service
-      .refresh_token(&tokens.refresh_token.token, None, None)
-      .await;
-
-    assert!(refresh_result.is_err());
-
-    Ok(())
-  }
-
-  #[tokio::test]
-  async fn refresh_token_can_only_be_used_once() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1);
-    let user = &users[0];
-
-    let test_state = TestState {
-      pool: state.pool.clone(),
-      token_manager: state.token_manager.clone(),
-    };
-
-    let auth_service = AuthService::new(test_state.clone());
-
-    let initial_tokens = test_state
-      .token_manager()
-      .generate_auth_tokens(user, None, None, test_state.db_pool())
-      .await?;
-
-    let new_tokens = auth_service
-      .refresh_token(&initial_tokens.refresh_token.token, None, None)
-      .await?;
-
-    let result = auth_service
-      .refresh_token(&initial_tokens.refresh_token.token, None, None)
-      .await;
-
-    assert!(result.is_err());
-
-    let another_refresh = auth_service
-      .refresh_token(&new_tokens.refresh_token.token, None, None)
-      .await;
-
-    assert!(another_refresh.is_ok());
-
-    Ok(())
-  }
-
-  #[tokio::test]
-  async fn signup_service_should_create_user_and_tokens() -> Result<()> {
-    let (_tdb, state, _) = setup_test_users!(0); // Setup DB, no initial users needed
-
-    let test_state = TestState {
-      pool: state.pool.clone(),
-      token_manager: state.token_manager.clone(),
-    };
-
-    let auth_service = AuthService::new(test_state.clone());
-
-    let create_user_payload = CreateUser {
-      workspace: "Acme".to_string(), // Use workspace (String) instead of workspace_id
-      fullname: "New User".to_string(),
-      email: "newuser@test.com".to_string(),
-      password: "password123".to_string(),
-    };
-
-    let result = auth_service.signup(&create_user_payload, None, None).await;
-
-    assert!(result.is_ok());
-    let tokens = result.unwrap();
-    assert!(!tokens.access_token.is_empty());
-    assert!(!tokens.refresh_token.token.is_empty());
-
-    // Optional: Verify user exists in DB
-    let user_check = User::email_user_exists("newuser@test.com", &test_state).await?;
-    assert!(user_check.is_some());
-    assert_eq!(user_check.unwrap().fullname, "New User");
-
-    Ok(())
-  }
-
-  #[tokio::test]
-  async fn signin_service_should_return_tokens_for_valid_credentials() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1); // Setup with one user
-    let user = &users[0];
-
-    let test_state = TestState {
-      pool: state.pool.clone(),
-      token_manager: state.token_manager.clone(),
-    };
-
-    let auth_service = AuthService::new(test_state.clone());
-
-    let signin_payload = SigninUser {
-      email: user.email.clone(),
-      password: "password".to_string(), // Default password from setup_test_users
-    };
-
-    let result = auth_service.signin(&signin_payload, None, None).await?;
-
-    assert!(result.is_some());
-    let tokens = result.unwrap();
-    assert!(!tokens.access_token.is_empty());
-    assert!(!tokens.refresh_token.token.is_empty());
-
-    Ok(())
-  }
-
-  #[tokio::test]
-  async fn test_user_agent_consistency_check() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1);
-    let user = &users[0];
-
-    let test_state = TestState {
-      pool: state.pool.clone(),
-      token_manager: state.token_manager.clone(),
-    };
-
-    let auth_service = AuthService::new(test_state.clone());
-
-    // Create token with specific user agent
-    let original_agent = Some("Chrome Browser".to_string());
-
-    let tokens = test_state
-      .token_manager()
-      .generate_auth_tokens(user, original_agent.clone(), None, test_state.db_pool())
-      .await?;
-
-    // Try to refresh with different user agent should fail
-    let different_agent = Some("Firefox Browser".to_string());
-    let refresh_result = auth_service
-      .refresh_token(&tokens.refresh_token.token, different_agent, None)
-      .await;
-
-    assert!(refresh_result.is_err());
-    if let Err(CoreError::Validation(msg)) = refresh_result {
-      assert!(msg.contains("Security validation failed"));
-    } else {
-      panic!("Expected security validation error");
-    }
-
-    // Try with same agent should work
-    let refresh_success = auth_service
-      .refresh_token(&tokens.refresh_token.token, original_agent, None)
-      .await;
-
-    assert!(refresh_success.is_ok());
-
-    Ok(())
-  }
-
-  #[tokio::test]
-  async fn test_missing_user_agent_fails_when_token_has_one() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1);
-    let user = &users[0];
-
-    let test_state = TestState {
-      pool: state.pool.clone(),
-      token_manager: state.token_manager.clone(),
-    };
-
-    let auth_service = AuthService::new(test_state.clone());
-
-    // Create token with specific user agent
-    let original_agent = Some("Chrome Browser".to_string());
-
-    let tokens = test_state
-      .token_manager()
-      .generate_auth_tokens(user, original_agent, None, test_state.db_pool())
-      .await?;
-
-    // Try to refresh without providing a user agent should fail
-    let refresh_result = auth_service
-      .refresh_token(&tokens.refresh_token.token, None, None)
-      .await;
-
-    assert!(refresh_result.is_err());
-    if let Err(CoreError::Validation(msg)) = refresh_result {
-      assert!(msg.contains("Security validation failed"));
-    } else {
-      panic!("Expected security validation error");
-    }
-
-    Ok(())
-  }
-
-  #[tokio::test]
-  async fn logout_all_sessions_should_work() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1);
-    let user = &users[0];
-
-    let test_state = TestState {
-      pool: state.pool.clone(),
-      token_manager: state.token_manager.clone(),
-    };
-
-    let auth_service = AuthService::new(test_state.clone());
-
-    // Create multiple tokens
-    let token1 = auth_service.generate_auth_tokens(user, None, None).await?;
-    let token2 = auth_service.generate_auth_tokens(user, None, None).await?;
-
-    // Logout all sessions
-    auth_service.logout_all(user.id).await?;
-
-    // Both tokens should be invalid
-    let refresh1 = auth_service
-      .refresh_token(&token1.refresh_token.token, None, None)
-      .await;
-    let refresh2 = auth_service
-      .refresh_token(&token2.refresh_token.token, None, None)
-      .await;
-
-    assert!(refresh1.is_err());
-    assert!(refresh2.is_err());
-
-    Ok(())
-  }
-}
+use crate::models::user::UserRepository;

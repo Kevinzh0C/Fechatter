@@ -1,12 +1,11 @@
 use std::{sync::Arc, time::Duration};
 
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, prelude::FromRow};
+use sqlx::{PgPool, Row, prelude::FromRow};
 use tokio::time::Instant;
 
 use crate::{AppError, AppState, models::ChatType};
 
-use super::User;
 use crate::models::Chat;
 use fechatter_core::chat::ChatSidebar as CoreChatSidebar;
 const CHAT_LIST_CACHE_TTL: Duration = Duration::from_secs(30);
@@ -41,29 +40,44 @@ async fn fetch_chat_list_from_db(
   pool: &PgPool,
   user_id: i64,
 ) -> Result<Vec<CoreChatSidebar>, AppError> {
-  let chats = sqlx::query_as!(
-    CoreChatSidebar,
+  let rows = sqlx::query(
     r#"SELECT
       id,
       chat_name as name,
-      type as "chat_type: _"
+      type::text as chat_type
     FROM chats
     WHERE created_by = $1 OR $1 = ANY(chat_members)
     ORDER BY updated_at DESC"#,
-    user_id
   )
+  .bind(user_id)
   .fetch_all(pool)
-  .await
-  .map(|rows| {
-    rows
-      .into_iter()
-      .map(|row: CoreChatSidebar| CoreChatSidebar {
-        id: row.id,
-        name: row.name,
-        chat_type: row.chat_type,
-      })
-      .collect()
-  })?;
+  .await?;
+
+  let mut chats = Vec::new();
+
+  for row in rows {
+    let id: i64 = row.get("id");
+    let name: String = row.get("name");
+    let chat_type_str: String = row.get("chat_type");
+
+    // Convert string to ChatType
+    let chat_type = match chat_type_str.as_str() {
+      "Single" => fechatter_core::ChatType::Single,
+      "Group" => fechatter_core::ChatType::Group,
+      "PrivateChannel" => fechatter_core::ChatType::PrivateChannel,
+      "PublicChannel" => fechatter_core::ChatType::PublicChannel,
+      _ => fechatter_core::ChatType::Group, // Default
+    };
+
+    chats.push(CoreChatSidebar {
+      id,
+      name,
+      chat_type,
+      is_creator: false,
+      last_message: None,
+      unread_count: 0,
+    });
+  }
 
   Ok(chats)
 }
@@ -198,7 +212,19 @@ pub async fn create_new_chat(
 
   let chat_members = process_chat_members(&chat_type, creator_id, target_members.as_ref())?;
 
-  User::validate_users_exists_by_ids(&chat_members, &state.pool).await?;
+  // Check that all user IDs exist in the database
+  let users_exist = sqlx::query!(
+    "SELECT COUNT(*) as count FROM users WHERE id = ANY($1)",
+    &chat_members
+  )
+  .fetch_one(&state.pool)
+  .await?;
+
+  if users_exist.count.unwrap_or(0) as usize != chat_members.len() {
+    return Err(AppError::NotFound(
+      chat_members.iter().map(|id| id.to_string()).collect(),
+    ));
+  }
 
   let mut tx = state.pool.begin().await?;
 
@@ -373,8 +399,7 @@ pub struct UpdateChat {
 mod tests {
   use super::*;
 
-  use crate::models::{add_chat_members, remove_group_chat_members};
-  use crate::setup_test_users;
+  use crate::{models::chat_member::{add_chat_members, remove_group_chat_members}, setup_test_users};
   use anyhow::Result;
 
   #[tokio::test]

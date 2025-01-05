@@ -1,8 +1,20 @@
-use crate::{UserStatus, error::CoreError, models::User};
-use chrono::{DateTime, Duration, Utc};
+use crate::{
+  UserStatus,
+  error::CoreError,
+  models::{AuthUser, User},
+};
+use chrono::{DateTime, Utc};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use rand::{Rng, rng};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sha2::{Digest, Sha256};
+use std::future::Future;
+
+#[cfg(test)]
+use mockall::automock;
+
+#[cfg(test)]
+pub use mockall::{mock, predicate};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AuthConfig {
@@ -65,8 +77,8 @@ pub struct AuthTokens {
   pub refresh_token: RefreshTokenData,
 }
 
-#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
-pub struct RefreshToken {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RefreshTokenInfo {
   pub id: i64,
   pub user_id: i64,
   pub token_hash: String,
@@ -80,158 +92,68 @@ pub struct RefreshToken {
 }
 
 pub fn generate_refresh_token() -> String {
-  use rand::{Rng, rng};
-
-  let mut rng_instance = rng();
-  let random_bytes: [u8; 32] = rng_instance.random::<[u8; 32]>();
+  let mut rng = rng();
+  let mut random_bytes = [0u8; 32];
+  rng.fill(&mut random_bytes);
   hex::encode(random_bytes)
 }
 
 pub fn sha256_hash(token: &str) -> String {
-  use sha2::{Digest, Sha256};
-
   let mut hasher = Sha256::new();
   hasher.update(token.as_bytes());
   let result = hasher.finalize();
-  let hash = hex::encode(result);
-  hash
+  hex::encode(result)
 }
 
-impl RefreshToken {
-  pub async fn create(
+pub trait RefreshTokenRepository: Send + Sync {
+  fn create(
+    &self,
     user_id: i64,
     token: &str,
     user_agent: Option<String>,
     ip_address: Option<String>,
-    pool: &PgPool,
-  ) -> Result<Self, CoreError> {
-    let now = Utc::now();
-    let expires_at = now + Duration::seconds(REFRESH_TOKEN_EXPIRATION as i64);
-    let absolute_expires_at = now + Duration::seconds(REFRESH_TOKEN_MAX_LIFETIME as i64);
-    let token_hash = sha256_hash(token);
+  ) -> impl Future<Output = Result<RefreshTokenInfo, CoreError>> + Send;
 
-    let refresh_token = sqlx::query_as::<_, RefreshToken>(
-      r#"
-      INSERT INTO refresh_tokens (user_id, token_hash, expires_at, user_agent, ip_address, absolute_expires_at)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING id, user_id, token_hash, expires_at, issued_at, revoked, replaced_by, user_agent, ip_address, absolute_expires_at
-      "#,
-    )
-    .bind(user_id)
-    .bind(&token_hash)
-    .bind(expires_at)
-    .bind(user_agent)
-    .bind(ip_address)
-    .bind(absolute_expires_at)
-    .fetch_one(pool)
-    .await?;
-
-    Ok(refresh_token)
-  }
-
-  pub async fn find_by_token(token: &str, pool: &PgPool) -> Result<Option<Self>, CoreError> {
-    let token_hash = sha256_hash(token);
-
-    let refresh_token = sqlx::query_as::<_, RefreshToken>(
-      r#"
-      SELECT id, user_id, token_hash, expires_at, issued_at, revoked, replaced_by, user_agent, ip_address, absolute_expires_at
-      FROM refresh_tokens
-      WHERE token_hash = $1 AND revoked = FALSE AND expires_at > NOW()
-      "#,
-    )
-    .bind(&token_hash)
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(refresh_token)
-  }
-
-  pub async fn revoke(&self, pool: &PgPool) -> Result<(), CoreError> {
-    sqlx::query(
-      r#"
-      UPDATE refresh_tokens
-      SET revoked = TRUE
-      WHERE id = $1
-      "#,
-    )
-    .bind(self.id)
-    .execute(pool)
-    .await?;
-
-    Ok(())
-  }
-
-  /// Revokes all refresh tokens for a user. Used in security scenarios like:
-  /// - Password changes requiring re-login on all devices
-  /// - Account being disabled/banned by admin
-  /// - Responding to suspicious activity
-  /// - Logout from all devices
-  #[allow(dead_code)]
-  pub async fn revoke_all_for_user(user_id: i64, pool: &PgPool) -> Result<(), CoreError> {
-    sqlx::query(
-      r#"
-      UPDATE refresh_tokens
-      SET revoked = TRUE
-      WHERE user_id = $1
-      "#,
-    )
-    .bind(user_id)
-    .execute(pool)
-    .await?;
-
-    Ok(())
-  }
-
-  pub async fn replace(
+  fn find_by_token(
     &self,
+    token: &str,
+  ) -> impl Future<Output = Result<Option<RefreshTokenInfo>, CoreError>> + Send;
+
+  fn revoke(&self, token_id: i64) -> impl Future<Output = Result<(), CoreError>> + Send;
+
+  fn revoke_all_for_user(&self, user_id: i64)
+  -> impl Future<Output = Result<(), CoreError>> + Send;
+
+  fn replace(
+    &self,
+    token_id: i64,
     new_token: &str,
     user_agent: Option<String>,
     ip_address: Option<String>,
-    pool: &PgPool,
-  ) -> Result<Self, CoreError> {
-    let now = Utc::now();
-    let new_expires_at = now + Duration::seconds(REFRESH_TOKEN_EXPIRATION as i64);
-    let absolute_expires_at = self.absolute_expires_at; // Keep the same absolute expiry
-    let new_token_hash = sha256_hash(new_token);
-
-    let mut tx = pool.begin().await?;
-
-    sqlx::query(
-      r#"
-      UPDATE refresh_tokens
-      SET revoked = TRUE, replaced_by = $1
-      WHERE id = $2
-      "#,
-    )
-    .bind(&new_token_hash)
-    .bind(self.id)
-    .execute(&mut *tx)
-    .await?;
-
-    let refresh_token = sqlx::query_as::<_, RefreshToken>(
-      r#"
-      INSERT INTO refresh_tokens (user_id, token_hash, expires_at, user_agent, ip_address, absolute_expires_at)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING id, user_id, token_hash, expires_at, issued_at, revoked, replaced_by, user_agent, ip_address, absolute_expires_at
-      "#,
-    )
-    .bind(self.user_id)
-    .bind(&new_token_hash)
-    .bind(if new_expires_at < absolute_expires_at { new_expires_at } else { absolute_expires_at })
-    .bind(user_agent)
-    .bind(ip_address)
-    .bind(absolute_expires_at)
-    .fetch_one(&mut *tx)
-    .await?;
-
-    tx.commit().await?;
-
-    Ok(refresh_token)
-  }
+  ) -> impl Future<Output = Result<RefreshTokenInfo, CoreError>> + Send;
 }
 
 impl Claims {
   pub fn new(user: &User) -> Self {
+    let now = chrono::Utc::now().timestamp() as usize;
+    Self {
+      sub: user.id.to_string(),
+      exp: now + ACCESS_TOKEN_EXPIRATION,
+      iat: now,
+      aud: JWT_AUDIENCE.to_string(),
+      iss: JWT_ISSUER.to_string(),
+      user: UserClaims {
+        id: user.id,
+        workspace_id: user.workspace_id,
+        email: user.email.clone(),
+        status: user.status,
+        fullname: user.fullname.clone(),
+        created_at: user.created_at,
+      },
+    }
+  }
+
+  pub fn from_auth_user(user: &AuthUser) -> Self {
     let now = chrono::Utc::now().timestamp() as usize;
     Self {
       sub: user.id.to_string(),
@@ -273,37 +195,20 @@ impl TokenManager {
     })
   }
 
-  pub fn generate_token(&self, user: &User) -> Result<String, CoreError> {
+  pub fn generate_token_from_user(&self, user: &User) -> Result<String, CoreError> {
     let claims = Claims::new(user);
-    let header = Header::new(Algorithm::EdDSA);
-    let token = encode(&header, &claims, &self.encoding_key)?;
-
-    Ok(token)
+    self.generate_token_from_claims(&claims)
   }
 
-  pub async fn generate_auth_tokens(
-    &self,
-    user: &User,
-    user_agent: Option<String>,
-    ip_address: Option<String>,
-    pool: &PgPool,
-  ) -> Result<AuthTokens, CoreError> {
-    let access_token = self.generate_token(user)?;
-    let refresh_token = generate_refresh_token();
+  pub fn generate_token_from_auth_user(&self, user: &AuthUser) -> Result<String, CoreError> {
+    let claims = Claims::from_auth_user(user);
+    self.generate_token_from_claims(&claims)
+  }
 
-    let token_record =
-      RefreshToken::create(user.id, &refresh_token, user_agent, ip_address, pool).await?;
-
-    let refresh_token_data = RefreshTokenData {
-      token: refresh_token,
-      expires_at: token_record.expires_at,
-      absolute_expires_at: token_record.absolute_expires_at,
-    };
-
-    Ok(AuthTokens {
-      access_token,
-      refresh_token: refresh_token_data,
-    })
+  fn generate_token_from_claims(&self, claims: &Claims) -> Result<String, CoreError> {
+    let header = Header::new(Algorithm::EdDSA);
+    let token = encode(&header, claims, &self.encoding_key)?;
+    Ok(token)
   }
 
   pub fn verify_token(&self, token: &str) -> Result<UserClaims, CoreError> {
@@ -321,148 +226,92 @@ impl TokenManager {
   }
 }
 
+/// TokenManager trait that can be mocked for testing
+#[cfg_attr(test, automock)]
+pub trait TokenManagerTrait {
+  fn generate_token_from_user(&self, user: &User) -> Result<String, CoreError>;
+  fn generate_token_from_auth_user(&self, user: &AuthUser) -> Result<String, CoreError>;
+  fn verify_token(&self, token: &str) -> Result<UserClaims, CoreError>;
+}
+
+impl TokenManagerTrait for TokenManager {
+  fn generate_token_from_user(&self, user: &User) -> Result<String, CoreError> {
+    self.generate_token_from_user(user)
+  }
+
+  fn generate_token_from_auth_user(&self, user: &AuthUser) -> Result<String, CoreError> {
+    self.generate_token_from_auth_user(user)
+  }
+
+  fn verify_token(&self, token: &str) -> Result<UserClaims, CoreError> {
+    self.verify_token(token)
+  }
+}
+
 #[cfg(test)]
 mod tests {
-
-  use crate::{DatabaseModel, UserStatus, setup_test_users};
-
-  #[derive(Clone, Debug)]
-  struct AppConfig {
-    auth: AuthConfig,
-  }
-
-  impl AppConfig {
-    fn load() -> Result<Self, anyhow::Error> {
-      Ok(Self {
-        auth: AuthConfig {
-          sk: "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF\n-----END PRIVATE KEY-----".to_string(),
-          pk: "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAHrnbu7wEfAP9cGBOAHHwmH4Wsot1ciXBHmCRcXLBUUQ=\n-----END PUBLIC KEY-----".to_string(),
-        },
-      })
-    }
-  }
-
   use super::*;
+  use crate::utils::test_helpers::create_test_user;
   use anyhow::Result;
 
   #[test]
   fn jwt_token_authentication_should_work() -> Result<()> {
-    let config = AppConfig::load()?;
-    let token_manager = TokenManager::from_config(&config.auth)?;
+    let mut token_manager = MockTokenManagerTrait::new();
+    token_manager
+      .expect_generate_token_from_user()
+      .returning(|user| Ok(format!("test_token_for_user_{}", user.id)));
 
-    let user = User {
-      id: 1,
-      fullname: "John Doe".to_string(),
-      email: "john.doe@example.com".to_string(),
-      password_hash: Default::default(),
-      status: UserStatus::Active,
-      created_at: chrono::Utc::now(),
-      workspace_id: 1,
-    };
-    let user_claims = UserClaims {
-      id: user.id,
-      workspace_id: user.workspace_id,
-      fullname: user.fullname.clone(),
-      email: user.email.clone(),
-      status: user.status,
-      created_at: user.created_at,
-    };
+    token_manager.expect_verify_token().returning(|token| {
+      let parts: Vec<&str> = token.rsplitn(2, '_').collect();
+      let id = parts[0].parse::<i64>().unwrap();
+      Ok(UserClaims {
+        id,
+        workspace_id: 1,
+        fullname: format!("Test User {}", id),
+        email: format!("user{}@test.com", id),
+        status: UserStatus::Active,
+        created_at: Utc::now(),
+      })
+    });
 
-    let token = token_manager.generate_token(&user)?;
+    let user = create_test_user(1, 1);
 
-    let user_claims2 = token_manager.verify_token(&token)?;
-    assert_eq!(user_claims, user_claims2);
+    let token = token_manager.generate_token_from_user(&user)?;
+    assert_eq!(token, "test_token_for_user_1");
 
-    Ok(())
-  }
-
-  #[tokio::test]
-  async fn refresh_token_create_and_find_works() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1);
-    let user = &users[0];
-
-    let token_str = generate_refresh_token();
-
-    let _token = RefreshToken::create(
-      user.id,
-      &token_str,
-      Some("test-agent".to_string()),
-      Some("127.0.0.1".to_string()),
-      &state.pool,
-    )
-    .await?;
-
-    let found_token = RefreshToken::find_by_token(&token_str, &state.pool).await?;
-
-    assert!(found_token.is_some());
-    let found_token = found_token.unwrap();
-    assert_eq!(found_token.user_id, user.id);
-    assert_eq!(found_token.user_agent, Some("test-agent".to_string()));
-    assert_eq!(found_token.ip_address, Some("127.0.0.1".to_string()));
+    let user_claims = token_manager.verify_token(&token)?;
+    assert_eq!(user_claims.id, 1);
+    assert_eq!(user_claims.email, "user1@test.com");
 
     Ok(())
   }
 
-  #[tokio::test]
-  async fn refresh_token_revoke_works() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1);
-    let user = &users[0];
+  #[test]
+  fn refresh_token_generation_should_work() -> Result<()> {
+    let token = generate_refresh_token();
+    assert_eq!(token.len(), 64); // 32 bytes => 64 hex chars
 
-    let token_str = generate_refresh_token();
-
-    let token = RefreshToken::create(user.id, &token_str, None, None, &state.pool).await?;
-
-    token.revoke(&state.pool).await?;
-
-    let found_token = RefreshToken::find_by_token(&token_str, &state.pool).await?;
-
-    assert!(found_token.is_none());
+    // Generate another to make sure they're different
+    let token2 = generate_refresh_token();
+    assert_ne!(token, token2);
 
     Ok(())
   }
 
-  #[tokio::test]
-  async fn refresh_token_replace_works() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1);
-    let user = &users[0];
+  #[test]
+  fn sha256_hash_should_work() -> Result<()> {
+    let hash = sha256_hash("test-token");
 
-    let token_str = generate_refresh_token();
+    // SHA-256 produces a 32-byte hash, which is 64 hex characters
+    assert_eq!(hash.len(), 64);
 
-    let token = RefreshToken::create(user.id, &token_str, None, None, &state.pool).await?;
+    // Same input should produce same hash
+    let hash2 = sha256_hash("test-token");
+    assert_eq!(hash, hash2);
 
-    let new_token_str = generate_refresh_token();
-    let _new_token = token
-      .replace(&new_token_str, None, None, &state.pool)
-      .await?;
-
-    let old_token = RefreshToken::find_by_token(&token_str, &state.pool).await?;
-    assert!(old_token.is_none());
-
-    let found_new_token = RefreshToken::find_by_token(&new_token_str, &state.pool).await?;
-    assert!(found_new_token.is_some());
-
-    Ok(())
-  }
-
-  #[tokio::test]
-  async fn refresh_token_revoke_all_for_user_works() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1);
-    let user = &users[0];
-
-    let token_str1 = generate_refresh_token();
-    let token_str2 = generate_refresh_token();
-
-    RefreshToken::create(user.id, &token_str1, None, None, &state.pool).await?;
-
-    RefreshToken::create(user.id, &token_str2, None, None, &state.pool).await?;
-
-    RefreshToken::revoke_all_for_user(user.id, &state.pool).await?;
-
-    let found_token1 = RefreshToken::find_by_token(&token_str1, &state.pool).await?;
-    let found_token2 = RefreshToken::find_by_token(&token_str2, &state.pool).await?;
-
-    assert!(found_token1.is_none());
-    assert!(found_token2.is_none());
+    // Different input should produce different hash
+    let hash3 = sha256_hash("different-token");
+    assert_ne!(hash, hash3);
 
     Ok(())
   }

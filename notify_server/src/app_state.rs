@@ -1,13 +1,31 @@
 use dashmap::DashMap;
-use fechatter_core::{
-  TokenVerifier,
-  error::{CoreError, ErrorMapper},
-  state::{WithDbPool, WithTokenManager},
-  utils::jwt::{TokenManager, UserClaims},
-};
+use fechatter_core::error::CoreError;
+use fechatter_core::utils::jwt::{TokenManager, UserClaims};
 use sqlx::PgPool;
 use std::sync::Arc;
 use thiserror::Error;
+
+// Define local traits
+pub trait TokenVerifier {
+  type Error;
+  type Claims;
+
+  fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error>;
+}
+
+pub trait WithDbPool {
+  fn db_pool(&self) -> &PgPool;
+}
+
+pub trait WithTokenManager {
+  fn token_manager(&self) -> &TokenManager;
+}
+
+pub trait ErrorMapper {
+  type Error;
+
+  fn map_error(error: CoreError) -> Self::Error;
+}
 
 #[derive(Error, Debug)]
 pub enum NotifyError {

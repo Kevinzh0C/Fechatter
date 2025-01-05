@@ -4,6 +4,7 @@ use crate::{AppError, AppState};
 
 use fechatter_core::{ChatUser, Workspace};
 
+#[allow(unused)]
 impl AppState {
   pub async fn create_workspace<'e, E>(
     &self,
@@ -116,7 +117,7 @@ impl AppState {
   {
     let workspace = sqlx::query_as::<_, Workspace>(
       r#"
-      SELECT * FROM workspaces WHERE name = $1
+      SELECT id, name, owner_id, created_at FROM workspaces WHERE name = $1
       "#,
     )
     .bind(name)
@@ -132,7 +133,7 @@ impl AppState {
   {
     let workspace = sqlx::query_as::<_, Workspace>(
       r#"
-      SELECT * FROM workspaces WHERE id = $1
+      SELECT id, name, owner_id, created_at FROM workspaces WHERE id = $1
       "#,
     )
     .bind(id)
@@ -182,7 +183,7 @@ impl AppState {
   }
 }
 
-#[allow(dead_code)]
+#[allow(unused)]
 impl AppState {
   pub async fn create_workspace_with_pool(
     &self,
@@ -190,7 +191,7 @@ impl AppState {
     user_id: i64,
     pool: &PgPool,
   ) -> Result<Workspace, AppError> {
-    Self::create_workspace(self, name, user_id, pool).await
+    self.create_workspace(name, user_id, pool).await
   }
 
   pub async fn update_owner_with_pool(
@@ -215,41 +216,21 @@ impl AppState {
     name: &str,
     pool: &PgPool,
   ) -> Result<Option<Workspace>, AppError> {
-    Self::find_by_name(self, name, pool).await
+    self.find_by_name(name, pool).await
   }
 
   pub async fn find_by_id_with_pool(
     workspace_id: i64,
     pool: &PgPool,
   ) -> Result<Option<Workspace>, AppError> {
-    let auth_config = fechatter_core::utils::jwt::AuthConfig {
-      sk: "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF\n-----END PRIVATE KEY-----".to_string(),
-      pk: "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAHrnbu7wEfAP9cGBOAHHwmH4Wsot1ciXBHmCRcXLBUUQ=\n-----END PUBLIC KEY-----".to_string(),
-    };
+    let workspace = sqlx::query_as::<_, Workspace>(
+      "SELECT id, name, owner_id, created_at FROM workspaces WHERE id = $1",
+    )
+    .bind(workspace_id)
+    .fetch_optional(pool)
+    .await?;
 
-    let server_config = crate::config::ServerConfig {
-      port: 0,
-      db_url: "".to_string(),
-      base_dir: std::path::PathBuf::new(),
-    };
-
-    let config = crate::AppConfig {
-      server: server_config,
-      auth: auth_config.clone(),
-    };
-
-    let token_manager =
-      fechatter_core::utils::jwt::TokenManager::from_config(&auth_config).unwrap();
-
-    let app_state = AppState {
-      inner: std::sync::Arc::new(crate::AppStateInner {
-        config,
-        pool: pool.clone(),
-        token_manager,
-        chat_list_cache: dashmap::DashMap::new(),
-      }),
-    };
-    Self::find_by_id(&app_state, workspace_id, pool).await
+    Ok(workspace)
   }
 
   pub async fn add_to_workspace_with_pool(
@@ -267,7 +248,6 @@ mod tests {
   use super::*;
   use crate::setup_test_users;
   use anyhow::{Ok, Result};
-  use fechatter_core::DatabaseModel;
 
   #[tokio::test]
   async fn workspace_should_create_and_set_owner() -> Result<()> {

@@ -9,28 +9,51 @@ mod test_utils;
 use std::sync::Arc;
 use std::{fmt, ops::Deref};
 
-use anyhow::Context as _;
 use axum::{
   Router,
   routing::{get, patch, post},
 };
 pub use config::AppConfig;
 use dashmap::DashMap;
-use fechatter_core::{
-  TokenVerifier,
-  state::{WithCache, WithDbPool, WithTokenManager},
-  utils::jwt::{TokenManager, UserClaims},
-};
+use fechatter_core::utils::jwt::{TokenManager, UserClaims};
 use sqlx::PgPool;
 use tokio::fs;
 use tokio::time::Instant;
 
 use crate::error::{AppError, ErrorOutput};
 pub use error::{AppError as ErrorAppError, ErrorOutput as ErrorOutputType};
-use fechatter_core::middlewares::{self, SetLayer};
 use fechatter_core::models::chat::ChatSidebar;
 pub use fechatter_core::{CreateUser, SigninUser, User};
 use handlers::*;
+
+// Define the trait locally since it's not in fechatter_core
+#[allow(unused)]
+trait TokenVerifier {
+  type Error;
+  type Claims;
+
+  fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error>;
+}
+
+// Define the cache trait locally
+#[allow(unused)]
+trait WithCache<K, V> {
+  fn get_from_cache(&self, key: &K) -> Option<V>;
+  fn insert_into_cache(&self, key: K, value: V, ttl_seconds: u64);
+  fn remove_from_cache(&self, key: &K);
+}
+
+// Define the pool trait locally
+#[allow(unused)]
+trait WithDbPool {
+  fn db_pool(&self) -> &PgPool;
+}
+
+// Define the token manager trait locally
+#[allow(unused)]
+trait WithTokenManager {
+  fn token_manager(&self) -> &TokenManager;
+}
 
 #[derive(Debug, Clone)]
 pub(crate) struct AppState {
@@ -155,8 +178,7 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
   let app = Router::new()
     .route("/", get(index_handler))
     .nest("/api", api)
-    .with_state(state)
-    .set_layer();
+    .with_state(state);
 
   Ok(app)
 }
@@ -178,8 +200,7 @@ pub async fn create_pool(db_url: &str) -> Result<sqlx::PgPool, sqlx::Error> {
 
 impl AppState {
   pub async fn try_new(config: AppConfig) -> Result<Self, AppError> {
-    fs::create_dir_all(&config.server.base_dir)
-      .await?;
+    fs::create_dir_all(&config.server.base_dir).await?;
     let token_manager = TokenManager::from_config(&config.auth)?;
     let pool = create_pool(&config.server.db_url).await?;
     let chat_list_cache = DashMap::new();
