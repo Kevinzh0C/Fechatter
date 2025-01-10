@@ -25,8 +25,14 @@ rand = { workspace = true }
 uuid = { workspace = true }
 thiserror = { workspace = true }
 async-trait = { workspace = true }
+utoipa = { workspace = true }
+utoipa-rapidoc = { workspace = true }
+utoipa-redoc = { workspace = true }
+utoipa-swagger-ui = { workspace = true }
+utoipa-scalar = { workspace = true }
 base64 = { version = "0.22.1", features = ["default"] }
 fechatter_macro = { path = "../fechatter_macro" }
+serde_json = { workspace = true }
 
 [dev-dependencies]
 mockall = "0.13.1"

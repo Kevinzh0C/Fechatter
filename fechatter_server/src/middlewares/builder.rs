@@ -2,22 +2,22 @@ use axum::{Router, middleware::from_fn};
 use fechatter_core::SetLayer as _;
 use std::sync::Arc;
 
-// 本地定义类型状态标记，而不是导入
-// 认证状态标记
+// Locally define type state markers instead of importing
+// Authentication state markers
 pub struct WithoutAuth;
 pub struct WithAuth;
 
-// 令牌刷新状态标记
+// Token refresh state markers
 pub struct WithoutRefresh;
 pub struct WithRefresh;
 
-// 服务器特定的工作区和聊天成员资格状态标记
+// Server-specific workspace and chat membership state markers
 pub struct WithoutWorkspace;
 pub struct WithWorkspace;
 pub struct WithoutChatMembership;
 pub struct WithChatMembership;
 
-// 导入所需的中间件函数
+// Import required middleware functions
 use super::{chat::verify_chat_membership_middleware, workspace::with_workspace_context};
 use crate::AppState;
 use axum::body::Body;
@@ -27,13 +27,9 @@ use axum::middleware::Next;
 use axum::response::IntoResponse;
 use fechatter_core::jwt::TokenManager;
 use fechatter_core::middlewares::custom_builder::{add_auth_middleware, add_refresh_middleware};
-use fechatter_core::middlewares::server_time::ServerTimeLayer; // 导入服务器时间中间件
+use fechatter_core::middlewares::server_time::ServerTimeLayer as _; // Import server time middleware
 use fechatter_core::middlewares::{
-  ActualAuthServiceProvider,
-  TokenVerifier,
-  WithServiceProvider,
-  WithTokenManager,
-  request_id_middleware, // 导入请求ID中间件
+  ActualAuthServiceProvider, TokenVerifier, WithServiceProvider, WithTokenManager,
 };
 use fechatter_core::models::AuthUser;
 use fechatter_core::models::jwt::UserClaims;
@@ -89,7 +85,7 @@ where
   }))
 }
 
-// 使用位标志来表示已应用的中间件类型
+// Use bit flags to represent applied middleware types
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct MiddlewareFlags(u8);
 
@@ -109,13 +105,13 @@ impl MiddlewareFlags {
   }
 }
 
-/// 一个更简洁、灵活的中间件构建器
-/// 使用位标志而不是类型参数来跟踪中间件状态
+/// A more concise and flexible middleware builder
+/// Uses bit flags instead of type parameters to track middleware state
 pub struct MiddlewareBuilder<S, T> {
   router: Router<S>,
   state: T,
   app_state: Option<Arc<AppState>>,
-  applied: MiddlewareFlags, // 跟踪已应用的中间件
+  applied: MiddlewareFlags, // Track applied middlewares
 }
 
 impl<S, T> MiddlewareBuilder<S, T>
@@ -133,7 +129,7 @@ where
   <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
   AuthUser: From<UserClaims>,
 {
-  /// 创建一个新的中间件构建器
+  /// Create a new middleware builder
   pub fn new(router: Router<S>, state: T) -> Self {
     Self {
       router,
@@ -143,7 +139,7 @@ where
     }
   }
 
-  /// 获取或创建AppState
+  /// Get or create AppState
   fn get_or_create_app_state(&mut self) -> Arc<AppState> {
     if let Some(app_state) = &self.app_state {
       app_state.clone()
@@ -154,7 +150,7 @@ where
     }
   }
 
-  /// 添加认证中间件
+  /// Add authentication middleware
   pub fn with_auth(mut self) -> Self {
     if !self.applied.contains(MiddlewareFlags::AUTH) {
       self.router = add_auth_middleware(self.router, self.state.clone());
@@ -163,7 +159,7 @@ where
     self
   }
 
-  /// 添加令牌刷新中间件
+  /// Add token refresh middleware
   pub fn with_refresh(mut self) -> Self {
     if !self.applied.contains(MiddlewareFlags::REFRESH) {
       self.router = add_refresh_middleware(self.router, self.state.clone());
@@ -172,7 +168,7 @@ where
     self
   }
 
-  /// 添加工作区中间件
+  /// Add workspace middleware
   pub fn with_workspace(mut self) -> Self {
     if !self.applied.contains(MiddlewareFlags::WORKSPACE) {
       let app_state = self.get_or_create_app_state();
@@ -182,7 +178,7 @@ where
     self
   }
 
-  /// 添加聊天成员资格中间件
+  /// Add chat membership middleware
   pub fn with_chat_membership(mut self) -> Self {
     if !self.applied.contains(MiddlewareFlags::CHAT_MEMBERSHIP) {
       let app_state = self.get_or_create_app_state();
@@ -192,8 +188,8 @@ where
     self
   }
 
-  /// 添加所有业务中间件（Auth, Refresh, Workspace, Chat Membership）
-  /// 顺序将自动设置为：Auth -> Refresh -> Workspace -> ChatMembership
+  /// Add all business middlewares (Auth, Refresh, Workspace, Chat Membership)
+  /// Order will automatically be set to: Auth -> Refresh -> Workspace -> ChatMembership
   pub fn with_all_middlewares(self) -> Self {
     self
       .with_chat_membership()
@@ -202,24 +198,24 @@ where
       .with_auth()
   }
 
-  /// 应用Auth和Refresh中间件
+  /// Apply Auth and Refresh middlewares
   pub fn with_auth_refresh(self) -> Self {
     self.with_refresh().with_auth()
   }
 
-  /// 应用Auth, Refresh和Workspace中间件
+  /// Apply Auth, Refresh and Workspace middlewares
   pub fn with_auth_refresh_workspace(self) -> Self {
     self.with_workspace().with_refresh().with_auth()
   }
 
-  /// 构建最终的路由，应用基础设施中间件并返回
+  /// Build the final router, apply infrastructure middlewares and return
   pub fn build(self) -> Router<S> {
-    // 应用基础设施中间件（ServerTime, RequestId, Compression, Trace）
+    // Apply infrastructure middlewares (ServerTime, RequestId, Compression, Trace)
     self.router.set_layer()
   }
 }
 
-// 提供RouterExt扩展特性以便于链式调用
+// Provide RouterExt extension trait for chained calls
 pub trait RouterExt<S>: Sized {
   fn with_middlewares<T>(self, state: T) -> MiddlewareBuilder<S, T>
   where
@@ -257,7 +253,7 @@ impl<S> RouterExt<S> for Router<S> {
   }
 }
 
-// 为了保持与旧API的兼容性，保留这些方法
+// To maintain compatibility with the old API, keep these methods
 impl<S, T> MiddlewareBuilder<S, T>
 where
   S: Clone + Send + Sync + 'static,
@@ -273,28 +269,28 @@ where
   <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
   AuthUser: From<UserClaims>,
 {
-  /// 类似于finalize，但不添加任何中间件
-  /// 只添加基础设施中间件（ServerTime, RequestId, Compression, Trace）
+  /// Similar to finalize, but doesn't add any middlewares
+  /// Only adds infrastructure middlewares (ServerTime, RequestId, Compression, Trace)
   pub fn finalize_base(self) -> Router<S> {
     self.build()
   }
 
-  /// 添加认证中间件和基础设施中间件
+  /// Add authentication middleware and infrastructure middlewares
   pub fn finalize_auth_only(self) -> Router<S> {
     self.with_auth().build()
   }
 
-  /// 添加认证、刷新中间件和基础设施中间件
+  /// Add authentication, refresh middleware and infrastructure middlewares
   pub fn finalize_auth_refresh(self) -> Router<S> {
     self.with_auth_refresh().build()
   }
 
-  /// 添加认证、刷新、工作区中间件和基础设施中间件
+  /// Add authentication, refresh, workspace middleware and infrastructure middlewares
   pub fn finalize_auth_refresh_workspace(self) -> Router<S> {
     self.with_auth_refresh_workspace().build()
   }
 
-  /// 添加所有中间件：认证、刷新、工作区、聊天成员资格和基础设施中间件
+  /// Add all middlewares: authentication, refresh, workspace, chat membership and infrastructure middlewares
   pub fn finalize(self) -> Router<S> {
     self.with_all_middlewares().build()
   }

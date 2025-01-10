@@ -5,11 +5,12 @@ use axum::{
   response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use fechatter_core::error::{ChatValidationError, CoreError, ErrorMapper};
 use thiserror::Error;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ErrorOutput {
   pub code: u16,
   pub error: String,

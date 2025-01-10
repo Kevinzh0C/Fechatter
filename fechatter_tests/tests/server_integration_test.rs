@@ -6,12 +6,12 @@ mod server_integration_test {
 
   use axum::{Extension, Json, Router, response::IntoResponse, routing::get};
   use fechatter_core::models::AuthUser;
+  use fechatter_server::handlers::auth::AuthResponse;
   use fechatter_server::middlewares::RouterExt;
   use futures::StreamExt;
   use reqwest::StatusCode as ReqwestStatusCode;
   use reqwest::multipart::{Form, Part};
   use reqwest_eventsource::{Event, EventSource};
-  use serde::{Deserialize, Serialize};
   use serde_json::json;
   use std::{net::SocketAddr, time::Duration};
   use tokio::{net::TcpListener, time::sleep};
@@ -31,13 +31,6 @@ mod server_integration_test {
               content: hello
               files: [Cargo.toml]
   */
-
-  #[derive(Serialize, Deserialize)]
-  struct AuthResponse {
-    access_token: String,
-    expires_in: usize,
-    refresh_token: Option<String>,
-  }
 
   struct ChatServer {
     addr: SocketAddr,

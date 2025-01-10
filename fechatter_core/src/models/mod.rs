@@ -15,16 +15,17 @@ pub use workspace::*;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use uuid;
 
-#[derive(Debug, Serialize, Deserialize, sqlx::Type, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, sqlx::Type, Clone, Copy, PartialEq, Eq, ToSchema)]
 #[sqlx(type_name = "user_status", rename_all = "lowercase")]
 pub enum UserStatus {
   Suspended,
   Active,
 }
 
-#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, PartialEq, Eq, Clone, ToSchema)]
 pub struct User {
   pub id: i64,
   pub fullname: String,
@@ -37,14 +38,14 @@ pub struct User {
   pub workspace_id: i64,
 }
 
-#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, PartialEq, Eq, Clone, ToSchema)]
 pub struct ChatUser {
   pub id: i64,
   pub fullname: String,
   pub email: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, PartialEq, Eq, Clone, ToSchema)]
 pub struct Workspace {
   pub id: i64,
   pub name: String,
@@ -52,7 +53,7 @@ pub struct Workspace {
   pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, sqlx::Type)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, sqlx::Type, ToSchema)]
 #[sqlx(type_name = "chat_type", rename_all = "lowercase")]
 pub enum ChatType {
   Single,
@@ -74,7 +75,7 @@ impl std::fmt::Display for ChatType {
   }
 }
 
-#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
 pub struct Chat {
   pub id: i64,
   pub workspace_id: i64,
@@ -88,7 +89,7 @@ pub struct Chat {
   pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone, PartialEq, Eq, ToSchema)]
 pub struct Message {
   pub id: i64,
   pub chat_id: i64,
@@ -98,18 +99,19 @@ pub struct Message {
   pub files: Option<Vec<String>>,
   #[sqlx(default)] // Handle potential NULL or default timestamp
   pub created_at: DateTime<Utc>,
-  #[sqlx(default)] // idempotency_key可能为NULL，特别是对于旧记录
+  #[sqlx(default)] // idempotency_key may be NULL, especially for older records
+  #[schema(value_type = Option<String>, format = "uuid", example = "01834abd-8c37-7d82-9206-54b2f6b4f7c4")]
   pub idempotency_key: Option<uuid::Uuid>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ChatMember {
   pub chat_id: i64,
   pub user_id: i64,
   pub joined_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CreateUser {
   pub fullname: String,
   pub email: String,
@@ -128,7 +130,7 @@ impl CreateUser {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct SigninUser {
   pub email: String,
   pub password: String,

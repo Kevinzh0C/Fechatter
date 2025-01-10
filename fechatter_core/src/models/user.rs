@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use argon2::{
   Argon2, PasswordHash, PasswordVerifier,
@@ -13,7 +14,7 @@ use crate::{
 
 use super::{CreateUser, SigninUser};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AuthUser {
   pub id: i64,
   pub fullname: String,

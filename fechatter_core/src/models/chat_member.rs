@@ -4,8 +4,9 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::future::Future;
+use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CreateChatMember {
   pub chat_id: i64,
   pub user_id: i64,

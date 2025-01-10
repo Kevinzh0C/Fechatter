@@ -9,9 +9,28 @@ use tracing::info;
 
 use crate::{
   AppError, AppState,
+  error::ErrorOutput,
   models::{AuthUser, ChatMember},
 };
 
+/// 获取聊天成员列表
+#[utoipa::path(
+    get,
+    path = "/api/chats/{chat_id}/members",
+    params(
+        ("chat_id" = i64, Path, description = "Chat ID")
+    ),
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 200, description = "Chat members retrieved successfully", body = Vec<ChatMember>),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 403, description = "Permission denied", body = ErrorOutput),
+        (status = 404, description = "Chat not found", body = ErrorOutput)
+    ),
+    tag = "chat members"
+)]
 pub(crate) async fn list_chat_members_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
@@ -35,6 +54,26 @@ pub(crate) async fn list_chat_members_handler(
 //   Ok((StatusCode::CREATED, Json(added_member)))
 // }
 
+/// 批量添加聊天成员
+#[utoipa::path(
+    post,
+    path = "/api/chats/{chat_id}/members",
+    params(
+        ("chat_id" = i64, Path, description = "Chat ID")
+    ),
+    request_body = Vec<i64>,
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 201, description = "Members added successfully", body = Vec<ChatMember>),
+        (status = 400, description = "Invalid input", body = ErrorOutput),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 403, description = "Permission denied", body = ErrorOutput),
+        (status = 404, description = "Chat not found", body = ErrorOutput)
+    ),
+    tag = "chat members"
+)]
 pub(crate) async fn add_chat_members_batch_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
@@ -51,6 +90,26 @@ pub(crate) async fn add_chat_members_batch_handler(
   Ok((StatusCode::CREATED, Json(members)))
 }
 
+/// 移除聊天成员
+#[utoipa::path(
+    delete,
+    path = "/api/chats/{chat_id}/members",
+    params(
+        ("chat_id" = i64, Path, description = "Chat ID")
+    ),
+    request_body = Vec<i64>,
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 204, description = "Members removed successfully"),
+        (status = 400, description = "Invalid input", body = ErrorOutput),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 403, description = "Permission denied", body = ErrorOutput),
+        (status = 404, description = "Chat not found", body = ErrorOutput)
+    ),
+    tag = "chat members"
+)]
 pub(crate) async fn remove_chat_member_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
@@ -76,6 +135,26 @@ pub(crate) async fn remove_chat_member_handler(
   }
 }
 
+/// 转移聊天所有权
+#[utoipa::path(
+    post,
+    path = "/api/chats/{chat_id}/transfer/{target_user_id}",
+    params(
+        ("chat_id" = i64, Path, description = "Chat ID"),
+        ("target_user_id" = i64, Path, description = "Target user ID to transfer ownership to")
+    ),
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 200, description = "Ownership transferred successfully"),
+        (status = 400, description = "Invalid input", body = ErrorOutput),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 403, description = "Permission denied", body = ErrorOutput),
+        (status = 404, description = "Chat or user not found", body = ErrorOutput)
+    ),
+    tag = "chat members"
+)]
 pub(crate) async fn transfer_chat_ownership_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,

@@ -10,18 +10,10 @@ mod auth_integration_tests {
   use axum_extra::extract::cookie::Cookie;
   use fechatter_core::CreateUser;
   use fechatter_server::AppState;
-  use serde::{Deserialize, Serialize};
+  use fechatter_server::handlers::auth::AuthResponse;
   use serde_json::{Value, json};
   use sqlx_db_tester::TestPg;
   use tower::ServiceExt;
-
-  // Structure matching server AuthResponse
-  #[derive(Debug, Serialize, Deserialize)]
-  struct AuthResponse {
-    access_token: String,
-    expires_in: usize,
-    refresh_token: Option<String>,
-  }
 
   // Helper to create test data
   fn get_test_user() -> CreateUser {

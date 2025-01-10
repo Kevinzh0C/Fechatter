@@ -2,7 +2,7 @@ use super::ChatFile;
 use crate::AppError;
 use crate::AppState;
 
-use fechatter_core::{Message, error::CoreError, models::CreateMessage, models::ListMessage};
+use fechatter_core::{Message, error::CoreError, models::CreateMessage, models::ListMessages};
 use std::str::FromStr;
 use uuid;
 
@@ -69,7 +69,7 @@ impl AppState {
 
   pub async fn list_messages(
     &self,
-    input: ListMessage,
+    input: ListMessages,
     chat_id: i64,
   ) -> Result<Vec<Message>, AppError> {
     let last_id = input.last_id.unwrap_or(i64::MAX);
@@ -282,7 +282,7 @@ mod tests {
     }
 
     // Use the highest message ID + 1 as last_id to ensure we get all messages
-    let input = ListMessage {
+    let input = ListMessages {
       last_id: Some(message_ids.iter().max().unwrap() + 1),
       limit: 10,
     };

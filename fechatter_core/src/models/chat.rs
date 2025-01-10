@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::future::Future;
+use utoipa::ToSchema;
 
 use crate::error::{ChatValidationError, CoreError};
 use crate::models::{Chat, ChatType};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CreateChat {
   pub name: String,
   pub chat_type: ChatType,
@@ -60,7 +61,7 @@ pub trait ChatRepository: Send + Sync {
   ) -> std::pin::Pin<Box<dyn Future<Output = Result<bool, CoreError>> + Send>>;
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
 pub struct ChatSidebar {
   pub id: i64,
   pub name: String,
@@ -69,7 +70,7 @@ pub struct ChatSidebar {
   pub is_creator: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
 pub struct ChatLastMessage {
   pub id: i64,
   pub content: String,
@@ -78,7 +79,7 @@ pub struct ChatLastMessage {
   pub has_files: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct UpdateChat {
   pub name: Option<String>,
   pub description: Option<String>,

@@ -4,6 +4,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::future::Future;
+use utoipa::ToSchema;
 
 pub trait WorkspaceRepository: Send + Sync {
   fn create(&self, name: &str) -> impl Future<Output = Result<Workspace, CoreError>> + Send;
@@ -36,7 +37,7 @@ pub trait WorkspaceRepository: Send + Sync {
   ) -> impl Future<Output = Result<Workspace, CoreError>> + Send;
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CreateWorkspace {
   pub name: String,
 }

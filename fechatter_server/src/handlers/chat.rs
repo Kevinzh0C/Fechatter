@@ -7,8 +7,22 @@ use axum::{
 
 use tracing::info;
 
-use crate::{AppError, AppState, models::AuthUser};
-use fechatter_core::{CreateChat, UpdateChat};
+use crate::{AppError, AppState, error::ErrorOutput, models::AuthUser};
+use fechatter_core::{Chat, CreateChat, UpdateChat};
+
+/// 获取当前用户的聊天列表
+#[utoipa::path(
+    get,
+    path = "/api/chats",
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 200, description = "Chats retrieved successfully", body = Vec<Chat>),
+        (status = 401, description = "Unauthorized", body = ErrorOutput)
+    ),
+    tag = "chats"
+)]
 pub(crate) async fn list_chats_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
@@ -18,6 +32,21 @@ pub(crate) async fn list_chats_handler(
   Ok((StatusCode::OK, Json(chats_arc)))
 }
 
+/// 创建新聊天
+#[utoipa::path(
+    post,
+    path = "/api/chats",
+    request_body = CreateChat,
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 201, description = "Chat created successfully", body = Chat),
+        (status = 400, description = "Invalid input", body = ErrorOutput),
+        (status = 401, description = "Unauthorized", body = ErrorOutput)
+    ),
+    tag = "chats"
+)]
 pub(crate) async fn create_chat_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
@@ -37,6 +66,26 @@ pub(crate) async fn create_chat_handler(
   Ok((StatusCode::CREATED, Json(chat)))
 }
 
+/// 更新聊天信息
+#[utoipa::path(
+    put,
+    path = "/api/chats/{chat_id}",
+    params(
+        ("chat_id" = i64, Path, description = "Chat ID")
+    ),
+    request_body = UpdateChat,
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 200, description = "Chat updated successfully", body = Chat),
+        (status = 400, description = "Invalid input", body = ErrorOutput),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 403, description = "Permission denied", body = ErrorOutput),
+        (status = 404, description = "Chat not found", body = ErrorOutput)
+    ),
+    tag = "chats"
+)]
 pub(crate) async fn update_chat_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
@@ -50,6 +99,24 @@ pub(crate) async fn update_chat_handler(
   Ok((StatusCode::OK, Json(updated_chat)))
 }
 
+/// 删除聊天
+#[utoipa::path(
+    delete,
+    path = "/api/chats/{chat_id}",
+    params(
+        ("chat_id" = i64, Path, description = "Chat ID")
+    ),
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 204, description = "Chat deleted successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 403, description = "Permission denied", body = ErrorOutput),
+        (status = 404, description = "Chat not found", body = ErrorOutput)
+    ),
+    tag = "chats"
+)]
 pub(crate) async fn delete_chat_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,

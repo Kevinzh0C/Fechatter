@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use uuid;
 
 use super::{CreateUser, SigninUser, User, UserRepository, UserStatus};
@@ -42,7 +43,7 @@ pub struct Claims {
   user: UserClaims,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct UserClaims {
   pub id: i64,
   pub workspace_id: i64,
@@ -52,7 +53,7 @@ pub struct UserClaims {
   pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
 pub struct RefreshToken {
   pub id: i64,
   pub user_id: i64,
@@ -74,14 +75,14 @@ pub struct TokenManager {
   refresh_token_repo: Arc<dyn RefreshTokenRepository + Send + Sync>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct RefreshTokenData {
   pub token: String,
   pub expires_at: DateTime<Utc>,
   pub absolute_expires_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct AuthTokens {
   pub access_token: String,
   pub refresh_token: RefreshTokenData,

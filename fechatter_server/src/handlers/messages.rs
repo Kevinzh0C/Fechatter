@@ -1,5 +1,6 @@
 use crate::{
   AppError, AppState,
+  error::ErrorOutput,
   models::{AuthUser, ChatFile},
 };
 use axum::{
@@ -8,7 +9,8 @@ use axum::{
   http::{StatusCode, header},
   response::{IntoResponse, Json, Response},
 };
-use fechatter_core::{CreateMessage, ListMessage};
+use fechatter_core::{CreateMessage, ListMessages, Message};
+use utoipa::{IntoParams, ToSchema};
 
 use bytes::Bytes;
 use futures::{StreamExt, TryStreamExt, stream::BoxStream};
@@ -22,6 +24,34 @@ use tokio::{
 use tokio_util::io::ReaderStream;
 use tracing::{info, warn};
 
+/// Payload for file uploads
+#[derive(Debug, ToSchema)]
+pub(crate) struct UploadPayload {
+  /// The file(s) to upload.
+  #[schema(value_type = String, format = "binary")]
+  files: Vec<String>, // utoipa 会将其渲染为文件上传
+}
+
+/// 发送消息
+#[utoipa::path(
+    post,
+    path = "/api/chats/{chat_id}/messages",
+    params(
+        ("chat_id" = i64, Path, description = "Chat ID")
+    ),
+    request_body = CreateMessage,
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 201, description = "Message sent successfully", body = Message),
+        (status = 400, description = "Invalid input", body = ErrorOutput),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 403, description = "Permission denied", body = ErrorOutput),
+        (status = 404, description = "Chat not found", body = ErrorOutput)
+    ),
+    tag = "messages"
+)]
 pub(crate) async fn send_message_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
@@ -39,11 +69,29 @@ pub(crate) async fn send_message_handler(
   Ok((StatusCode::CREATED, Json(message)))
 }
 
+/// 获取消息列表
+#[utoipa::path(
+    get,
+    path = "/api/chats/{chat_id}/messages",
+    params(
+        ("chat_id" = i64, Path, description = "Chat ID")
+    ),
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 200, description = "Messages retrieved successfully", body = Vec<Message>),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 403, description = "Permission denied", body = ErrorOutput),
+        (status = 404, description = "Chat not found", body = ErrorOutput)
+    ),
+    tag = "messages"
+)]
 pub(crate) async fn list_messages_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
   Path(chat_id): Path<i64>,
-  Query(query): Query<ListMessage>,
+  Query(query): Query<ListMessages>,
 ) -> Result<impl IntoResponse, AppError> {
   info!("User {} listing messages for chat {}", user.id, chat_id);
 
@@ -51,8 +99,24 @@ pub(crate) async fn list_messages_handler(
 
   Ok((StatusCode::OK, Json(messages)))
 }
-
-/// handling file from specificed storage
+/// 获取文件
+#[utoipa::path(
+    get,
+    path = "/files/{ws_id}/{file_path}",
+    params(
+        ("ws_id" = i64, Path, description = "Workspace ID"),
+        ("file_path" = String, Path, description = "File path")
+    ),
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 200, description = "File retrieved successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 404, description = "File not found", body = ErrorOutput)
+    ),
+    tag = "files"
+)]
 pub(crate) async fn file_handler(
   State(state): State<AppState>,
   Extension(_user): Extension<AuthUser>,
@@ -524,6 +588,23 @@ async fn handle_existing_path(path: &std::path::Path) -> Result<bool, AppError> 
   }
 }
 
+/// 上传文件
+#[utoipa::path(
+    post,
+    path = "/api/upload",
+    security(
+        ("access_token" = [])
+    ),
+    // 由于 Multipart 没有 ToSchema，这里仅作文本描述，具体上传方式需查阅实现
+    // request_body(description = "Multipart form data for file upload."), 
+    responses(
+        (status = 200, description = "Files uploaded successfully", body = Vec<String>),
+        (status = 400, description = "Invalid input", body = ErrorOutput),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 413, description = "File too large", body = ErrorOutput)
+    ),
+    tag = "files"
+)]
 pub(crate) async fn upload_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
@@ -589,11 +670,23 @@ pub(crate) async fn upload_handler(
   Ok(Json(file_urls))
 }
 
-/// Fix file storage structure issues
-/// Search for all cases like this in the workspace:
-/// - File path (e.g. 1/abc/123/hash.ext) is a directory
-/// - Directory contains only one file
-/// - Move the file to the correct path
+/// 修复文件存储结构
+#[utoipa::path(
+    post,
+    path = "/api/workspaces/{ws_id}/fix-storage",
+    params(
+        ("ws_id" = i64, Path, description = "Workspace ID")
+    ),
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 200, description = "Storage fix completed"),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 403, description = "Permission denied", body = ErrorOutput)
+    ),
+    tag = "files"
+)]
 pub(crate) async fn fix_file_storage_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
@@ -868,7 +961,7 @@ mod tests {
       .await
       .expect("Failed to create chat");
 
-    let query = ListMessage {
+    let query = ListMessages {
       last_id: None,
       limit: 10,
     };
@@ -1285,7 +1378,7 @@ mod tests {
     for page in 0..11 {
       info!("Querying page {} of messages...", page + 1);
 
-      let query = ListMessage {
+      let query = ListMessages {
         last_id,
         limit: PAGE_SIZE,
       };

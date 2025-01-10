@@ -85,7 +85,7 @@ mod list_messages_auth_tests {
   use crate::setup_test_users;
   use crate::{
     handlers::messages::list_messages_handler,
-    models::{AuthUser, ChatType, ListMessage},
+    models::{AuthUser, ChatType, ListMessages},
   };
   use anyhow::Result;
   use axum::extract::{Extension, Path, Query, State};
@@ -128,7 +128,7 @@ mod list_messages_auth_tests {
       created_at: user3.created_at,
     });
 
-    let query = ListMessage {
+    let query = ListMessages {
       last_id: None,
       limit: 10,
     };
@@ -192,7 +192,7 @@ mod list_messages_auth_tests {
       created_at: user2.created_at,
     });
 
-    let query = ListMessage {
+    let query = ListMessages {
       last_id: None,
       limit: 10,
     };

@@ -3,10 +3,10 @@ pub mod error;
 pub mod handlers;
 pub mod middlewares;
 pub mod models;
+pub mod openapi;
 pub mod services;
 pub mod tests;
 pub mod utils;
-
 use std::sync::Arc;
 use std::{fmt, ops::Deref};
 
@@ -27,6 +27,7 @@ use fechatter_core::{
   },
   models::jwt::{LogoutService, RefreshTokenService, SigninService, SignupService, UserClaims},
 };
+use openapi::OpenApiRouter;
 use sqlx::PgPool;
 use tokio::fs;
 use tokio::time::Instant;
@@ -180,66 +181,6 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
     .with_middlewares(state.clone())
     .build();
 
-  // 以下是使用新的宏生成的构建器的示例
-  // 注释掉以保留原实现，但展示如何使用新的MiddlewareBuilder
-  /*
-  // Basic auth routes - 需要Auth和Refresh中间件
-  let auth_routes = middlewares::MiddlewareBuilder::new(
-    Router::new()
-      .route("/upload", post(upload_handler))
-      .route("/files/{ws_id}/{*path}", get(file_handler))
-      .route("/fix-files/{ws_id}", post(fix_file_storage_handler))
-      .route("/users", get(list_all_workspace_users_handler))
-      .route("/logout", post(logout_handler))
-      .route("/logout_all", post(logout_all_handler)),
-    state.clone()
-  )
-  .with_auth()
-  .with_token_refresh()
-  .build();
-
-  // Chat create routes - 需要Auth, Refresh和Workspace中间件
-  let chat_create_routes = middlewares::MiddlewareBuilder::new(
-    Router::new()
-      .route("/chat", post(create_chat_handler))
-      .route("/chat", get(list_chats_handler)),
-    state.clone()
-  )
-  .with_auth()
-  .with_token_refresh()
-  .with_workspace()
-  .build();
-
-  // Chat manage routes - 需要所有业务中间件
-  let chat_manage_routes = middlewares::MiddlewareBuilder::new(
-    Router::new()
-      .route(
-        "/chat/{id}",
-        patch(update_chat_handler).delete(delete_chat_handler),
-      )
-      .route(
-        "/chat/{id}/members",
-        get(list_chat_members_handler)
-          .post(add_chat_members_batch_handler)
-          .delete(remove_chat_member_handler),
-      )
-      .route(
-        "/chat/{id}/members/{member_id}",
-        patch(transfer_chat_ownership_handler),
-      )
-      .route(
-        "/chat/{id}/messages",
-        get(list_messages_handler).post(send_message_handler),
-      ),
-    state.clone()
-  )
-  .with_auth()
-  .with_token_refresh()
-  .with_workspace()
-  .with_chat_membership()
-  .build();
-  */
-
   // Basic auth routes - 需要Auth和Refresh中间件
   // 执行顺序为: Auth -> Refresh -> 基础设施中间件 -> Handler
   let auth_routes = Router::new()
@@ -296,6 +237,7 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
   let api = Router::new().merge(public_routes).merge(protected_api);
 
   let app = Router::new()
+    .openapi()
     .route("/", get(index_handler))
     .nest("/api", api)
     .with_state(state);

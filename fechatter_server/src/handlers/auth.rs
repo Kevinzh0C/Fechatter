@@ -70,6 +70,25 @@ fn clear_refresh_token_cookie(headers: &mut HeaderMap) -> Result<(), AppError> {
   Ok(())
 }
 
+#[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct AuthResponse {
+  pub access_token: String,
+  pub expires_in: usize,
+  pub refresh_token: Option<String>,
+}
+
+/// 注册新用户
+#[utoipa::path(
+    post,
+    path = "/api/signup",
+    request_body = CreateUser,
+    responses(
+        (status = 201, description = "User registered successfully", body = AuthResponse),
+        (status = 409, description = "User already exists", body = ErrorOutput),
+        (status = 400, description = "Invalid input", body = ErrorOutput)
+    ),
+    tag = "auth"
+)]
 pub(crate) async fn signup_handler(
   State(state): State<AppState>,
   headers: HeaderMap,
@@ -116,6 +135,18 @@ pub(crate) async fn signup_handler(
   }
 }
 
+/// 用户登录
+#[utoipa::path(
+    post,
+    path = "/api/signin",
+    request_body = SigninUser,
+    responses(
+        (status = 200, description = "Login successful", body = AuthResponse),
+        (status = 403, description = "Invalid credentials", body = ErrorOutput),
+        (status = 400, description = "Invalid input", body = ErrorOutput)
+    ),
+    tag = "auth"
+)]
 pub(crate) async fn signin_handler(
   State(state): State<AppState>,
   headers: HeaderMap,
@@ -165,6 +196,19 @@ pub(crate) async fn signin_handler(
   }
 }
 
+/// 刷新访问令牌
+#[utoipa::path(
+    post,
+    path = "/api/refresh",
+    security(
+        ("refresh_token" = [])
+    ),
+    responses(
+        (status = 200, description = "Token refreshed successfully", body = AuthResponse),
+        (status = 401, description = "Invalid or expired refresh token", body = ErrorOutput)
+    ),
+    tag = "auth"
+)]
 pub(crate) async fn refresh_token_handler(
   State(state): State<AppState>,
   headers: HeaderMap,
@@ -323,6 +367,19 @@ pub(crate) async fn refresh_token_handler(
   }
 }
 
+/// 用户登出
+#[utoipa::path(
+    post,
+    path = "/api/logout",
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 200, description = "Logged out successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorOutput)
+    ),
+    tag = "auth"
+)]
 pub(crate) async fn logout_handler(
   State(state): State<AppState>,
   cookies: CookieJar,
@@ -365,6 +422,19 @@ pub(crate) async fn logout_handler(
   )
 }
 
+/// 登出所有设备
+#[utoipa::path(
+    post,
+    path = "/api/logout-all",
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 200, description = "Logged out from all sessions successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorOutput)
+    ),
+    tag = "auth"
+)]
 pub(crate) async fn logout_all_handler(
   State(state): State<AppState>,
   cookies: CookieJar,
@@ -412,13 +482,6 @@ pub(crate) async fn logout_all_handler(
     )
       .into_response(),
   )
-}
-
-#[derive(Serialize, Deserialize)]
-struct AuthResponse {
-  access_token: String,
-  expires_in: usize,
-  refresh_token: Option<String>,
 }
 
 #[cfg(test)]
