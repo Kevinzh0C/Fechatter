@@ -45,7 +45,7 @@ impl User {
         .iter()
         .map(|id| id.unwrap().to_string())
         .collect::<Vec<String>>();
-      return Err(AppError::UsersNotExist(missing_ids_str));
+      return Err(AppError::NotFound(missing_ids_str));
     }
 
     Ok(())
@@ -115,7 +115,7 @@ impl User {
         .await?;
 
       if res.rows_affected() == 0 {
-        return Err(AppError::WorkspaceNotFound(input.workspace.clone()));
+        return Err(AppError::NotFound(vec![input.workspace.clone()]));
       }
     }
 

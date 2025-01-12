@@ -48,7 +48,7 @@ impl Workspace {
         .rows_affected();
 
       if rows == 0 {
-        return Err(AppError::UsersNotExist(vec![user_id.to_string()]));
+        return Err(AppError::NotFound(vec![user_id.to_string()]));
       }
     }
 
@@ -153,7 +153,7 @@ impl Workspace {
       .rows_affected();
 
     if rows == 0 {
-      return Err(AppError::UsersNotExist(vec![user_id.to_string()]));
+      return Err(AppError::NotFound(vec![user_id.to_string()]));
     }
 
     Ok(workspace)

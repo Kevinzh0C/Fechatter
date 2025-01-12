@@ -287,7 +287,7 @@ async fn delete_chat_transactional(
   )
   .fetch_optional(&mut **tx)
   .await?
-  .ok_or(AppError::ChatNotFound(chat_id))?;
+  .ok_or(AppError::NotFound(vec![chat_id.to_string()]))?;
 
   if chat_info.created_by != user_id {
     return Err(AppError::ChatPermissionError(format!(
@@ -308,7 +308,7 @@ async fn delete_chat_transactional(
     .await?;
 
   if result.rows_affected() == 0 {
-    return Err(AppError::ChatNotFound(chat_id));
+    return Err(AppError::NotFound(vec![chat_id.to_string()]));
   }
 
   Ok(chat_info.chat_members)

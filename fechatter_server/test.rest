@@ -2,28 +2,35 @@
 @baseUrl = http://localhost:6688
 
 ### signup
+# @name signup
 POST {{baseUrl}}/api/signup
 Content-Type: application/json
 
 {
-  "fullname": "Alice",
+  "fullname": "Alice", 
   "email": "alice@acmn.com",
   "password": "password",
   "workspace": "Acme"
 }
 
+### Save response tokens
+@accessToken = {{signup.response.body.$.access_token}}
+@refreshToken = {{signup.response.body.$.refresh_token}}
+
 ### signup (second user)
+# @name signup2
 POST {{baseUrl}}/api/signup
 Content-Type: application/json
 
 {
   "fullname": "Bob",
-  "email": "bob@acmn.com",
+  "email": "bob@acmn.com", 
   "password": "rhunter48",
   "workspace": "Acme"
 }
 
 ### signup (third user)
+# @name signup3
 POST {{baseUrl}}/api/signup
 Content-Type: application/json
 
@@ -44,23 +51,52 @@ Content-Type: application/json
   "password": "password"
 }
 
-### Use the token from the login response
-@authToken = {{login.response.body.token}}
+### Save response tokens from login
+@loginAccessToken = {{login.response.body.$.access_token}}
+@loginRefreshToken = {{login.response.body.$.refresh_token}}
 
-### list users
-GET {{baseUrl}}/api/users
-Authorization: Bearer {{authToken}}
+### Refresh token using cookies
+# @name refreshWithCookie
+POST {{baseUrl}}/api/refresh
+Content-Type: application/json
+Cookie: refresh_token={{refreshToken}}
 
-### signin(invalid user)
+### signin
+# @name login
 POST {{baseUrl}}/api/signin
 Content-Type: application/json
 
 {
-  "email": "bob@acmn.com",
+  "email": "alice@acmn.com",
   "password": "password"
 }
 
-### signin(invalid password)
+### Refresh token using Authorization header
+# @name refreshWithHeader
+POST {{baseUrl}}/api/refresh
+Content-Type: application/json
+Authorization: Bearer {{loginRefreshToken}}
+
+### Save new tokens from refresh
+# Overwrite variables with values from the REFRESH response
+@accessToken = {{refreshWithHeader.response.body.$.access_token}}
+@refreshToken = {{refreshWithHeader.response.body.$.refresh_token}}
+
+### Test with newly refreshed token
+# Use the LATEST accessToken obtained from the REFRESH step
+GET {{baseUrl}}/api/users
+Authorization: Bearer {{accessToken}}
+
+### signin (invalid user)
+POST {{baseUrl}}/api/signin
+Content-Type: application/json
+
+{
+  "email": "nonexist@acmn.com",
+  "password": "password"
+}
+
+### signin (invalid password)
 POST {{baseUrl}}/api/signin
 Content-Type: application/json
 
@@ -69,47 +105,110 @@ Content-Type: application/json
   "password": "invalid"
 }
 
-
-
 ### list chats
 GET {{baseUrl}}/api/chat
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{accessToken}}
 
 ### create chat
+# @name createChat
 POST {{baseUrl}}/api/chat
 Content-Type: application/json
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{accessToken}}
 
 {
   "name": "Test2 Chat",
-  "chat_type": "Group",
-  "chat_members": [2, 5],
+  "chat_type": "Group", 
+  "chat_members": [1, 2, 3],
   "description": "This is a test chat"
 }
 
+### Get chat ID from response
+@chatId = {{createChat.response.body.$.id}}
+
 ### update chat
-PATCH {{baseUrl}}/api/chat/1
+PATCH {{baseUrl}}/api/chat/{{chatId}}
 Content-Type: application/json
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{accessToken}}
 
 {
-  "title": "Updated Chat",
+  "name": "Updated Chat",
   "description": "This is an updated test chat"
 }
 
-### delete chat
-DELETE {{baseUrl}}/api/chat/1
-Authorization: Bearer {{authToken}}
+### upload file (if file does not exist, please modify the path)
+# @name uploadFile
+POST {{baseUrl}}/api/upload
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=MyBoundary
 
-### send message
-POST {{baseUrl}}/api/chat/1
+--MyBoundary
+Content-Disposition: form-data; filename="test.txt"
+Content-Type: text/plain
+
+Hello, world!
+--MyBoundary
+Content-Disposition: form-data; filename="queryPane.png"
+Content-Type: image/png
+
+< /Users/zhangkaiqi/Downloads/queryPane.png
+--MyBoundary--
+
+### Get uploaded file URL from response
+# File URL format: /files/{workspace_id}/{part1}/{part2}/{part3}.{ext}
+# Example: /files/1/2a8/8ea/366b6ca7f43e61ae1559b372608fe6c170.png
+@fileUrl = {{uploadFile.response.body.$[0]}}
+
+### Extract image hash ID (from URL)
+# File URL format is /files/1/2a8/8ea/366b6ca7f43e61ae1559b372608fe6c170.png
+# Extract hash ID: 2a88ea366b6ca7f43e61ae1559b372608fe6c170
+@fileHash = 2a88ea366b6ca7f43e61ae1559b372608fe6c170
+
+### Access file (using full path)
+# Note: API requires /files/{workspace_id}/{part1}/{part2}/{part3}.{ext} format
+# Example: /files/1/2a8/8ea/366b6ca7f43e61ae1559b372608fe6c170.png
+GET {{baseUrl}}/api/files/1/e89/663/c9ef07886b308ac0ea964f143e30ccc924db69f8cbc483299e566b0ff6.png
+Authorization: Bearer {{accessToken}}
+
+### Test file directory
+GET {{baseUrl}}/api/files
+Authorization: Bearer {{accessToken}}
+
+### Test workspace file directory (ensure trailing slash)
+GET {{baseUrl}}/api/files/1/
+Authorization: Bearer {{accessToken}}
+
+### Note: Old format URLs are no longer supported
+# The following request will fail
+# GET {{baseUrl}}/api/files/366b6ca7f43e61ae1559b372608fe6c170.png
+# Authorization: Bearer {{accessToken}}
+
+### send message with file
+POST {{baseUrl}}/api/chat/1/messages
 Content-Type: application/json
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{accessToken}}
 
 {
-  "content": "Hello, this is a test message"
+  "content": "Hello, this is a test message with file",
+  "files": ["{{fileUrl}}"]
 }
 
 ### list messages
 GET {{baseUrl}}/api/chat/1/messages
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{accessToken}}
+
+### Logout with cookies
+POST {{baseUrl}}/api/logout
+Authorization: Bearer {{accessToken}}
+
+### Logout with refresh token in Authorization header
+POST {{baseUrl}}/api/logout
+Authorization: Bearer {{refreshToken}}
+
+### Attempt to use revoked refresh token (should fail)
+POST {{baseUrl}}/api/refresh
+Content-Type: application/json
+Authorization: Bearer {{refreshToken}}
+
+### logout all sessions (need authentication)
+POST {{baseUrl}}/api/logout-all
+Authorization: Bearer {{accessToken}}

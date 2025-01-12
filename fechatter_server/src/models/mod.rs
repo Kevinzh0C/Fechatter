@@ -1,5 +1,6 @@
 mod chat;
 mod chat_member;
+mod file;
 mod message;
 mod user;
 mod workspace;
@@ -10,9 +11,8 @@ use sqlx::FromRow;
 
 pub use chat::*;
 pub use chat_member::*;
+pub use message::*;
 pub use user::{AuthUser, CreateUser, SigninUser};
-
-// pub use message::*;
 
 #[derive(Debug, Serialize, Deserialize, sqlx::Type, Clone, Copy, PartialEq, Eq)]
 #[sqlx(type_name = "user_status", rename_all = "lowercase")]
@@ -85,22 +85,16 @@ pub struct Chat {
   pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, FromRow, Clone, PartialEq, Eq)]
 pub struct Message {
   pub id: i64,
-  pub content: String,
-  pub sender_id: i64,
   pub chat_id: i64,
+  pub sender_id: i64,
+  pub content: String,
+  #[sqlx(default)] // Handle NULL in DB
+  pub files: Option<Vec<String>>,
+  #[sqlx(default)] // Handle potential NULL or default timestamp
   pub created_at: DateTime<Utc>,
-  pub updated_at: DateTime<Utc>,
-  pub is_deleted: bool,
-  pub is_edited: bool,
-  pub is_read: bool,
-  pub is_pinned: bool,
-  pub is_starred: bool,
-  pub is_forwarded: bool,
-  pub is_reply: bool,
-  pub is_reply_to: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -108,4 +102,11 @@ pub struct ChatMember {
   pub chat_id: i64,
   pub user_id: i64,
   pub joined_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatFile {
+  pub workspace_id: i64,
+  pub ext: String, // extract from the uploaded filename
+  pub hash: String,
 }

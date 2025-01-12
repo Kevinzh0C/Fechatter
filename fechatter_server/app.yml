@@ -1,6 +1,7 @@
 server:
   port: 6688
   db_url: "postgres://postgres:postgres@localhost:5432/fechatter"
+  base_dir: "/tmp/fechatter/"
 auth:
   sk: |
     -----BEGIN PRIVATE KEY-----

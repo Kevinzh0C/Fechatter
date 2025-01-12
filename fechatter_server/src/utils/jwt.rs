@@ -65,10 +65,10 @@ pub struct RefreshToken {
 }
 
 pub fn generate_refresh_token() -> String {
-  use rand::{Rng, thread_rng};
+  use rand::{Rng, rng};
 
-  let mut rng = thread_rng();
-  let random_bytes: [u8; 32] = rng.r#gen::<[u8; 32]>();
+  let mut rng_instance = rng();
+  let random_bytes: [u8; 32] = rng_instance.random::<[u8; 32]>();
   hex::encode(random_bytes)
 }
 
@@ -78,7 +78,8 @@ pub fn sha256_hash(token: &str) -> String {
   let mut hasher = Sha256::new();
   hasher.update(token.as_bytes());
   let result = hasher.finalize();
-  hex::encode(result)
+  let hash = hex::encode(result);
+  hash
 }
 
 impl RefreshToken {
@@ -145,6 +146,12 @@ impl RefreshToken {
     Ok(())
   }
 
+  /// Revokes all refresh tokens for a user. Used in security scenarios like:
+  /// - Password changes requiring re-login on all devices
+  /// - Account being disabled/banned by admin
+  /// - Responding to suspicious activity
+  /// - Logout from all devices
+  #[allow(dead_code)]
   pub async fn revoke_all_for_user(user_id: i64, pool: &PgPool) -> Result<(), AppError> {
     sqlx::query(
       r#"
@@ -336,121 +343,95 @@ mod tests {
 
     Ok(())
   }
-  
+
   #[tokio::test]
   async fn refresh_token_create_and_find_works() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
-    
+
     let token_str = generate_refresh_token();
-    
+
     let _token = RefreshToken::create(
       user.id,
       &token_str,
       Some("test-agent".to_string()),
       Some("127.0.0.1".to_string()),
-      &state.pool
-    ).await?;
-    
+      &state.pool,
+    )
+    .await?;
+
     let found_token = RefreshToken::find_by_token(&token_str, &state.pool).await?;
-    
+
     assert!(found_token.is_some());
     let found_token = found_token.unwrap();
     assert_eq!(found_token.user_id, user.id);
     assert_eq!(found_token.user_agent, Some("test-agent".to_string()));
     assert_eq!(found_token.ip_address, Some("127.0.0.1".to_string()));
-    
+
     Ok(())
   }
-  
+
   #[tokio::test]
   async fn refresh_token_revoke_works() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
-    
+
     let token_str = generate_refresh_token();
-    
-    let token = RefreshToken::create(
-      user.id,
-      &token_str,
-      None,
-      None,
-      &state.pool
-    ).await?;
-    
+
+    let token = RefreshToken::create(user.id, &token_str, None, None, &state.pool).await?;
+
     token.revoke(&state.pool).await?;
-    
+
     let found_token = RefreshToken::find_by_token(&token_str, &state.pool).await?;
-    
+
     assert!(found_token.is_none());
-    
+
     Ok(())
   }
-  
+
   #[tokio::test]
   async fn refresh_token_replace_works() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
-    
+
     let token_str = generate_refresh_token();
-    
-    let token = RefreshToken::create(
-      user.id,
-      &token_str,
-      None,
-      None,
-      &state.pool
-    ).await?;
-    
+
+    let token = RefreshToken::create(user.id, &token_str, None, None, &state.pool).await?;
+
     let new_token_str = generate_refresh_token();
-    let _new_token = token.replace(
-      &new_token_str,
-      None,
-      None,
-      &state.pool
-    ).await?;
-    
+    let _new_token = token
+      .replace(&new_token_str, None, None, &state.pool)
+      .await?;
+
     let old_token = RefreshToken::find_by_token(&token_str, &state.pool).await?;
     assert!(old_token.is_none());
-    
+
     let found_new_token = RefreshToken::find_by_token(&new_token_str, &state.pool).await?;
     assert!(found_new_token.is_some());
-    
+
     Ok(())
   }
-  
+
   #[tokio::test]
   async fn refresh_token_revoke_all_for_user_works() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
-    
+
     let token_str1 = generate_refresh_token();
     let token_str2 = generate_refresh_token();
-    
-    RefreshToken::create(
-      user.id,
-      &token_str1,
-      None,
-      None,
-      &state.pool
-    ).await?;
-    
-    RefreshToken::create(
-      user.id,
-      &token_str2,
-      None,
-      None,
-      &state.pool
-    ).await?;
-    
+
+    RefreshToken::create(user.id, &token_str1, None, None, &state.pool).await?;
+
+    RefreshToken::create(user.id, &token_str2, None, None, &state.pool).await?;
+
     RefreshToken::revoke_all_for_user(user.id, &state.pool).await?;
-    
+
     let found_token1 = RefreshToken::find_by_token(&token_str1, &state.pool).await?;
     let found_token2 = RefreshToken::find_by_token(&token_str2, &state.pool).await?;
-    
+
     assert!(found_token1.is_none());
     assert!(found_token2.is_none());
-    
+
     Ok(())
   }
 }
