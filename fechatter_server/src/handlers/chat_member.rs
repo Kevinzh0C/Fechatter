@@ -40,7 +40,7 @@ pub(crate) async fn list_chat_members_handler(
       .fetch_optional(&state.pool)
       .await?;
     if chat_exists_row.is_none() {
-      return Err(AppError::ChatNotFound(chat_id));
+      return Err(AppError::NotFound(vec![chat_id.to_string()]));
     }
     return Err(AppError::ChatPermissionError(format!(
       "User {} is not a member of chat {}",

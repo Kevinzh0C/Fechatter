@@ -9,6 +9,7 @@ mod utils;
 use std::sync::Arc;
 use std::{fmt, ops::Deref};
 
+use anyhow::Context as _;
 use axum::{
   Router,
   routing::{get, patch, post},
@@ -16,11 +17,12 @@ use axum::{
 pub use config::AppConfig;
 use dashmap::DashMap;
 use sqlx::PgPool;
+use tokio::fs;
 use tokio::time::Instant;
 use utils::jwt::TokenManager;
 
 pub use error::{AppError, ErrorOutput};
-use handlers::{logout_handler, refresh_token_handler, *};
+use handlers::*;
 use middlewares::{SetAuthLayer, SetLayer};
 pub use models::{ChatSidebar, CreateUser, SigninUser, User};
 
@@ -43,19 +45,37 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
   let public_routes = Router::new()
     .route("/signin", post(signin_handler))
     .route("/signup", post(signup_handler))
-    .route("/refresh", post(refresh_token_handler))
+    .route(
+      "/refresh",
+      post(|state, cookies, headers| refresh_token_handler(state, cookies, headers)),
+    )
     .with_state(state.clone());
 
   // Protected routes - authentication required
   let protected_routes = Router::new()
+    .route("/upload", post(upload_handler))
+    .route("/files/{ws_id}/{*path}", get(file_handler))
+    .route("/fix-files/{ws_id}", post(fix_file_storage_handler))
     .route("/users", get(list_all_workspace_users_handler))
-    .route("/logout", post(logout_handler))
-    .route("/chat", get(list_chats_handler).post(create_chat_handler).delete(delete_chat_handler))
+    .route(
+      "/logout",
+      post(|state, cookies, headers, auth_user| logout_handler(state, cookies, headers, auth_user)),
+    )
+    .route(
+      "/logout_all",
+      post(|state, cookies, headers, auth_user| {
+        logout_all_handler(state, cookies, headers, auth_user)
+      }),
+    )
+    .route(
+      "/chat",
+      get(list_chats_handler)
+        .post(create_chat_handler)
+        .delete(delete_chat_handler),
+    )
     .route(
       "/chat/{id}",
-      patch(update_chat_handler)
-        .delete(delete_chat_handler)
-        // .post(send_message_handler),
+      patch(update_chat_handler).delete(delete_chat_handler),
     )
     .route(
       "/chat/{id}/members",
@@ -65,9 +85,12 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
     )
     .route(
       "/chat/{id}/members/{member_id}",
-      patch(transfer_chat_ownership_handler)
+      patch(transfer_chat_ownership_handler),
     )
-    // .route("/chat/{id}/messages", get(list_message_handler))
+    .route(
+      "/chat/{id}/messages",
+      get(list_messages_handler).post(send_message_handler),
+    )
     .set_auth_layer(state.clone())
     .with_state(state.clone());
 
@@ -100,6 +123,9 @@ pub async fn create_pool(db_url: &str) -> Result<sqlx::PgPool, sqlx::Error> {
 
 impl AppState {
   pub async fn try_new(config: AppConfig) -> Result<Self, AppError> {
+    fs::create_dir_all(&config.server.base_dir)
+      .await
+      .context("failed to create base dir")?;
     let token_manager = TokenManager::from_config(&config.auth)?;
     let pool = create_pool(&config.server.db_url).await?;
     let chat_list_cache = DashMap::new();
@@ -122,6 +148,9 @@ impl AppState {
   pub async fn test_new(config: AppConfig) -> Result<(sqlx_db_tester::TestPg, Self), AppError> {
     use sqlx_db_tester::TestPg;
 
+    fs::create_dir_all(&config.server.base_dir)
+      .await
+      .context("failed to create base dir")?;
     let token_manager = TokenManager::from_config(&config.auth)?;
     let post = config.server.db_url.rfind('/').expect("invalid db_url");
     let server_url = &config.server.db_url[..post];

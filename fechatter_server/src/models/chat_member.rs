@@ -9,7 +9,6 @@ use tracing::{error, info, warn};
 
 use super::{Chat, ChatMember, ChatType};
 use crate::{AppError, AppState};
-use anyhow::anyhow;
 
 impl TryFrom<PgRow> for ChatMember {
   type Error = AppError;
@@ -93,7 +92,7 @@ async fn ensure_user_is_chat_creator(
       .bind(chat_id)
       .fetch_optional(pool)
       .await?
-      .ok_or(AppError::ChatNotFound(chat_id))?;
+      .ok_or(AppError::NotFound(vec![chat_id.to_string()]))?;
 
     return Err(AppError::ChatPermissionError(format!(
       "User {} is not the creator of chat {} and cannot perform this action", // If chat exists but user is not creator, return PermissionError
@@ -187,7 +186,7 @@ pub async fn remove_group_chat_members(
 
   let (created_by, chat_type) = match chat_info {
     Some(info) => (info.created_by, info.chat_type),
-    None => return Err(AppError::ChatNotFound(chat_id)), // Chat not found
+    None => return Err(AppError::NotFound(vec![chat_id.to_string()])), // Chat not found
   };
 
   // 2. Fetch current member count
@@ -417,7 +416,7 @@ pub async fn transfer_chat_ownership(
   .bind(chat_id)
   .fetch_optional(&mut *tx)
   .await?
-  .ok_or(AppError::ChatNotFound(chat_id))?;
+  .ok_or(AppError::NotFound(vec![chat_id.to_string()]))?;
 
   if chat.chat_type != ChatType::Group {
     tx.rollback().await?;
@@ -457,7 +456,7 @@ pub async fn transfer_chat_ownership(
 
   if rows_affected == 0 {
     tx.rollback().await?;
-    return Err(AppError::AnyError(anyhow!(
+    return Err(AppError::ChatPermissionError(format!(
       "Failed to update chat ownership for chat_id {}: 0 rows affected, possibly due to concurrent modification or deletion after lock acquisition.",
       chat_id
     )));

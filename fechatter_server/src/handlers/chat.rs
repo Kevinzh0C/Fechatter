@@ -67,7 +67,7 @@ pub(crate) async fn delete_chat_handler(
   if deleted {
     Ok(StatusCode::NO_CONTENT.into_response())
   } else {
-    Err(AppError::ChatNotFound(chat_id))
+    Err(AppError::NotFound(vec![chat_id.to_string()]))
   }
 }
 
@@ -315,8 +315,9 @@ mod tests {
     let non_existent_chat_id = 9999;
 
     assert_handler_error!(
-        delete_chat_handler(State(state), Extension(auth_user), Path(non_existent_chat_id)),
-        AppError::ChatNotFound(id) if id == non_existent_chat_id
+      delete_chat_handler(State(state),
+      Extension(auth_user), Path(non_existent_chat_id)),
+      AppError::NotFound(ids) if ids.len() == 1 && ids[0] == non_existent_chat_id.to_string()
     );
 
     Ok(())
