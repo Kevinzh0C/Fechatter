@@ -3,6 +3,7 @@ use crate::jwt::TokenManager;
 use crate::middlewares::{
   ActualAuthServiceProvider, TokenVerifier, WithServiceProvider, WithTokenManager,
 };
+use crate::models::UserId;
 use crate::models::jwt::{
   AuthServiceTrait, AuthTokens, LogoutService, RefreshTokenService, SigninService, SignupService,
   UserClaims,
@@ -104,7 +105,7 @@ impl RefreshTokenService for RealAuthServicePlaceholder {
   async fn refresh_token(
     &self,
     _refresh_token: &str,
-    _auth_context: Option<crate::services::AuthContext>,
+    __auth_context: Option<crate::services::AuthContext>,
   ) -> Result<AuthTokens, CoreError> {
     panic!("This is a placeholder implementation")
   }
@@ -115,8 +116,8 @@ impl RefreshTokenService for RealAuthServicePlaceholder {
 impl SignupService for RealAuthServicePlaceholder {
   async fn signup(
     &self,
-    _payload: &crate::models::CreateUser,
-    _auth_context: Option<crate::services::AuthContext>,
+    __payload: &crate::models::CreateUser,
+    __auth_context: Option<crate::services::AuthContext>,
   ) -> Result<AuthTokens, CoreError> {
     panic!("This is a placeholder implementation")
   }
@@ -128,7 +129,7 @@ impl SigninService for RealAuthServicePlaceholder {
   async fn signin(
     &self,
     _payload: &crate::models::SigninUser,
-    _auth_context: Option<crate::services::AuthContext>,
+    __auth_context: Option<crate::services::AuthContext>,
   ) -> Result<Option<AuthTokens>, CoreError> {
     panic!("This is a placeholder implementation")
   }
@@ -138,11 +139,15 @@ impl SigninService for RealAuthServicePlaceholder {
 #[async_trait]
 impl LogoutService for RealAuthServicePlaceholder {
   async fn logout(&self, _refresh_token: &str) -> Result<(), CoreError> {
-    panic!("This is a placeholder implementation")
+    Err(CoreError::Internal(
+      "Real auth service not implemented".to_string(),
+    ))
   }
 
-  async fn logout_all(&self, _user_id: i64) -> Result<(), CoreError> {
-    panic!("This is a placeholder implementation")
+  async fn logout_all(&self, _user_id: UserId) -> Result<(), CoreError> {
+    Err(CoreError::Internal(
+      "Real auth service not implemented".to_string(),
+    ))
   }
 }
 
@@ -199,7 +204,7 @@ impl RefreshTokenService for DummyAuthService {
   async fn refresh_token(
     &self,
     _refresh_token: &str,
-    auth_context: Option<crate::services::AuthContext>,
+    _auth_context: Option<crate::services::AuthContext>,
   ) -> Result<AuthTokens, CoreError> {
     let now = chrono::Utc::now();
     let expires_at = now + chrono::Duration::days(7);
@@ -222,8 +227,8 @@ impl RefreshTokenService for DummyAuthService {
 impl SignupService for DummyAuthService {
   async fn signup(
     &self,
-    payload: &crate::models::CreateUser,
-    auth_context: Option<crate::services::AuthContext>,
+    _payload: &crate::models::CreateUser,
+    _auth_context: Option<crate::services::AuthContext>,
   ) -> Result<AuthTokens, CoreError> {
     // 简单地创建一个基本的模拟令牌
     let now = chrono::Utc::now();
@@ -247,7 +252,7 @@ impl SigninService for DummyAuthService {
   async fn signin(
     &self,
     payload: &crate::models::SigninUser,
-    auth_context: Option<crate::services::AuthContext>,
+    _auth_context: Option<crate::services::AuthContext>,
   ) -> Result<Option<AuthTokens>, CoreError> {
     // 模拟成功登录
     let now = chrono::Utc::now();
@@ -278,7 +283,7 @@ impl LogoutService for DummyAuthService {
     Ok(())
   }
 
-  async fn logout_all(&self, _user_id: i64) -> Result<(), CoreError> {
+  async fn logout_all(&self, _user_id: UserId) -> Result<(), CoreError> {
     // 简单地返回成功
     Ok(())
   }

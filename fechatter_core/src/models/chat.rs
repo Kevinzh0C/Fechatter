@@ -3,18 +3,18 @@ use std::future::Future;
 use utoipa::ToSchema;
 
 use crate::error::{ChatValidationError, CoreError};
-use crate::models::{Chat, ChatType};
+use crate::models::{Chat, ChatId, ChatType, MessageId, UserId};
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CreateChat {
   pub name: String,
   pub chat_type: ChatType,
-  pub members: Option<Vec<i64>>,
+  pub members: Option<Vec<UserId>>,
   pub description: Option<String>,
 }
 
 impl CreateChat {
-  pub fn new(name: &str, chat_type: ChatType, members: Vec<i64>, description: &str) -> Self {
+  pub fn new(name: &str, chat_type: ChatType, members: Vec<UserId>, description: &str) -> Self {
     Self {
       name: name.to_string(),
       chat_type,
@@ -32,38 +32,38 @@ pub trait ChatRepository: Send + Sync {
 
   fn find_by_id(
     &self,
-    id: i64,
+    id: ChatId,
   ) -> std::pin::Pin<Box<dyn Future<Output = Result<Option<Chat>, CoreError>> + Send>>;
 
   fn get_sidebar_for_user(
     &self,
-    user_id: i64,
+    user_id: UserId,
   ) -> std::pin::Pin<Box<dyn Future<Output = Result<Vec<ChatSidebar>, CoreError>> + Send>>;
 
   fn update_chat_name(
     &self,
-    chat_id: i64,
-    user_id: i64,
+    chat_id: ChatId,
+    user_id: UserId,
     new_name: &str,
   ) -> std::pin::Pin<Box<dyn Future<Output = Result<Chat, CoreError>> + Send>>;
 
   fn update_chat_description(
     &self,
-    chat_id: i64,
-    user_id: i64,
+    chat_id: ChatId,
+    user_id: UserId,
     new_description: &str,
   ) -> std::pin::Pin<Box<dyn Future<Output = Result<Chat, CoreError>> + Send>>;
 
   fn delete_chat(
     &self,
-    chat_id: i64,
-    user_id: i64,
+    chat_id: ChatId,
+    user_id: UserId,
   ) -> std::pin::Pin<Box<dyn Future<Output = Result<bool, CoreError>> + Send>>;
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
 pub struct ChatSidebar {
-  pub id: i64,
+  pub id: ChatId,
   pub name: String,
   pub chat_type: ChatType,
   pub last_message: Option<ChatLastMessage>,
@@ -72,7 +72,7 @@ pub struct ChatSidebar {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
 pub struct ChatLastMessage {
-  pub id: i64,
+  pub id: MessageId,
   pub content: String,
   pub sender_name: String,
   pub created_at: chrono::DateTime<chrono::Utc>,
@@ -101,9 +101,9 @@ pub fn validate_chat_name(name: &str) -> Result<(), CoreError> {
 
 pub fn process_chat_members(
   chat_type: &ChatType,
-  creator_id: i64,
-  target_members: Option<&Vec<i64>>,
-) -> Result<Vec<i64>, CoreError> {
+  creator_id: UserId,
+  target_members: Option<&Vec<UserId>>,
+) -> Result<Vec<UserId>, CoreError> {
   match chat_type {
     ChatType::Single => match target_members {
       Some(members) if members.len() == 1 => {

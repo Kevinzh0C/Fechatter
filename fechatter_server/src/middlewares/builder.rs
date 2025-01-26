@@ -27,7 +27,6 @@ use axum::middleware::Next;
 use axum::response::IntoResponse;
 use fechatter_core::jwt::TokenManager;
 use fechatter_core::middlewares::custom_builder::{add_auth_middleware, add_refresh_middleware};
-use fechatter_core::middlewares::server_time::ServerTimeLayer as _; // Import server time middleware
 use fechatter_core::middlewares::{
   ActualAuthServiceProvider, TokenVerifier, WithServiceProvider, WithTokenManager,
 };

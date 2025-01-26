@@ -43,10 +43,13 @@ messaging:
       max_msg_size: 1048576 # 1MB
       max_age: 24 # 1 day retention
 
-# 搜索配置（可选，为未来扩展准备）
 search:
-  enabled: false # 当前禁用，等待 Meilisearch 集成
+  enabled: true
   provider: "meilisearch"
+  async_indexing:
+    enabled: true
+    batch_size: 10
+    batch_timeout_ms: 1000
   meilisearch:
     url: "http://localhost:7700"
     api_key: ""

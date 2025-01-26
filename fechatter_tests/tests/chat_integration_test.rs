@@ -1,17 +1,17 @@
 #[cfg(test)]
 mod chat_integration_tests {
   use axum::{
-    Router,
     body::Body,
-    http::{Method, Request, StatusCode, header},
+    http::{header, Method, Request, StatusCode},
     routing::{get, patch, post},
+    Router,
   };
   use fechatter_core::middlewares::{
-    ActualAuthServiceProvider, TokenVerifier, custom_builder::CoreBuilder,
+    custom_builder::CoreBuilder, ActualAuthServiceProvider, TokenVerifier,
   };
   use fechatter_core::{
+    models::{jwt::UserClaims, AuthUser},
     TokenService,
-    models::{AuthUser, jwt::UserClaims},
   };
   use fechatter_server::AppState;
   use serde_json::json;
@@ -88,45 +88,39 @@ mod chat_integration_tests {
 
   // 替代AppState::test_new()，创建测试专用AppState
   async fn setup_test_environment() -> (AppState, Vec<AuthUser>) {
-    // 创建配置
-    let config = fechatter_server::AppConfig::load().expect("Failed to load config");
+    let (_tdb, state) = AppState::test_new().await.unwrap();
 
-    // 创建AppState
-    let state = AppState::try_new(config)
-      .await
-      .expect("Failed to create AppState");
-
-    // 创建模拟用户
+    // 创建模拟用户 - 移除不存在的password_hash字段
     let users = vec![
       AuthUser {
-        id: 1,
+        id: fechatter_core::UserId(1),
+        fullname: "User 1".to_string(),
         email: "user1@example.com".to_string(),
-        fullname: "User One".to_string(),
-        workspace_id: 1,
+        workspace_id: fechatter_core::WorkspaceId(1),
         status: fechatter_core::UserStatus::Active,
         created_at: chrono::Utc::now(),
       },
       AuthUser {
-        id: 2,
+        id: fechatter_core::UserId(2),
+        fullname: "User 2".to_string(),
         email: "user2@example.com".to_string(),
-        fullname: "User Two".to_string(),
-        workspace_id: 1,
+        workspace_id: fechatter_core::WorkspaceId(2),
         status: fechatter_core::UserStatus::Active,
         created_at: chrono::Utc::now(),
       },
       AuthUser {
-        id: 3,
+        id: fechatter_core::UserId(3),
+        fullname: "User 3".to_string(),
         email: "user3@example.com".to_string(),
-        fullname: "User Three".to_string(),
-        workspace_id: 1,
+        workspace_id: fechatter_core::WorkspaceId(1),
         status: fechatter_core::UserStatus::Active,
         created_at: chrono::Utc::now(),
       },
       AuthUser {
-        id: 4,
+        id: fechatter_core::UserId(4),
+        fullname: "User 4".to_string(),
         email: "user4@example.com".to_string(),
-        fullname: "User Four".to_string(),
-        workspace_id: 1,
+        workspace_id: fechatter_core::WorkspaceId(1),
         status: fechatter_core::UserStatus::Active,
         created_at: chrono::Utc::now(),
       },
@@ -718,10 +712,10 @@ mod chat_integration_tests {
 
     // 准备不同工作区的用户
     let mut ws1_user = users[0].clone();
-    ws1_user.workspace_id = 1;
+    ws1_user.workspace_id = fechatter_core::WorkspaceId(1);
 
     let mut ws2_user = users[1].clone();
-    ws2_user.workspace_id = 2;
+    ws2_user.workspace_id = fechatter_core::WorkspaceId(2);
 
     // 使用服务器的TokenService直接生成令牌，而不是使用refresh token
     // 生成令牌

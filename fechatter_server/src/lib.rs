@@ -7,10 +7,8 @@ pub mod openapi;
 pub mod services;
 pub mod tests;
 pub mod utils;
-use std::sync::Arc;
-use std::{fmt, ops::Deref};
+use std::{fmt, ops::Deref, sync::Arc};
 
-use crate::services::EventPublisher;
 use axum::{
   Router,
   routing::{get, patch, post},
@@ -21,43 +19,55 @@ use fechatter_core::chat::ChatSidebar;
 use fechatter_core::error::CoreError;
 use fechatter_core::models::jwt::TokenManager;
 use fechatter_core::{
-  SigninUser,
   middlewares::{
     ActualAuthServiceProvider, TokenVerifier as CoreTokenVerifier, WithServiceProvider,
     WithTokenManager as CoreWithTokenManager,
   },
-  models::jwt::{LogoutService, RefreshTokenService, SigninService, SignupService, UserClaims},
+  models::jwt::UserClaims,
 };
 use openapi::OpenApiRouter;
 use sqlx::PgPool;
 use tokio::fs;
 use tokio::time::Instant;
-use utils::refresh_token::RefreshTokenAdaptor;
 
 use crate::error::{AppError, ErrorOutput};
+use crate::services::EventPublisher;
 
 pub use error::{AppError as ErrorAppError, ErrorOutput as ErrorOutputType};
-use fechatter_core::middlewares::custom_builder::RouterExt as CoreRouterExt;
 
 use handlers::*;
 use middlewares::RouterExt;
 
-use crate::handlers::auth::{
-  logout_all_handler, logout_handler, refresh_token_handler, signin_handler, signup_handler,
-};
-use crate::handlers::chat::{
-  create_chat_handler, delete_chat_handler, list_chats_handler, update_chat_handler,
-};
-use crate::handlers::chat_member::{
-  add_chat_members_batch_handler, list_chat_members_handler, remove_chat_member_handler,
+use crate::handlers::{
+  // Chat member handlers
+  add_chat_members_batch_handler,
+  // Chat handlers
+  create_chat_handler,
+  delete_chat_handler,
+  // Message handlers
+  file_handler,
+  fix_file_storage_handler,
+  // Health handlers
+  health_check,
+  // Workspace handlers
+  list_all_workspace_users_handler,
+  list_chat_members_handler,
+  list_chats_handler,
+  list_messages_handler,
+  // Auth handlers
+  logout_all_handler,
+  logout_handler,
+  refresh_token_handler,
+  remove_chat_member_handler,
+  search_messages,
+  send_message_handler,
+  signin_handler,
+  signup_handler,
+  simple_health_check,
   transfer_chat_ownership_handler,
-};
-use crate::handlers::messages::{
-  file_handler, fix_file_storage_handler, list_messages_handler, send_message_handler,
+  update_chat_handler,
   upload_handler,
 };
-use crate::handlers::search_messages;
-use crate::handlers::workspace::list_all_workspace_users_handler;
 
 // Define the cache trait locally
 #[allow(unused)]
@@ -176,6 +186,15 @@ impl AppState {
     self.inner.event_publisher.as_ref()
   }
 
+  /// Get the NATS client if available
+  pub fn nats_client(&self) -> Option<&async_nats::Client> {
+    self
+      .inner
+      .event_publisher
+      .as_ref()
+      .map(|ep| ep.nats_client())
+  }
+
   /// Get the search service if available
   pub fn search_service(&self) -> Option<&crate::services::SearchService> {
     self.inner.service_provider.search_service()
@@ -281,6 +300,8 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
   let app = Router::new()
     .openapi()
     .route("/", get(index_handler))
+    .route("/health", get(health_check))
+    .route("/health/simple", get(simple_health_check))
     .nest("/api", api)
     .with_state(state);
 
@@ -310,7 +331,9 @@ impl AppState {
     let pool = create_pool(&config.server.db_url).await?;
 
     // Create refresh token adapter and token manager
-    let refresh_token_repo = Arc::new(RefreshTokenAdaptor::new(Arc::new(pool.clone())));
+    let refresh_token_repo = Arc::new(crate::utils::refresh_token::RefreshTokenAdaptor::new(
+      Arc::new(pool.clone()),
+    ));
     let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo)?;
 
     // Initialize search service if enabled
@@ -404,6 +427,8 @@ impl AppState {
     payload: &fechatter_core::CreateUser,
     auth_context: Option<fechatter_core::services::AuthContext>,
   ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
+    use fechatter_core::SignupService;
+
     <Self as ActualAuthServiceProvider>::create_service(self)
       .signup(payload, auth_context)
       .await
@@ -414,6 +439,8 @@ impl AppState {
     payload: &fechatter_core::SigninUser,
     auth_context: Option<fechatter_core::services::AuthContext>,
   ) -> Result<Option<fechatter_core::AuthTokens>, fechatter_core::error::CoreError> {
+    use fechatter_core::SigninService;
+
     <Self as ActualAuthServiceProvider>::create_service(self)
       .signin(payload, auth_context)
       .await
@@ -424,18 +451,27 @@ impl AppState {
     refresh_token: &str,
     auth_context: Option<fechatter_core::services::AuthContext>,
   ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
+    use fechatter_core::RefreshTokenService;
+
     <Self as ActualAuthServiceProvider>::create_service(self)
       .refresh_token(refresh_token, auth_context)
       .await
   }
 
   pub async fn logout(&self, refresh_token: &str) -> Result<(), fechatter_core::error::CoreError> {
+    use fechatter_core::LogoutService;
+
     <Self as ActualAuthServiceProvider>::create_service(self)
       .logout(refresh_token)
       .await
   }
 
-  pub async fn logout_all(&self, user_id: i64) -> Result<(), fechatter_core::error::CoreError> {
+  pub async fn logout_all(
+    &self,
+    user_id: fechatter_core::UserId,
+  ) -> Result<(), fechatter_core::error::CoreError> {
+    use fechatter_core::LogoutService;
+
     <Self as ActualAuthServiceProvider>::create_service(self)
       .logout_all(user_id)
       .await

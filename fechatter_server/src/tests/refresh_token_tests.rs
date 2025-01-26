@@ -21,7 +21,7 @@ mod refresh_token_tests {
     // Create UserClaims from user
     let user_claims = UserClaims {
       id: user.id,
-      workspace_id: user.workspace_id,
+      workspace_id: user.workspace_id.into(),
       fullname: user.fullname.clone(),
       email: user.email.clone(),
       status: user.status,
@@ -114,7 +114,7 @@ mod refresh_token_tests {
     // Create UserClaims from user
     let user_claims = UserClaims {
       id: user.id,
-      workspace_id: user.workspace_id,
+      workspace_id: user.workspace_id.into(),
       fullname: user.fullname.clone(),
       email: user.email.clone(),
       status: user.status,
@@ -199,7 +199,7 @@ mod refresh_token_tests {
     // Create UserClaims from user
     let user_claims = UserClaims {
       id: user.id,
-      workspace_id: user.workspace_id,
+      workspace_id: user.workspace_id.into(),
       fullname: user.fullname.clone(),
       email: user.email.clone(),
       status: user.status,
@@ -229,7 +229,7 @@ mod refresh_token_tests {
     // Create UserClaims from user
     let user_claims = UserClaims {
       id: user.id,
-      workspace_id: user.workspace_id,
+      workspace_id: user.workspace_id.into(),
       fullname: user.fullname.clone(),
       email: user.email.clone(),
       status: user.status,

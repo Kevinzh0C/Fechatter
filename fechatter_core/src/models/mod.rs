@@ -1,5 +1,6 @@
 pub mod chat;
 pub mod chat_member;
+pub mod ids;
 pub mod jwt;
 pub mod message;
 pub mod user;
@@ -8,6 +9,7 @@ pub mod workspace;
 pub use crate::error::CoreError;
 pub use chat::*;
 pub use chat_member::*;
+pub use ids::*;
 pub use jwt::*;
 pub use message::*;
 pub use user::*;
@@ -27,7 +29,7 @@ pub enum UserStatus {
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow, PartialEq, Eq, Clone, ToSchema)]
 pub struct User {
-  pub id: i64,
+  pub id: UserId,
   pub fullname: String,
   pub email: String,
   #[sqlx(default)]
@@ -35,21 +37,21 @@ pub struct User {
   pub password_hash: Option<String>,
   pub status: UserStatus,
   pub created_at: DateTime<Utc>,
-  pub workspace_id: i64,
+  pub workspace_id: WorkspaceId,
 }
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow, PartialEq, Eq, Clone, ToSchema)]
 pub struct ChatUser {
-  pub id: i64,
+  pub id: UserId,
   pub fullname: String,
   pub email: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow, PartialEq, Eq, Clone, ToSchema)]
 pub struct Workspace {
-  pub id: i64,
+  pub id: WorkspaceId,
   pub name: String,
-  pub owner_id: i64,
+  pub owner_id: UserId,
   pub created_at: DateTime<Utc>,
 }
 
@@ -77,23 +79,23 @@ impl std::fmt::Display for ChatType {
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
 pub struct Chat {
-  pub id: i64,
-  pub workspace_id: i64,
+  pub id: ChatId,
+  pub workspace_id: WorkspaceId,
   pub name: String,
   pub chat_type: ChatType,
-  pub chat_members: Vec<i64>,
+  pub chat_members: Vec<UserId>,
   #[sqlx(default)]
   pub description: String,
-  pub created_by: i64,
+  pub created_by: UserId,
   pub created_at: DateTime<Utc>,
   pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone, PartialEq, Eq, ToSchema)]
 pub struct Message {
-  pub id: i64,
-  pub chat_id: i64,
-  pub sender_id: i64,
+  pub id: MessageId,
+  pub chat_id: ChatId,
+  pub sender_id: UserId,
   pub content: String,
   #[sqlx(default)] // Handle NULL in DB
   pub files: Option<Vec<String>>,
@@ -106,8 +108,8 @@ pub struct Message {
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ChatMember {
-  pub chat_id: i64,
-  pub user_id: i64,
+  pub chat_id: ChatId,
+  pub user_id: UserId,
   pub joined_at: DateTime<Utc>,
 }
 

@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod cookie_refresh_tests {
-  use crate::models::jwt::{AuthTokens, RefreshTokenData};
   use anyhow::Result;
   use axum::{
     Json,
@@ -9,6 +8,7 @@ mod cookie_refresh_tests {
     response::IntoResponse,
   };
   use chrono::{Duration, Utc};
+  use fechatter_core::{AuthTokens, RefreshTokenData};
 
   // Basic function to create mock auth tokens for tests
   fn create_mock_tokens() -> AuthTokens {
@@ -25,7 +25,8 @@ mod cookie_refresh_tests {
     }
   }
 
-  fn get_cookie_value(headers: &HeaderMap, name: &str) -> Option<String> {
+  #[allow(dead_code)]
+fn get_cookie_value(headers: &HeaderMap, name: &str) -> Option<String> {
     headers
       .get_all(header::SET_COOKIE)
       .iter()

@@ -1,5 +1,5 @@
 use crate::models::AuthUser;
-use crate::{AppState, ErrorOutput, SigninUser, error::AppError, models::CreateUser};
+use crate::{AppState, ErrorOutput, error::AppError, models::CreateUser};
 use axum::{
   Extension, Json,
   extract::State,
@@ -10,8 +10,7 @@ use axum::{
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use chrono::{DateTime, Utc};
 
-use fechatter_core::models::jwt::ACCESS_TOKEN_EXPIRATION;
-use fechatter_core::services::AuthContext;
+use fechatter_core::{SigninUser, models::jwt::ACCESS_TOKEN_EXPIRATION, services::AuthContext};
 use serde::{Deserialize, Serialize};
 
 fn set_refresh_token_cookie(
@@ -247,7 +246,7 @@ pub(crate) async fn refresh_token_handler(
     println!("!! Debug: User already authenticated, generating new tokens");
     // User is authenticated, we can just generate new tokens
     let tokens = state
-      .generate_new_tokens_for_user(auth_user.id, auth_context)
+      .generate_new_tokens_for_user(auth_user.id.into(), auth_context)
       .await?;
 
     let mut response_headers = HeaderMap::new();

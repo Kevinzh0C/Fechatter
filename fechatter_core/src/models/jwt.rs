@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid;
 
-use super::{CreateUser, SigninUser, User, UserRepository, UserStatus};
+use super::{CreateUser, SigninUser, User, UserId, UserRepository, UserStatus, WorkspaceId};
 use crate::error::CoreError;
 use crate::middlewares::TokenVerifier as MwTokenVerifier;
 use crate::services::AuthContext;
@@ -45,8 +45,8 @@ pub struct Claims {
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct UserClaims {
-  pub id: i64,
-  pub workspace_id: i64,
+  pub id: UserId,
+  pub workspace_id: WorkspaceId,
   pub fullname: String,
   pub email: String,
   pub status: UserStatus,
@@ -56,7 +56,7 @@ pub struct UserClaims {
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
 pub struct RefreshToken {
   pub id: i64,
-  pub user_id: i64,
+  pub user_id: UserId,
   pub token_hash: String, // The repo impl will handle hashing.
   pub expires_at: DateTime<Utc>,
   pub issued_at: DateTime<Utc>,
@@ -114,7 +114,7 @@ pub struct ReplaceTokenPayload {
 // Renamed from StoreNewTokenArgs
 #[derive(Debug)]
 pub struct StoreTokenPayload {
-  pub user_id: i64,
+  pub user_id: UserId,
   pub raw_token: String,
   pub expires_at: DateTime<Utc>,
   pub absolute_expires_at: DateTime<Utc>,
@@ -127,7 +127,7 @@ pub trait RefreshTokenRepository: Send + Sync {
   async fn find_by_token(&self, raw_token: &str) -> Result<Option<RefreshToken>, CoreError>;
   async fn replace(&self, payload: ReplaceTokenPayload) -> Result<RefreshToken, CoreError>;
   async fn revoke(&self, token_id: i64) -> Result<(), CoreError>;
-  async fn revoke_all_for_user(&self, user_id: i64) -> Result<(), CoreError>;
+  async fn revoke_all_for_user(&self, user_id: UserId) -> Result<(), CoreError>;
 
   async fn create(&self, payload: StoreTokenPayload) -> Result<RefreshToken, CoreError>;
 }
@@ -163,7 +163,7 @@ pub trait SigninService: Send + Sync {
 pub trait LogoutService: Send + Sync {
   async fn logout(&self, refresh_token: &str) -> Result<(), CoreError>;
 
-  async fn logout_all(&self, user_id: i64) -> Result<(), CoreError>;
+  async fn logout_all(&self, user_id: UserId) -> Result<(), CoreError>;
 }
 
 pub trait AuthServiceFactory {
@@ -385,22 +385,32 @@ struct DummyRefreshTokenRepository;
 #[async_trait]
 impl RefreshTokenRepository for DummyRefreshTokenRepository {
   async fn find_by_token(&self, _raw_token: &str) -> Result<Option<RefreshToken>, CoreError> {
-    Ok(None)
-  }
-
-  async fn replace(&self, payload: ReplaceTokenPayload) -> Result<RefreshToken, CoreError> {
-    let now = Utc::now();
-    Ok(RefreshToken {
+    Ok(Some(RefreshToken {
       id: 1,
-      user_id: 1,
-      token_hash: payload.new_raw_token,
-      expires_at: payload.new_expires_at,
-      issued_at: now,
+      user_id: UserId::new(1),
+      token_hash: "dummy_hash".to_string(),
+      expires_at: Utc::now() + chrono::Duration::days(1),
+      issued_at: Utc::now(),
       revoked: false,
       replaced_by: None,
-      user_agent: payload.user_agent,
-      ip_address: payload.ip_address,
-      absolute_expires_at: payload.new_absolute_expires_at,
+      user_agent: None,
+      ip_address: None,
+      absolute_expires_at: Utc::now() + chrono::Duration::days(30),
+    }))
+  }
+
+  async fn replace(&self, _payload: ReplaceTokenPayload) -> Result<RefreshToken, CoreError> {
+    Ok(RefreshToken {
+      id: 2,
+      user_id: UserId::new(1),
+      token_hash: "new_dummy_hash".to_string(),
+      expires_at: Utc::now() + chrono::Duration::days(1),
+      issued_at: Utc::now(),
+      revoked: false,
+      replaced_by: None,
+      user_agent: None,
+      ip_address: None,
+      absolute_expires_at: Utc::now() + chrono::Duration::days(30),
     })
   }
 
@@ -408,18 +418,17 @@ impl RefreshTokenRepository for DummyRefreshTokenRepository {
     Ok(())
   }
 
-  async fn revoke_all_for_user(&self, _user_id: i64) -> Result<(), CoreError> {
+  async fn revoke_all_for_user(&self, _user_id: UserId) -> Result<(), CoreError> {
     Ok(())
   }
 
   async fn create(&self, payload: StoreTokenPayload) -> Result<RefreshToken, CoreError> {
-    let now = Utc::now();
     Ok(RefreshToken {
       id: 1,
       user_id: payload.user_id,
       token_hash: payload.raw_token,
       expires_at: payload.expires_at,
-      issued_at: now,
+      issued_at: Utc::now(),
       revoked: false,
       replaced_by: None,
       user_agent: payload.user_agent,

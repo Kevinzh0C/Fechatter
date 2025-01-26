@@ -16,8 +16,8 @@ use tower_http::{
 use tracing::Level;
 
 use crate::models::AuthUser;
+use crate::models::UserId;
 use crate::models::jwt::AuthServiceTrait;
-
 
 pub use self::bearer_auth::verify_token_middleware;
 pub use self::custom_builder::*;
@@ -30,12 +30,12 @@ pub const SERVER_TIME_HEADER: &str = "x-server-time";
 /// 一个简单的trait，表示类型可以提供ID
 /// 用于需要访问ID的通用代码
 pub trait HasIdField {
-  fn id(&self) -> i64;
+  fn id(&self) -> UserId;
 }
 
 /// 为标准AuthUser实现HasIdField
 impl HasIdField for AuthUser {
-  fn id(&self) -> i64 {
+  fn id(&self) -> UserId {
     self.id
   }
 }

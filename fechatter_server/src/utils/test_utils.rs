@@ -64,7 +64,7 @@ macro_rules! create_new_test_chat {
             use fechatter_core::ChatType;
 
             // Convert members Vec<&User> or Vec<User> to Vec<i64>
-            let member_ids_vec: Vec<i64> = $members.iter().map(|u| u.id).collect();
+            let member_ids_vec: Vec<i64> = $members.iter().map(|u| u.id.into()).collect();
             // Handle optional description
             let description_str = match Option::<String>::None $(.or(Some($desc.to_string())))? {
                 Some(s) => s,
@@ -73,13 +73,13 @@ macro_rules! create_new_test_chat {
 
             // Actually create the chat in the database
             let chat = $state.create_new_chat(
-                $creator.id,
+                $creator.id.into(),
                 $name,
                 $chat_type,
                 Some(member_ids_vec),
                 Some(&description_str),
-                $creator.workspace_id,
-            )
+                $creator.workspace_id.into(),
+    )
             .await
             .expect(&format!("Failed to create test chat '{}'", $name));
 

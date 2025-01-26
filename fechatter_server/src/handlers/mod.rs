@@ -1,8 +1,16 @@
 pub mod auth;
-pub mod chat;
-pub mod chat_member;
+mod chat;
+mod chat_member;
+mod health;
 pub mod messages;
-pub mod workspace;
+mod workspace;
+
+pub use auth::*;
+pub use chat::*;
+pub use chat_member::*;
+pub use health::*;
+pub use messages::*;
+pub use workspace::*;
 
 use axum::response::IntoResponse;
 

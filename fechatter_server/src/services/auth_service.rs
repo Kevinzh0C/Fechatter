@@ -2,7 +2,7 @@ use crate::utils::refresh_token::auth_context_matches;
 use async_trait::async_trait;
 use chrono::Utc;
 use fechatter_core::{
-  AuthContext, AuthServiceTrait, AuthTokens, CoreError, CreateUser, LogoutService, RefreshToken,
+  AuthContext, AuthServiceTrait, AuthTokens, CoreError, CreateUser, LogoutService,
   RefreshTokenData, RefreshTokenRepository, RefreshTokenService, ReplaceTokenPayload,
   SigninService, SigninUser, SignupService, TokenService, UserClaims, UserRepository, UserStatus,
   error::TokenValidationError,
@@ -16,9 +16,6 @@ pub struct AuthService {
   pub(crate) token_service: Arc<Box<dyn TokenService + Send + Sync + 'static>>,
   pub(crate) refresh_token_repository: Arc<Box<dyn RefreshTokenRepository + Send + Sync + 'static>>,
 }
-
-// Define RefreshTokenInfo as an alias for RefreshToken
-type RefreshTokenInfo = RefreshToken;
 
 #[async_trait]
 impl RefreshTokenService for AuthService {
@@ -332,7 +329,7 @@ impl LogoutService for AuthService {
     }
   }
 
-  async fn logout_all(&self, user_id: i64) -> Result<(), CoreError> {
+  async fn logout_all(&self, user_id: fechatter_core::UserId) -> Result<(), CoreError> {
     match self
       .refresh_token_repository
       .revoke_all_for_user(user_id)
@@ -373,55 +370,5 @@ impl AuthService {
       token_service: Arc::clone(&arc_service.token_service),
       refresh_token_repository: Arc::clone(&arc_service.refresh_token_repository),
     }
-  }
-
-  async fn validate_refresh_token(
-    &self,
-    refresh_token_str: &str,
-  ) -> Result<RefreshTokenInfo, CoreError> {
-    let token_record = match self
-      .refresh_token_repository
-      .find_by_token(refresh_token_str)
-      .await
-    {
-      Ok(Some(record)) => record,
-      Ok(None) => {
-        tracing::warn!("Token validation failed: Token not found");
-        return Err(CoreError::InvalidToken(
-          fechatter_core::error::TokenValidationError::NotFound,
-        ));
-      }
-      Err(e) => {
-        tracing::warn!("Token validation failed: Error finding token: {:?}", e);
-        return Err(CoreError::InvalidToken(
-          fechatter_core::error::TokenValidationError::NotFound,
-        ));
-      }
-    };
-
-    let now = chrono::Utc::now();
-
-    // 检查令牌是否过期 - 同时检查常规过期时间和绝对过期时间，防止时钟回拨问题
-    if token_record.expires_at < now || token_record.absolute_expires_at < now {
-      tracing::warn!(
-        "Token validation failed: Token expired. Expires at: {}, Absolute expires at: {}, Now: {}",
-        token_record.expires_at,
-        token_record.absolute_expires_at,
-        now
-      );
-      return Err(CoreError::InvalidToken(
-        fechatter_core::error::TokenValidationError::Expired,
-      ));
-    }
-
-    // Check if token has been revoked
-    if token_record.revoked {
-      tracing::warn!("Token validation failed: Token has been revoked");
-      return Err(CoreError::InvalidToken(
-        fechatter_core::error::TokenValidationError::Revoked,
-      ));
-    }
-
-    Ok(token_record)
   }
 }

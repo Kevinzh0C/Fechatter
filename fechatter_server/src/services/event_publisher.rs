@@ -1,11 +1,11 @@
 use crate::config::NatsSubjectsConfig;
 use crate::error::AppError;
+use crate::services::indexer_sync_service::{ChatInfo, MessageIndexEvent};
 use async_nats::Client as NatsClient;
 use chrono::{DateTime, Utc};
 use fechatter_core::Message;
 use serde::{Deserialize, Serialize};
-use tracing::{error, info, warn};
-use uuid;
+use tracing::{error, info};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MessageCreatedEvent {
@@ -39,6 +39,11 @@ impl EventPublisher {
       nats_client,
       subjects,
     }
+  }
+
+  /// Get the NATS client for health checks
+  pub fn nats_client(&self) -> &NatsClient {
+    &self.nats_client
   }
 
   /// Publish message created event
@@ -327,6 +332,86 @@ impl EventPublisher {
     );
     Ok(())
   }
+
+  /// 发布消息索引事件（新增异步索引支持）
+  pub async fn publish_search_index_event(
+    &self,
+    message: &Message,
+    chat_info: &ChatInfo,
+  ) -> Result<(), AppError> {
+    let event = MessageIndexEvent {
+      message: message.clone(),
+      chat_info: chat_info.clone(),
+    };
+
+    let payload = match serde_json::to_vec(&event) {
+      Ok(payload) => payload,
+      Err(e) => {
+        error!("Failed to serialize search index event: {}", e);
+        return Err(AppError::EventPublishingError(format!(
+          "Failed to serialize search index event: {}",
+          e
+        )));
+      }
+    };
+
+    info!(
+      "Publishing search index event: message_id={}, chat_name={}",
+      message.id, chat_info.chat_name
+    );
+
+    // 发布到专门的搜索索引主题
+    let subject = format!("fechatter.search.index.message.{}", message.id);
+    if let Err(e) = self
+      .nats_client
+      .publish(subject.clone(), payload.into())
+      .await
+    {
+      error!("Failed to publish search index event: {}", e);
+      return Err(AppError::NatsError(format!(
+        "Failed to publish search index event: {}",
+        e
+      )));
+    }
+
+    info!(
+      "Successfully published search index event: message_id={}, subject={}",
+      message.id, subject
+    );
+    Ok(())
+  }
+
+  /// 发布消息删除索引事件
+  pub async fn publish_search_delete_event(&self, message_id: i64) -> Result<(), AppError> {
+    let subject = format!("fechatter.search.delete.message.{}", message_id);
+    let payload = serde_json::to_vec(&serde_json::json!({
+      "message_id": message_id,
+      "action": "delete"
+    }))
+    .map_err(|e| {
+      AppError::EventPublishingError(format!("Failed to serialize delete event: {}", e))
+    })?;
+
+    info!("Publishing search delete event: message_id={}", message_id);
+
+    if let Err(e) = self
+      .nats_client
+      .publish(subject.clone(), payload.into())
+      .await
+    {
+      error!("Failed to publish search delete event: {}", e);
+      return Err(AppError::NatsError(format!(
+        "Failed to publish search delete event: {}",
+        e
+      )));
+    }
+
+    info!(
+      "Successfully published search delete event: message_id={}, subject={}",
+      message_id, subject
+    );
+    Ok(())
+  }
 }
 
 #[cfg(test)]
@@ -334,7 +419,7 @@ mod tests {
   use super::*;
   use crate::config::NatsSubjectsConfig;
   use chrono::Utc;
-  use fechatter_core::{Message, UserStatus};
+  use fechatter_core::Message;
   use uuid::Uuid;
 
   // Create test NATS subject configuration
@@ -354,9 +439,9 @@ mod tests {
   // Create test message
   fn create_test_message() -> Message {
     Message {
-      id: 1,
-      chat_id: 100,
-      sender_id: 10,
+      id: fechatter_core::MessageId(1),
+      chat_id: fechatter_core::ChatId(100),
+      sender_id: fechatter_core::UserId(10),
       content: "Test message content".to_string(),
       files: Some(vec!["file1.txt".to_string(), "file2.jpg".to_string()]),
       created_at: Utc::now(),
@@ -426,7 +511,7 @@ mod tests {
     let event = DuplicateMessageEvent {
       idempotency_key: Uuid::new_v4(),
       chat_id: 100,
-      sender_id: 10,
+      sender_id: fechatter_core::UserId(10).into(),
     };
 
     // Test serialization and deserialization
@@ -459,7 +544,7 @@ mod tests {
     let duplicate_event = DuplicateMessageEvent {
       idempotency_key: Uuid::new_v4(),
       chat_id: 100,
-      sender_id: 10,
+      sender_id: fechatter_core::UserId(10).into(),
     };
 
     // Ensure Debug trait works correctly

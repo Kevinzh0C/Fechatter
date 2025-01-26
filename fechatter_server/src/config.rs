@@ -76,7 +76,15 @@ pub struct JetStreamConfig {
 pub struct SearchConfig {
   pub enabled: bool,
   pub provider: String,
+  pub async_indexing: AsyncIndexingConfig,
   pub meilisearch: MeilisearchConfig,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AsyncIndexingConfig {
+  pub enabled: bool,
+  pub batch_size: usize,
+  pub batch_timeout_ms: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
