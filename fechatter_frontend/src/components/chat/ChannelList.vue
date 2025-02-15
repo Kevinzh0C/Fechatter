@@ -14,108 +14,112 @@
 
     <!-- 📋 频道列表 (Channels) -->
     <div v-else-if="listType === 'channels' && sortedChannels.length > 0" class="channels-container">
-      <router-link v-for="channel in sortedChannels" :key="`channel-${channel.id}`" :to="`/chat/${channel.id}`" custom
-        v-slot="{ navigate, isActive }">
-        <div @click="navigate" class="channel-card" :class="{ 'active': isActive }" :title="channel.name">
-          <!-- 频道图标 -->
-          <div class="channel-icon-container">
-            <div class="channel-icon" :class="{ 'private': isPrivateChannel(channel) }">
-              <svg v-if="isPrivateChannel(channel)" class="icon-svg" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              <span v-else class="hash-symbol">#</span>
-            </div>
-          </div>
-
-          <!-- 频道信息 -->
-          <div class="channel-info">
-            <div class="channel-header">
-              <h3 class="channel-name">{{ channel.name }}</h3>
-              <time v-if="channel.last_message" class="channel-time">
-                {{ formatSmartTimestamp(channel.last_message.created_at) }}
-              </time>
-            </div>
-
-            <!-- 最新消息预览 -->
-            <div v-if="channel.last_message" class="channel-preview">
-              <span class="sender">{{ getLastMessageSender(channel) }}</span>
-              <span class="message">{{ truncateMessage(channel.last_message.content) }}</span>
-            </div>
-            <div v-else class="channel-empty">
-              <span>暂无消息</span>
-            </div>
-          </div>
-
-          <!-- 状态指示器 -->
-          <div class="channel-status">
-            <div v-if="channel.unread_count && channel.unread_count > 0" class="unread-indicator">
-              {{ channel.unread_count > 99 ? '99+' : channel.unread_count }}
-            </div>
-            <div v-else-if="channel.member_count && channel.member_count > 0" class="member-indicator">
-              <svg class="member-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              <span>{{ channel.member_count }}</span>
-            </div>
+      <div v-for="channel in sortedChannels" 
+           :key="`channel-${channel.id}`" 
+           @click="navigateToChat(channel.id)"
+           class="channel-card" 
+           :class="{ 'active': isActiveChat(channel.id) }" 
+           :title="channel.name">
+        <!-- 频道图标 -->
+        <div class="channel-icon-container">
+          <div class="channel-icon" :class="{ 'private': isPrivateChannel(channel) }">
+            <svg v-if="isPrivateChannel(channel)" class="icon-svg" fill="none" stroke="currentColor"
+              viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <span v-else class="hash-symbol">#</span>
           </div>
         </div>
-      </router-link>
+
+        <!-- 频道信息 -->
+        <div class="channel-info">
+          <div class="channel-header">
+            <h3 class="channel-name">{{ channel.name }}</h3>
+            <time v-if="channel.last_message" class="channel-time">
+              {{ formatSmartTimestamp(channel.last_message.created_at) }}
+            </time>
+          </div>
+
+          <!-- 最新消息预览 -->
+          <div v-if="channel.last_message" class="channel-preview">
+            <span class="sender">{{ getLastMessageSender(channel) }}</span>
+            <span class="message">{{ truncateMessage(channel.last_message.content) }}</span>
+          </div>
+          <div v-else class="channel-empty">
+            <span>暂无消息</span>
+          </div>
+        </div>
+
+        <!-- 状态指示器 -->
+        <div class="channel-status">
+          <div v-if="channel.unread_count && channel.unread_count > 0" class="unread-indicator">
+            {{ channel.unread_count > 99 ? '99+' : channel.unread_count }}
+          </div>
+          <div v-else-if="channel.member_count && channel.member_count > 0" class="member-indicator">
+            <svg class="member-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span>{{ channel.member_count }}</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 💬 直接消息列表 (DMs) -->
     <div v-else-if="listType === 'dms' && sortedDMs.length > 0" class="dms-container">
-      <router-link v-for="dm in sortedDMs" :key="`dm-${dm.id}`" :to="`/chat/${dm.id}`" custom
-        v-slot="{ navigate, isActive }">
-        <div @click="navigate" class="dm-card" :class="{ 'active': isActive }" :title="getDMDisplayName(dm)">
-          <!-- 用户头像 -->
-          <div class="dm-avatar-container">
-            <div class="dm-avatar">
-              <span class="avatar-text">{{ getDMDisplayName(dm).charAt(0).toUpperCase() }}</span>
-              <div class="presence-indicator" :class="getOnlineStatus(dm)"></div>
-            </div>
-          </div>
-
-          <!-- 用户信息 -->
-          <div class="dm-info">
-            <div class="dm-header">
-              <h3 class="dm-username">{{ getDMDisplayName(dm) }}</h3>
-              <time v-if="dm.last_message" class="dm-time">
-                {{ formatSmartTimestamp(dm.last_message?.created_at) }}
-              </time>
-            </div>
-
-            <!-- 最新消息 -->
-            <div class="dm-message">
-              <div v-if="dm.last_message" class="message-content">
-                <span v-if="dm.last_message.sender_id === authStore.user?.id" class="you-indicator">You:</span>
-                <span class="message-text">{{ truncateMessage(dm.last_message.content, 28) }}</span>
-              </div>
-              <div v-else class="no-messages">
-                <span>Start conversation</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- 操作区域 -->
-          <div class="dm-actions">
-            <!-- 未读消息指示器 -->
-            <div v-if="dm.unread_count && dm.unread_count > 0" class="unread-indicator">
-              {{ dm.unread_count > 99 ? '99+' : dm.unread_count }}
-            </div>
-
-            <!-- 关闭按钮 -->
-            <button @click.stop.prevent="closeDM(dm.id)" class="close-dm-btn" title="Close conversation"
-              aria-label="Close conversation">
-              <svg class="close-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+      <div v-for="dm in sortedDMs" 
+           :key="`dm-${dm.id}`" 
+           @click="navigateToChat(dm.id)"
+           class="dm-card" 
+           :class="{ 'active': isActiveChat(dm.id) }" 
+           :title="getDMDisplayName(dm)">
+        <!-- 用户头像 -->
+        <div class="dm-avatar-container">
+          <div class="dm-avatar">
+            <span class="avatar-text">{{ getDMDisplayName(dm).charAt(0).toUpperCase() }}</span>
+            <div class="presence-indicator" :class="getOnlineStatus(dm)"></div>
           </div>
         </div>
-      </router-link>
+
+        <!-- 用户信息 -->
+        <div class="dm-info">
+          <div class="dm-header">
+            <h3 class="dm-username">{{ getDMDisplayName(dm) }}</h3>
+            <time v-if="dm.last_message" class="dm-time">
+              {{ formatSmartTimestamp(dm.last_message?.created_at) }}
+            </time>
+          </div>
+
+          <!-- 最新消息 -->
+          <div class="dm-message">
+            <div v-if="dm.last_message" class="message-content">
+              <span v-if="dm.last_message.sender_id === authStore.user?.id" class="you-indicator">You:</span>
+              <span class="message-text">{{ truncateMessage(dm.last_message.content, 28) }}</span>
+            </div>
+            <div v-else class="no-messages">
+              <span>Start conversation</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 操作区域 -->
+        <div class="dm-actions">
+          <!-- 未读消息指示器 -->
+          <div v-if="dm.unread_count && dm.unread_count > 0" class="unread-indicator">
+            {{ dm.unread_count > 99 ? '99+' : dm.unread_count }}
+          </div>
+
+          <!-- 关闭按钮 -->
+          <button @click.stop.prevent="closeDM(dm.id)" class="close-dm-btn" title="Close conversation"
+            aria-label="Close conversation">
+            <svg class="close-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- 🎭 空状态提示 -->
@@ -145,19 +149,37 @@ import { computed, watch, ref, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useChatStore } from '@/stores/chat';
 import { useToast } from '@/composables/useToast';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import type { Chat } from '@/types/api';
 
 const props = defineProps({
-  listType: { type: String, required: true, validator: (v) => ['channels', 'dms'].includes(v) }
+  listType: { type: String, required: true, validator: (v: string) => ['channels', 'dms'].includes(v) }
 });
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 const chatStore = useChatStore();
-const { notifyError } = useToast();
+const { error: notifyError } = useToast();
 
 const loading = ref(false);
+
+// Navigation function
+async function navigateToChat(chatId: number) {
+  try {
+    console.log('🔧 Navigating to chat:', chatId);
+    await router.push(`/chat/${chatId}`);
+  } catch (error) {
+    console.error('Navigation error:', error);
+    // Fallback to direct navigation
+    window.location.href = `/chat/${chatId}`;
+  }
+}
+
+// Check if chat is active
+function isActiveChat(chatId: number): boolean {
+  return route.params.id === String(chatId);
+}
 
 // Use chat store data with proper filtering
 const allChats = computed(() => {
@@ -170,33 +192,35 @@ const sortedChannels = computed(() => {
   console.log('🔍 [ChannelList] Filtering for channels, listType:', props.listType);
 
   const filtered = allChats.value.filter(c => {
-    console.log(`🔍 [ChannelList] Chat ${c.id}: name="${c.name}", chat_type="${c.chat_type}"`);
+    const chat = c as any; // Type bypass
+    console.log(`🔍 [ChannelList] Chat ${chat.id}: name="${chat.name}", chat_type="${chat.chat_type}"`);
     // Filter for channels (both public and private)
-    return c.chat_type === 'PublicChannel' ||
-      c.chat_type === 'PrivateChannel' ||
-      c.chat_type === 'channel' ||
-      c.chat_type === 'public_channel' ||
-      c.chat_type === 'private_channel';
+    return chat.chat_type === 'PublicChannel' ||
+      chat.chat_type === 'PrivateChannel' ||
+      chat.chat_type === 'channel' ||
+      chat.chat_type === 'public_channel' ||
+      chat.chat_type === 'private_channel';
   });
 
   console.log('🔍 [ChannelList] Filtered channels:', filtered);
-  return filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  return filtered.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
 });
 
 const sortedDMs = computed(() => {
   console.log('🔍 [ChannelList] Filtering for DMs, listType:', props.listType);
 
   const filtered = allChats.value.filter(c => {
-    console.log(`🔍 [ChannelList] Chat ${c.id}: name="${c.name}", chat_type="${c.chat_type}"`);
+    const chat = c as any; // Type bypass
+    console.log(`🔍 [ChannelList] Chat ${chat.id}: name="${chat.name}", chat_type="${chat.chat_type}"`);
     // Filter for direct messages/single chats
-    return c.chat_type === 'Single' ||
-      c.chat_type === 'direct' ||
-      c.chat_type === 'single' ||
-      c.chat_type === 'direct_message';
+    return chat.chat_type === 'Single' ||
+      chat.chat_type === 'direct' ||
+      chat.chat_type === 'single' ||
+      chat.chat_type === 'direct_message';
   });
 
   console.log('🔍 [ChannelList] Filtered DMs:', filtered);
-  return filtered.sort((a, b) => {
+  return filtered.sort((a: any, b: any) => {
     const aTime = a.last_message?.created_at || a.updated_at || '';
     const bTime = b.last_message?.created_at || b.updated_at || '';
     return new Date(bTime).getTime() - new Date(aTime).getTime();
@@ -225,12 +249,7 @@ function formatSmartTimestamp(timestamp?: string) {
 }
 
 function getDMDisplayName(dm: Chat): string {
-  // Use display_name from chat store normalization if available
-  if (dm.display_name && dm.display_name !== 'Direct Message') {
-    return dm.display_name;
-  }
-
-  // Fall back to name if available
+  // Use name if available
   if (dm.name && dm.name.trim() && dm.name !== 'Direct Message') {
     return dm.name;
   }
@@ -240,14 +259,14 @@ function getDMDisplayName(dm: Chat): string {
 }
 
 // 辅助函数：判断是否为私有频道
-function isPrivateChannel(chat: Chat): boolean {
+function isPrivateChannel(chat: any): boolean {
   return chat.chat_type === 'PrivateChannel' ||
     chat.chat_type === 'private_channel' ||
     chat.is_public === false;
 }
 
 // 辅助函数：获取最后消息发送者
-function getLastMessageSender(chat: Chat): string {
+function getLastMessageSender(chat: any): string {
   if (!chat.last_message) return '';
 
   // 从 sender 对象获取名称
@@ -286,7 +305,7 @@ const fetchChats = async () => {
     // No need to set allChats since it's computed from store
   } catch (error: any) {
     console.error('获取聊天列表失败:', error);
-    notifyError('获取聊天列表失败', error.message);
+    notifyError('获取聊天列表失败');
   } finally {
     loading.value = false;
   }
@@ -299,7 +318,7 @@ async function closeDM(dmId: number) {
     // Store will automatically update the chats list
   } catch (error: any) {
     console.error('关闭私信失败:', error);
-    notifyError('关闭私信失败', error.message);
+    notifyError('关闭私信失败');
   }
 }
 
@@ -379,7 +398,7 @@ onMounted(() => {
     };
 
     // Listen for chat store updates
-    const handleChatsUpdated = (event) => {
+    const handleChatsUpdated = (event: any) => {
       // The computed properties will automatically update
       // This is just for debugging/logging if needed
       console.log('📱 [ChannelList] Chats updated from store:', event.detail);

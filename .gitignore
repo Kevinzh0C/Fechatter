@@ -87,3 +87,106 @@ PODMAN_*.md
 DOCKER_*.md
 SIMPLE_COMMANDS.md
 PROTOS_UPDATE.md
+
+# Rust build files (specific exclusions only)
+Cargo.toml.backup
+# Note: Cargo.toml and Cargo.lock are essential for Rust projects and should be tracked
+
+# Claude AI assistant files
+.claude/
+.claude/**
+*.claude
+
+# SQLx query cache files
+.sqlx/
+.sqlx/**
+*.sqlx
+
+# Environment and configuration files
+.env
+.env.*
+env.*.template
+*.env
+
+# Token and credential files
+*token*.txt
+*_token.txt
+admin_token.txt
+developer_token.txt
+super_token.txt
+dev*_token.txt
+employee*_token.txt
+*_ids.txt
+
+# Large binary files and archives
+*.tar
+*.tar.gz
+*.tar.bz2
+*.zip
+*.rar
+*.7z
+fechatter-*.tar
+*-prod.tar
+*-server.tar
+
+# Docker compose overrides with secrets
+docker-compose.*.yml.fixed
+docker-compose.override.yml
+
+# Development and debug files
+*_fixed.yml
+*_debug.*
+test_*.sh
+debug_*.sh
+
+# User and channel data files
+*_channel.json
+*_chat.json
+*_user.json
+user_info.json
+super_user.json
+
+# Build scripts and deployment files
+build-*.sh
+deploy-*.sh
+manual-*.sh
+*-build-*.sh
+
+# Compiled binaries
+fechatter_server_bin
+fechatter_server/fechatter_server
+**/fechatter_server
+**/analytics_server
+**/bot_server
+**/notify_server
+**/fechatter_gateway
+docker/binaries/**
+docker/context/binaries/**
+
+# Nginx and server config files
+fechatter-nginx*.conf
+*.conf
+gateway*.yml
+
+# Analysis and documentation files
+*_ANALYSIS.md
+*_FIX*.md
+*_SUMMARY.md
+*_GUIDE.md
+*_STATUS.md
+*_TESTING.md
+FRONTEND_*.md
+SSE_*.md
+MESSAGE_*.md
+API_*.md
+CORS_*.md
+DUPLICATE_*.md
+IMMEDIATE_*.md
+NAVIGATION_*.md
+UI_*.md
+FINAL_*.md
+HOW_TO_*.md
+QUICK_START_MANUAL.md
+UNIFIED_*.md
+X86_*.md
+DEPLOYMENT_STATUS.md

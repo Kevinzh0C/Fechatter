@@ -1,0 +1,80 @@
+# ============================================================================
+# Fechatter Server Dockerfile - x86_64-musl Binary for amd64 Container
+# ============================================================================
+#
+# 🎯 PURPOSE: Package pre-compiled x86_64-musl fechatter_server binary for amd64 container
+# 🔧 STRATEGY: Use Alpine Linux for minimal container size
+# 🚀 WORKFLOW:
+# 1. Use pre-compiled x86_64-musl binary (LATEST VERSION from target directory)
+# 2. Package in Alpine container for amd64 deployment
+# 3. Deploy to remote registry at 45.77.178.85
+#
+# ============================================================================
+
+# ============================================================================
+# Stage 1: Minimal Runtime Base for x86_64 Architecture
+# ============================================================================
+FROM alpine:3.20 AS runtime-base
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    openssl \
+    libgcc \
+    curl \
+    tini \
+    tzdata \
+    && rm -rf /var/cache/apk/*
+
+# Create app user with proper security settings
+RUN adduser -D -s /bin/sh -u 1001 appuser && \
+    mkdir -p /app/uploads /app/logs /app/config /app/data && \
+    chown -R appuser:appuser /app && \
+    chmod 755 /app && \
+    chmod 750 /app/config
+
+# Use tini as PID 1 for proper signal handling in containers
+ENTRYPOINT ["/sbin/tini", "--"]
+
+# ============================================================================
+# Stage 2: Fechatter Server Image
+# ============================================================================
+FROM runtime-base AS fechatter-server
+
+# Copy LATEST pre-compiled x86_64-musl binary from target directory
+# Updated: Using the correct path with latest compilation (2025-06-17)
+COPY --chown=appuser:appuser target/main/x86_64-unknown-linux-musl/release/fechatter_server /usr/local/bin/fechatter_server
+
+# Copy database migrations if they exist
+COPY --chown=appuser:appuser migrations /app/migrations
+
+# Set permissions
+RUN chmod +x /usr/local/bin/fechatter_server && \
+    chown appuser:appuser /usr/local/bin/fechatter_server
+
+# Switch to non-root user
+USER appuser
+WORKDIR /app
+
+# Expose port
+EXPOSE 6688
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:6688/health || exit 1
+
+# Start the server
+CMD ["/usr/local/bin/fechatter_server"]
+
+# ============================================================================
+# Configuration Strategy:
+# ============================================================================
+#
+# The fechatter_server uses the following configuration file discovery order:
+# 1. /app/config/chat.yml (from volume mount)
+# 2. /app/chat.yml (from volume mount)
+# 3. Falls back to other paths as defined in the server code
+#
+# Environment variables can also be used for configuration.
+#
+# ============================================================================ 

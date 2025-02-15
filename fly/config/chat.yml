@@ -1,0 +1,85 @@
+# Fechatter Server Configuration for Fly.io
+server:
+  port: 6688
+  host: 0.0.0.0
+
+  # Database configuration - Use Fly Postgres
+  database:
+    url: ${DATABASE_URL} # Will be replaced from fly secrets
+    max_connections: 20
+    min_connections: 5
+    connect_timeout: 10
+    idle_timeout: 300
+
+  # Redis configuration - Use Fly Redis  
+  redis:
+    url: ${REDIS_URL} # Will be replaced from fly secrets
+    pool_size: 10
+
+  # JWT authentication
+  jwt:
+    secret: ${JWT_SECRET} # Will be replaced from fly secrets
+    expiration_hours: 24
+
+  # File uploads
+  uploads:
+    base_dir: /data/uploads
+    max_file_size: 10485760 # 10MB
+    allowed_extensions: [ jpg, jpeg, png, gif, pdf, doc, docx, txt ]
+
+# Features
+features:
+  # Real-time messaging
+  messaging:
+    enabled: true
+    max_message_length: 5000
+    typing_indicator_timeout: 30
+
+  # Search functionality
+  search:
+    enabled: true
+    meilisearch_url: ${MEILISEARCH_URL} # Will be replaced from fly secrets
+    meilisearch_key: ${MEILISEARCH_KEY}
+    index_prefix: fechatter_
+
+  # Analytics integration
+  analytics:
+    enabled: true
+    batch_size: 100
+
+# External services
+integrations:
+  # NATS for event streaming
+  messaging:
+    enabled: true
+    nats_url: ${NATS_URL} # Will be replaced from fly secrets
+    jetstream_enabled: true
+
+  # Notification service
+  notifications:
+    enabled: true
+    service_url: http://localhost:6687
+
+# Observability
+observability:
+  log_level: info
+  log_format: json
+
+  metrics:
+    enabled: true
+    port: 9091
+
+  health_check:
+    enabled: true
+    path: /health
+
+# Security
+security:
+  cors:
+    enabled: true
+    allow_origins: [ "*" ] # Configure based on your domain
+
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 60
+    burst_size: 10

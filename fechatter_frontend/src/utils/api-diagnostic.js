@@ -39,10 +39,10 @@ export async function testDirectRequests() {
 
   console.log('=== Direct API Requests Test ===');
 
-  // Test 1: Raw fetch
+  // Test 1: Raw fetch - 使用代理路径
   try {
     console.log('Test 1: Raw fetch...');
-    const response = await fetch('http://127.0.0.1:8080/api/signin', {
+    const response = await fetch('/api/signin', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -67,10 +67,10 @@ export async function testDirectRequests() {
     console.error('Raw fetch error:', error);
   }
 
-  // Test 2: Raw axios (no interceptors)
+  // Test 2: Raw axios (no interceptors) - 使用代理路径
   try {
     console.log('\nTest 2: Raw axios...');
-    const response = await axios.post('http://127.0.0.1:8080/api/signin', testData, {
+    const response = await axios.post('/api/signin', testData, {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
@@ -106,14 +106,13 @@ export async function testDirectRequests() {
   }
 }
 
-// 测试健康检查
+// 测试健康检查 - 使用代理路径
 export async function testHealthCheck() {
   console.log('=== Health Check Test ===');
 
   const endpoints = [
-    'http://127.0.0.1:8080/health',
-    'http://127.0.0.1:8080/api/health',
-    'http://127.0.0.1:8080/ping'
+    '/health',
+    '/api/health'
   ];
 
   for (const endpoint of endpoints) {
