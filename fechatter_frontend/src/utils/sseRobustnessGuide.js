@@ -89,36 +89,35 @@ export const SSERobustnessGuide = {
     checkGlobalManager: () => {
       if (window.sseGlobalManager) {
         const status = window.sseGlobalManager.getStatus();
-        console.log('📊 SSE Global Manager Status:', {
-          connections: status.connections.length,
+        if (import.meta.env.DEV) {
+          console.log('📊 SSE Global Manager Status:', {
+        connections: status.connections.length,
           banned: status.sessionStats.permanentlyBanned.length,
           retries: status.sessionStats.totalRetries
         });
-      }
     },
 
     checkSSEService: () => {
       if (window.realtimeCommunicationService) {
         const state = window.realtimeCommunicationService.getConnectionState();
-        console.log('🔌 SSE Service State:', {
-          connected: state.isConnected,
+        if (import.meta.env.DEV) {
+          console.log('🔌 SSE Service State:', {
+        connected: state.isConnected,
           state: state.state,
           retries: `${state.retryControl.totalAttempts}/${state.retryControl.maxTotalAttempts}`
         });
-      }
     },
 
     resetConnections: () => {
-      console.log('🔄 Resetting SSE connections...');
+      if (import.meta.env.DEV) {
+        console.log('🔄 Resetting SSE connections...');
       if (window.realtimeCommunicationService) {
         window.realtimeCommunicationService.disconnect();
-      }
       if (window.sseGlobalManager) {
         window.sseGlobalManager.reset();
+      if (import.meta.env.DEV) {
+        console.log('✅ SSE connections reset');
       }
-      console.log('✅ SSE connections reset');
-    }
-  }
 };
 
 // Expose for debugging
@@ -126,8 +125,10 @@ if (typeof window !== 'undefined' && import.meta.env.DEV) {
   window.sseRobustness = SSERobustnessGuide;
 
   console.log('🛡️ SSE Robustness Guide loaded');
-  console.log('Use window.sseRobustness for documentation and monitoring');
-  console.log('Quick check: window.sseRobustness.monitoring.checkSSEService()');
-}
+  if (import.meta.env.DEV) {
+    console.log('Use window.sseRobustness for documentation and monitoring');
+  if (import.meta.env.DEV) {
+    console.log('Quick check: window.sseRobustness.monitoring.checkSSEService()');
+  }
 
 export default SSERobustnessGuide; 

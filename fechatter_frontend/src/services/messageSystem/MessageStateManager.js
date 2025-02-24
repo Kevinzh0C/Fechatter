@@ -80,7 +80,6 @@ class MessageMetadata {
         this.retryCount++;
         break;
     }
-  }
 
   /**
    * Check if message can be retried
@@ -103,7 +102,6 @@ class MessageMetadata {
   isPending() {
     return [MessageState.QUEUED, MessageState.SENDING, MessageState.SENT].includes(this.state);
   }
-}
 
 /**
  * Complete Message structure with metadata
@@ -181,7 +179,6 @@ class CompleteMessage {
       edited_at: this.editedAt
     };
   }
-}
 
 /**
  * Message State Manager - Core state management class
@@ -234,7 +231,8 @@ export class MessageStateManager {
     // Update statistics
     this.updateStats(message, 'add');
 
-    console.log(`📝 Created message: ${clientId} (chat: ${chatId})`);
+    if (import.meta.env.DEV) {
+      console.log(`📝 Created message: ${clientId} (chat: ${chatId})`);
     return message;
   }
 
@@ -244,7 +242,8 @@ export class MessageStateManager {
   updateMessageState(clientId, newState, additionalData = {}) {
     const message = this.messages.get(clientId);
     if (!message) {
-      console.warn(`❌ Message not found: ${clientId}`);
+      if (import.meta.env.DEV) {
+        console.warn(`❌ Message not found: ${clientId}`);
       return false;
     }
 
@@ -252,7 +251,8 @@ export class MessageStateManager {
 
     // Validate state transition
     if (!this.isValidStateTransition(oldState, newState)) {
-      console.warn(`❌ Invalid state transition: ${oldState} → ${newState} for message ${clientId}`);
+      if (import.meta.env.DEV) {
+        console.warn(`❌ Invalid state transition: ${oldState} → ${newState} for message ${clientId}`);
       return false;
     }
 
@@ -268,7 +268,8 @@ export class MessageStateManager {
     // Handle state-specific logic
     this.handleStateChange(message, oldState, newState);
 
-    console.log(`🔄 Updated message state: ${clientId} (${oldState} → ${newState})`);
+    if (import.meta.env.DEV) {
+      console.log(`🔄 Updated message state: ${clientId} (${oldState} → ${newState})`);
     return true;
   }
 
@@ -316,7 +317,6 @@ export class MessageStateManager {
     if (message.metadata.isTerminal() || newState === MessageState.FAILED) {
       this.pendingOperations.delete(clientId);
     }
-  }
 
   /**
    * Get message by client ID
@@ -345,7 +345,6 @@ export class MessageStateManager {
       if (message && (!states || states.includes(message.metadata.state))) {
         messages.push(message);
       }
-    }
 
     // Sort by creation time
     return messages.sort((a, b) =>
@@ -365,7 +364,6 @@ export class MessageStateManager {
       if (message) {
         messages.push(message);
       }
-    }
 
     return messages;
   }
@@ -376,7 +374,8 @@ export class MessageStateManager {
   updateFromServerResponse(clientId, serverResponse) {
     const message = this.messages.get(clientId);
     if (!message) {
-      console.warn(`❌ Message not found for server response: ${clientId}`);
+      if (import.meta.env.DEV) {
+        console.warn(`❌ Message not found for server response: ${clientId}`);
       return false;
     }
 
@@ -396,7 +395,8 @@ export class MessageStateManager {
       sentAt: serverResponse.created_at || new Date().toISOString()
     });
 
-    console.log(`📨 Updated message from server: ${clientId} → ${serverResponse.id}`);
+    if (import.meta.env.DEV) {
+      console.log(`📨 Updated message from server: ${clientId} → ${serverResponse.id}`);
     return true;
   }
 
@@ -413,7 +413,6 @@ export class MessageStateManager {
         });
         return message;
       }
-    }
 
     // Try to match by content and sender for recent messages
     const recentMessages = this.getMessagesByState(MessageState.SENT);
@@ -439,10 +438,10 @@ export class MessageStateManager {
           deliveredAt: sseMessage.created_at || new Date().toISOString()
         });
 
-        console.log(`🔗 Matched SSE message: ${message.metadata.clientId} ↔ ${sseMessage.id}`);
+        if (import.meta.env.DEV) {
+          console.log(`🔗 Matched SSE message: ${message.metadata.clientId} ↔ ${sseMessage.id}`);
         return message;
       }
-    }
 
     return null;
   }
@@ -468,7 +467,8 @@ export class MessageStateManager {
     // Remove from storage
     this.messages.delete(clientId);
 
-    console.log(`🗑️ Removed message: ${clientId}`);
+    if (import.meta.env.DEV) {
+      console.log(`🗑️ Removed message: ${clientId}`);
     return true;
   }
 
@@ -486,23 +486,19 @@ export class MessageStateManager {
     // Update chat index
     if (!this.chatIndex.has(chatId)) {
       this.chatIndex.set(chatId, new Set());
-    }
     this.chatIndex.get(chatId).add(clientId);
 
     // Update state index
     if (oldState && this.stateIndex.has(oldState)) {
       this.stateIndex.get(oldState).delete(clientId);
-    }
     if (!this.stateIndex.has(state)) {
       this.stateIndex.set(state, new Set());
-    }
     this.stateIndex.get(state).add(clientId);
 
     // Update server ID index
     if (serverId) {
       this.serverIdIndex.set(serverId, clientId);
     }
-  }
 
   /**
    * Remove from indexes
@@ -529,7 +525,6 @@ export class MessageStateManager {
     if (serverId) {
       this.serverIdIndex.delete(serverId);
     }
-  }
 
   /**
    * Update statistics
@@ -547,7 +542,6 @@ export class MessageStateManager {
       this.updateStatCount(this.stats.byState, oldState, -1);
       this.updateStatCount(this.stats.byState, message.metadata.state, 1);
     }
-  }
 
   /**
    * Update stat count helper
@@ -560,7 +554,6 @@ export class MessageStateManager {
     } else {
       statMap.set(key, newValue);
     }
-  }
 
   /**
    * Get statistics
@@ -589,14 +582,13 @@ export class MessageStateManager {
       if (message.metadata.isTerminal() && messageAge > maxAge) {
         toRemove.push(clientId);
       }
-    }
 
     toRemove.forEach(clientId => this.removeMessage(clientId));
 
     if (toRemove.length > 0) {
-      console.log(`🧹 Cleaned up ${toRemove.length} old messages`);
-    }
-  }
+      if (import.meta.env.DEV) {
+        console.log(`🧹 Cleaned up ${toRemove.length} old messages`);
+      }
 
   /**
    * Start cleanup timer
@@ -620,7 +612,6 @@ export class MessageStateManager {
   updateConfig(newConfig) {
     Object.assign(this.config, newConfig);
   }
-}
 
 // Create global instance
 export const messageStateManager = new MessageStateManager();

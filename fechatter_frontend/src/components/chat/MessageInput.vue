@@ -1,1258 +1,1857 @@
 <template>
-  <div class="bg-gradient-to-t from-gray-50/90 to-white/90 backdrop-blur-sm" 
-       style="background: linear-gradient(to top, rgba(248, 250, 252, 0.9), rgba(255, 255, 255, 0.9));">
-    <!-- 🎯 与MessageList一致的居中布局容器 -->
-    <div class="max-w-3xl mx-auto">
-      <!-- Global Drag Upload Overlay - shown when dragging over the entire component -->
-      <div v-if="isDragging && !selectedFiles.length" 
-           class="absolute inset-0 bg-violet-50/90 backdrop-blur-sm border-2 border-dashed border-violet-300 rounded-lg flex items-center justify-center z-50"
-           @drop="handleDrop"
-           @dragover.prevent
-           @dragleave="handleDragLeave">
-        <div class="text-center">
-          <div class="w-16 h-16 bg-violet-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+  <div class="message-input" :class="{
+    'has-preview': showPreview,
+    'format-active': formatMode !== 'text',
+    'has-floating-toolbar': showFloatingToolbar
+  }">
+    <!-- Unified Upward Preview Container -->
+    <Transition name="preview-popup" appear>
+      <div v-if="showPreview" class="unified-preview-container" :class="`preview-${formatMode}`">
+        <div class="preview-header">
+          <div class="preview-title">
+            <svg v-if="formatMode === 'markdown'" class="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+              <path
+                d="M14.85 3H1.15C.52 3 0 3.52 0 4.15v7.69C0 12.48.52 13 1.15 13h13.69c.64 0 1.15-.52 1.15-1.15v-7.7C16 3.52 15.48 3 14.85 3z" />
             </svg>
+            <svg v-else-if="formatMode === 'code'" class="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+              <path
+                d="M4.72 3.22a.75.75 0 011.06 1.06L2.06 8l3.72 3.72a.75.75 0 11-1.06 1.06L.47 8.53a.75.75 0 010-1.06l4.25-4.25z" />
+            </svg>
+            <svg v-else class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd"
+                d="M15.621 4.379a3 3 0 00-4.242 0l-7 7a3 3 0 004.241 4.243h.001l.497-.5a.75.75 0 011.064 1.057l-.498.501-.002.002a4.5 4.5 0 01-6.364-6.364l7-7a4.5 4.5 0 016.368 6.36l-3.455 3.553A2.625 2.625 0 119.52 9.52l3.45-3.451a.75.75 0 111.061 1.06l-3.45 3.451a1.125 1.125 0 001.587 1.595l3.454-3.553a3 3 0 000-4.242z"
+                clip-rule="evenodd" />
+            </svg>
+            <span>{{ previewTitles[formatMode] }}</span>
           </div>
-          <h3 class="text-lg font-semibold text-violet-700 mb-2">Drop files to upload</h3>
-          <p class="text-violet-600">Images, documents, videos, and more</p>
-          <div class="mt-4 flex flex-wrap gap-2 justify-center">
-            <span class="px-2 py-1 bg-violet-100 text-violet-700 rounded-full text-xs">Images</span>
-            <span class="px-2 py-1 bg-violet-100 text-violet-700 rounded-full text-xs">Documents</span>
-            <span class="px-2 py-1 bg-violet-100 text-violet-700 rounded-full text-xs">Videos</span>
+          <button @click="closePreview" class="preview-close">×</button>
+        </div>
+
+        <div class="preview-content" ref="previewContentRef">
+          <!-- Markdown Preview -->
+          <div v-if="formatMode === 'markdown'" class="markdown-preview" v-html="renderedMarkdown"></div>
+
+          <!-- Code Preview -->
+          <div v-else-if="formatMode === 'code'" class="code-preview">
+            <div class="code-header">
+              <select v-model="selectedLanguage" class="language-selector">
+                <option value="javascript">JavaScript</option>
+                <option value="typescript">TypeScript</option>
+                <option value="python">Python</option>
+                <option value="rust">Rust</option>
+                <option value="html">HTML</option>
+                <option value="css">CSS</option>
+                <option value="json">JSON</option>
+              </select>
+            </div>
+            <pre><code :class="`language-${selectedLanguage}`">{{ messageContent }}</code></pre>
+          </div>
+
+          <!-- File Preview -->
+          <div v-else-if="formatMode === 'file'" class="file-preview">
+            <!-- 🔧 FILE SIZE CHECKER: Add 2MB validation with user interaction -->
+            <FileSizeChecker :files="files" :auto-show="true" @files-validated="handleFilesValidated"
+              @files-compressed="handleFilesCompressed" @invalid-files-removed="handleInvalidFilesRemoved" />
+
+            <div v-for="(file, index) in files" :key="index" class="file-item">
+              <img v-if="file.type.startsWith('image/')" :src="getFilePreviewUrl(file)" :alt="file.name"
+                class="file-thumbnail">
+              <div v-else class="file-icon">📄</div>
+              <div class="file-info">
+                <span class="file-name">{{ file.name }}</span>
+                <span class="file-size">{{ formatFileSize(file.size) }}</span>
+              </div>
+              <button @click="removeFile(index)" class="file-remove">×</button>
+            </div>
+            <button @click="triggerFileUpload" class="add-files-btn">+ Add more files</button>
           </div>
         </div>
       </div>
+    </Transition>
 
-      <!-- File Upload Progress -->
-      <div v-if="uploading" class="px-6 py-3 bg-violet-50/60 backdrop-blur-sm rounded-2xl mx-6 mb-2">
-        <div class="flex items-center space-x-3">
-          <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-violet-600"></div>
-          <span class="text-sm text-violet-700 font-medium">Uploading files...</span>
-          <div class="flex-1 bg-violet-200/60 rounded-full h-2">
-            <div class="bg-gradient-to-r from-violet-500 to-violet-600 h-2 rounded-full transition-all duration-300" 
-                 :style="{ width: uploadProgress + '%' }"></div>
-          </div>
-          <span class="text-xs text-violet-600 font-semibold">{{ uploadProgress }}%</span>
-        </div>
+    <!-- Smart Floating Toolbar -->
+    <Transition name="toolbar-float">
+      <div v-if="showFloatingToolbar" ref="floatingToolbar" class="floating-toolbar" :style="floatingToolbarStyle">
+        <button @click="applyFormat('bold')" class="floating-tool-btn" title="Bold (⌘B)">
+          <strong>B</strong>
+        </button>
+        <button @click="applyFormat('italic')" class="floating-tool-btn" title="Italic (⌘I)">
+          <em>I</em>
+        </button>
+        <button @click="applyFormat('code')" class="floating-tool-btn" title="Code">
+          <code>{}</code>
+        </button>
+        <div class="floating-toolbar-divider"></div>
+        <button @click="applyFormat('link')" class="floating-tool-btn" title="Link (⌘K)">
+          🔗
+        </button>
       </div>
+    </Transition>
 
-      <!-- Enhanced File Preview -->
-      <EnhancedFilePreview
-        :files="selectedFiles"
-        :show-drop-zone="isDragging"
-        :max-files="10"
-        :max-file-size="maxFileSize"
-        @file-removed="removeFile"
-        @files-cleared="clearFiles"
-        @files-dropped="handleFilesDropped"
-      />
-
-      <!-- Enhanced Code Block Preview -->
-      <div v-if="hasCodeBlocks" class="px-6 pt-4 pb-0">
-        <div class="max-w-2xl mx-auto">
-          <div class="bg-gradient-to-br from-slate-50/80 to-slate-100/60 backdrop-blur-sm rounded-2xl shadow-sm">
-            <!-- Preview Header -->
-            <div class="flex items-center justify-between px-5 py-3 bg-gradient-to-r from-slate-100/80 to-slate-50/60 rounded-t-2xl">
-              <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 bg-slate-200/60 rounded-full flex items-center justify-center">
-                  <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
-                  </svg>
-                </div>
-                <div>
-                  <span class="text-sm font-semibold text-slate-700">Code Preview</span>
-                  <span class="text-xs text-slate-500 bg-slate-200/60 px-3 py-1 rounded-full ml-2">{{ detectedLanguages.join(', ') || 'text' }}</span>
-                </div>
-              </div>
-              <button 
-                @click="togglePreview" 
-                class="flex items-center space-x-1 text-xs text-slate-600 hover:text-slate-800 transition-all duration-200 px-3 py-2 rounded-full hover:bg-slate-200/60"
-              >
-                <svg class="w-3 h-3 transition-transform duration-200" :class="{ 'rotate-180': !showPreview }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-                <span>{{ showPreview ? 'Collapse' : 'Expand' }}</span>
-              </button>
-            </div>
-            
-            <!-- Preview Content -->
-            <div v-if="showPreview" class="enhanced-code-preview">
-              <div v-html="enhancedCodePreview" class="max-h-64 overflow-y-auto px-1 pb-1"></div>
-            </div>
-          </div>
-        </div>
+    <!-- Reply Context -->
+    <div v-if="replyToMessage" class="reply-context">
+      <div class="reply-indicator">
+        <span>↩️ Replying to {{ replyToMessage.user?.fullname || 'Unknown' }}</span>
       </div>
+      <div class="reply-content">{{ truncateText(replyToMessage.content, 100) }}</div>
+      <button @click="cancelReply" class="reply-cancel">×</button>
+    </div>
 
-      <!-- Main Input Area - 优化的简洁布局 -->
-      <div class="px-6 py-4" :class="{ 'pt-2': hasCodeBlocks && showPreview }">
-        <div class="max-w-4xl mx-auto">
-          <div class="flex items-center gap-3">
-            <!-- Message Input - 主要焦点区域 -->
-            <div class="flex-1 relative">
-              <div class="flex items-center bg-white border border-gray-300 rounded-xl focus-within:ring-2 focus-within:ring-violet-500/40 focus-within:border-violet-500 transition-all">
-                <!-- File Upload Button - 内置到输入框 -->
-                <div class="flex-shrink-0 pl-4">
-                  <input ref="fileInput" 
-                         type="file" 
-                         multiple 
-                         class="hidden" 
-                         @change="handleFileSelect"
-                         accept="image/*,application/pdf,.doc,.docx,.txt,.csv,.xlsx,.ppt,.pptx">
-                  <button @click="$refs.fileInput.click()" 
-                          class="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 group"
-                          :disabled="uploading"
-                          aria-label="Attach files">
-                    <svg class="w-5 h-5 text-gray-400 group-hover:text-violet-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
-                    </svg>
-                  </button>
-                </div>
-
-                <!-- Text Input -->
-                <textarea
-                  ref="messageInput"
-                  v-model="message"
-                  @keydown="handleKeyDown"
-                  @input="adjustHeight"
-                  @dragover.prevent="handleDragOver"
-                  @drop.prevent="handleDrop"
-                  placeholder="输入消息..."
-                  class="flex-1 px-4 py-4 bg-transparent resize-none focus:outline-none placeholder-gray-400 text-gray-900"
-                  :class="{ 
-                    'pr-20': message.trim() || showEmojiPicker,
-                    'min-h-16': hasCodeBlocks && showPreview
-                  }"
-                  rows="1"
-                  :disabled="uploading"
-                  :style="{
-                    minHeight: hasCodeBlocks && showPreview ? '64px' : '48px',
-                    maxHeight: hasCodeBlocks && showPreview ? '160px' : '120px',
-                    fontSize: '15px',
-                    lineHeight: '1.5'
-                  }"
-                  aria-label="Type your message"
-                  aria-describedby="message-input-help"
-                  role="textbox"
-                  aria-multiline="true"
-                ></textarea>
-
-                <!-- Right Side Controls -->
-                <div class="flex items-center gap-2 pr-4">
-                  <!-- Character Count -->
-                  <div v-if="message.length > 1500" 
-                       class="text-xs px-3 py-1.5 rounded-full font-medium"
-                       :class="message.length > 1800 ? 'text-red-600 bg-red-50' : 'text-gray-600 bg-gray-100'">
-                    {{ message.length }}/2000
-                  </div>
-                  
-                  <!-- Emoji Picker Button -->
-                  <button @click="showEmojiPicker = !showEmojiPicker" 
-                          class="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 group"
-                          :disabled="uploading"
-                          aria-label="Insert emoji"
-                          :aria-expanded="showEmojiPicker">
-                    <svg class="w-5 h-5 text-gray-400 group-hover:text-yellow-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              
-              <!-- Code Block Hint -->
-              <div v-if="message.length === 0" 
-                   class="absolute bottom-2 right-16 text-xs text-gray-400 pointer-events-none">
-                <kbd class="px-2 py-1 bg-gray-100 rounded-lg text-gray-500 font-medium">{{ isMac ? '⌘' : 'Ctrl+' }}E</kbd> 
-                <span class="ml-1">代码块</span>
-              </div>
-            </div>
-
-            <!-- Send Button - 突出显示 -->
-            <div class="flex-shrink-0">
-              <button @click="sendMessage" 
-                      :disabled="!canSend || uploading || isSending"
-                      class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300"
-                      :class="[
-                        canSend && !isSending 
-                          ? 'bg-gradient-to-r from-violet-600 to-violet-700 hover:from-violet-700 hover:to-violet-800 hover:scale-105 text-white shadow-lg hover:shadow-xl cursor-pointer' 
-                          : 'bg-gray-100 text-gray-400 cursor-not-allowed',
-                        isSending ? 'bg-gradient-to-r from-violet-800 to-violet-900 scale-95 text-white cursor-wait' : ''
-                      ]"
-                      :aria-label="isSending ? 'Sending message...' : 'Send message'">
-                <!-- 发送状态 -->
-                <div v-if="isSending" class="w-5 h-5">
-                  <div class="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                </div>
-                <svg v-else class="w-6 h-6" :class="canSend && !isSending ? 'text-white drop-shadow-sm' : 'text-gray-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Emoji Picker - 重新定位 -->
-      <div v-if="showEmojiPicker" class="px-6 pb-6">
-        <div class="max-w-4xl mx-auto">
-          <div class="relative">
-            <div class="absolute bottom-0 right-16 bg-gradient-to-br from-white/95 to-gray-50/95 backdrop-blur-xl rounded-3xl shadow-2xl p-6 z-20 w-80"
-                 style="backdrop-filter: blur(20px);">
-              
-              <!-- Emoji Categories -->
-              <div class="flex space-x-1 mb-4 pb-3 border-b border-gray-200/60">
-                <button v-for="category in emojiCategories" :key="category.name"
-                        @click="activeEmojiCategory = category.name"
-                        class="px-3 py-2 text-sm rounded-2xl transition-all duration-200 font-medium"
-                        :class="activeEmojiCategory === category.name 
-                          ? 'bg-violet-100 text-violet-700 shadow-sm' 
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'">
-                  {{ category.icon }} {{ category.name }}
-                </button>
-              </div>
-              
-              <!-- Emoji Grid -->
-              <div class="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
-                <button v-for="emoji in getCurrentEmojis()" :key="emoji.char"
-                        @click="insertEmoji(emoji.char)"
-                        class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-all duration-200 text-lg hover:scale-110"
-                        :title="emoji.name">
-                  {{ emoji.char }}
-                </button>
-              </div>
-              
-              <!-- Quick Gestures Bar -->
-              <div class="mt-4 pt-4 border-t border-gray-200/60">
-                <div class="text-xs text-gray-500 mb-3 font-medium">Quick Actions</div>
-                <div class="flex space-x-2 flex-wrap gap-1">
-                  <button v-for="gesture in quickGestures" :key="gesture.char"
-                          @click="insertEmoji(gesture.char)"
-                          class="px-3 py-2 bg-gray-100/60 hover:bg-gray-200/80 rounded-xl text-sm transition-all duration-200 font-medium hover:scale-105"
-                          :title="gesture.name">
-                    {{ gesture.char }} {{ gesture.name }}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Hidden help text for screen readers -->
-      <div id="message-input-help" class="sr-only">
-        Press {{ isMac ? 'Cmd' : 'Ctrl' }}+Enter to send message, Enter for new line. Use {{ isMac ? 'Cmd' : 'Ctrl' }}+E for code block formatting.
+    <!-- Mode Label -->
+    <div v-if="formatMode !== 'text'" class="mode-label" :class="`mode-${formatMode}`">
+      <div class="mode-indicator">
+        <span v-if="formatMode === 'markdown'" class="mode-icon">📝</span>
+        <span v-if="formatMode === 'code'" class="mode-icon">💻</span>
+        <span class="mode-text">{{ formatMode === 'markdown' ? 'Markdown Mode' : 'Code Mode' }}</span>
       </div>
     </div>
-    
-    <!-- Language Selector for Code Blocks -->
-    <LanguageSelector
-      :visible="showLanguageSelector"
-      :position="languageSelectorPosition"
-      :languages="languages"
-      :suggested-languages="getSuggestedLanguages()"
-      @select="selectLanguage"
-      @close="cancelSelection"
-    />
+
+    <!-- Main Input Area -->
+    <div class="main-input-area">
+      <!-- File/Media Button -->
+      <button @click="toggleFileMode" class="action-btn" :class="{ active: formatMode === 'file' || files.length > 0 }"
+        title="Attach files">
+        📎
+        <span v-if="files.length > 0" class="file-count-badge">{{ files.length }}</span>
+      </button>
+
+      <!-- Input Container -->
+      <div class="input-container">
+        <textarea ref="messageInput" v-model="messageContent" @keydown="handleKeyDown" @input="handleInput"
+          @paste="handlePaste" @select="handleTextSelection" @mouseup="handleTextSelection" @blur="handleBlur"
+          :placeholder="placeholderText" class="message-textarea" rows="1"></textarea>
+
+        <!-- Character Counter -->
+        <div v-if="showCharacterCount" class="character-counter" :class="{ warning: isNearLimit }">
+          {{ messageContent.length }}{{ maxLength ? `/${maxLength}` : '' }}
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        <!-- Unified Format Mode Button (State Machine) -->
+        <button @click="cycleFormatMode" class="unified-mode-btn" :class="{
+          active: formatMode !== 'text',
+          'mode-markdown': formatMode === 'markdown',
+          'mode-code': formatMode === 'code'
+        }" :title="getFormatModeTooltip()">
+          <span v-if="formatMode === 'text'" class="mode-icon">A</span>
+          <span v-else-if="formatMode === 'markdown'" class="mode-icon">MD</span>
+          <span v-else-if="formatMode === 'code'" class="mode-icon">{ }</span>
+        </button>
+
+        <!-- 🚀 NEW: Floating Formatting Toolbar Button -->
+        <button @click="toggleFloatingFormattingToolbar" class="action-btn floating-toolbar-btn"
+          :class="{ active: showFloatingFormattingToolbar }" title="Open Formatting Toolbar (⌘⇧F)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
+            <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
+          </svg>
+        </button>
+
+        <!-- Emoji Button -->
+        <button @click="toggleEmojiPicker" class="action-btn" title="Add emoji">
+          😊
+        </button>
+
+        <!-- Send Button -->
+        <button @click="sendMessage" :disabled="!canSend" class="send-btn" :class="{ active: canSend }">
+          <svg v-if="!isSending" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22,2 15,22 11,13 2,9"></polygon>
+          </svg>
+          <div v-else class="loading-spinner"></div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Production-Grade Emoji Picker -->
+    <Transition name="emoji-fade">
+      <div v-if="showEmojiPicker" class="emoji-picker" ref="emojiPickerRef">
+        <!-- Header with Search -->
+        <div class="emoji-header">
+          <div class="emoji-search-container">
+            <input v-model="emojiSearchQuery" type="text" placeholder="Search emojis..." class="emoji-search"
+              @input="selectEmojiCategory('smileys')" />
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+          </div>
+          <button @click="showEmojiPicker = false" class="emoji-close">×</button>
+        </div>
+
+        <!-- Category Tabs -->
+        <div class="emoji-categories" v-if="!emojiSearchQuery">
+          <!-- Recent Emojis Tab -->
+          <button v-if="recentEmojis.length > 0" @click="selectEmojiCategory('recent')" class="category-tab"
+            :class="{ active: selectedEmojiCategory === 'recent' }" title="Recently Used">
+            🕒
+          </button>
+
+          <!-- Category Tabs -->
+          <button v-for="(category, key) in emojiCategories" :key="key" @click="selectEmojiCategory(key)"
+            class="category-tab" :class="{ active: selectedEmojiCategory === key }" :title="category.name">
+            {{ category.icon }}
+          </button>
+        </div>
+
+        <!-- Emoji Content -->
+        <div class="emoji-content">
+          <!-- Recent Emojis Section -->
+          <div v-if="selectedEmojiCategory === 'recent' && recentEmojis.length > 0" class="emoji-section">
+            <div class="section-title">Recently Used</div>
+            <div class="emoji-grid">
+              <button v-for="emoji in recentEmojis" :key="emoji.char" @click="insertEmoji(emoji)" class="emoji-item"
+                :title="`${emoji.name} (${emoji.char})`">
+                {{ emoji.char }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Search Results -->
+          <div v-else-if="emojiSearchQuery" class="emoji-section">
+            <div class="section-title">Search Results ({{ filteredEmojis.length }})</div>
+            <div class="emoji-grid" v-if="filteredEmojis.length > 0">
+              <button v-for="emoji in filteredEmojis.slice(0, 48)" :key="emoji.char" @click="insertEmoji(emoji)"
+                class="emoji-item" :title="`${emoji.name} (${emoji.char})`">
+                {{ emoji.char }}
+              </button>
+            </div>
+            <div v-else class="no-results">
+              <div class="no-results-icon">🔍</div>
+              <div class="no-results-text">No emojis found</div>
+              <div class="no-results-hint">Try a different search term</div>
+            </div>
+          </div>
+
+          <!-- Category Content -->
+          <div v-else class="emoji-section">
+            <div class="section-title">{{ emojiCategories[selectedEmojiCategory]?.name }}</div>
+            <div class="emoji-grid">
+              <button v-for="emoji in emojiCategories[selectedEmojiCategory]?.emojis" :key="emoji.char"
+                @click="insertEmoji(emoji)" class="emoji-item" :title="`${emoji.name} (${emoji.char})`">
+                {{ emoji.char }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="emoji-footer">
+          <div class="emoji-count">{{Object.values(emojiCategories).reduce((acc, cat) => acc + cat.emojis.length, 0)}}
+            emojis available</div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Hidden file input -->
+    <input ref="fileInput" type="file" multiple @change="handleFileSelect" style="display: none">
+
+    <!-- 🚀 NEW: Floating Formatting Toolbar -->
+    <FloatingFormattingToolbar :visible="showFloatingFormattingToolbar" :position="floatingFormattingPosition"
+      :textareaRef="messageInput" :currentContent="messageContent" :disabled="props.disabled"
+      @close="handleFloatingFormattingClose" @format-applied="handleFormatApplied"
+      @content-changed="handleContentChanged" @position-changed="handlePositionChanged" />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
-import { useChatStore } from '@/stores/chat';
-import api from '@/services/api';
-import { useCodeBlockWrapper } from '@/composables/useCodeBlockWrapper';
-import LanguageSelector from '@/components/ui/LanguageSelector.vue';
-import EnhancedFilePreview from './EnhancedFilePreview.vue';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
+import FileSizeChecker from '@/components/ui/FileSizeChecker.vue';
+import FloatingFormattingToolbar from './FloatingFormattingToolbar.vue';
+// TODO: 临时注释掉新组件导入，待修复后恢复
+// import EnhancedFormattingToolbar from './EnhancedFormattingToolbar.vue';
+// import LiveMarkdownPreview from './LiveMarkdownPreview.vue';
+// import { unifiedMarkdownEngine } from '@/services/UnifiedMarkdownEngine.js';
 
-const emit = defineEmits(['send']);
 const props = defineProps({
-  chatId: {
-    type: Number,
-    required: true
-  },
-  chatType: {
-    type: String,
-    default: null
-  }
+  chatId: { type: [Number, String], required: true },
+  replyToMessage: { type: Object, default: null },
+  disabled: { type: Boolean, default: false },
+  maxLength: { type: Number, default: 2000 }
 });
 
-// 🔧 通知功能（简化版，避免循环依赖）
-const showNotification = (message, type = 'error') => {
-  console.log(`[${type.toUpperCase()}] ${message}`);
-  // 这里可以后续集成具体的通知组件
-};
+const emit = defineEmits(['message-sent', 'reply-cancelled', 'preview-state-change']);
 
-// State Management
-const message = ref('');
-const selectedFiles = ref([]);
-const uploading = ref(false);
-const uploadProgress = ref(0);
-const error = ref('');
-const showEmojiPicker = ref(false);
-const activeEmojiCategory = ref('Smileys');
-const isDragging = ref(false);
-
-// 🔧 新增：发送状态管理
+// State
+const messageContent = ref('');
+const files = ref([]);
+const showPreview = ref(false);
+const formatMode = ref('text'); // 'text', 'markdown', 'code', 'file'
+const selectedLanguage = ref('javascript');
 const isSending = ref(false);
-const lastSendTime = ref(0);
+const showEmojiPicker = ref(false);
 
-// Code block preview
-const showPreview = ref(true);
+// Production-grade emoji picker state
+const selectedEmojiCategory = ref('smileys');
+const emojiSearchQuery = ref('');
+const recentEmojis = ref([]);
+const maxRecentEmojis = 16;
 
-// References
+// Floating toolbar state (original small toolbar)
+const showFloatingToolbar = ref(false);
+const floatingToolbarStyle = ref({});
+
+// 🚀 NEW: Floating Formatting Toolbar State
+const showFloatingFormattingToolbar = ref(false);
+const floatingFormattingPosition = ref({ x: 100, y: 100 });
+
+// Refs
 const messageInput = ref(null);
 const fileInput = ref(null);
+const emojiPickerRef = ref(null);
+const floatingToolbar = ref(null);
+const previewContentRef = ref(null);
 
-// Chat store
-const chatStore = useChatStore();
+// Constants
+const previewTitles = {
+  markdown: 'Markdown Preview',
+  code: 'Code Preview',
+  file: 'File Preview'
+};
 
-// Code block wrapper
-const {
-  showLanguageSelector,
-  languageSelectorPosition,
-  languages,
-  handleKeyboardShortcut: handleCodeBlockShortcut,
-  selectLanguage,
-  cancelSelection,
-  searchLanguages,
-  getSuggestedLanguages,
-  detectCodePattern
-} = useCodeBlockWrapper(messageInput);
-
-// Typing indicator state
-let typingTimer = null;
-let isTyping = false;
-
-// Emoji Data - Enterprise Optimization
-const emojiCategories = ref([
-  { 
-    name: 'Smileys', 
-    icon: '😊',
+// Production-grade emoji data organized by categories
+const emojiCategories = {
+  smileys: {
+    name: 'Smileys & People',
+    icon: '😀',
     emojis: [
-      { char: '😊', name: 'Smiling Face' },
-      { char: '😂', name: 'Joy' },
-      { char: '🤣', name: 'Rolling on Floor' },
-      { char: '😍', name: 'Heart Eyes' },
-      { char: '🥰', name: 'Smiling Face with Hearts' },
-      { char: '😘', name: 'Kiss' },
-      { char: '😉', name: 'Wink' },
-      { char: '😎', name: 'Cool' },
-      { char: '🤔', name: 'Thinking' },
-      { char: '😅', name: 'Sweat Smile' },
-      { char: '😇', name: 'Angel' },
-      { char: '🙂', name: 'Slight Smile' },
-      { char: '🙃', name: 'Upside Down' },
-      { char: '😋', name: 'Yum' },
-      { char: '😛', name: 'Tongue Out' },
-      { char: '🤪', name: 'Zany Face' }
+      { char: '😀', name: 'grinning', keywords: ['happy', 'smile'] },
+      { char: '😃', name: 'smiley', keywords: ['happy', 'joy'] },
+      { char: '😄', name: 'smile', keywords: ['happy', 'laugh'] },
+      { char: '😁', name: 'grin', keywords: ['happy', 'teeth'] },
+      { char: '😅', name: 'sweat_smile', keywords: ['happy', 'sweat'] },
+      { char: '🤣', name: 'rofl', keywords: ['laugh', 'rolling'] },
+      { char: '😂', name: 'joy', keywords: ['laugh', 'tears'] },
+      { char: '🙂', name: 'slightly_smiling', keywords: ['smile', 'slight'] },
+      { char: '😉', name: 'wink', keywords: ['flirt', 'wink'] },
+      { char: '😊', name: 'blush', keywords: ['happy', 'blush'] },
+      { char: '🥰', name: 'smiling_face_with_hearts', keywords: ['love', 'hearts'] },
+      { char: '😍', name: 'heart_eyes', keywords: ['love', 'heart'] },
+      { char: '🤩', name: 'star_struck', keywords: ['star', 'eyes'] },
+      { char: '😘', name: 'kissing_heart', keywords: ['kiss', 'love'] },
+      { char: '😋', name: 'yum', keywords: ['tongue', 'tasty'] },
+      { char: '😛', name: 'stuck_out_tongue', keywords: ['tongue', 'playful'] },
+      { char: '🤪', name: 'zany_face', keywords: ['crazy', 'wild'] },
+      { char: '🤔', name: 'thinking', keywords: ['think', 'hmm'] },
+      { char: '🤗', name: 'hugs', keywords: ['hug', 'embrace'] },
+      { char: '🤭', name: 'hand_over_mouth', keywords: ['oops', 'quiet'] },
+      { char: '🤫', name: 'shushing_face', keywords: ['quiet', 'shh'] },
+      { char: '😴', name: 'sleeping', keywords: ['sleep', 'tired'] },
+      { char: '🥱', name: 'yawning', keywords: ['tired', 'yawn'] },
+      { char: '😷', name: 'mask', keywords: ['sick', 'mask'] }
     ]
   },
-  { 
-    name: 'Gestures', 
+  gestures: {
+    name: 'Gestures',
     icon: '👍',
     emojis: [
-      { char: '👍', name: 'Thumbs Up' },
-      { char: '👎', name: 'Thumbs Down' },
-      { char: '👏', name: 'Clap' },
-      { char: '🙌', name: 'Raised Hands' },
-      { char: '👌', name: 'OK Hand' },
-      { char: '✌️', name: 'Victory' },
-      { char: '🤞', name: 'Crossed Fingers' },
-      { char: '🤝', name: 'Handshake' },
-      { char: '👋', name: 'Wave' },
-      { char: '🤚', name: 'Raised Back' },
-      { char: '🖐️', name: 'Hand with Fingers' },
-      { char: '✋', name: 'Raised Hand' },
-      { char: '🖖', name: 'Vulcan Salute' },
-      { char: '👊', name: 'Fist Bump' },
-      { char: '✊', name: 'Raised Fist' },
-      { char: '🤛', name: 'Left Fist' }
+      { char: '👍', name: 'thumbs_up', keywords: ['good', 'like', 'yes'] },
+      { char: '👎', name: 'thumbs_down', keywords: ['bad', 'dislike', 'no'] },
+      { char: '👏', name: 'clap', keywords: ['applause', 'clap'] },
+      { char: '🙌', name: 'raised_hands', keywords: ['celebrate', 'hooray'] },
+      { char: '👐', name: 'open_hands', keywords: ['open', 'hands'] },
+      { char: '🤝', name: 'handshake', keywords: ['deal', 'agreement'] },
+      { char: '🙏', name: 'pray', keywords: ['please', 'thanks'] },
+      { char: '✋', name: 'raised_hand', keywords: ['stop', 'high_five'] },
+      { char: '🤚', name: 'raised_back_of_hand', keywords: ['stop', 'back'] },
+      { char: '👋', name: 'wave', keywords: ['hello', 'goodbye'] },
+      { char: '🤟', name: 'love_you_gesture', keywords: ['love', 'rock'] },
+      { char: '✌️', name: 'victory_hand', keywords: ['peace', 'victory'] },
+      { char: '🤞', name: 'crossed_fingers', keywords: ['luck', 'hope'] },
+      { char: '🤘', name: 'sign_of_the_horns', keywords: ['rock', 'metal'] },
+      { char: '🤙', name: 'call_me_hand', keywords: ['call', 'hang_loose'] },
+      { char: '👌', name: 'ok_hand', keywords: ['ok', 'perfect'] }
     ]
   },
-  { 
-    name: 'Objects', 
-    icon: '🎯',
+  hearts: {
+    name: 'Hearts',
+    icon: '❤️',
     emojis: [
-      { char: '🎯', name: 'Target' },
-      { char: '🚀', name: 'Rocket' },
-      { char: '💡', name: 'Light Bulb' },
-      { char: '⚡', name: 'Lightning' },
-      { char: '🔥', name: 'Fire' },
-      { char: '💎', name: 'Diamond' },
-      { char: '🏆', name: 'Trophy' },
-      { char: '🎉', name: 'Party' },
-      { char: '🎊', name: 'Confetti' },
-      { char: '📈', name: 'Chart Up' },
-      { char: '📊', name: 'Bar Chart' },
-      { char: '💰', name: 'Money Bag' },
-      { char: '⭐', name: 'Star' },
-      { char: '✨', name: 'Sparkles' },
-      { char: '🌟', name: 'Glowing Star' },
-      { char: '💫', name: 'Dizzy' }
+      { char: '❤️', name: 'red_heart', keywords: ['love', 'heart'] },
+      { char: '🧡', name: 'orange_heart', keywords: ['love', 'orange'] },
+      { char: '💛', name: 'yellow_heart', keywords: ['love', 'yellow'] },
+      { char: '💚', name: 'green_heart', keywords: ['love', 'green'] },
+      { char: '💙', name: 'blue_heart', keywords: ['love', 'blue'] },
+      { char: '💜', name: 'purple_heart', keywords: ['love', 'purple'] },
+      { char: '🖤', name: 'black_heart', keywords: ['love', 'black'] },
+      { char: '🤍', name: 'white_heart', keywords: ['love', 'white'] },
+      { char: '🤎', name: 'brown_heart', keywords: ['love', 'brown'] },
+      { char: '💔', name: 'broken_heart', keywords: ['sad', 'break'] },
+      { char: '💕', name: 'two_hearts', keywords: ['love', 'hearts'] },
+      { char: '💖', name: 'sparkling_heart', keywords: ['love', 'sparkle'] },
+      { char: '💗', name: 'growing_heart', keywords: ['love', 'growing'] },
+      { char: '💘', name: 'heart_with_arrow', keywords: ['love', 'cupid'] },
+      { char: '💝', name: 'heart_with_ribbon', keywords: ['love', 'gift'] }
+    ]
+  },
+  celebration: {
+    name: 'Celebration',
+    icon: '🎉',
+    emojis: [
+      { char: '🎉', name: 'party_popper', keywords: ['party', 'celebrate'] },
+      { char: '🎊', name: 'confetti_ball', keywords: ['party', 'confetti'] },
+      { char: '🥳', name: 'partying_face', keywords: ['party', 'hat'] },
+      { char: '🎈', name: 'balloon', keywords: ['party', 'balloon'] },
+      { char: '🎂', name: 'birthday_cake', keywords: ['birthday', 'cake'] },
+      { char: '🍰', name: 'shortcake', keywords: ['cake', 'dessert'] },
+      { char: '🎁', name: 'gift', keywords: ['present', 'gift'] },
+      { char: '🏆', name: 'trophy', keywords: ['win', 'award'] },
+      { char: '🥇', name: 'first_place_medal', keywords: ['gold', 'first'] },
+      { char: '🥈', name: 'second_place_medal', keywords: ['silver', 'second'] },
+      { char: '🥉', name: 'third_place_medal', keywords: ['bronze', 'third'] },
+      { char: '⭐', name: 'star', keywords: ['star', 'awesome'] },
+      { char: '🌟', name: 'glowing_star', keywords: ['star', 'shine'] },
+      { char: '✨', name: 'sparkles', keywords: ['sparkle', 'magic'] },
+      { char: '🔥', name: 'fire', keywords: ['hot', 'fire'] },
+      { char: '💯', name: 'hundred_points', keywords: ['perfect', '100'] }
     ]
   }
-]);
+};
 
-const quickGestures = ref([
-  { char: '👍', name: 'Like' },
-  { char: '❤️', name: 'Love' },
-  { char: '🔥', name: 'Fire' },
-  { char: '💯', name: '100' },
-  { char: '✅', name: 'Done' }
-]);
+// Frequently used emojis (user customizable)
+// (variables already defined above)
 
-// Computed Properties
-const currentEmojis = computed(() => {
-  const category = emojiCategories.value.find(cat => cat.name === activeEmojiCategory.value);
-  return category ? category.emojis : [];
-});
+// Computed
+const canSend = computed(() => (messageContent.value.trim() || files.value.length > 0) && !isSending.value);
 
-const canSend = computed(() => {
-  return (message.value.trim() || selectedFiles.value.length > 0) && !uploading.value && !isSending.value;
-});
+const showCharacterCount = computed(() =>
+  messageContent.value.length > 0 || (props.maxLength && messageContent.value.length > props.maxLength * 0.8)
+);
 
-// Code block detection
-const hasCodeBlocks = computed(() => {
-  const codeBlockRegex = /```[\s\S]*?```/g;
-  return codeBlockRegex.test(message.value);
-});
+const isNearLimit = computed(() =>
+  props.maxLength && messageContent.value.length > props.maxLength * 0.9
+);
 
-// Detect languages in code blocks
-const detectedLanguages = computed(() => {
-  if (!hasCodeBlocks.value) return [];
-  
-  const languages = [];
-  const regex = /```(\w+)?\n([\s\S]*?)```/g;
-  let match;
-  
-  while ((match = regex.exec(message.value)) !== null) {
-    const lang = match[1] || 'text';
-    if (!languages.includes(lang)) {
-      languages.push(lang);
-    }
+const placeholderText = computed(() => {
+  if (props.replyToMessage) {
+    return `Replying to ${props.replyToMessage.user?.fullname || 'Unknown'}...`;
   }
-  
-  return languages;
+
+  switch (formatMode.value) {
+    case 'markdown': return 'Type in Markdown... **bold**, *italic*, `code`';
+    case 'code': return `Type ${selectedLanguage.value} code...`;
+    case 'file': return 'Add files and type a message...';
+    default: return 'Type a message...';
+  }
 });
 
-// Basic syntax highlighting function
-function applySyntaxHighlighting(code, language) {
-  let highlightedCode = escapeHtml(code);
-  
+const renderedMarkdown = computed(() => {
+  if (!messageContent.value.trim()) {
+    return '<p class="empty-preview">Start typing to see preview...</p>';
+  }
   try {
-    switch (language.toLowerCase()) {
-      case 'javascript':
-      case 'js':
-      case 'typescript':
-      case 'ts':
-        // Keywords
-        highlightedCode = highlightedCode.replace(
-          /\b(const|let|var|function|class|if|else|for|while|return|import|export|default|async|await)\b/g,
-          '<span class="token keyword">$1</span>'
-        );
-        // Strings (simplified)
-        highlightedCode = highlightedCode.replace(
-          /(["'`])([^"'`]*?)\1/g,
-          '<span class="token string">$1$2$1</span>'
-        );
-        // Numbers
-        highlightedCode = highlightedCode.replace(
-          /\b\d+\.?\d*\b/g,
-          '<span class="token number">$&</span>'
-        );
-        // Comments
-        highlightedCode = highlightedCode.replace(
-          /(\/\/.*$)/gm,
-          '<span class="token comment">$1</span>'
-        );
-        break;
-        
-      case 'rust':
-        // Keywords
-        highlightedCode = highlightedCode.replace(
-          /\b(fn|let|mut|const|struct|enum|impl|trait|pub|use|mod|if|else|match|while|for|return)\b/g,
-          '<span class="token keyword">$1</span>'
-        );
-        // Strings
-        highlightedCode = highlightedCode.replace(
-          /(["'])([^"']*?)\1/g,
-          '<span class="token string">$1$2$1</span>'
-        );
-        break;
-        
-      case 'python':
-        // Keywords
-        highlightedCode = highlightedCode.replace(
-          /\b(def|class|if|else|for|while|return|import|from|try|except)\b/g,
-          '<span class="token keyword">$1</span>'
-        );
-        // Strings
-        highlightedCode = highlightedCode.replace(
-          /(["'])([^"']*?)\1/g,
-          '<span class="token string">$1$2$1</span>'
-        );
-        break;
-    }
+    return DOMPurify.sanitize(marked(messageContent.value, { breaks: true, gfm: true }));
   } catch (error) {
-    console.warn('Syntax highlighting error:', error);
-    return highlightedCode;
+    return '<p class="error-preview">Markdown syntax error</p>';
   }
-  
-  return highlightedCode;
-}
-
-// Enhanced code block preview with syntax highlighting
-const enhancedCodePreview = computed(() => {
-  if (!hasCodeBlocks.value) return '';
-  
-  let preview = message.value;
-  
-  // Replace code blocks with enhanced syntax highlighting
-  preview = preview.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
-    const language = lang || 'text';
-    const trimmedCode = code.trim();
-    const highlightedCode = applySyntaxHighlighting(trimmedCode, language);
-    
-    // Create a more VS Code-like preview
-    return '<div class="code-block-container">' +
-      '<div class="code-block-header">' +
-        '<div class="flex items-center justify-between">' +
-          '<span class="language-tag">' + language + '</span>' +
-          '<div class="code-block-controls">' +
-            '<button class="copy-btn" title="Copy code">' +
-              '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
-                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>' +
-              '</svg>' +
-            '</button>' +
-          '</div>' +
-        '</div>' +
-      '</div>' +
-      '<div class="code-block-content">' +
-        '<pre class="language-' + language + '"><code>' + highlightedCode + '</code></pre>' +
-      '</div>' +
-    '</div>';
-  });
-  
-  // Handle remaining text (non-code parts)
-  preview = preview.replace(/\n/g, '<br>');
-  
-  return preview;
 });
 
-// Legacy code block preview (keeping for backward compatibility)
-const codeBlockPreview = computed(() => {
-  return enhancedCodePreview.value;
-});
+// Methods - Format Mode State Machine
+const cycleFormatMode = () => {
+  const modes = ['text', 'markdown', 'code'];
+  const currentIndex = modes.indexOf(formatMode.value);
+  const nextIndex = (currentIndex + 1) % modes.length;
+  const nextMode = modes[nextIndex];
 
-// Helper function to escape HTML
-function escapeHtml(text) {
-  const map = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#039;'
-  };
-  return text.replace(/[&<>"']/g, m => map[m]);
-}
-
-// Toggle preview
-function togglePreview() {
-  showPreview.value = !showPreview.value;
-}
-
-// Platform detection
-const isMac = computed(() => {
-  return navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-});
-
-// File Handling Functions
-function handleKeyDown(event) {
-  // Handle code block shortcut first
-  if ((event.metaKey || event.ctrlKey) && event.key === 'e') {
-    handleCodeBlockShortcut(event);
-    return;
+  if (nextMode === 'text') {
+    closePreview();
+  } else {
+    formatMode.value = nextMode;
+    showPreview.value = true;
+    emit('preview-state-change', true);
   }
-  
-  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-    event.preventDefault();
-    if (canSend.value) {
-      sendMessage();
+};
+
+const getFormatModeTooltip = () => {
+  switch (formatMode.value) {
+    case 'text': return 'Switch to Markdown mode';
+    case 'markdown': return 'Switch to Code mode';
+    case 'code': return 'Switch to Text mode';
+    default: return 'Toggle format mode';
+  }
+};
+
+const toggleFileMode = () => {
+  if (files.value.length > 0) {
+    if (formatMode.value === 'file' && showPreview.value) {
+      closePreview();
+    } else {
+      formatMode.value = 'file';
+      showPreview.value = true;
+      emit('preview-state-change', true);
     }
+  } else {
+    fileInput.value?.click();
   }
-}
+};
 
-function adjustHeight() {
-  nextTick(() => {
-    const textarea = messageInput.value;
-    if (textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-    }
-  });
-  
-  // Handle typing indicator
-  handleTypingIndicator();
-}
+const closePreview = () => {
+  showPreview.value = false;
+  formatMode.value = 'text';
+  emit('preview-state-change', false);
+};
 
-// Typing indicator handler
-async function handleTypingIndicator() {
-  // Only send typing status for DM/Single chats
-  if (props.chatType !== 'Single') {
-    return;
-  }
-  
-  if (!props.chatId || !message.value.trim()) {
-    // Stop typing if message is empty
-    if (isTyping) {
-      stopTyping();
-    }
-    return;
-  }
-  
-  if (!isTyping) {
-    // Start typing
-    try {
-      await api.post('/realtime/typing/start', { chat_id: props.chatId });
-      isTyping = true;
-      } catch (error) {
-      console.error('Failed to send typing status:', error);
-    }
-  }
-  
-  // Reset typing timer
-  clearTimeout(typingTimer);
-  typingTimer = setTimeout(() => {
-    stopTyping();
-  }, 3000); // Stop after 3 seconds of no typing
-}
+const handleTextSelection = () => {
+  if (formatMode.value !== 'markdown') return;
 
-// Stop typing
-async function stopTyping() {
-  if (!isTyping || !props.chatId || props.chatType !== 'Single') return;
-  
-  try {
-    await api.post('/realtime/typing/stop', { chat_id: props.chatId });
-    isTyping = false;
-    } catch (error) {
-    console.error('Failed to send stop typing status:', error);
-  }
-  
-  clearTimeout(typingTimer);
-}
-
-// Enhanced Drag Upload Handling
-function handleDragOver(event) {
-  event.preventDefault();
-  if (!isDragging.value) {
-    isDragging.value = true;
-  }
-}
-
-function handleDragLeave(event) {
-  // Only set to false if we're leaving the component entirely
-  if (!event.currentTarget.contains(event.relatedTarget)) {
-    isDragging.value = false;
-  }
-}
-
-function handleDrop(event) {
-  event.preventDefault();
-  isDragging.value = false;
-  
-  const files = Array.from(event.dataTransfer.files);
-  if (files.length > 0) {
-    addFiles(files);
-  }
-}
-
-function handleFileSelect(event) {
-  const files = Array.from(event.target.files);
-  addFiles(files);
-  event.target.value = ''; // Clear input
-}
-
-// File size constants
-const maxFileSize = ref(50 * 1024 * 1024); // 50MB
-
-function addFiles(files) {
-  const maxFiles = 10;
-  
-  const validFiles = files.filter(file => {
-    if (file.size > maxFileSize.value) {
-      error.value = `File "${file.name}" is too large. Maximum size is 50MB.`;
-      return false;
-    }
-    return true;
-  });
-  
-  if (selectedFiles.value.length + validFiles.length > maxFiles) {
-    error.value = `Maximum ${maxFiles} files allowed.`;
-    return;
-  }
-  
-  // Add unique IDs to files for better tracking
-  const filesWithIds = validFiles.map(file => ({
-    ...file,
-    id: Date.now() + Math.random(),
-    loading: false,
-    progress: 0,
-    error: false
-  }));
-  
-  selectedFiles.value.push(...filesWithIds);
-  error.value = '';
-}
-
-// Enhanced file drop handler
-function handleFilesDropped(droppedFiles) {
-  addFiles(droppedFiles);
-}
-
-function removeFile(index) {
-  selectedFiles.value.splice(index, 1);
-}
-
-function clearFiles() {
-  selectedFiles.value = [];
-  error.value = '';
-}
-
-function getFilePreview(file) {
-  return URL.createObjectURL(file);
-}
-
-function formatFileSize(bytes) {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
-
-// Emoji Handling
-function insertEmoji(emoji) {
   const textarea = messageInput.value;
-  const cursorPos = textarea.selectionStart;
-  const textBefore = message.value.substring(0, cursorPos);
-  const textAfter = message.value.substring(cursorPos);
-  message.value = textBefore + emoji + textAfter;
-  
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+
+  if (start === end) {
+    showFloatingToolbar.value = false;
+    return;
+  }
+
   nextTick(() => {
-    textarea.focus();
-    textarea.setSelectionRange(cursorPos + emoji.length, cursorPos + emoji.length);
-    adjustHeight();
+    const rect = textarea.getBoundingClientRect();
+    const textHeight = 20;
+    const lineNumber = Math.floor(start / 50); // Approximate
+
+    floatingToolbarStyle.value = {
+      position: 'fixed',
+      left: `${rect.left + 20}px`,
+      top: `${rect.top - 50 + lineNumber * textHeight}px`,
+      zIndex: 1001
+    };
+
+    showFloatingToolbar.value = true;
   });
-  
-  showEmojiPicker.value = false;
-}
+};
 
-// Get Current Category Emojis
-function getCurrentEmojis() {
-  const category = emojiCategories.value.find(cat => cat.name === activeEmojiCategory.value);
-  return category ? category.emojis : [];
-}
+const handleBlur = () => {
+  setTimeout(() => {
+    if (!floatingToolbar.value?.contains(document.activeElement)) {
+      showFloatingToolbar.value = false;
+    }
+  }, 200);
+};
 
-// 🔧 优化后的发送消息函数
-async function sendMessage() {
-  if (!canSend.value) {
+const applyFormat = (format) => {
+  let before = '', after = '';
+
+  switch (format) {
+    case 'bold': before = '**'; after = '**'; break;
+    case 'italic': before = '*'; after = '*'; break;
+    case 'code': before = '`'; after = '`'; break;
+    case 'link': before = '['; after = '](url)'; break;
+  }
+
+  insertMarkdown(before, after);
+  showFloatingToolbar.value = false;
+};
+
+const insertMarkdown = (before, after = '') => {
+  const textarea = messageInput.value;
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const selectedText = messageContent.value.substring(start, end);
+
+  const newText = before + selectedText + after;
+  messageContent.value = messageContent.value.substring(0, start) + newText + messageContent.value.substring(end);
+
+  nextTick(() => {
+    const newCursorPos = start + before.length + selectedText.length;
+    textarea.setSelectionRange(newCursorPos, newCursorPos);
+    textarea.focus();
+  });
+};
+
+const handleKeyDown = (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendMessage();
     return;
   }
-  
-  // 🔧 防重复点击检查
-  const now = Date.now();
-  if (isSending.value || (now - lastSendTime.value) < 1000) {
-    return;
+
+  // Format shortcuts
+  if ((event.metaKey || event.ctrlKey) && formatMode.value === 'markdown') {
+    switch (event.key) {
+      case 'b': event.preventDefault(); insertMarkdown('**', '**'); break;
+      case 'i': event.preventDefault(); insertMarkdown('*', '*'); break;
+      case 'k': event.preventDefault(); insertMarkdown('[', '](url)'); break;
+    }
   }
-  
-  try {
-    // 🔧 标记开始发送
-    isSending.value = true;
-    lastSendTime.value = now;
-    uploading.value = true;
-    error.value = '';
-    uploadProgress.value = 0;
-    
-    // Stop typing indicator
-    stopTyping();
-    
-    // 🔧 保存当前消息内容和文件（防止在发送过程中被修改）
-    const messageContent = message.value.trim();
-    const currentFiles = [...selectedFiles.value];
-    
-    // Upload files first if any
-    let uploadedFiles = [];
-    if (currentFiles.length > 0) {
-      // Update file loading status
-      currentFiles.forEach(file => {
-        file.loading = true;
-        file.progress = 0;
-      });
-      
-      try {
-        uploadedFiles = await chatStore.uploadFiles(currentFiles, {
-          onProgress: (fileIndex, progress) => {
-            if (currentFiles[fileIndex]) {
-              currentFiles[fileIndex].progress = progress;
-            }
-          }
-        });
-        
-        // Mark files as successfully uploaded
-        currentFiles.forEach(file => {
-          file.loading = false;
-          file.progress = 100;
-        });
-      } catch (error) {
-        // Mark files as failed
-        currentFiles.forEach(file => {
-          file.loading = false;
-          file.error = true;
-        });
-        throw error;
+};
+
+const handleInput = () => {
+  nextTick(() => {
+    if (messageInput.value) {
+      messageInput.value.style.height = 'auto';
+      messageInput.value.style.height = Math.min(messageInput.value.scrollHeight, 120) + 'px';
+    }
+  });
+};
+
+const handlePaste = (event) => {
+  const items = event.clipboardData?.items;
+  if (!items) return;
+
+  const pastedFiles = [];
+
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      event.preventDefault();
+      const file = item.getAsFile();
+      if (file) {
+        pastedFiles.push(file);
       }
     }
-    
-    // Emit send event
-    emit('send', {
-      content: messageContent,
-      files: uploadedFiles
-    });
-    
-    // 🔧 只有在发送成功后才清空表单
-    // 这样如果发送失败，用户不会丢失输入的内容
-    message.value = '';
-    selectedFiles.value = [];
-    adjustHeight();
-    
-    } catch (err) {
-    console.error('📤 [INPUT] Message send failed:', err);
-    error.value = err.message || 'Failed to send message';
-    
-    // 🔧 发送失败时不清空表单，让用户可以重试
-    showNotification('Failed to send message. Please try again.', 'error');
-    
-  } finally {
-    // 🔧 重置发送状态
-    uploading.value = false;
-    uploadProgress.value = 0;
-    
-    // 🔧 延迟重置发送状态，防止立即重复点击
-    setTimeout(() => {
-      isSending.value = false;
-    }, 500);
   }
-}
 
-// Monitor Upload Progress
-function updateUploadProgress() {
-  uploadProgress.value = chatStore.uploadProgress;
-}
+  if (pastedFiles.length === 0) return;
 
-// Close Emoji Picker on Outside Click
-function handleClickOutside(event) {
-  if (!event.target.closest('.relative') && showEmojiPicker.value) {
+  // 🔧 FILE SIZE CHECKER: Validate pasted files
+  const validFiles = [];
+  const invalidFiles = [];
+
+  for (const file of pastedFiles) {
+    const validation = validateFileSize(file);
+    if (validation.isValid) {
+      validFiles.push(file);
+    } else {
+      invalidFiles.push({ file, errors: validation.errors });
+    }
+  }
+
+  // Add valid files
+  if (validFiles.length > 0) {
+    files.value.push(...validFiles);
+    if (!showPreview.value) {
+      formatMode.value = 'file';
+      showPreview.value = true;
+      emit('preview-state-change', true);
+    }
+  }
+
+  // Show notification for invalid files
+  if (invalidFiles.length > 0) {
+    const errorMsg = `${invalidFiles.length} pasted file(s) exceed 2MB limit`;
+    showFileNotification(errorMsg, 'error');
+  }
+
+  // Show success message for valid files
+  if (validFiles.length > 0) {
+    const successMsg = `Added ${validFiles.length} pasted file(s)`;
+    showFileNotification(successMsg, 'success');
+  }
+};
+
+const triggerFileUpload = () => fileInput.value?.click();
+
+const handleFileSelect = async (event) => {
+  const selectedFiles = Array.from(event.target.files);
+
+  if (selectedFiles.length === 0) return;
+
+  // Validate files before adding
+  const { useFileUploadStore } = await import('@/stores/fileUploadStore');
+  const fileUploadStore = useFileUploadStore();
+
+  const validFiles = [];
+  const invalidFiles = [];
+
+  for (const file of selectedFiles) {
+    const validation = validateFileSize(file);
+    if (validation.isValid) {
+      validFiles.push(file);
+    } else {
+      invalidFiles.push({ file, errors: validation.errors });
+    }
+  }
+
+  // Add valid files
+  if (validFiles.length > 0) {
+    files.value.push(...validFiles);
+    formatMode.value = 'file';
+    showPreview.value = true;
+    emit('preview-state-change', true);
+  }
+
+  // Show notification for invalid files
+  if (invalidFiles.length > 0) {
+    const errorMsg = `${invalidFiles.length} file(s) exceed 2MB limit: ${invalidFiles.map(f => f.file.name).join(', ')}`;
+    showFileNotification(errorMsg, 'error');
+  }
+
+  event.target.value = '';
+};
+
+const validateFileSize = (file) => {
+  const maxSize = 2 * 1024 * 1024; // 2MB
+  const errors = [];
+
+  if (file.size > maxSize) {
+    const fileSize = formatFileSize(file.size);
+    const maxSizeFormatted = formatFileSize(maxSize);
+    errors.push(`File "${file.name}" (${fileSize}) exceeds 2MB limit (${maxSizeFormatted})`);
+  }
+
+  if (file.size === 0) {
+    errors.push(`File "${file.name}" is empty`);
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
+const showFileNotification = (message, type = 'info') => {
+  // Simple notification implementation - you can enhance this with a proper toast system
+  const notificationStyle = {
+    error: 'background: #fee; color: #c53030; border: 1px solid #fed7d7;',
+    success: 'background: #f0fff4; color: #38a169; border: 1px solid #c6f6d5;',
+    warning: 'background: #fffbeb; color: #d69e2e; border: 1px solid #feebc8;',
+    info: 'background: #ebf8ff; color: #3182ce; border: 1px solid #bee3f8;'
+  };
+
+  const notification = document.createElement('div');
+  notification.innerHTML = `
+    <div style="
+      position: fixed; 
+      top: 20px; 
+      right: 20px; 
+      padding: 12px 16px; 
+      border-radius: 8px; 
+      font-size: 14px; 
+      font-weight: 500;
+      z-index: 10000;
+      max-width: 400px;
+      ${notificationStyle[type]}
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    ">
+      ${message}
+    </div>
+  `;
+
+  document.body.appendChild(notification);
+
+  // Auto remove after 5 seconds
+  setTimeout(() => {
+    if (document.body.contains(notification)) {
+      document.body.removeChild(notification);
+    }
+  }, 5000);
+
+  // Click to dismiss
+  notification.addEventListener('click', () => {
+    if (document.body.contains(notification)) {
+      document.body.removeChild(notification);
+    }
+  });
+};
+
+const removeFile = (index) => {
+  files.value.splice(index, 1);
+  if (files.value.length === 0) {
+    closePreview();
+  }
+};
+
+const getFilePreviewUrl = (file) => URL.createObjectURL(file);
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+// 🔧 FILE SIZE CHECKER: Event handlers for file validation and user interaction
+const handleFilesValidated = (validationData) => {
+  const { valid, invalid, total } = validationData;
+
+  if (import.meta.env.DEV) {
+    console.log(`📏 File validation: ${valid.length}/${total} valid, ${invalid.length} invalid`);
+  }
+
+  if (invalid.length > 0) {
+    // Show user-friendly notification
+    const errorMsg = `${invalid.length} file(s) exceed 2MB limit or are invalid. Please compress or remove them.`;
+
+    // Create a temporary notification (you can implement a proper toast system)
+    showFileNotification(errorMsg, 'error');
+  }
+};
+
+const handleFilesCompressed = (compressionData) => {
+  const { originalFiles, compressedFiles, compressionResults } = compressionData;
+
+  // Replace original files with compressed ones
+  files.value = compressedFiles;
+
+  const successMsg = `Successfully compressed ${compressionResults.successful} image(s). Files are now ready for upload.`;
+  showFileNotification(successMsg, 'success');
+
+  if (import.meta.env.DEV) {
+    console.log(`🗜️ Compression completed:`, compressionResults);
+  }
+};
+
+const handleInvalidFilesRemoved = (removalData) => {
+  const { validFiles, removedCount } = removalData;
+
+  // Update files array with only valid files
+  files.value = validFiles;
+
+  const successMsg = `Removed ${removedCount} invalid file(s). ${validFiles.length} valid file(s) remaining.`;
+  showFileNotification(successMsg, 'warning');
+
+  if (import.meta.env.DEV) {
+    console.log(`🗑️ Removed ${removedCount} invalid files`);
+  }
+
+  // Close preview if no files remain
+  if (validFiles.length === 0) {
+    closePreview();
+  }
+};
+
+// Production-grade emoji picker methods
+const toggleEmojiPicker = () => {
+  showEmojiPicker.value = !showEmojiPicker.value;
+  if (showEmojiPicker.value) {
+    emojiSearchQuery.value = '';
+  }
+};
+
+const selectEmojiCategory = (categoryKey) => {
+  selectedEmojiCategory.value = categoryKey;
+};
+
+const insertEmoji = (emoji) => {
+  const textarea = messageInput.value;
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+
+  messageContent.value = messageContent.value.substring(0, start) + emoji.char + messageContent.value.substring(end);
+
+  // Add to recent emojis
+  addToRecentEmojis(emoji);
+
+  nextTick(() => {
+    const newPos = start + emoji.char.length;
+    textarea.setSelectionRange(newPos, newPos);
+    textarea.focus();
+  });
+
+  showEmojiPicker.value = false;
+};
+
+const addToRecentEmojis = (emoji) => {
+  // Remove if already exists
+  const existingIndex = recentEmojis.value.findIndex(e => e.char === emoji.char);
+  if (existingIndex !== -1) {
+    recentEmojis.value.splice(existingIndex, 1);
+  }
+
+  // Add to beginning
+  recentEmojis.value.unshift(emoji);
+
+  // Keep only max number
+  if (recentEmojis.value.length > maxRecentEmojis) {
+    recentEmojis.value = recentEmojis.value.slice(0, maxRecentEmojis);
+  }
+
+  // Save to localStorage
+  localStorage.setItem('fechatter-recent-emojis', JSON.stringify(recentEmojis.value));
+};
+
+const loadRecentEmojis = () => {
+  try {
+    const stored = localStorage.getItem('fechatter-recent-emojis');
+    if (stored) {
+      recentEmojis.value = JSON.parse(stored);
+    }
+  } catch (error) {
+    console.warn('Failed to load recent emojis:', error);
+  }
+};
+
+const filteredEmojis = computed(() => {
+  if (!emojiSearchQuery.value.trim()) {
+    return emojiCategories[selectedEmojiCategory.value]?.emojis || [];
+  }
+
+  const query = emojiSearchQuery.value.toLowerCase();
+  const allEmojis = Object.values(emojiCategories).flatMap(cat => cat.emojis);
+
+  return allEmojis.filter(emoji =>
+    emoji.name.toLowerCase().includes(query) ||
+    emoji.keywords.some(keyword => keyword.toLowerCase().includes(query)) ||
+    emoji.char.includes(query)
+  );
+});
+
+const sendMessage = async () => {
+  if (!canSend.value) return;
+
+  isSending.value = true;
+
+  try {
+    // 1. 先处理文件上传（如果有文件）
+    let uploadedFileUrls = [];
+    if (files.value.length > 0) {
+      // 使用fileUploadStore处理文件
+      const { useFileUploadStore } = await import('@/stores/fileUploadStore');
+      const fileUploadStore = useFileUploadStore();
+
+      // 添加文件到store
+      await fileUploadStore.addFiles(files.value);
+
+      // 上传所有文件 - 这里会返回正确的文件URL数组
+      uploadedFileUrls = await fileUploadStore.uploadAll();
+
+      if (uploadedFileUrls.length !== files.value.length) {
+        throw new Error('Some files failed to upload. Please try again.');
+      }
+
+      if (import.meta.env.DEV) {
+        console.log('✅ [MessageInput] Files uploaded successfully:', uploadedFileUrls);
+      }
+    }
+
+    // 2. 构建符合后端API要求的消息数据
+    const messageData = {
+      content: messageContent.value.trim(),
+      files: uploadedFileUrls, // 文件URL数组，格式: ["/files/xxx.jpg", "/files/yyy.pdf"]
+      formatMode: formatMode.value,
+      reply_to: props.replyToMessage?.id,
+      mentions: [], // TODO: 从内容中提取@mentions
+      idempotency_key: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9)
+    };
+
+    if (import.meta.env.DEV) {
+      console.log('📤 [MessageInput] Sending message data:', messageData);
+    }
+
+    // 3. 发送消息事件给Chat.vue
+    emit('message-sent', messageData);
+
+    // 4. 立即重置状态（乐观更新 - 假设发送成功）
+    messageContent.value = '';
+    files.value = [];
+    closePreview();
+
+    // 5. 重置textarea高度
+    nextTick(() => {
+      if (messageInput.value) {
+        messageInput.value.style.height = 'auto';
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ [MessageInput] Failed to send message:', error);
+
+    // 显示用户友好的错误信息
+    const errorMessage = error.message || 'Failed to send message. Please try again.';
+    if (typeof window !== 'undefined' && window.showNotification) {
+      window.showNotification(errorMessage, 'error');
+    } else {
+      alert(errorMessage);
+    }
+  } finally {
+    isSending.value = false;
+  }
+};
+
+const cancelReply = () => emit('reply-cancelled');
+const truncateText = (text, maxLength) => text?.length > maxLength ? text.substring(0, maxLength) + '...' : text || '';
+
+// Click outside handlers
+const handleClickOutside = (event) => {
+  if (showEmojiPicker.value && emojiPickerRef.value && !emojiPickerRef.value.contains(event.target)) {
     showEmojiPicker.value = false;
   }
-}
+};
 
-// Lifecycle
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
-  document.addEventListener('dragover', (e) => e.preventDefault());
-  document.addEventListener('drop', (e) => e.preventDefault());
-  adjustHeight();
-  
-  // Monitor store upload progress
-  chatStore.$subscribe((mutation, state) => {
-    if (mutation.type === 'direct' && mutation.payload.uploadProgress !== undefined) {
-      uploadProgress.value = state.uploadProgress;
-    }
-  });
+  loadRecentEmojis();
 });
+onUnmounted(() => document.removeEventListener('click', handleClickOutside));
 
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside);
-  document.removeEventListener('dragover', (e) => e.preventDefault());
-  document.removeEventListener('drop', (e) => e.preventDefault());
-  
-  // Clean up typing indicator
-  clearTimeout(typingTimer);
-  if (isTyping) {
-    stopTyping();
+// 🚀 NEW: Floating Formatting Toolbar Methods
+const toggleFloatingFormattingToolbar = () => {
+  showFloatingFormattingToolbar.value = !showFloatingFormattingToolbar.value;
+
+  if (showFloatingFormattingToolbar.value) {
+    // Smart positioning based on input area
+    const inputRect = messageInput.value?.getBoundingClientRect();
+    if (inputRect) {
+      // Position the toolbar to the right of the input area, or center it if not enough space
+      const x = Math.min(inputRect.right + 20, window.innerWidth - 450);
+      const y = Math.max(inputRect.top - 50, 50);
+      floatingFormattingPosition.value = { x, y };
+    }
   }
-  
-  // Clean up object URLs
-  selectedFiles.value.forEach(file => {
-    if (file.type.startsWith('image/')) {
-      URL.revokeObjectURL(getFilePreview(file));
+};
+
+const handleFloatingFormattingClose = () => {
+  showFloatingFormattingToolbar.value = false;
+};
+
+const handleFormatApplied = ({ format, beforeText, afterText, cursorPos }) => {
+  // Apply the format using existing logic
+  insertMarkdown(beforeText, afterText);
+
+  // Focus back to textarea and set cursor position if provided
+  nextTick(() => {
+    if (messageInput.value && cursorPos !== undefined) {
+      messageInput.value.focus();
+      messageInput.value.setSelectionRange(cursorPos, cursorPos);
     }
   });
-});
+};
 
-// File Handling Functions - Performance Optimization
-function isImageFile(file) {
-  return file.type.startsWith('image/');
-}
+const handleContentChanged = (newContent) => {
+  messageContent.value = newContent;
 
-// File Upload - 现在由chatStore.uploadFiles处理
-// 这个函数已经被移除，文件上传在sendMessage中通过chatStore.uploadFiles完成
+  // Update textarea height after content change
+  nextTick(() => {
+    handleInput();
+  });
+};
+
+const handlePositionChanged = (position) => {
+  floatingFormattingPosition.value = position;
+};
 </script>
 
 <style scoped>
-/* Custom Scrollbar */
-.scrollbar-thin::-webkit-scrollbar {
-  width: 4px;
+.message-input {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: visible;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: transparent;
+.message-input:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.3);
-  border-radius: 2px;
+.message-input.format-active {
+  border-color: #8b5cf6;
 }
 
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.5);
+/* Unified Preview Container */
+.unified-preview-container {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  max-height: 300px;
+  overflow: hidden;
+  z-index: 100;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
 }
 
-/* Keyboard Hint */
-.kbd-hint {
-  @apply inline-flex items-center px-1.5 py-0.5 text-xs bg-gray-100 border border-gray-200 rounded;
-  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
 }
 
-/* Smooth Font Rendering */
-* {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+.preview-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  color: #374151;
+  font-size: 14px;
 }
 
-/* Enhanced Code Block Preview */
-.enhanced-code-preview {
-  font-family: 'SF Mono', 'Monaco', 'Consolas', 'Menlo', monospace;
+.preview-close {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.preview-close:hover {
+  background: #f3f4f6;
+}
+
+.preview-content {
+  padding: 16px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+/* Preview Content Styles */
+.markdown-preview {
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3 {
+  margin: 16px 0 8px 0;
+  color: #1f2937;
+}
+
+.markdown-preview p {
+  margin: 8px 0;
+}
+
+.markdown-preview code {
+  background: #f3f4f6;
+  padding: 2px 4px;
+  border-radius: 3px;
   font-size: 13px;
+}
+
+.markdown-preview pre {
+  background: #1f2937;
+  color: #e5e7eb;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+.code-preview .code-header {
+  margin-bottom: 12px;
+}
+
+.language-selector {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.code-preview pre {
+  background: #1f2937;
+  color: #e5e7eb;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 13px;
+}
+
+.file-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.file-thumbnail {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.file-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  background: #f3f4f6;
+  border-radius: 6px;
+}
+
+.file-info {
+  flex: 1;
+}
+
+.file-name {
+  font-weight: 500;
+  color: #374151;
+  font-size: 14px;
+}
+
+.file-size {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.file-remove {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.add-files-btn {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  align-self: flex-start;
+}
+
+.add-files-btn:hover {
+  background: #f3f4f6;
+}
+
+/* Floating Toolbar */
+.floating-toolbar {
+  background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  z-index: 1001;
+}
+
+.floating-tool-btn {
+  background: transparent;
+  border: none;
+  color: #e5e7eb;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  transition: background-color 0.2s;
+}
+
+.floating-tool-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.floating-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 0 4px;
+}
+
+/* Reply Context */
+.reply-context {
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 12px 12px 0 0;
+}
+
+.reply-indicator {
+  font-size: 12px;
+  color: #6366f1;
+  font-weight: 500;
+}
+
+.reply-content {
+  flex: 1;
+  margin: 0 12px;
+  color: #6b7280;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reply-cancel {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+/* Main Input Area */
+.main-input-area {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 16px;
+}
+
+.action-btn {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.action-btn:hover,
+.action-btn.active {
+  background: #6366f1;
+  color: white;
+  border-color: #6366f1;
+}
+
+/* 🚀 NEW: Floating Formatting Toolbar Button */
+.floating-toolbar-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border: none !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.floating-toolbar-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.6s;
+}
+
+.floating-toolbar-btn:hover::before {
+  left: 100%;
+}
+
+.floating-toolbar-btn:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+}
+
+.floating-toolbar-btn.active {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+  box-shadow: 0 0 0 3px rgba(240, 147, 251, 0.3);
+  animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px rgba(240, 147, 251, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px rgba(240, 147, 251, 0.2);
+  }
+}
+
+.file-count-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.input-container {
+  flex: 1;
+  position: relative;
+}
+
+.message-textarea {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 15px;
   line-height: 1.5;
+  resize: none;
+  outline: none;
+  padding: 8px 12px;
+  min-height: 24px;
+  max-height: 120px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-.code-block-container {
-  @apply mb-3 last:mb-0 bg-slate-900 rounded-b-lg overflow-hidden;
-  border: 1px solid #e2e8f0;
+.message-textarea::placeholder {
+  color: #9ca3af;
 }
 
-.code-block-header {
-  @apply bg-slate-800 px-3 py-2 border-b border-slate-700;
+.character-counter {
+  position: absolute;
+  bottom: 4px;
+  right: 8px;
+  font-size: 11px;
+  color: #9ca3af;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
-.language-tag {
-  @apply text-xs font-medium text-slate-300 bg-slate-700 px-2 py-1 rounded;
+.character-counter.warning {
+  color: #ef4444;
+  font-weight: 600;
 }
 
-.code-block-controls {
-  @apply flex items-center space-x-1;
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
-.copy-btn {
-  @apply text-slate-400 hover:text-slate-200 p-1 rounded transition-colors;
+.mode-btn {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.2s;
 }
 
-.code-block-content {
-  @apply bg-slate-900 p-3 overflow-x-auto;
+.mode-btn:hover,
+.mode-btn.active {
+  background: #6366f1;
+  color: white;
+  border-color: #6366f1;
 }
 
-.code-block-content pre {
-  @apply m-0 text-slate-100;
-  white-space: pre;
-  word-break: normal;
-  overflow-wrap: normal;
+.send-btn {
+  background: #d1d5db;
+  border: none;
+  color: #9ca3af;
+  cursor: not-allowed;
+  padding: 8px 12px;
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
 }
 
-.code-block-content code {
-  @apply text-slate-100 bg-transparent;
-  font-family: inherit;
-  font-size: inherit;
-  padding: 0;
-  border-radius: 0;
+.send-btn.active {
+  background: #6366f1;
+  color: white;
+  cursor: pointer;
 }
 
-/* Syntax highlighting for common languages */
-.language-javascript .token.keyword,
-.language-js .token.keyword,
-.language-typescript .token.keyword,
-.language-ts .token.keyword {
-  color: #c792ea;
+.send-btn.active:hover {
+  background: #4f46e5;
+  transform: translateY(-1px);
 }
 
-.language-javascript .token.string,
-.language-js .token.string,
-.language-typescript .token.string,
-.language-ts .token.string {
-  color: #c3e88d;
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
-.language-javascript .token.function,
-.language-js .token.function,
-.language-typescript .token.function,
-.language-ts .token.function {
-  color: #82aaff;
-}
-
-.language-javascript .token.comment,
-.language-js .token.comment,
-.language-typescript .token.comment,
-.language-ts .token.comment {
-  color: #546e7a;
-  font-style: italic;
-}
-
-.language-javascript .token.number,
-.language-js .token.number,
-.language-typescript .token.number,
-.language-ts .token.number {
-  color: #f78c6c;
-}
-
-/* Rust syntax highlighting */
-.language-rust .token.keyword {
-  color: #c792ea;
-}
-
-.language-rust .token.string {
-  color: #c3e88d;
-}
-
-.language-rust .token.macro {
-  color: #ffcb6b;
-}
-
-/* Python syntax highlighting */
-.language-python .token.keyword {
-  color: #c792ea;
-}
-
-.language-python .token.string {
-  color: #c3e88d;
-}
-
-.language-python .token.function {
-  color: #82aaff;
-}
-
-/* Legacy Code Block Preview (fallback) */
-.code-block-preview {
-  @apply font-mono text-sm bg-gray-50 border border-gray-200 rounded-lg p-3;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.code-block-preview pre {
-  margin: 0;
-  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-}
-
-.code-block-preview code {
-  @apply bg-gray-100 px-1 py-0.5 rounded text-gray-800;
-}
-
-/* 📱 Mobile MessageInput Optimizations */
-@media (max-width: 767px) {
-  /* Container adjustments */
-  .bg-white\/95 {
-    padding-bottom: env(safe-area-inset-bottom, 0);
-  }
-
-  /* Main input area - more compact on mobile */
-  .p-6 {
-    padding: 12px 16px;
-  }
-
-  /* File upload button - larger touch target */
-  .w-10.h-10 {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
-  }
-
-  /* Send button - larger touch target */
-  .w-10.h-10.bg-violet-600 {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
-  }
-
-  /* Message input - adjust for mobile */
-  textarea {
-    font-size: 16px !important; /* Prevent zoom on iOS */
-    min-height: 44px !important;
-    padding: 12px 16px !important;
-  }
-
-  /* Emoji picker - full width on mobile */
-  .w-80 {
-    width: calc(100vw - 32px);
-    max-width: 320px;
-    left: 50%;
-    transform: translateX(-50%);
-    right: auto;
-  }
-
-  /* Emoji picker positioning */
-  .bottom-14 {
-    bottom: 60px;
-  }
-
-  /* Selected files grid - fewer columns on mobile */
-  .grid-cols-2 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  
-  .sm\:grid-cols-3 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  
-  .md\:grid-cols-4 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  
-  .lg\:grid-cols-6 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  /* File preview items - larger touch targets */
-  .relative.group {
-    min-height: 80px;
-    padding: 12px 8px;
-  }
-
-  /* Code block preview - smaller on mobile */
-  .code-block-preview {
-    font-size: 12px;
-    padding: 8px;
-  }
-
-  /* Drag upload overlay - adjust for mobile */
-  .w-16.h-16 {
-    width: 48px;
-    height: 48px;
-  }
-
-  /* Upload progress - more compact */
-  .px-6.py-2 {
-    padding: 8px 16px;
-  }
-
-  /* Character count - adjust position */
-  .absolute.bottom-2.right-4 {
-    bottom: 8px;
-    right: 8px;
-    font-size: 11px;
-  }
-
-  /* Code block hint - adjust position */
-  .absolute.bottom-1.right-4 {
-    bottom: 4px;
-    right: 8px;
-    font-size: 11px;
-  }
-
-  /* Keyboard hint */
-  .kbd-hint {
-    padding: 2px 4px;
-    font-size: 10px;
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
-/* 📱 Small mobile devices */
-@media (max-width: 479px) {
-  /* Even more compact layout */
-  .p-6 {
-    padding: 8px 12px;
+/* Emoji Picker */
+.emoji-picker {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  width: 360px;
+  max-height: 400px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 200;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Emoji Header */
+.emoji-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f8fafc;
+}
+
+.emoji-search-container {
+  flex: 1;
+  position: relative;
+}
+
+.emoji-search {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #ffffff;
+  transition: border-color 0.2s;
+}
+
+.emoji-search:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.emoji-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: #6b7280;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.emoji-close:hover {
+  background: #f3f4f6;
+}
+
+/* Category Tabs */
+.emoji-categories {
+  display: flex;
+  padding: 8px 12px;
+  gap: 4px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+  overflow-x: auto;
+}
+
+.category-tab {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.2s;
+  white-space: nowrap;
+  min-width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.category-tab:hover {
+  background: #f3f4f6;
+  transform: scale(1.05);
+}
+
+.category-tab.active {
+  background: #6366f1;
+  color: white;
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
+}
+
+/* Emoji Content */
+.emoji-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.emoji-section {
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Emoji Grid */
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+}
+
+.emoji-item {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  aspect-ratio: 1;
+  position: relative;
+}
+
+.emoji-item:hover {
+  background: #f3f4f6;
+  transform: scale(1.2);
+  z-index: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.emoji-item:active {
+  transform: scale(1.1);
+}
+
+/* No Results */
+.no-results {
+  text-align: center;
+  padding: 24px;
+  color: #6b7280;
+}
+
+.no-results-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.no-results-text {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.no-results-hint {
+  font-size: 14px;
+}
+
+/* Emoji Footer */
+.emoji-footer {
+  border-top: 1px solid #e5e7eb;
+  padding: 8px 16px;
+  background: #f8fafc;
+}
+
+.emoji-count {
+  font-size: 11px;
+  color: #9ca3af;
+  text-align: center;
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .emoji-picker {
+    width: 320px;
+    max-height: 350px;
   }
 
-  /* Reduce spacing between elements */
-  .space-x-3 > * + * {
-    margin-left: 8px;
+  .emoji-grid {
+    grid-template-columns: repeat(6, 1fr);
   }
 
-  /* Smaller emoji picker */
-  .w-80 {
-    width: calc(100vw - 24px);
-    max-width: 280px;
-  }
-
-  /* Smaller emoji grid */
-  .grid-cols-8 {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-
-  /* Single column for file preview on very small screens */
-  .grid-cols-2,
-  .sm\:grid-cols-3,
-  .md\:grid-cols-4,
-  .lg\:grid-cols-6 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  /* Hide some less important UI elements on very small screens */
-  .slack-latency,
-  .code-block-preview {
-    display: none;
+  .emoji-item {
+    font-size: 16px;
+    padding: 6px;
   }
 }
 
-/* 📱 Landscape mobile optimization */
-@media (max-width: 767px) and (orientation: landscape) {
-  /* Reduce top/bottom padding in landscape */
-  .p-6 {
-    padding: 8px 16px;
+/* Mode Label */
+.mode-label {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 8px 8px 0 0;
+  padding: 8px 16px;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  animation: slideDown 0.3s ease-out;
+}
+
+.mode-label.mode-markdown {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.mode-label.mode-code {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.mode-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mode-icon {
+  font-size: 16px;
+}
+
+.mode-text {
+  font-size: 14px;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
   }
 
-  /* Adjust emoji picker height for landscape */
-  .max-h-48 {
-    max-height: 30vh;
-  }
-
-  /* Smaller upload overlay in landscape */
-  .w-16.h-16 {
-    width: 40px;
-    height: 40px;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-/* 🎯 Touch-friendly improvements */
-@media (hover: none) and (pointer: coarse) {
-  /* Ensure all interactive elements meet touch size requirements */
-  button, .group button {
-    min-height: 44px;
-    min-width: 44px;
-  }
+/* Unified Format Mode Button */
+.unified-mode-btn {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  min-width: 44px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-  /* Larger touch targets for emoji buttons */
-  .w-8.h-8 {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
-  }
+.unified-mode-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+}
 
-  /* Improve touch feedback */
-  button:active {
-    transform: scale(0.95);
-    transition: transform 0.1s ease;
-  }
+.unified-mode-btn.active {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
 
-  /* Better touch spacing */
-  .gap-1 {
-    gap: 8px;
-  }
+.unified-mode-btn.mode-markdown {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  border-color: #f5576c;
+}
 
-  .gap-2 {
-    gap: 12px;
-  }
+.unified-mode-btn.mode-code {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+  border-color: #00f2fe;
+}
+
+.mode-icon {
+  font-size: 14px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Animations */
+.preview-popup-enter-active,
+.preview-popup-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.preview-popup-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.preview-popup-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.toolbar-float-enter-active,
+.toolbar-float-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toolbar-float-enter-from,
+.toolbar-float-leave-to {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+.emoji-fade-enter-active,
+.emoji-fade-leave-active {
+  transition: all 0.2s ease;
+}
+
+.emoji-fade-enter-from,
+.emoji-fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
 }
 </style>

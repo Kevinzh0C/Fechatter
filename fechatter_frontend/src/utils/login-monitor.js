@@ -36,7 +36,8 @@ export class LoginFlowMonitor {
     this.events = [];
     this.eventId = 0;
 
-    console.log('%c🔍 Login Flow Monitor Started', 'font-weight: bold; font-size: 14px;');
+    if (import.meta.env.DEV) {
+      console.log('%c🔍 Login Flow Monitor Started', 'font-weight: bold; font-size: 14px;');
     this.logEvent('MONITOR_START', { timestamp: new Date().toISOString() });
 
     // 设置拦截器
@@ -69,7 +70,9 @@ export class LoginFlowMonitor {
     // 输出到控制台
     if (this.config.logToConsole) {
       const style = this.eventStyles[type] || 'background: #666; color: #fff; padding: 2px 5px;';
-      console.log(
+      if (import.meta.env.DEV) {
+        console.log(
+      }
         `%c${type}%c +${event.elapsed}ms`,
         style,
         'color: #666; font-size: 11px;',
@@ -77,9 +80,9 @@ export class LoginFlowMonitor {
       );
 
       if (status === 'error') {
-        console.error('Error details:', data);
-      }
-    }
+        if (import.meta.env.DEV) {
+          console.error('Error details:', data);
+        }
 
     // 发送到服务器
     if (this.config.logToServer) {
@@ -96,7 +99,9 @@ export class LoginFlowMonitor {
   monitorStore(store, storeName) {
     if (!this.config.monitorStore) return;
 
-    console.log(`%c🏪 Monitoring ${storeName} store`, 'color: #9c27b0;');
+    if (import.meta.env.DEV) {
+      console.log(`%c🏪 Monitoring ${storeName} store`, 'color: #9c27b0;');
+    }
 
     // 监控actions
     const originalActions = {};
@@ -132,7 +137,6 @@ export class LoginFlowMonitor {
                   }, 'error');
                   throw err;
                 });
-            }
 
             return result;
           } catch (error) {
@@ -164,7 +168,9 @@ export class LoginFlowMonitor {
   monitorRouter(router) {
     if (!this.config.monitorRouter) return;
 
-    console.log('%c🛣️ Monitoring Router', 'color: #2196f3;');
+    if (import.meta.env.DEV) {
+      console.log('%c🛣️ Monitoring Router', 'color: #2196f3;');
+    }
 
     // 监控路由守卫
     router.beforeEach((to, from, next) => {
@@ -181,7 +187,6 @@ export class LoginFlowMonitor {
           this.logEvent('ROUTE_CANCELLED', { to: to.path });
         } else if (typeof arg === 'string' || (arg && typeof arg === 'object')) {
           this.logEvent('ROUTE_REDIRECT', { to: to.path, redirect: arg });
-        }
         next(arg);
       };
 
@@ -208,7 +213,6 @@ export class LoginFlowMonitor {
         stack: error.stack
       }, 'error');
     });
-  }
 
   // 设置网络拦截器
   setupNetworkInterceptors() {
@@ -355,7 +359,6 @@ export class LoginFlowMonitor {
           className: target.className,
           type: target.type
         });
-      }
     }, true);
 
     // 监听输入焦点
@@ -368,7 +371,6 @@ export class LoginFlowMonitor {
           type: target.type,
           placeholder: target.placeholder
         });
-      }
     }, true);
 
     // 监听输入变化
@@ -409,8 +411,6 @@ export class LoginFlowMonitor {
           } else {
             sanitized[key] = data[key];
           }
-        }
-      }
 
       return sanitized;
     }
@@ -460,9 +460,9 @@ export class LoginFlowMonitor {
         body: JSON.stringify(event)
       });
     } catch (error) {
-      console.error('Failed to send event to server:', error);
-    }
-  }
+      if (import.meta.env.DEV) {
+        console.error('Failed to send event to server:', error);
+      }
 
   // 生成报告
   generateReport() {
@@ -517,20 +517,28 @@ export class LoginFlowMonitor {
     const report = this.generateReport();
 
     console.group('%c📊 Login Flow Summary', 'font-size: 16px; font-weight: bold;');
-    console.log(`Duration: ${report.summary.duration}ms`);
-    console.log(`Total Events: ${report.summary.totalEvents}`);
-    console.log(`Errors: ${report.errors.length}`);
+    if (import.meta.env.DEV) {
+      console.log(`Duration: ${report.summary.duration}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`Total Events: ${report.summary.totalEvents}`);
+    if (import.meta.env.DEV) {
+      console.log(`Errors: ${report.errors.length}`);
+    }
 
     console.group('Event Counts:');
     Object.entries(report.eventCounts).forEach(([type, count]) => {
-      console.log(`${type}: ${count}`);
+      if (import.meta.env.DEV) {
+        console.log(`${type}: ${count}`);
+      }
     });
     console.groupEnd();
 
     if (report.errors.length > 0) {
       console.group('%c❌ Errors:', 'color: red;');
       report.errors.forEach(error => {
-        console.error(error);
+        if (import.meta.env.DEV) {
+          console.error(error);
+        }
       });
       console.groupEnd();
     }
@@ -543,9 +551,9 @@ export class LoginFlowMonitor {
     this.events = [];
     this.startTime = null;
     this.eventId = 0;
-    console.log('%c🧹 Monitor cleared', 'color: #666;');
-  }
-}
+    if (import.meta.env.DEV) {
+      console.log('%c🧹 Monitor cleared', 'color: #666;');
+    }
 
 // 创建全局实例
 window.loginMonitor = new LoginFlowMonitor();

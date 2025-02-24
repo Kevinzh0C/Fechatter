@@ -78,15 +78,15 @@
 
         <!-- Unified Channel List - handles both channels and direct messages -->
         <div class="slack-unified-channels">
-          <ChannelList :channels="channelsList" :directMessages="directMessagesList" :groupMessages="groupMessagesList"
+          <ChannelList :channels="channels" :directMessages="directMessages" :groupMessages="groupMessages"
             :isLoading="isLoading" :currentChatId="currentChatId" @channel-selected="handleChannelSelected"
-            @create-channel="showCreateChannelModal = true" @create-dm="showCreateDMModal = true" @refresh="refresh" />
+            @create-channel="showCreateChannelModal = true" @create-dm="showCreateDMModal = true"
+            @refresh="refreshData" />
         </div>
       </div>
 
       <!-- User Bottom Bar -->
-      <UserBottomBar @profile-opened="handleProfileOpened" @settings-opened="handleSettingsOpened"
-        @role-switched="handleRoleSwitched" />
+      <UserBottomBar @logout="handleLogout" />
     </aside>
 
     <!-- Main Content Area -->
@@ -118,17 +118,18 @@
     <KeyboardShortcutsModal v-model="showKeyboardShortcutsModal" :shortcuts="keyboardShortcuts"
       @close="showKeyboardShortcutsModal = false" />
 
+
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useWindowSize } from '@vueuse/core';
-import { useHomeLayout } from '@/composables/useHomeLayout';
 import { useChatStore } from '@/stores/chat';
 import { useAuthStore } from '@/stores/auth';
-import { useUserStore } from '@/stores/user';
+import { useWorkspaceStore } from '@/stores/workspace';
 import CreateChannelModal from '@/components/modals/CreateChannelModal.vue';
 import CreateDMModal from '@/components/modals/CreateDMModal.vue';
 import CreateGroupChatModal from '@/components/modals/CreateGroupChatModal.vue';
@@ -138,21 +139,20 @@ import ChannelList from '@/components/layout/ChannelList.vue';
 import AdminStatusBar from '@/components/layout/AdminStatusBar.vue';
 import UserBottomBar from '@/components/layout/UserBottomBar.vue';
 import { AppIcon } from '@/components/icons';
-import { useRouterGuard } from '@/composables/useRouterGuard';
 import { useNotifications } from '@/composables/useNotifications';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 import { errorHandler } from '@/utils/errorHandler';
-import { debugDuplicateChannels, debugChannelsList } from '@/utils/debugDuplicateChannels';
 import { debugMessageFlow } from '@/utils/messageDebugger';
+import performanceMonitor from '@/utils/performanceMonitor';
+import minimalSSE from '@/services/sse-minimal';
+import { createNavigationHelper } from '@/services/navigation/NavigationManager';
+import authStateManager from '@/utils/authStateManager';
 
-const route = useRoute();
+
 const router = useRouter();
-const chatStore = useChatStore();
 const authStore = useAuthStore();
-const userStore = useUserStore();
-
-// Add router guard for safe navigation
-const { navigateToChat, getNavigationState, isNavigating } = useRouterGuard();
+const chatStore = useChatStore();
+const workspaceStore = useWorkspaceStore();
 
 // Initialize keyboard shortcuts
 const { shortcuts: keyboardShortcuts, emitGlobalEvent } = useKeyboardShortcuts({
@@ -167,21 +167,21 @@ const { width: windowWidth } = useWindowSize();
 const isMobile = computed(() => windowWidth.value < 768);
 const isMobileSidebarOpen = ref(false);
 
-// Use the composable for business logic
-const {
-  currentUser,
-  currentWorkspace,
-  channels,
-  isLoading,
-  wsConnectionState,
-  showCreateChannelModal,
-  showCreateDMModal,
-  logout,
-  onChannelCreated,
-  onDMCreated,
-  refresh,
-  getLoadingStatus,
-} = useHomeLayout();
+// Directly use the store's state and getters for reactivity
+const channels = computed(() => chatStore.chats.filter(c => c.chat_type === 'PublicChannel' || c.chat_type === 'PrivateChannel'));
+const directMessages = computed(() => chatStore.chats.filter(c => c.chat_type === 'Single'));
+const groupMessages = computed(() => chatStore.chats.filter(c => c.chat_type === 'Group'));
+const isLoading = computed(() => chatStore.loading);
+const currentUser = computed(() => authStore.user);
+const currentWorkspace = computed(() => workspaceStore.currentWorkspace);
+const currentChatId = computed(() => {
+  const id = useRoute().params.id;
+  return id ? parseInt(id, 10) : null;
+});
+
+// Modal states
+const showCreateChannelModal = ref(false);
+const showCreateDMModal = ref(false);
 
 // Local state for UI
 const showUserMenu = ref(false);
@@ -221,7 +221,7 @@ const handleAddGroupChat = () => {
 // Handler methods for UserBottomBar events
 const handleProfileOpened = () => {
   // Open user profile modal or navigate to profile page
-  console.log('Profile opened')
+  // console.log('Profile opened')
   // TODO: Implement profile modal
 }
 
@@ -231,7 +231,7 @@ const handleSettingsOpened = () => {
 
 const handleRoleSwitched = () => {
   // Handle role switching functionality
-  console.log('Role switch requested')
+  // console.log('Role switch requested')
   // TODO: Implement role switching
 }
 
@@ -241,153 +241,48 @@ const showCreatePublicChannelModal = ref(false);
 const showCreatePrivateChannelModal = ref(false);
 const currentChannelType = ref('public');
 
-// Computed properties for Sidebar
-const allChannels = computed(() => {
-  return channels.value || [];
-});
+// Actions
+const handleLogout = async () => {
+  await authStore.logout();
+  router.push('/login');
+};
 
-const channelsList = computed(() => {
-  // Ensure chatStore is available and properly initialized
-  if (!chatStore || !chatStore.chats) {
-    return [];
+// 🔧 FIXED: Initialize navigation helper in setup()
+const navigationHelper = createNavigationHelper(router, chatStore);
+
+const handleChatClick = async (chatId) => {
+  try {
+    // 🔧 FIXED: Use pre-initialized navigation helper
+    await navigationHelper.navigateToChat(chatId);
+  } catch (error) {
+    console.error('Failed to navigate to chat:', error);
   }
+};
 
-  const allChats = Array.isArray(chatStore.chats) ? chatStore.chats : [];
-  const filtered = allChats.filter(chat =>
-    chat?.chat_type === 'PublicChannel' ||
-    chat?.chat_type === 'PrivateChannel'
-  ).map(channel => ({
-    id: channel.id,
-    name: channel.name || 'Unnamed Channel',
-    chat_type: channel.chat_type,
-    description: channel.description || '',
-    unread_count: channel.unread_count || 0,
-    mention_count: channel.mention_count || 0,
-    last_message: channel.last_message || null,
-    member_count: channel.member_count || 0,
-    is_muted: channel.is_muted || false,
-    updated_at: channel.updated_at
-  }));
-
-  // Debug: Check for duplicates
-  if (process.env.NODE_ENV === 'development') {
-    debugChannelsList(filtered);
-  }
-
-  return filtered;
-});
-
-const directMessagesList = computed(() => {
-  // Ensure chatStore is available and properly initialized
-  if (!chatStore || !chatStore.chats) {
-    return [];
-  }
-
-  const allChats = Array.isArray(chatStore.chats) ? chatStore.chats : [];
-  return allChats.filter(chat =>
-    chat?.chat_type === 'Single'
-  ).map(dm => {
-    // Get the other user's ID from chat members
-    const otherUserId = dm.chat_members?.find(id => id !== authStore.user?.id);
-
-    // Try to get user info from userStore
-    let userInfo = null;
-    let avatarUrl = null;
-    let userStatus = 'offline';
-
-    if (otherUserId && userStore.getUserById) {
-      userInfo = userStore.getUserById(otherUserId);
-      if (userInfo) {
-        avatarUrl = userInfo.avatar_url;
-        userStatus = userInfo.status || 'offline';
-      }
-    }
-
-    // Fallback to display_avatar if available
-    if (!avatarUrl && dm.display_avatar) {
-      avatarUrl = dm.display_avatar;
-    }
-
-    return {
-      id: dm.id,
-      name: dm.display_name || dm.name || 'Direct Message',
-      chat_type: dm.chat_type,
-      unread_count: dm.unread_count || 0,
-      mention_count: dm.mention_count || 0,
-      last_message: dm.last_message || null,
-      user_status: userStatus,
-      avatar_url: avatarUrl,
-      updated_at: dm.updated_at,
-      other_user_id: otherUserId // Store for future reference
-    };
-  });
-});
-
-const groupMessagesList = computed(() => {
-  // Ensure chatStore is available and properly initialized
-  if (!chatStore || !chatStore.chats) {
-    return [];
-  }
-
-  const allChats = Array.isArray(chatStore.chats) ? chatStore.chats : [];
-  return allChats.filter(chat =>
-    chat?.chat_type === 'Group'
-  ).map(group => ({
-    id: group.id,
-    name: group.display_name || group.name || 'Group Chat',
-    chat_type: group.chat_type,
-    unread_count: group.unread_count || 0,
-    mention_count: group.mention_count || 0,
-    last_message: group.last_message || null,
-    user_status: 'group', // Groups don't have user status
-    avatar_url: null, // Groups should use icon instead of avatar
-    member_count: group.member_count || group.chat_members?.length || 0,
-    updated_at: group.updated_at
-  }));
-});
-
-const availableUsers = computed(() => {
-  // Get all users from workspace or return mock data for now
-  return [
-    { id: 1, name: 'Alice Johnson', email: 'alice@example.com' },
-    { id: 2, name: 'Bob Smith', email: 'bob@example.com' },
-    { id: 3, name: 'Carol Davis', email: 'carol@example.com' },
-  ];
-});
-
-// Current chat ID from route
-const currentChatId = computed(() => {
-  return route.params.id ? parseInt(route.params.id) : null;
-});
-
-// Handle channel selection with protection
+// 🔧 FIXED: Add missing handleChannelSelected function
 const handleChannelSelected = async (channel) => {
   try {
-    // Use protected navigation instead of direct router.push
-    await navigateToChat(channel.id);
-
-    // Close mobile sidebar after navigation
-    if (isMobile.value) {
-      closeMobileSidebar();
-    }
+    console.log('🎯 [Home.vue] Channel selected:', channel);
+    await navigationHelper.navigateToChat(channel.id);
   } catch (error) {
-    console.error('❌ [HOME] Failed to navigate to chat:', error);
-    // Don't show error notification for navigation cancellations
-    if (!error.message?.includes('Navigation cancelled')) {
-      const { notifyError } = useNotifications();
-      notifyError('Failed to open chat. Please try again.');
-    }
+    console.error('Failed to navigate to channel:', error);
+    // Error is already handled by NavigationManager
   }
 };
 
-// Handle message selection from search
-const onMessageSelected = (event) => {
-  // The search modal already handles navigation
-  // We might need to emit an event to the Chat view to scroll to the message
-  // This could be done via event bus or store
+const refreshData = () => {
+  chatStore.fetchChats();
+}
+
+// Click outside handler for closing modals
+const handleClickOutside = (event) => {
+  // Close any open dropdowns or modals when clicking outside
+  if (showUserMenu.value && !event.target.closest('.user-menu')) {
+    showUserMenu.value = false;
+  }
 };
 
-// Mobile functions
+// Mobile sidebar controls
 const toggleMobileSidebar = () => {
   isMobileSidebarOpen.value = !isMobileSidebarOpen.value;
 };
@@ -396,104 +291,114 @@ const closeMobileSidebar = () => {
   isMobileSidebarOpen.value = false;
 };
 
-// Auto-close mobile sidebar when navigating to a chat
-const onChannelSelectedMobile = (channel) => {
-  onChannelSelected(channel);
-  if (isMobile.value) {
-    closeMobileSidebar();
+// Modal event handlers
+const onChannelCreated = (channel) => {
+  showCreateChannelModal.value = false;
+  // Refresh the channel list
+  refreshData();
+  // Navigate to the new channel
+  if (channel && channel.id) {
+    handleChatClick(channel.id);
   }
 };
 
-// Update channel selection handler to use mobile-aware version
-const handleChannelSelectedMobile = (channel) => {
-  onChannelSelectedMobile(channel);
+const onDMCreated = (dm) => {
+  showCreateDMModal.value = false;
+  // Refresh the chat list
+  refreshData();
+  // Navigate to the new DM
+  if (dm && dm.id) {
+    handleChatClick(dm.id);
+  }
 };
 
-// Show keyboard shortcuts help
-const showKeyboardShortcuts = () => {
-  showKeyboardShortcutsModal.value = true;
+// Enhanced modal handlers
+const handleCreateChannel = (channelData) => {
+  showCreatePublicChannelModal.value = false;
+  showCreatePrivateChannelModal.value = false;
+  onChannelCreated(channelData);
 };
 
-// New handler functions for enhanced sidebar
-const handleCreateChannel = async (channelData) => {
+const handleCreateGroupChat = (groupData) => {
+  showCreateGroupChatModal.value = false;
+  onChannelCreated(groupData);
+};
+
+// Available users for channel creation
+const availableUsers = computed(() => {
+  // Return available users from workspace store or user store
+  return workspaceStore.members || [];
+});
+
+// Reactive WebSocket connection state for SSE status
+const wsConnectionState = ref({ isConnected: false, reconnectAttempts: 0, latency: null });
+// Listen to SSE status events (no polling)
+minimalSSE.on('status', stats => {
+  wsConnectionState.value = {
+    isConnected: stats.isConnected,
+    reconnectAttempts: stats.reconnectAttempts,
+    latency: parseFloat(stats.lastMessageTime) || null
+  };
+});
+
+// Fetch initial data when the component mounts
+onMounted(async () => {
   try {
-    const channel = await chatStore.createChat(
-      channelData.name,
-      channelData.members,
-      channelData.description,
-      channelData.type === 'private' ? 'PrivateChannel' : 'PublicChannel'
-    );
+    if (import.meta.env.DEV) {
+      console.log('[Home.vue] 🚀 Component mounted, loading chat data...');
+    }
 
-    // Navigate to the new channel
-    router.push(`/chat/${channel.id}`);
+    // 🔧 SIMPLIFIED: Trust router guard authentication
+    // 路由守卫已经验证了认证状态，无需重复检查
+    // 如果能到达这里，说明认证已通过
 
-    // Close modals
-    showCreatePublicChannelModal.value = false;
-    showCreatePrivateChannelModal.value = false;
+    // 性能优化：并行处理而非串行
+    const [chatsResult] = await Promise.allSettled([
+      chatStore.fetchChats()
+    ]);
 
-    // Refresh the channel list
-    await refresh();
+    if (chatsResult.status === 'fulfilled') {
+      if (import.meta.env.DEV) {
+        console.log('[Home.vue] ✅ Chats loaded successfully');
+      }
+    } else {
+      if (import.meta.env.DEV) {
+        console.warn('[Home.vue] ⚠️ Failed to load chats:', chatsResult.reason);
+      }
+
+      // 只有401错误才重定向到登录，其他错误不影响页面显示
+      if (chatsResult.reason?.response?.status === 401) {
+        if (import.meta.env.DEV) {
+          console.log('[Home.vue] 🔐 401 error detected, redirecting to login');
+        }
+        router.push('/login');
+        return;
+      }
+
+      // 其他错误继续显示页面，只是聊天列表为空
+    }
+
   } catch (error) {
-    console.error('Failed to create channel:', error);
-  }
-};
+    if (import.meta.env.DEV) {
+      console.error('[Home.vue] ❌ Unexpected error during mount:', error);
+    }
 
-const handleCreateGroupChat = async (groupData) => {
-  try {
-    const group = await chatStore.createChat(
-      groupData.name,
-      groupData.members,
-      groupData.description,
-      'Group'
-    );
-
-    // Navigate to the new group
-    router.push(`/chat/${group.id}`);
-
-    // Close modal
-    showCreateGroupChatModal.value = false;
-
-    // Refresh the chat list
-    await refresh();
-  } catch (error) {
-    console.error('Failed to create group chat:', error);
-  }
-};
-
-// Close user menu when clicking outside
-const handleClickOutside = (event) => {
-  if (showUserMenu.value && !event.target.closest('.slack-user-section')) {
-    showUserMenu.value = false;
-  }
-  if (showPerformanceStatus.value && !event.target.closest('.performance-status-panel')) {
-    showPerformanceStatus.value = false;
-  }
-};
-
-onMounted(() => {
-  // Ensure chatStore is properly initialized
-  if (!chatStore.chats || !Array.isArray(chatStore.chats)) {
-    console.warn('⚠️ ChatStore not properly initialized, initializing with empty array');
-    chatStore.$patch({ chats: [] });
+    // 只有认证相关错误才重定向
+    if (error.message?.includes('auth') || error.message?.includes('token')) {
+      router.push('/login');
+    }
   }
 
-  // Debug duplicate channels issue
+  // 调试和性能监控代码保持不变
   if (process.env.NODE_ENV === 'development') {
-    // Run debug after a short delay to ensure data is loaded
-    setTimeout(() => {
-      console.log('🔍 [HOME] Running duplicate channels debug...');
-      debugDuplicateChannels();
-    }, 2000);
-
-    // Load message debugger
     import('@/utils/messageDebugger').then(() => {
-      console.log('📨 Message debugger loaded');
+      // console.log('📨 Message debugger loaded');
     });
   }
 
+  // 事件监听器设置保持不变
   document.addEventListener('click', handleClickOutside);
 
-  // Listen for global keyboard shortcut events
   window.addEventListener('fechatter:create-channel', () => {
     showCreateChannelModal.value = true;
   });
@@ -502,33 +407,6 @@ onMounted(() => {
     showCreateDMModal.value = true;
   });
 
-  window.addEventListener('fechatter:open-settings', () => {
-    showWorkspaceSettings.value = true;
-  });
-
-  window.addEventListener('fechatter:open-admin', () => {
-    navigateToAdmin();
-  });
-
-  window.addEventListener('fechatter:toggle-sidebar', () => {
-    if (isMobile.value) {
-      toggleMobileSidebar();
-    }
-  });
-
-  window.addEventListener('fechatter:cancel-action', () => {
-    // Close any open modals
-    showCreateChannelModal.value = false;
-    showCreateDMModal.value = false;
-    showWorkspaceSettings.value = false;
-    showKeyboardShortcutsModal.value = false;
-    showUserMenu.value = false;
-    if (isMobile.value) {
-      closeMobileSidebar();
-    }
-  });
-
-  // Listen for keyboard shortcuts events
   window.addEventListener('fechatter:show-shortcuts-help', () => {
     showKeyboardShortcutsModal.value = true;
   });
@@ -548,7 +426,6 @@ onMounted(() => {
   });
 
   window.addEventListener('fechatter:cancel-action', () => {
-    // Close any open modals
     showCreateChannelModal.value = false;
     showCreateDMModal.value = false;
     showWorkspaceSettings.value = false;
@@ -1123,14 +1000,14 @@ onUnmounted(() => {
 /* Main Content */
 .slack-main {
   flex: 1;
-  background: white;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
   position: relative;
 }
 
-/* 旋转动画 */
+/* Spin animation */
 .animate-spin {
   animation: spin 1s linear infinite;
 }
@@ -1145,8 +1022,8 @@ onUnmounted(() => {
   }
 }
 
-/* 脉冲动画 */
-@keyframes pulse {
+/* Pulse animation */
+@keyframes pulse-animation {
 
   0%,
   100% {
@@ -1160,7 +1037,7 @@ onUnmounted(() => {
   }
 }
 
-/* ✨ 预加载指示器 */
+/* Preloaded indicator */
 .slack-preloaded-indicator {
   font-size: 10px;
   margin-left: 4px;
@@ -1169,7 +1046,7 @@ onUnmounted(() => {
   text-shadow: 0 0 4px rgba(255, 215, 0, 0.5);
 }
 
-/* 🚀 性能状态面板 */
+/* Performance status panel */
 .performance-status-panel {
   position: fixed;
   top: 20px;
@@ -1183,7 +1060,7 @@ onUnmounted(() => {
   max-width: 400px;
 }
 
-/* 📱 Mobile Optimizations */
+/* Mobile Optimizations */
 .mobile-menu-button {
   position: fixed;
   top: 12px;
@@ -1242,7 +1119,7 @@ onUnmounted(() => {
   transform: translateX(0);
 }
 
-/* 📱 Mobile Responsive Design */
+/* Mobile Responsive Design */
 @media (max-width: 767px) {
   .slack-container {
     position: relative;
@@ -1326,7 +1203,7 @@ onUnmounted(() => {
   }
 }
 
-/* 📱 Small Mobile Devices (< 480px) */
+/* Small Mobile Devices (< 480px) */
 @media (max-width: 479px) {
   .slack-sidebar {
     width: 100vw;
@@ -1344,7 +1221,6 @@ onUnmounted(() => {
 
   .slack-user-info {
     display: none;
-    /* Hide user email on very small screens */
   }
 
   /* Stack user profile vertically on very small screens */
@@ -1355,7 +1231,7 @@ onUnmounted(() => {
   }
 }
 
-/* 📱 Tablet Portrait (768px - 1024px) */
+/* Tablet Portrait (768px - 1024px) */
 @media (min-width: 768px) and (max-width: 1024px) {
   .slack-sidebar {
     width: 240px;
@@ -1370,7 +1246,7 @@ onUnmounted(() => {
   }
 }
 
-/* 🎯 Touch-friendly enhancements */
+/* Touch-friendly enhancements */
 @media (hover: none) and (pointer: coarse) {
 
   .slack-nav-item,

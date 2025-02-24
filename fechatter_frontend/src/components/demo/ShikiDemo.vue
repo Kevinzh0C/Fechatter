@@ -89,256 +89,155 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue';
-import { highlightSingleCodeBlock, generateHighlightStyles, switchTheme } from '@/utils/codeHighlight.js';
+import { ref, onMounted, computed, nextTick } from 'vue';
+// Remove static import to avoid conflicts with dynamic imports
+// import { highlightSingleCodeBlock, generateHighlightStyles, switchTheme } from '@/utils/codeHighlight.js';
 
-// State
-const currentTheme = ref('dark');
-const javascriptExample = ref('');
-const vueExample = ref('');
-const rustExample = ref('');
-const multiLanguageExample = ref('');
-const liveCode = ref('');
-const liveLanguage = ref('javascript');
-const liveMeta = ref('{2,4-6}');
-const liveHighlighted = ref('');
-const stats = ref([]);
+// Demo state
+const selectedLanguage = ref('javascript');
+const selectedTheme = ref('github-dark');
+const codeInput = ref(`function fibonacci(n) {
+  if (n <= 1) return n;
+  return fibonacci(n - 1) + fibonacci(n - 2);
+}`);
 
-// Code samples
-const samples = {
-  javascript: {
-    code: `// Fibonacci sequence generator
-function* fibonacci(limit = 10) {
-  let [prev, curr] = [0, 1];
-  
-  for (let i = 0; i < limit; i++) {
-    yield curr;
-    [prev, curr] = [curr, prev + curr];
-  }
-}
+const highlightedOutput = ref('');
+const isLoading = ref(false);
+const error = ref(null);
 
-// Usage example
-const fib = fibonacci(10);
-for (const num of fib) {
-  console.log(num);
-}`,
-    meta: '{2,4-6}'
-  },
-  
-  vue: {
-    code: `<template>
-  <div class="hello-world">
-    <h1>{{ greeting }}</h1>
-    <button @click="updateGreeting">
-      Change Greeting
-    </button>
-  </div>
-</template>
+// Available options
+const languages = ref([
+  'javascript', 'typescript', 'python', 'rust', 'go', 'java', 'cpp', 'css', 'html', 'json'
+]);
 
-<script setup>
-import { ref } from 'vue';
+const themes = ref([
+  'github-dark', 'github-light', 'dracula', 'monokai', 'nord', 'one-dark-pro'
+]);
 
-const greeting = ref('Hello, World!');
+// Cached highlight functions
+let highlightSingleCodeBlock = null;
+let generateHighlightStyles = null;
+let switchTheme = null;
 
-function updateGreeting() {
-  greeting.value = 'Hello, Vue 3!';
-}
-</script>`,
-    meta: 'title="HelloWorld.vue"'
-  },
-  
-  rust: {
-    code: `use std::collections::HashMap;
-
-// Define a simple cache structure
-struct Cache<T> {
-    store: HashMap<String, T>,
-    max_size: usize,
-}
-
-impl<T> Cache<T> {
-    fn new(max_size: usize) -> Self {
-        Self {
-            store: HashMap::new(),
-            max_size,
-        }
-    }
+/**
+ * Initialize highlight functions
+ */
+const initializeHighlighter = async () => {
+  try {
+    const codeHighlightModule = await import('@/utils/codeHighlight.js');
     
-    fn get(&self, key: &str) -> Option<&T> {
-        self.store.get(key)
-    }
+    highlightSingleCodeBlock = codeHighlightModule.highlightSingleCodeBlock;
+    generateHighlightStyles = codeHighlightModule.generateHighlightStyles;
+    switchTheme = codeHighlightModule.switchTheme;
     
-    fn set(&mut self, key: String, value: T) {
-        if self.store.len() >= self.max_size {
-            // Simple eviction: remove first item
-            if let Some(first_key) = self.store.keys().next().cloned() {
-                self.store.remove(&first_key);
-            }
-        }
-        self.store.insert(key, value);
-    }
-}`,
-    meta: 'title="cache.rs" {9-14,20-27}'
+    return true;
+  } catch (err) {
+    console.error('Failed to load code highlight module:', err);
+    error.value = err;
+    return false;
   }
 };
 
-// Multi-language example markdown
-const multiLanguageMarkdown = `
-### Configuration Example
-
-First, set up your \`package.json\`:
-
-\`\`\`json title="package.json"
-{
-  "name": "my-app",
-  "version": "1.0.0",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build"
-  }
-}
-\`\`\`
-
-Then create a configuration file:
-
-\`\`\`yaml title="config.yml" {3-5}
-server:
-  host: localhost
-  port: 3000
-  ssl: true
-  cert: ./certs/server.crt
-
-database:
-  type: postgres
-  host: localhost
-\`\`\`
-
-Finally, implement the server:
-
-\`\`\`typescript title="server.ts"
-import express from 'express';
-import { loadConfig } from './config';
-
-const app = express();
-const config = loadConfig();
-
-app.listen(config.server.port, () => {
-  console.log(\`Server running on port \${config.server.port}\`);
-});
-\`\`\`
-`;
-
-// Initialize examples
-async function initializeExamples() {
-  const startTime = performance.now();
-  
-  // Highlight JavaScript
-  const jsStart = performance.now();
-  javascriptExample.value = await highlightSingleCodeBlock(
-    samples.javascript.code,
-    'javascript',
-    samples.javascript.meta,
-    { theme: currentTheme.value }
-  );
-  stats.value.push({ id: 'js', language: 'JavaScript', time: performance.now() - jsStart });
-  
-  // Highlight Vue
-  const vueStart = performance.now();
-  vueExample.value = await highlightSingleCodeBlock(
-    samples.vue.code,
-    'vue',
-    samples.vue.meta,
-    { theme: currentTheme.value }
-  );
-  stats.value.push({ id: 'vue', language: 'Vue', time: performance.now() - vueStart });
-  
-  // Highlight Rust
-  const rustStart = performance.now();
-  rustExample.value = await highlightSingleCodeBlock(
-    samples.rust.code,
-    'rust',
-    samples.rust.meta,
-    { theme: currentTheme.value }
-  );
-  stats.value.push({ id: 'rust', language: 'Rust', time: performance.now() - rustStart });
-  
-  // Process markdown with multiple languages
-  const mdStart = performance.now();
-  const { processMarkdownWithHighlight } = await import('@/utils/codeHighlight.js');
-  multiLanguageExample.value = await processMarkdownWithHighlight(multiLanguageMarkdown, {
-    theme: currentTheme.value
-  });
-  stats.value.push({ id: 'md', language: 'Markdown (multi)', time: performance.now() - mdStart });
-  
-  console.log('Total initialization time:', performance.now() - startTime, 'ms');
-}
-
-// Theme change handler
-async function onThemeChange() {
-  // Update styles
-  const newStyles = await switchTheme(currentTheme.value);
-  updateStyles(newStyles);
-  
-  // Re-highlight all examples
-  stats.value = [];
-  await initializeExamples();
-  if (liveCode.value) {
-    await highlightLiveCode();
-  }
-}
-
-// Update styles dynamically
-function updateStyles(styles) {
-  let styleEl = document.getElementById('shiki-dynamic-styles');
-  if (!styleEl) {
-    styleEl = document.createElement('style');
-    styleEl.id = 'shiki-dynamic-styles';
-    document.head.appendChild(styleEl);
-  }
-  styleEl.textContent = styles;
-}
-
-// Live code highlighting
-async function highlightLiveCode() {
-  if (!liveCode.value) {
-    liveHighlighted.value = '';
+// Methods
+async function highlightCode() {
+  if (!codeInput.value.trim()) {
+    highlightedOutput.value = '';
     return;
   }
-  
+
+  isLoading.value = true;
+  error.value = null;
+
   try {
-    const start = performance.now();
-    liveHighlighted.value = await highlightSingleCodeBlock(
-      liveCode.value,
-      liveLanguage.value || 'plaintext',
-      liveMeta.value,
-      { theme: currentTheme.value }
+    // Ensure highlighter is initialized
+    if (!highlightSingleCodeBlock) {
+      const initialized = await initializeHighlighter();
+      if (!initialized) {
+        throw new Error('Failed to initialize highlighter');
+      }
+    }
+
+    const result = await highlightSingleCodeBlock(
+      codeInput.value,
+      selectedLanguage.value,
+      {
+        theme: selectedTheme.value,
+        lineNumbers: true,
+      }
     );
-    console.log('Live highlight time:', performance.now() - start, 'ms');
-  } catch (error) {
-    console.error('Live highlighting error:', error);
-    liveHighlighted.value = `<pre class="error">Error: ${error.message}</pre>`;
+
+    highlightedOutput.value = result;
+  } catch (err) {
+    console.error('Highlighting failed:', err);
+    error.value = err;
+    highlightedOutput.value = `<pre><code>${codeInput.value}</code></pre>`;
+  } finally {
+    isLoading.value = false;
   }
 }
 
-// Watch for live code changes
-let debounceTimer;
-watch([liveCode, liveLanguage, liveMeta], () => {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(highlightLiveCode, 300);
-});
+async function changeTheme() {
+  try {
+    // Ensure theme switcher is initialized
+    if (!switchTheme) {
+      const initialized = await initializeHighlighter();
+      if (!initialized) {
+        throw new Error('Failed to initialize theme switcher');
+      }
+    }
 
-// Initialize on mount
+    await switchTheme(selectedTheme.value);
+    
+    // Re-highlight with new theme
+    await highlightCode();
+  } catch (err) {
+    console.error('Theme change failed:', err);
+    error.value = err;
+  }
+}
+
+async function processMarkdownDemo() {
+  const markdownContent = `
+# Code Demo
+
+Here's some JavaScript:
+
+\`\`\`javascript
+${codeInput.value}
+\`\`\`
+
+And some Python:
+
+\`\`\`python
+def fibonacci(n):
+    if n <= 1:
+        return n
+    return fibonacci(n - 1) + fibonacci(n - 2)
+\`\`\`
+  `;
+
+  try {
+    // Load markdown processor dynamically
+    const { processMarkdownWithHighlight } = await import('@/utils/codeHighlight.js');
+    
+    const result = await processMarkdownWithHighlight(markdownContent, {
+      theme: selectedTheme.value,
+    });
+
+    highlightedOutput.value = result;
+  } catch (err) {
+    console.error('Markdown processing failed:', err);
+    error.value = err;
+  }
+}
+
+// Computed
+const isValidCode = computed(() => codeInput.value.trim().length > 0);
+
+// Lifecycle
 onMounted(async () => {
-  // Add initial styles
-  const styles = generateHighlightStyles(currentTheme.value);
-  updateStyles(styles);
-  
-  // Initialize examples
-  await initializeExamples();
-  
-  // Set initial live code
-  liveCode.value = samples.javascript.code;
-  await highlightLiveCode();
+  await initializeHighlighter();
+  await highlightCode();
 });
 </script>
 

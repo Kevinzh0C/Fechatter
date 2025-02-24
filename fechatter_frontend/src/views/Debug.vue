@@ -1,27 +1,27 @@
 <template>
   <div class="debug-container">
     <h1>Debug Information</h1>
-    
+
     <section>
       <h2>Current Route</h2>
       <pre>{{ currentRoute }}</pre>
     </section>
-    
+
     <section>
       <h2>Auth Store State</h2>
       <pre>{{ authState }}</pre>
     </section>
-    
+
     <section>
       <h2>Local Storage</h2>
       <pre>{{ localStorageData }}</pre>
     </section>
-    
+
     <section>
       <h2>Session Storage</h2>
       <pre>{{ sessionStorageData }}</pre>
     </section>
-    
+
     <section>
       <h2>Actions</h2>
       <button @click="clearStorage">Clear All Storage</button>
@@ -69,12 +69,12 @@ const localStorageData = computed(() => {
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     let value = localStorage.getItem(key);
-    
+
     // 截断长值
     if (value && value.length > 100) {
       value = value.substring(0, 100) + '...';
     }
-    
+
     // 尝试解析JSON
     try {
       data[key] = JSON.parse(value);
@@ -90,12 +90,12 @@ const sessionStorageData = computed(() => {
   for (let i = 0; i < sessionStorage.length; i++) {
     const key = sessionStorage.key(i);
     let value = sessionStorage.getItem(key);
-    
+
     // 截断长值
     if (value && value.length > 100) {
       value = value.substring(0, 100) + '...';
     }
-    
+
     // 尝试解析JSON
     try {
       data[key] = JSON.parse(value);

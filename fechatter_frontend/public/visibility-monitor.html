@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head><title>可见性监控器</title>
+<style>
+.monitor { position: fixed; top: 10px; right: 10px; background: white; padding: 15px; border: 2px solid #333; z-index: 9999; font-family: monospace; font-size: 12px; max-width: 300px; }
+.status { margin: 5px 0; padding: 5px; }
+.good { background: #d4edda; color: #155724; }
+.bad { background: #f8d7da; color: #721c24; }
+button { margin: 2px; padding: 5px 10px; }
+</style>
+</head>
+<body>
+<div class="monitor">
+<h4>🔍 可见性监控器</h4>
+<button onclick="start()">开始</button>
+<button onclick="stop()">停止</button>
+<button onclick="force()">强制显示</button>
+<div id="status">等待中...</div>
+<div id="log"></div>
+</div>
+
+<script>
+let interval = null;
+let lastState = '';
+
+function check() {
+    const messages = document.querySelectorAll('[data-message-id]');
+    const texts = document.querySelectorAll('.message-text');
+    const visible = Array.from(messages).filter(m => {
+        const rect = m.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+    }).length;
+    
+    const state = `${visible}/${messages.length} 消息可见, ${texts.length} 文本元素`;
+    
+    document.getElementById('status').innerHTML = `
+        <div class="${visible > 0 ? 'good' : 'bad'}">${state}</div>
+        <div>时间: ${new Date().toLocaleTimeString()}</div>
+    `;
+    
+    if (state !== lastState) {
+        const log = document.getElementById('log');
+        log.innerHTML = `<div>[${new Date().toLocaleTimeString()}] ${state}</div>` + log.innerHTML;
+        if (log.children.length > 10) log.removeChild(log.lastChild);
+        lastState = state;
+    }
+}
+
+function start() {
+    if (interval) return;
+    interval = setInterval(check, 1000);
+    check();
+}
+
+function stop() {
+    if (interval) clearInterval(interval);
+    interval = null;
+}
+
+function force() {
+    const style = document.createElement('style');
+    style.textContent = `
+        [data-message-id] { display: block !important; background: red !important; min-height: 100px !important; }
+        .message-text { display: block !important; color: white !important; background: blue !important; font-size: 20px !important; }
+    `;
+    document.head.appendChild(style);
+    setTimeout(check, 100);
+}
+
+setTimeout(start, 2000);
+</script>
+</body>
+</html>

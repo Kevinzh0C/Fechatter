@@ -4,20 +4,21 @@
     <div class="admin-header">
       <h1 class="admin-title">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="admin-icon">
-          <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+          <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
         </svg>
         Admin Dashboard
       </h1>
       <div class="admin-actions">
         <button @click="refreshAll" class="refresh-btn" :disabled="loading">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" :class="{ 'animate-spin': loading }">
-            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+            <path
+              d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
           </svg>
           Refresh
         </button>
         <button @click="exportData" class="export-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
           </svg>
           Export Data
         </button>
@@ -194,9 +195,12 @@
             <div v-for="activity in adminActivity" :key="activity.id" class="activity-item">
               <div class="activity-icon" :class="activity.type">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path v-if="activity.type === 'cache'" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
-                  <path v-else-if="activity.type === 'search'" d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-                  <path v-else d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                  <path v-if="activity.type === 'cache'"
+                    d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
+                  <path v-else-if="activity.type === 'search'"
+                    d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                  <path v-else
+                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                 </svg>
               </div>
               <div class="activity-content">
@@ -215,7 +219,10 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useNotifications } from '@/composables/useNotifications';
-import realtimeCommunicationService from '@/services/sse';
+import minimalSSE from '@/services/sse-minimal';
+import { useAuthStore } from '@/stores/auth';
+import { useWorkspaceStore } from '@/stores/workspace';
+import { errorHandler } from '@/utils/errorHandler';
 
 const { notifySuccess, notifyError } = useNotifications();
 
@@ -305,7 +312,7 @@ const formatTime = (timestamp) => {
   const date = new Date(timestamp);
   const now = new Date();
   const diffInMinutes = Math.floor((now - date) / (1000 * 60));
-  
+
   if (diffInMinutes < 1) return 'Just now';
   if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
   if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
@@ -321,7 +328,7 @@ const calculateCacheStats = () => {
         sessionSize += sessionStorage[key].length;
       }
     }
-    
+
     // Calculate local storage size
     let localSize = 0;
     for (let key in localStorage) {
@@ -329,14 +336,14 @@ const calculateCacheStats = () => {
         localSize += localStorage[key].length;
       }
     }
-    
+
     // Estimate message cache size
     const messageCache = sessionStorage.getItem('messageCache');
     const messagesSize = messageCache ? messageCache.length * 2 : 0; // UTF-16 encoding
-    
+
     // Estimate user data cache size
     const usersSize = (localStorage.getItem('auth_token') || '').length * 2;
-    
+
     cacheStats.value = {
       session: sessionSize * 2, // UTF-16 encoding
       local: localSize * 2,
@@ -351,9 +358,9 @@ const calculateCacheStats = () => {
 
 const updateSystemStatus = () => {
   // Check real-time connection
-  const connectionState = realtimeCommunicationService.getConnectionState();
+  const connectionState = minimalSSE.getConnectionState();
   systemStatus.value.realtime = connectionState.isConnected ? 'healthy' : 'warning';
-  
+
   // Check if we can access local storage (frontend health)
   try {
     localStorage.setItem('health-check', 'test');
@@ -362,7 +369,7 @@ const updateSystemStatus = () => {
   } catch {
     systemStatus.value.frontend = 'error';
   }
-  
+
   // Calculate overall status
   const statuses = Object.values(systemStatus.value).filter(s => s !== 'healthy');
   if (statuses.length === 0) {
@@ -377,7 +384,7 @@ const updateSystemStatus = () => {
 const clearCache = async (type) => {
   try {
     loading.value = true;
-    
+
     switch (type) {
       case 'messages':
         sessionStorage.removeItem('messageCache');
@@ -397,7 +404,7 @@ const clearCache = async (type) => {
         if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
         break;
     }
-    
+
     calculateCacheStats();
     addAdminActivity('cache', 'Cache Cleared', `${type} cache cleared successfully`);
     notifySuccess(`${type} cache cleared successfully`);
@@ -413,7 +420,7 @@ const clearAllCache = async () => {
   if (!confirm('Are you sure you want to clear all cache? This will log you out.')) {
     return;
   }
-  
+
   try {
     loading.value = true;
     sessionStorage.clear();
@@ -421,7 +428,7 @@ const clearAllCache = async () => {
     calculateCacheStats();
     addAdminActivity('cache', 'All Cache Cleared', 'All cache data cleared');
     notifySuccess('All cache cleared successfully');
-    
+
     // Reload the page after clearing all cache
     setTimeout(() => {
       window.location.reload();
@@ -437,7 +444,7 @@ const clearAllCache = async () => {
 const optimizeCache = async () => {
   try {
     loading.value = true;
-    
+
     // Remove expired cache entries
     const messageCache = sessionStorage.getItem('messageCache');
     if (messageCache) {
@@ -445,19 +452,19 @@ const optimizeCache = async () => {
         const cache = JSON.parse(messageCache);
         const now = Date.now();
         const oneHour = 60 * 60 * 1000;
-        
+
         Object.keys(cache).forEach(key => {
           if (cache[key].timestamp && (now - cache[key].timestamp) > oneHour) {
             delete cache[key];
           }
         });
-        
+
         sessionStorage.setItem('messageCache', JSON.stringify(cache));
       } catch (e) {
         console.warn('Failed to optimize message cache:', e);
       }
     }
-    
+
     calculateCacheStats();
     addAdminActivity('cache', 'Cache Optimized', 'Cache optimization completed');
     notifySuccess('Cache optimized successfully');
@@ -473,7 +480,7 @@ const rebuildIndex = async () => {
   try {
     searchIndex.value.rebuilding = true;
     searchIndex.value.rebuildProgress = 0;
-    
+
     // Simulate index rebuild progress
     const interval = setInterval(() => {
       searchIndex.value.rebuildProgress += 10;
@@ -513,9 +520,9 @@ const addAdminActivity = (type, title, description) => {
     description,
     timestamp: new Date().toISOString()
   };
-  
+
   adminActivity.value.unshift(newActivity);
-  
+
   // Keep only last 20 activities
   if (adminActivity.value.length > 20) {
     adminActivity.value = adminActivity.value.slice(0, 20);
@@ -547,7 +554,7 @@ const exportData = async () => {
       adminActivity: adminActivity.value,
       timestamp: new Date().toISOString()
     };
-    
+
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -557,7 +564,7 @@ const exportData = async () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
+
     addAdminActivity('system', 'Data Exported', 'Admin dashboard data exported');
     notifySuccess('Data exported successfully');
   } catch (error) {
@@ -573,7 +580,7 @@ let statusInterval = null;
 onMounted(() => {
   calculateCacheStats();
   updateSystemStatus();
-  
+
   // Auto-refresh every 30 seconds
   statusInterval = setInterval(() => {
     calculateCacheStats();
@@ -621,7 +628,8 @@ onUnmounted(() => {
   gap: 12px;
 }
 
-.refresh-btn, .export-btn {
+.refresh-btn,
+.export-btn {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -636,7 +644,8 @@ onUnmounted(() => {
   transition: all 0.2s;
 }
 
-.refresh-btn:hover, .export-btn:hover {
+.refresh-btn:hover,
+.export-btn:hover {
   background: #f9fafb;
   border-color: #9ca3af;
 }
@@ -805,7 +814,10 @@ onUnmounted(() => {
   gap: 12px;
 }
 
-.clear-all-btn, .optimize-btn, .rebuild-btn, .optimize-index-btn {
+.clear-all-btn,
+.optimize-btn,
+.rebuild-btn,
+.optimize-index-btn {
   flex: 1;
   padding: 10px 16px;
   border: 1px solid #d1d5db;
@@ -818,7 +830,10 @@ onUnmounted(() => {
   transition: all 0.2s;
 }
 
-.clear-all-btn:hover, .optimize-btn:hover, .rebuild-btn:hover, .optimize-index-btn:hover {
+.clear-all-btn:hover,
+.optimize-btn:hover,
+.rebuild-btn:hover,
+.optimize-index-btn:hover {
   background: #f9fafb;
   border-color: #9ca3af;
 }
@@ -1026,8 +1041,13 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Mobile responsive */
@@ -1035,32 +1055,35 @@ onUnmounted(() => {
   .admin-dashboard {
     padding: 16px;
   }
-  
+
   .dashboard-grid {
     grid-template-columns: 1fr;
     gap: 16px;
   }
-  
+
   .admin-header {
     flex-direction: column;
     gap: 16px;
     align-items: flex-start;
   }
-  
+
   .admin-actions {
     width: 100%;
     justify-content: stretch;
   }
-  
-  .refresh-btn, .export-btn {
+
+  .refresh-btn,
+  .export-btn {
     flex: 1;
   }
-  
-  .status-grid, .metrics-grid {
+
+  .status-grid,
+  .metrics-grid {
     grid-template-columns: 1fr;
   }
-  
-  .cache-actions, .index-actions {
+
+  .cache-actions,
+  .index-actions {
     flex-direction: column;
   }
 }

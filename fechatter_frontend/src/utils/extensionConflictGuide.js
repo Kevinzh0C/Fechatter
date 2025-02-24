@@ -148,7 +148,6 @@ export const extensionConflictGuide = {
       impact: 'Variable impact depending on conflict type',
       autoHandling: 'Comprehensive error detection and conflict resolution guidance'
     }
-  }
 };
 
 /**
@@ -157,48 +156,72 @@ export const extensionConflictGuide = {
 export function showExtensionConflictGuide() {
   console.group('🔧 Browser Extension Conflict Guide');
 
-  console.log('📋 Common Symptoms:');
+  if (import.meta.env.DEV) {
+    console.log('📋 Common Symptoms:');
   extensionConflictGuide.symptoms.forEach(symptom => {
-    console.log(`  • ${symptom}`);
+    if (import.meta.env.DEV) {
+      console.log(`  • ${symptom}`);
+    }
   });
 
-  console.log('\n🔍 Conflict Types:');
+  if (import.meta.env.DEV) {
+    console.log('\n🔍 Conflict Types:');
   Object.entries(extensionConflictGuide.conflictTypes).forEach(([key, type]) => {
-    console.log(`\n• ${type.name} (${type.severity} severity)`);
-    console.log(`  ${type.description}`);
+    if (import.meta.env.DEV) {
+      console.log(`\n• ${type.name} (${type.severity} severity)`);
+    if (import.meta.env.DEV) {
+      console.log(`  ${type.description}`);
+    }
   });
 
-  console.log('\n🛠️ Solutions by Effectiveness:');
+  if (import.meta.env.DEV) {
+    console.log('\n🛠️ Solutions by Effectiveness:');
   extensionConflictGuide.solutions.forEach((solution, index) => {
-    console.log(`\n${index + 1}. ${solution.title} (${solution.difficulty})`);
-    console.log(`   ${solution.description}`);
-    console.log(`   Effective for: ${solution.effectiveFor.join(', ')}`);
+    if (import.meta.env.DEV) {
+      console.log(`\n${index + 1}. ${solution.title} (${solution.difficulty})`);
+    if (import.meta.env.DEV) {
+      console.log(`   ${solution.description}`);
+    if (import.meta.env.DEV) {
+      console.log(`   Effective for: ${solution.effectiveFor.join(', ')}`);
+    }
 
     if (solution.steps) {
       solution.steps.forEach(step => {
-        console.log(`   • ${step}`);
+        if (import.meta.env.DEV) {
+          console.log(`   • ${step}`);
+        }
       });
-    }
 
     if (solution.problematicExtensions) {
-      console.log('   Common problematic extensions:');
+      if (import.meta.env.DEV) {
+        console.log('   Common problematic extensions:');
       solution.problematicExtensions.forEach(ext => {
-        console.log(`   • ${ext}`);
+        if (import.meta.env.DEV) {
+          console.log(`   • ${ext}`);
+        }
       });
+  });
+
+  if (import.meta.env.DEV) {
+    console.log('\n🛡️ Prevention Tips:');
+  extensionConflictGuide.prevention.forEach(tip => {
+    if (import.meta.env.DEV) {
+      console.log(`  • ${tip}`);
     }
   });
 
-  console.log('\n🛡️ Prevention Tips:');
-  extensionConflictGuide.prevention.forEach(tip => {
-    console.log(`  • ${tip}`);
-  });
-
-  console.log('\n📊 Technical Details:');
+  if (import.meta.env.DEV) {
+    console.log('\n📊 Technical Details:');
   Object.entries(extensionConflictGuide.technicalInfo).forEach(([key, info]) => {
-    console.log(`\n${info.errorType}:`);
-    console.log(`  Cause: ${info.cause}`);
-    console.log(`  Impact: ${info.impact}`);
-    console.log(`  Auto Handling: ${info.autoHandling}`);
+    if (import.meta.env.DEV) {
+      console.log(`\n${info.errorType}:`);
+    if (import.meta.env.DEV) {
+      console.log(`  Cause: ${info.cause}`);
+    if (import.meta.env.DEV) {
+      console.log(`  Impact: ${info.impact}`);
+    if (import.meta.env.DEV) {
+      console.log(`  Auto Handling: ${info.autoHandling}`);
+    }
   });
 
   console.groupEnd();
@@ -210,28 +233,36 @@ export function showExtensionConflictGuide() {
 export function showConflictTypeGuide(conflictType) {
   const typeInfo = extensionConflictGuide.conflictTypes[conflictType];
   if (!typeInfo) {
-    console.warn(`Unknown conflict type: ${conflictType}`);
+    if (import.meta.env.DEV) {
+      console.warn(`Unknown conflict type: ${conflictType}`);
     return;
   }
 
   console.group(`🔧 ${typeInfo.name} Resolution Guide`);
 
-  console.log(`Description: ${typeInfo.description}`);
-  console.log(`Severity: ${typeInfo.severity}`);
+  if (import.meta.env.DEV) {
+    console.log(`Description: ${typeInfo.description}`);
+  if (import.meta.env.DEV) {
+    console.log(`Severity: ${typeInfo.severity}`);
+  }
 
   const relevantSolutions = extensionConflictGuide.solutions.filter(
     solution => solution.effectiveFor.includes(conflictType)
   );
 
-  console.log('\n🛠️ Recommended Solutions:');
+  if (import.meta.env.DEV) {
+    console.log('\n🛠️ Recommended Solutions:');
   relevantSolutions.forEach((solution, index) => {
-    console.log(`\n${index + 1}. ${solution.title}`);
-    console.log(`   ${solution.description}`);
+    if (import.meta.env.DEV) {
+      console.log(`\n${index + 1}. ${solution.title}`);
+    if (import.meta.env.DEV) {
+      console.log(`   ${solution.description}`);
     if (solution.steps) {
       solution.steps.forEach(step => {
-        console.log(`   • ${step}`);
+        if (import.meta.env.DEV) {
+          console.log(`   • ${step}`);
+        }
       });
-    }
   });
 
   console.groupEnd();

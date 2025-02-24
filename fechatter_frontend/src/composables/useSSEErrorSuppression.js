@@ -61,7 +61,6 @@ export function useSSEErrorSuppression(config = {}) {
       // Randomly sample some suppressed errors for monitoring
       if (Math.random() < settings.logSampleRate) {
         return false; // Allow this one through for sampling
-      }
       return true; // Suppress
     }
 
@@ -79,7 +78,9 @@ export function useSSEErrorSuppression(config = {}) {
       errorTracker.errorCounts.set(errorKey, errorData);
 
       // Log suppression notice
-      console.warn(`🚫 [SSE_ERROR_SUPPRESSION] Suppressing further "${errorKey}" errors for ${settings.suppressionDurationMs / 1000}s (${errorData.count} errors in ${Math.round(timeWindow / 1000)}s)`);
+      if (import.meta.env.DEV) {
+        console.warn(`🚫 [SSE_ERROR_SUPPRESSION] Suppressing further "${errorKey}" errors for ${settings.suppressionDurationMs / 1000}s (${errorData.count} errors in ${Math.round(timeWindow / 1000)}s)`);
+      }
 
       return true; // Suppress
     }
@@ -113,10 +114,13 @@ export function useSSEErrorSuppression(config = {}) {
     const contextStr = typeof context === 'string' ? context : context?.context || '';
 
     if (errorData?.suppressed && errorData.count > 1) {
-      console.error(`🔌 [SSE_ERROR] ${contextStr}:`, error, `(${errorData.count - 1} similar errors suppressed)`);
+      if (import.meta.env.DEV) {
+        console.error(`🔌 [SSE_ERROR] ${contextStr}:`, error, `(${errorData.count - 1} similar errors suppressed)`);
+      }
     } else {
-      console.error(`🔌 [SSE_ERROR] ${contextStr}:`, error);
-    }
+      if (import.meta.env.DEV) {
+        console.error(`🔌 [SSE_ERROR] ${contextStr}:`, error);
+      }
 
     // Show notification if requested and not a network error
     if (notify && !isNetworkError(error)) {
@@ -187,12 +191,15 @@ export function useSSEErrorSuppression(config = {}) {
     if (errorKey) {
       errorTracker.errorCounts.delete(errorKey);
       errorTracker.lastLogTime.delete(errorKey);
-      console.log(`🔄 [SSE_ERROR_SUPPRESSION] Reset suppression for: ${errorKey}`);
+      if (import.meta.env.DEV) {
+        console.log(`🔄 [SSE_ERROR_SUPPRESSION] Reset suppression for: ${errorKey}`);
+      }
     } else {
       errorTracker.errorCounts.clear();
       errorTracker.lastLogTime.clear();
-      console.log('🔄 [SSE_ERROR_SUPPRESSION] Reset all error suppression');
-    }
+      if (import.meta.env.DEV) {
+        console.log('🔄 [SSE_ERROR_SUPPRESSION] Reset all error suppression');
+      }
   };
 
   /**
@@ -204,10 +211,14 @@ export function useSSEErrorSuppression(config = {}) {
 
     setTimeout(() => {
       settings.maxErrorsPerMinute = originalMaxErrors;
-      console.log('🔄 [SSE_ERROR_SUPPRESSION] Re-enabled error suppression');
+      if (import.meta.env.DEV) {
+        console.log('🔄 [SSE_ERROR_SUPPRESSION] Re-enabled error suppression');
+      }
     }, durationMs);
 
-    console.log(`🔄 [SSE_ERROR_SUPPRESSION] Temporarily disabled suppression for ${durationMs / 1000}s`);
+    if (import.meta.env.DEV) {
+      console.log(`🔄 [SSE_ERROR_SUPPRESSION] Temporarily disabled suppression for ${durationMs / 1000}s`);
+    }
   };
 
   return {
@@ -265,6 +276,5 @@ export function createSSEErrorHandler(suppressionConfig = {}) {
       return handleSSEError(error, context, {
         notify: false
       });
-    }
   };
 } 

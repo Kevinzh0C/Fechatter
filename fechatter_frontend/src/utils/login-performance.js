@@ -43,8 +43,10 @@ export const optimizeLoginPerformance = () => {
     preloadCriticalResources();
     prefetchDNS();
     setupPerformanceMonitoring();
-    } catch (error) {
-    console.warn('⚠️ 登录优化失败，继续使用标准流程:', error);
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn('⚠️ 登录优化失败，继续使用标准流程:', error);
+    }
   }
 };
 
@@ -52,7 +54,8 @@ export const optimizeLoginPerformance = () => {
 export const analyzeLoginPerformance = () => {
   if (import.meta.env.DEV) {
     const loadTime = performance.timing.loadEventEnd - performance.timing.navigationStart;
-    }
+    console.log('Login performance:', loadTime + 'ms');
+  }
 };
 
 export default {

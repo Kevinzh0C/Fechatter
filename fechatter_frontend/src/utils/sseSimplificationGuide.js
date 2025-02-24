@@ -124,14 +124,18 @@ export const SSESimplificationGuide = {
     subscription: `
       // Subscribe to events
       const unsubscribe = minimalSSE.on('message', (data) => {
-        console.log('New message:', data);
+        if (import.meta.env.DEV) {
+          console.log('New message:', data);
+        }
       });
     `,
 
     status: `
       // Check status
       const status = minimalSSE.getStatus();
-      console.log('Connected:', status.connected);
+      if (import.meta.env.DEV) {
+        console.log('Connected:', status.connected);
+      }
     `
   },
 

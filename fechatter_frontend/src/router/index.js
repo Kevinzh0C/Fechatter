@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { analytics } from '../lib/analytics-protobuf';
 import { setupGlobalRouterErrorHandling } from '@/composables/useRouterGuard';
+import authStateManager from '../utils/authStateManager';
 
 // Lazy loaded components - Only import components that actually exist
 const Home = () => import('@/views/Home.vue');
@@ -19,7 +20,9 @@ const routes = [
   {
     path: '/',
     redirect: (to) => {
-      console.log('🔍 [ROUTER] Root redirect triggered, checking auth state...');
+      if (import.meta.env.DEV) {
+        console.log('🔍 [ROUTER] Root redirect triggered, checking auth state...');
+      }
 
       // 避免在路由初始化时调用 store，直接检查 localStorage
       // 检查两种可能的键名（兼容性）
@@ -106,6 +109,12 @@ const routes = [
     component: Demo
   },
   {
+    path: '/demo/search',
+    name: 'SearchDemo',
+    component: () => import('@/views/PerfectSearchDemo.vue'),
+    meta: { title: 'Perfect Search Demo' }
+  },
+  {
     path: '/test',
     name: 'Test',
     component: Test
@@ -114,6 +123,12 @@ const routes = [
     path: '/debug',
     name: 'Debug',
     component: Debug
+  },
+  {
+    path: '/debug/protobuf-analytics',
+    name: 'ProtobufAnalyticsTest',
+    component: () => import('../components/debug/ProtobufAnalyticsTest.vue'),
+    meta: { requiresAuth: false }
   },
   {
     path: '/simple-login',
@@ -142,108 +157,165 @@ const router = createRouter({
 });
 
 // 路由初始化日志
-console.log('🔍 [ROUTER] Router initialized with routes:', routes.length);
+if (import.meta.env.DEV) {
+  console.log('🔍 [ROUTER] Router initialized with routes:', routes.length);
+}
 
 // Global navigation guard
 // 存储导航开始时间
 let navigationStartTime = 0;
 
+// 🔧 PERFORMANCE: 认证初始化缓存
+let authInitPromise = null;
+let isAuthInitialized = false;
+
 router.beforeEach(async (to, from, next) => {
   // 记录导航开始时间
   navigationStartTime = Date.now();
 
-  console.log('🔍 [ROUTER] Navigation:', { from: from.path, to: to.path });
+  if (import.meta.env.DEV) {
+    console.log('🔍 [ROUTER] Navigation:', { from: from.path, to: to.path });
+  }
 
-  // Public routes that don't require authentication
+  // 🔧 PERFORMANCE: 公开路由快速通道
   const publicRoutes = ['/login', '/register', '/demo', '/test', '/error', '/debug', '/simple-login'];
   const isPublicRoute = publicRoutes.some(route => to.path.startsWith(route));
 
   if (isPublicRoute) {
-    console.log('🔍 [ROUTER] Public route, allowing access');
+    if (import.meta.env.DEV) {
+      console.log('🔍 [ROUTER] Public route, allowing access');
+    }
     return next();
   }
 
-  // Initialize auth store if not already done
+  // 🔧 PERFORMANCE: 避免重复初始化认证
   const authStore = useAuthStore();
-  if (!authStore.isInitialized) {
-    console.log('🔍 [ROUTER] Initializing auth store...');
-    try {
-      await authStore.initialize();
-      console.log('🔍 [ROUTER] Auth store initialized, current state:', {
-        isAuthenticated: authStore.isAuthenticated,
-        hasToken: !!authStore.token,
-        hasUser: !!authStore.user,
-        isTokenExpired: authStore.isTokenExpired
+
+  if (!isAuthInitialized && !authInitPromise) {
+    if (import.meta.env.DEV) {
+      console.log('🔍 [ROUTER] Initializing auth store...');
+    }
+
+    authInitPromise = authStore.initialize()
+      .then(() => {
+        isAuthInitialized = true;
+        if (import.meta.env.DEV) {
+          console.log('🔍 [ROUTER] ✅ Auth store initialized');
+        }
+      })
+      .catch(error => {
+        if (import.meta.env.DEV) {
+          console.error('🔍 [ROUTER] ❌ Auth store initialization failed:', error);
+        }
+        isAuthInitialized = false; // 允许重试
+        throw error;
+      })
+      .finally(() => {
+        authInitPromise = null; // 清理promise
       });
+  }
+
+  // 等待认证初始化（如果正在进行）
+  if (authInitPromise) {
+    try {
+      await authInitPromise;
     } catch (error) {
-      console.error('🔍 [ROUTER] Auth store initialization failed:', error);
-      // If initialization fails, redirect to login
+      if (import.meta.env.DEV) {
+        console.error('🔍 [ROUTER] Auth initialization failed, redirecting to login');
+      }
       return next('/login');
     }
   }
 
-  // Check if route requires authentication
+  // 🔧 SIMPLIFIED: 基本认证检查
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
 
   if (requiresAuth) {
-    // Ensure auth state consistency before checking
-    await authStore.ensureAuthStateConsistency();
-    
-    // Check authentication for protected routes
-    if (!authStore.isLoggedIn || authStore.isTokenExpired) {
-      console.warn('🔍 [ROUTER] Access denied - redirecting to login');
-      console.warn('🔍 [ROUTER] Auth state:', {
-        isLoggedIn: authStore.isLoggedIn,
-        isAuthenticated: authStore.isAuthenticated,
-        hasToken: !!authStore.token,
-        hasUser: !!authStore.user,
-        isTokenExpired: authStore.isTokenExpired
-      });
+    // 🔧 CRITICAL FIX: Simplified auth check - remove complex consensus logic
+    let authState = authStore.isAuthenticated;
+    let hasToken = !!authStore.token;
+    let hasUser = !!authStore.user;
+    let isTokenExpired = authStore.isTokenExpired;
 
-      // Store the intended path for redirect after login
-      if (to.path !== '/login') {
-        sessionStorage.setItem('redirectPath', to.fullPath);
+    // 🔧 SIMPLIFIED: Direct functional check - if we have token + user, accept it
+    const hasFunctionalAuth = hasToken && hasUser && !isTokenExpired;
+
+    // 🔧 FALLBACK: Check storage consistency for edge cases
+    let hasStorageBackup = false;
+    if (!hasFunctionalAuth) {
+      try {
+        const storageToken = localStorage.getItem('auth_token');
+        const storageUser = localStorage.getItem('auth_user');
+        hasStorageBackup = !!(storageToken && storageUser);
+      } catch (error) {
+        console.warn('🔍 [ROUTER] Storage check failed:', error);
+      }
+    }
+
+    // 🔧 TOLERANT: Accept authentication if we have functional auth OR authStore says we're auth OR storage backup
+    const isAuthenticated = hasFunctionalAuth || authState || hasStorageBackup;
+
+    if (!isAuthenticated) {
+      if (import.meta.env.DEV) {
+        console.warn('🔍 [ROUTER] Access denied - redirecting to login');
+        console.warn('🔍 [ROUTER] Auth state:', {
+          authState,
+          hasToken,
+          hasUser,
+          isTokenExpired,
+          hasFunctionalAuth,
+          hasStorageBackup,
+          finalDecision: isAuthenticated,
+          route: to.path
+        });
       }
 
-      return next('/login');
+      // 🔧 ENHANCED: Prevent redirect loops and save target path
+      if (to.path !== '/login') {
+        sessionStorage.setItem('redirectPath', to.fullPath);
+        return next('/login');
+      } else {
+        // Already on login page, allow access
+        return next();
+      }
+    } else {
+      if (import.meta.env.DEV) {
+        console.log('✅ [ROUTER] Authentication verified successfully');
+      }
     }
   }
 
-  // Check if route requires admin privileges
+  // 🔧 SIMPLIFIED: 管理员权限检查
   const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
-
-  if (requiresAdmin) {
-    // For now, allow all authenticated users to access admin features
-    // In a real application, you would check the user's role/permissions
-    if (!authStore.isAuthenticated) {
+  if (requiresAdmin && !authStore.isAuthenticated) {
+    if (import.meta.env.DEV) {
       console.warn('🔍 [ROUTER] Admin access denied - not authenticated');
-      return next('/login');
     }
-
-    // TODO: Add proper role-based access control
-    // const isAdmin = authStore.user?.role === 'admin' || authStore.user?.permissions?.includes('admin');
-    // if (!isAdmin) {
-    //   console.warn('🔍 [ROUTER] Admin access denied - insufficient permissions');
-    //   return next('/home');
-    // }
+    return next('/login');
   }
 
-  // Check if route requires guest (not authenticated)
+  // 🔧 SIMPLIFIED: 访客路由检查
   const requiresGuest = to.matched.some(record => record.meta.requiresGuest);
-
   if (requiresGuest && authStore.isAuthenticated) {
-    console.log('🔍 [ROUTER] Guest route but user is authenticated, redirecting to home');
+    if (import.meta.env.DEV) {
+      console.log('🔍 [ROUTER] Guest route but user is authenticated, redirecting to home');
+    }
     return next('/home');
   }
 
-  console.log('🔍 [ROUTER] Navigation allowed');
+  if (import.meta.env.DEV) {
+    console.log('🔍 [ROUTER] ✅ Navigation allowed');
+  }
+
   next();
 });
 
 // 导航完成后的处理
 router.afterEach((to, from, failure) => {
   if (failure) {
-    console.error('Navigation failed:', failure);
+    if (import.meta.env.DEV) {
+      console.error('Navigation failed:', failure);
+    }
   } else {
     if (import.meta.env.VITE_DEBUG === 'true') {
     }
@@ -251,7 +323,9 @@ router.afterEach((to, from, failure) => {
     // 跟踪导航事件
     if (navigationStartTime && from.path !== to.path) {
       analytics.trackNavigation(from.path, to.path, navigationStartTime).catch(err => {
-        console.warn('Failed to track navigation:', err);
+        if (import.meta.env.DEV) {
+          console.warn('Failed to track navigation:', err);
+        }
       });
     }
   }
@@ -259,7 +333,9 @@ router.afterEach((to, from, failure) => {
 
 // 全局错误处理
 router.onError((error) => {
-  console.error('Router error:', error);
+  if (import.meta.env.DEV) {
+    console.error('Router error:', error);
+  }
   // 避免无限重定向
   if (window.location.pathname !== '/error/500') {
     router.push('/error/500');

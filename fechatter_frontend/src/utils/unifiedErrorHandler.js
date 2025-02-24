@@ -1,112 +1,195 @@
 /**
- * Unified Error Handler
- * Single source of truth for all error handling
- * Ensures only one interception point following formal logic
+ * Unified Error Handler - Transparent Version
+ * Provides error processing without masking original error sources
+ * Following Occam's Razor: Simple, transparent, production-grade
  */
 
 class UnifiedErrorHandler {
   constructor() {
-    this.originalConsoleError = null;
     this.initialized = false;
     this.handlers = new Map();
     this.suppressedErrors = new Map();
+    this.originalOnError = null;
+    this.originalOnUnhandledRejection = null;
 
     // Ensure singleton
     if (window._unifiedErrorHandler) {
       return window._unifiedErrorHandler;
-    }
     window._unifiedErrorHandler = this;
   }
 
   /**
-   * Initialize the unified error handler
-   * This must be called BEFORE any other error handling system
+   * Initialize transparent error handling
+   * Uses global error events instead of console.error interception
    */
   initialize() {
     if (this.initialized) {
-      console.warn('[UnifiedErrorHandler] Already initialized, skipping');
+      if (import.meta.env.DEV) {
+        console.warn('[UnifiedErrorHandler] Already initialized, skipping');
       return;
     }
 
-    // Save the REAL original console.error
-    this.originalConsoleError = console.error;
+    // Save original handlers
+    this.originalOnError = window.onerror;
+    this.originalOnUnhandledRejection = window.onunhandledrejection;
 
-    // Override console.error ONCE
-    console.error = (...args) => {
-      this.handleError(...args);
-    };
+    // Handle uncaught JavaScript errors (but don't interfere with console.error)
+    window.addEventListener('error', this.handleGlobalError.bind(this));
+    window.addEventListener('unhandledrejection', this.handleUnhandledRejection.bind(this));
 
     this.initialized = true;
-    console.log('🛡️ Unified Error Handler initialized');
+    if (import.meta.env.DEV) {
+      console.log('🛡️ Unified Error Handler initialized (transparent mode)');
+    }
+
+  /**
+   * Handle global JavaScript errors
+   * This only processes actual runtime errors, not console.error calls
+   */
+  handleGlobalError(event) {
+    const errorInfo = {
+      message: event.message,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+      error: event.error,
+      type: 'global-error'
+    };
+
+    // Process through handlers for suppression logic only
+    this.processError(errorInfo);
+
+    // Call original handler if it exists
+    if (this.originalOnError) {
+      this.originalOnError.call(window, event.message, event.filename, event.lineno, event.colno, event.error);
+    }
+
+  /**
+   * Handle unhandled promise rejections
+   */
+  handleUnhandledRejection(event) {
+    const errorInfo = {
+      reason: event.reason,
+      promise: event.promise,
+      type: 'unhandled-rejection'
+    };
+
+    // Process through handlers
+    const shouldSuppress = this.processError(errorInfo);
+
+    if (shouldSuppress) {
+      event.preventDefault(); // Prevent default browser logging
+    }
+
+    // Call original handler if it exists
+    if (this.originalOnUnhandledRejection) {
+      this.originalOnUnhandledRejection.call(window, event);
+    }
+
+  /**
+   * Process error through registered handlers
+   * Returns true if error should be suppressed
+   */
+  processError(errorInfo) {
+    // Build error string for analysis
+    const errorString = this.buildErrorString(errorInfo);
+
+    // Check all registered handlers in order
+    for (const [name, handlerData] of this.handlers) {
+      try {
+        // Extract the actual handler function
+        const handler = handlerData.handler;
+
+        if (typeof handler !== 'function') {
+          if (import.meta.env.DEV) {
+            console.error(`[UnifiedErrorHandler] Handler '${name}' is not a function:`, typeof handler);
+          continue;
+        }
+
+        const result = handler({
+          errorInfo,
+          errorString,
+          suppressor: this
+        });
+
+        if (result === 'suppress') {
+          this.recordSuppressed(errorString, name);
+          return true; // Suppress this error
+        }
+      } catch (handlerError) {
+        if (import.meta.env.DEV) {
+          console.error(`[UnifiedErrorHandler] Handler '${name}' failed:`, handlerError);
+        }
+
+    return false; // Don't suppress
   }
 
   /**
-   * Central error handling logic
+   * Build error string from error info
    */
-  handleError(...args) {
-    // Build error string for analysis
-    const errorString = args.map(arg => {
-      if (arg instanceof Error) {
-        return arg.stack || arg.message || String(arg);
-      }
-      return String(arg);
-    }).join(' ');
-
-    // Check all registered handlers in order
-    for (const [name, handler] of this.handlers) {
-      const result = handler({
-        args,
-        errorString,
-        suppressor: this
-      });
-
-      if (result === 'suppress') {
-        // Record suppression
-        this.recordSuppressed(errorString, name);
-        return; // Don't log
-      } else if (result === 'modify') {
-        // Handler modified args, continue with modified args
-        args = result.args || args;
-      }
-      // 'pass' or undefined means continue to next handler
-    }
-
-    // If we get here, log the error
-    this.originalConsoleError.apply(console, args);
+  buildErrorString(errorInfo) {
+    if (errorInfo.type === 'global-error') {
+      return `${errorInfo.message} at ${errorInfo.filename}:${errorInfo.lineno}:${errorInfo.colno}`;
+    } else if (errorInfo.type === 'unhandled-rejection') {
+      if (errorInfo.reason instanceof Error) {
+        return errorInfo.reason.stack || errorInfo.reason.message || String(errorInfo.reason);
+      return String(errorInfo.reason);
+    return String(errorInfo);
   }
 
   /**
    * Register an error handler
-   * @param {string} name - Unique name for the handler
-   * @param {Function} handler - Handler function that returns 'suppress', 'pass', or {action: 'modify', args: [...]}
-   * @param {number} priority - Lower number = higher priority (default: 100)
+   * Handlers receive error info and return 'suppress' to suppress or undefined to continue
    */
   registerHandler(name, handler, priority = 100) {
     if (this.handlers.has(name)) {
-      console.warn(`[UnifiedErrorHandler] Handler '${name}' already registered, replacing`);
+      if (import.meta.env.DEV) {
+        console.warn(`[UnifiedErrorHandler] Handler '${name}' already registered, replacing`);
+      }
+
+    // Validate handler function
+    if (typeof handler !== 'function') {
+      if (import.meta.env.DEV) {
+        console.error(`[UnifiedErrorHandler] Handler '${name}' must be a function, got:`, typeof handler);
+      return;
     }
 
-    // Store with priority
-    this.handlers.set(name, handler);
+    // Store handler with metadata in a clean way
+    const handlerData = {
+      name,
+      handler,
+      priority: Number(priority) || 100,
+      registered: Date.now()
+    };
 
-    // Re-sort handlers by priority
-    this.handlers = new Map([...this.handlers.entries()].sort((a, b) => {
-      const priorityA = a[2] || 100;
-      const priorityB = b[2] || 100;
-      return priorityA - priorityB;
-    }));
+    this.handlers.set(name, handlerData);
 
-    console.log(`[UnifiedErrorHandler] Registered handler: ${name}`);
-  }
+    // Sort handlers by priority (lower number = higher priority)
+    const sortedEntries = Array.from(this.handlers.entries())
+      .sort((a, b) => {
+        const priorityA = a[1].priority;
+        const priorityB = b[1].priority;
+        return priorityA - priorityB;
+      });
+
+    // Rebuild map with sorted order
+    this.handlers.clear();
+    for (const [handlerName, handlerData] of sortedEntries) {
+      this.handlers.set(handlerName, handlerData);
+    }
+
+    if (import.meta.env.DEV) {
+      console.log(`[UnifiedErrorHandler] Registered handler: ${name} (priority: ${priority})`);
+    }
 
   /**
    * Unregister a handler
    */
   unregisterHandler(name) {
     if (this.handlers.delete(name)) {
-      console.log(`[UnifiedErrorHandler] Unregistered handler: ${name}`);
-    }
-  }
+      if (import.meta.env.DEV) {
+        console.log(`[UnifiedErrorHandler] Unregistered handler: ${name}`);
+      }
 
   /**
    * Record suppressed error
@@ -120,7 +203,6 @@ class UnifiedErrorHandler {
         lastSeen: Date.now(),
         handlers: new Set()
       });
-    }
 
     const record = this.suppressedErrors.get(key);
     record.count++;
@@ -140,7 +222,8 @@ class UnifiedErrorHandler {
       totalHandlers: this.handlers.size,
       handlers: Array.from(this.handlers.keys()),
       totalSuppressed,
-      uniqueErrors: this.suppressedErrors.size
+      uniqueErrors: this.suppressedErrors.size,
+      mode: 'transparent'
     };
   }
 
@@ -148,36 +231,66 @@ class UnifiedErrorHandler {
    * Show suppressed errors
    */
   showSuppressedErrors() {
-    console.group('🔇 Suppressed Errors (Unified)');
-    console.log(`Total: ${this.getStats().totalSuppressed}`);
-    console.log(`Unique: ${this.suppressedErrors.size}`);
+    console.group('🔇 Suppressed Errors (Transparent Mode)');
+    if (import.meta.env.DEV) {
+      console.log(`Total: ${this.getStats().totalSuppressed}`);
+    if (import.meta.env.DEV) {
+      console.log(`Unique: ${this.suppressedErrors.size}`);
+    }
 
     this.suppressedErrors.forEach((record, key) => {
-      console.log(`\n"${key}..." (×${record.count})`);
-      console.log(`  Handlers: ${Array.from(record.handlers).join(', ')}`);
-      console.log(`  First: ${new Date(record.firstSeen).toLocaleTimeString()}`);
-      console.log(`  Last: ${new Date(record.lastSeen).toLocaleTimeString()}`);
+      if (import.meta.env.DEV) {
+        console.log(`\n"${key}..." (×${record.count})`);
+      if (import.meta.env.DEV) {
+        console.log(`  Handlers: ${Array.from(record.handlers).join(', ')}`);
+      if (import.meta.env.DEV) {
+        console.log(`  First: ${new Date(record.firstSeen).toLocaleTimeString()}`);
+      if (import.meta.env.DEV) {
+        console.log(`  Last: ${new Date(record.lastSeen).toLocaleTimeString()}`);
+      }
     });
     console.groupEnd();
   }
 
   /**
-   * Restore original console.error
+   * Restore original error handlers
    */
   restore() {
-    if (this.originalConsoleError) {
-      console.error = this.originalConsoleError;
-      console.log('🔄 Restored original console.error');
-    }
+    if (this.initialized) {
+      window.removeEventListener('error', this.handleGlobalError.bind(this));
+      window.removeEventListener('unhandledrejection', this.handleUnhandledRejection.bind(this));
+
+      if (this.originalOnError) {
+        window.onerror = this.originalOnError;
+      if (this.originalOnUnhandledRejection) {
+        window.onunhandledrejection = this.originalOnUnhandledRejection;
+      }
+
+      this.initialized = false;
+      if (import.meta.env.DEV) {
+        console.log('🔄 Restored original error handlers (transparent mode)');
+      }
+
+  /**
+   * Manual error processing for specific cases
+   * This allows selective error handling without affecting console.error
+   */
+  processSpecificError(error, context = {}) {
+    const errorInfo = {
+      error,
+      context,
+      type: 'manual'
+    };
+
+    return this.processError(errorInfo);
   }
-}
 
 // Create singleton instance
 const unifiedErrorHandler = new UnifiedErrorHandler();
 
-// Auto-initialize to ensure we're first
+// Auto-initialize to ensure we're ready
 if (typeof window !== 'undefined') {
-  // Initialize immediately to be the first interceptor
+  // Initialize with transparent mode
   unifiedErrorHandler.initialize();
 
   // Expose globally

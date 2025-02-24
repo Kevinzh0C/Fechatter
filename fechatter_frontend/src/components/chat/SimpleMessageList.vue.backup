@@ -1,0 +1,336 @@
+<template>
+  <!-- 🚨 SIMPLIFIED: Direct message rendering without excessive containers -->
+  <div class="simple-message-list" ref="scrollContainer" @scroll="debouncedHandleScroll">
+
+    <!-- Auto Load More Indicator -->
+    <div v-if="showLoadingIndicator" class="auto-load-indicator">
+      <div class="load-indicator-content">
+        <div class="loading-spinner"></div>
+        <span class="loading-text">Loading earlier messages...</span>
+      </div>
+    </div>
+
+    <!-- Traditional Loading Indicator for initial load -->
+    <div v-if="loading && messages.length === 0" class="loading-indicator">
+      <div class="loading-text">Loading messages...</div>
+    </div>
+
+    <!-- 🔥 REFACTORED: Direct message rendering - No excessive wrappers -->
+    <template v-for="item in enhancedMessages" :key="item.id || item._stableKey || `divider_${item.type}_${item.id}`">
+
+      <!-- 🎨 Time Session Divider -->
+      <TimeSessionDivider v-if="item.type === 'date-divider' || item.type === 'session-divider'" :divider="item"
+        :show-date-details="false" :compact="item.subType === 'short-break'" />
+
+      <!-- 📝 Direct DiscordMessageItem - No wrapper div -->
+      <DiscordMessageItem v-else :message="item" :current-user-id="currentUserId" :chat-id="chatId"
+        :data-message-id="item.id" :ref="el => registerMessageElement(item.id, el)"
+        @user-profile-opened="$emit('user-profile-opened', $event)" @dm-created="$emit('dm-created', $event)" />
+
+    </template>
+
+    <!-- 🔥 Scroll to Bottom Button -->
+    <button v-if="showScrollToBottomButton" @click="scrollToBottomWithButton" class="scroll-to-bottom-button"
+      :title="'回到最新消息'">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M7 13l3 3 7-7"></path>
+        <path d="M12 3v15"></path>
+      </svg>
+      <span class="button-text">最新</span>
+    </button>
+
+    <!-- Load Completion Indicator -->
+    <div v-if="showLoadCompletionIndicator && autoLoadState === 'idle'" class="load-completion-indicator">
+      <div class="completion-content">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 6L9 17l-5-5"></path>
+        </svg>
+        <span>已加载全部历史消息</span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, nextTick, onMounted, watch, computed, onUnmounted } from 'vue';
+import DiscordMessageItem from '@/components/discord/DiscordMessageItem.vue';
+import TimeSessionDivider from './TimeSessionDivider.vue';
+import { messageSessionGrouper } from '@/services/MessageSessionGrouper.js';
+
+// 🚨 REMOVED: Redundant imports and complex state management
+// ❌ const MessageItem = DiscordMessageItem; // DELETED: Redundant alias
+// ❌ LoadingCompletionUI // DELETED: Over-complex UI
+// ❌ Multiple complex services // DELETED: Unused complexity
+
+const props = defineProps({
+  messages: {
+    type: Array,
+    default: () => []
+  },
+  currentUserId: {
+    type: Number,
+    required: true
+  },
+  loading: {
+    type: Boolean,
+    default: false
+  },
+  chatId: {
+    type: [Number, String],
+    default: null
+  },
+  hasMoreMessages: {
+    type: Boolean,
+    default: false
+  }
+});
+
+const emit = defineEmits(['user-profile-opened', 'dm-created', 'load-more-messages']);
+
+// 🔥 SIMPLIFIED: Core refs only
+const scrollContainer = ref(null);
+const showLoadingIndicator = ref(false);
+const showScrollToBottomButton = ref(false);
+const showLoadCompletionIndicator = ref(false);
+const autoLoadState = ref('idle');
+
+// 🔥 SIMPLIFIED: Message element registration 
+const messageElements = ref(new Map());
+const messageGroupingState = ref({
+  groupedMessages: [],
+  lastProcessedCount: 0
+});
+
+// 🎯 CORE: Enhanced message rendering (simplified)
+const enhancedMessages = computed(() => {
+  if (!props.messages || props.messages.length === 0) {
+    return [];
+  }
+
+  // Only regroup when message count changes
+  if (messageGroupingState.value.lastProcessedCount !== props.messages.length) {
+    const groupingResult = messageSessionGrouper.analyzeAndGroupMessages(
+      props.messages,
+      props.chatId
+    );
+
+    messageGroupingState.value = {
+      groupedMessages: groupingResult.groupedMessages,
+      lastProcessedCount: props.messages.length
+    };
+  }
+
+  return messageGroupingState.value.groupedMessages;
+});
+
+// 🔥 SIMPLIFIED: Message element registration
+const registerMessageElement = (messageId, el) => {
+  if (el) {
+    messageElements.value.set(messageId, el);
+    // Basic display tracking only
+    if (window.messageDisplayGuarantee) {
+      try {
+        window.messageDisplayGuarantee.markMessageDisplayed(parseInt(messageId), el, parseInt(props.chatId));
+      } catch (error) {
+        // Silent error handling
+      }
+    }
+  } else {
+    messageElements.value.delete(messageId);
+  }
+};
+
+// 🔥 SIMPLIFIED: Scroll functions
+const scrollToBottom = async (smooth = false) => {
+  const container = scrollContainer.value;
+  if (!container) return;
+
+  const { scrollHeight, clientHeight } = container;
+  const targetScrollTop = scrollHeight - clientHeight;
+
+  container.scrollTo({
+    top: targetScrollTop,
+    behavior: smooth ? 'smooth' : 'instant'
+  });
+};
+
+const scrollToBottomWithButton = () => {
+  scrollToBottom(true);
+  showScrollToBottomButton.value = false;
+};
+
+// 🔥 SIMPLIFIED: Scroll handler
+const debouncedHandleScroll = (() => {
+  let timeoutId = null;
+  return () => {
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      const container = scrollContainer.value;
+      if (!container) return;
+
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
+      showScrollToBottomButton.value = !isNearBottom;
+    }, 16);
+  };
+})();
+
+// 🔥 SIMPLIFIED: Lifecycle
+onMounted(() => {
+  nextTick(() => scrollToBottom(false));
+});
+
+// 🔥 SIMPLIFIED: Watch for new messages
+watch(() => props.messages?.length, (newLength, oldLength) => {
+  if (newLength > (oldLength || 0)) {
+    nextTick(() => {
+      const container = scrollContainer.value;
+      if (!container) return;
+
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const isNearBottom = scrollTop + clientHeight >= scrollHeight - 150;
+
+      if (isNearBottom) {
+        scrollToBottom(true);
+      }
+    });
+  }
+});
+
+// Expose methods
+defineExpose({
+  scrollToBottom,
+  scrollContainer
+});
+</script>
+
+<style scoped>
+/* 🔥 SIMPLIFIED: Core layout styles only */
+.simple-message-list {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  background: #fdfcfa;
+  position: relative;
+  scroll-behavior: smooth;
+
+  /* ✨ Enhanced performance */
+  will-change: scroll-position;
+  contain: layout style paint;
+}
+
+/* 🚨 REMOVED: Redundant container styles */
+/* ❌ .messages-wrapper - DELETED */
+/* ❌ .message-wrapper - DELETED */
+/* ❌ Complex transition styles - DELETED */
+
+/* 🔥 Loading indicators */
+.auto-load-indicator,
+.loading-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  color: #6b7280;
+}
+
+.load-indicator-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e5e7eb;
+  border-top: 2px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 🔥 Scroll to bottom button */
+.scroll-to-bottom-button {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  z-index: 1000;
+  transition: all 0.2s ease;
+}
+
+.scroll-to-bottom-button:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.button-text {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* 🔥 Load completion indicator */
+.load-completion-indicator {
+  text-align: center;
+  padding: 12px;
+  color: #10b981;
+  font-size: 14px;
+}
+
+.completion-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* 🌙 Dark mode */
+@media (prefers-color-scheme: dark) {
+  .simple-message-list {
+    background: #1f2937;
+  }
+
+  .auto-load-indicator,
+  .loading-indicator {
+    color: #9ca3af;
+  }
+
+  .loading-spinner {
+    border-color: #374151;
+    border-top-color: #60a5fa;
+  }
+}
+
+/* 📱 Mobile optimizations */
+@media (max-width: 768px) {
+  .scroll-to-bottom-button {
+    bottom: 60px;
+    right: 16px;
+    padding: 10px 14px;
+  }
+
+  .button-text {
+    font-size: 12px;
+  }
+}
+</style>

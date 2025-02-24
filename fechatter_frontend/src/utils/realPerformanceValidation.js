@@ -11,19 +11,26 @@ class RealPerformanceValidation {
       realWorldTests: []
     };
 
-    console.log('📊 Real Performance Validation initialized');
-  }
+    if (import.meta.env.DEV) {
+      console.log('📊 Real Performance Validation initialized');
+    }
 
   /**
    * Run honest performance comparison
    * 运行诚实的性能对比测试
    */
   async runHonestComparison() {
-    console.log('\n🔬 HONEST PERFORMANCE VALIDATION');
-    console.log('==================================\n');
+    if (import.meta.env.DEV) {
+      console.log('\n🔬 HONEST PERFORMANCE VALIDATION');
+    if (import.meta.env.DEV) {
+      console.log('==================================\n');
+    }
 
-    console.log('⚠️ DISCLAIMER: This is a REAL test with ACTUAL data');
-    console.log('📊 No fraudulent claims - only measurable improvements\n');
+    if (import.meta.env.DEV) {
+      console.log('⚠️ DISCLAIMER: This is a REAL test with ACTUAL data');
+    if (import.meta.env.DEV) {
+      console.log('📊 No fraudulent claims - only measurable improvements\n');
+    }
 
     // 1. Test current system performance (baseline)
     await this.testCurrentSystemBaseline();
@@ -42,29 +49,42 @@ class RealPerformanceValidation {
    * Test current system performance as baseline
    */
   async testCurrentSystemBaseline() {
-    console.log('1️⃣ BASELINE PERFORMANCE TEST');
-    console.log('============================');
+    if (import.meta.env.DEV) {
+      console.log('1️⃣ BASELINE PERFORMANCE TEST');
+    if (import.meta.env.DEV) {
+      console.log('============================');
+    }
 
     const chatStore = this.getChatStore();
     if (!chatStore) {
-      console.log('❌ Chat store not available - cannot test');
+      if (import.meta.env.DEV) {
+        console.log('❌ Chat store not available - cannot test');
       return;
     }
 
     // Test 1: UI update performance
     const uiTestResults = this.testUIPerformance();
-    console.log(`📊 UI Update (add message): ${uiTestResults.addMessage.toFixed(2)}ms`);
-    console.log(`📊 UI Render (DOM update): ${uiTestResults.domUpdate.toFixed(2)}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 UI Update (add message): ${uiTestResults.addMessage.toFixed(2)}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 UI Render (DOM update): ${uiTestResults.domUpdate.toFixed(2)}ms`);
+    }
 
     // Test 2: localStorage performance  
     const storageResults = this.testStoragePerformance();
-    console.log(`📊 localStorage save: ${storageResults.save.toFixed(2)}ms`);
-    console.log(`📊 localStorage get: ${storageResults.get.toFixed(2)}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 localStorage save: ${storageResults.save.toFixed(2)}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 localStorage get: ${storageResults.get.toFixed(2)}ms`);
+    }
 
     // Test 3: API call simulation
     const apiResults = await this.testAPIPerformance();
-    console.log(`📊 API call (simulated): ${apiResults.simulated.toFixed(2)}ms`);
-    console.log(`📊 API call (real health): ${apiResults.real.toFixed(2)}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 API call (simulated): ${apiResults.simulated.toFixed(2)}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 API call (real health): ${apiResults.real.toFixed(2)}ms`);
+    }
 
     this.testResults.beforeOptimization = {
       ui: uiTestResults,
@@ -147,7 +167,6 @@ class RealPerformanceValidation {
     } catch (error) {
       return { save: -1, get: -1, dataSize: 0 };
     }
-  }
 
   /**
    * Test API performance
@@ -168,8 +187,9 @@ class RealPerformanceValidation {
       });
       realTime = performance.now() - realStart;
     } catch (error) {
-      console.log('   ⚠️ Real API not available:', error.message);
-    }
+      if (import.meta.env.DEV) {
+        console.log('   ⚠️ Real API not available:', error.message);
+      }
 
     return {
       simulated: simulatedTime,
@@ -181,20 +201,31 @@ class RealPerformanceValidation {
    * Test actual optimization improvements
    */
   async testActualOptimizations() {
-    console.log('\n2️⃣ OPTIMIZATION PERFORMANCE TEST');
-    console.log('=================================');
+    if (import.meta.env.DEV) {
+      console.log('\n2️⃣ OPTIMIZATION PERFORMANCE TEST');
+    if (import.meta.env.DEV) {
+      console.log('=================================');
+    }
 
     // Test optimistic UI updates
     const optimisticResults = this.testOptimisticUpdates();
-    console.log(`📊 Optimistic UI update: ${optimisticResults.optimistic.toFixed(2)}ms`);
-    console.log(`📊 Traditional UI update: ${optimisticResults.traditional.toFixed(2)}ms`);
-    console.log(`📈 Improvement: ${optimisticResults.improvement.toFixed(1)}x faster`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 Optimistic UI update: ${optimisticResults.optimistic.toFixed(2)}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 Traditional UI update: ${optimisticResults.traditional.toFixed(2)}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`📈 Improvement: ${optimisticResults.improvement.toFixed(1)}x faster`);
+    }
 
     // Test cached loading
     const cacheResults = this.testCachedLoading();
-    console.log(`📊 Cached load: ${cacheResults.cached.toFixed(2)}ms`);
-    console.log(`📊 Fresh load: ${cacheResults.fresh.toFixed(2)}ms`);
-    console.log(`📈 Improvement: ${cacheResults.improvement.toFixed(1)}x faster`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 Cached load: ${cacheResults.cached.toFixed(2)}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 Fresh load: ${cacheResults.fresh.toFixed(2)}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`📈 Improvement: ${cacheResults.improvement.toFixed(1)}x faster`);
+    }
 
     this.testResults.afterOptimization = {
       optimistic: optimisticResults,
@@ -219,7 +250,6 @@ class RealPerformanceValidation {
 
     if (chatStore.messages) {
       chatStore.messages.push(testMessage);
-    }
     const optimisticTime = performance.now() - optimisticStart;
 
     // Test traditional (simulated wait) update
@@ -277,23 +307,35 @@ class RealPerformanceValidation {
    * Test real-world scenarios
    */
   async testRealWorldScenarios() {
-    console.log('\n3️⃣ REAL-WORLD SCENARIO TESTS');
-    console.log('=============================');
+    if (import.meta.env.DEV) {
+      console.log('\n3️⃣ REAL-WORLD SCENARIO TESTS');
+    if (import.meta.env.DEV) {
+      console.log('=============================');
+    }
 
     // Scenario 1: Send message
     const sendScenario = await this.testSendMessageScenario();
-    console.log(`📊 Send message (optimized): ${sendScenario.optimized.toFixed(2)}ms`);
-    console.log(`📊 Send message (traditional): ${sendScenario.traditional.toFixed(2)}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 Send message (optimized): ${sendScenario.optimized.toFixed(2)}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 Send message (traditional): ${sendScenario.traditional.toFixed(2)}ms`);
+    }
 
     // Scenario 2: Switch chat
     const switchScenario = this.testChatSwitchScenario();
-    console.log(`📊 Chat switch (cached): ${switchScenario.cached.toFixed(2)}ms`);
-    console.log(`📊 Chat switch (fresh): ${switchScenario.fresh.toFixed(2)}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 Chat switch (cached): ${switchScenario.cached.toFixed(2)}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 Chat switch (fresh): ${switchScenario.fresh.toFixed(2)}ms`);
+    }
 
     // Scenario 3: Page refresh
     const refreshScenario = this.testPageRefreshScenario();
-    console.log(`📊 Page refresh (with persistence): ${refreshScenario.withPersistence.toFixed(2)}ms`);
-    console.log(`📊 Page refresh (without): ${refreshScenario.withoutPersistence.toFixed(2)}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 Page refresh (with persistence): ${refreshScenario.withPersistence.toFixed(2)}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 Page refresh (without): ${refreshScenario.withoutPersistence.toFixed(2)}ms`);
+    }
 
     this.testResults.realWorldTests = [sendScenario, switchScenario, refreshScenario];
   }
@@ -365,11 +407,17 @@ class RealPerformanceValidation {
    * Generate honest, data-backed report
    */
   generateHonestReport() {
-    console.log('\n📊 HONEST PERFORMANCE REPORT');
-    console.log('=============================\n');
+    if (import.meta.env.DEV) {
+      console.log('\n📊 HONEST PERFORMANCE REPORT');
+    if (import.meta.env.DEV) {
+      console.log('=============================\n');
+    }
 
-    console.log('⚠️ IMPORTANT: These are REAL, measurable improvements');
-    console.log('📊 All data is from actual browser performance measurements\n');
+    if (import.meta.env.DEV) {
+      console.log('⚠️ IMPORTANT: These are REAL, measurable improvements');
+    if (import.meta.env.DEV) {
+      console.log('📊 All data is from actual browser performance measurements\n');
+    }
 
     // Realistic improvements summary
     const improvements = {
@@ -380,52 +428,85 @@ class RealPerformanceValidation {
       pageRefreshSpeed: this.testResults.realWorldTests?.[2]?.improvement || 1
     };
 
-    console.log('🔍 REALISTIC IMPROVEMENTS:');
-    console.log(`   ⚡ UI Responsiveness: ${improvements.uiResponsiveness.toFixed(1)}x faster`);
-    console.log(`   📦 Cache Performance: ${improvements.cacheHitRatio.toFixed(1)}x faster`);
-    console.log(`   📤 Send Message: ${improvements.sendMessageSpeed.toFixed(1)}x faster`);
-    console.log(`   🔄 Chat Switch: ${improvements.chatSwitchSpeed.toFixed(1)}x faster`);
-    console.log(`   🔁 Page Refresh: ${improvements.pageRefreshSpeed.toFixed(1)}x faster`);
+    if (import.meta.env.DEV) {
+      console.log('🔍 REALISTIC IMPROVEMENTS:');
+    if (import.meta.env.DEV) {
+      console.log(`   ⚡ UI Responsiveness: ${improvements.uiResponsiveness.toFixed(1)}x faster`);
+    if (import.meta.env.DEV) {
+      console.log(`   📦 Cache Performance: ${improvements.cacheHitRatio.toFixed(1)}x faster`);
+    if (import.meta.env.DEV) {
+      console.log(`   📤 Send Message: ${improvements.sendMessageSpeed.toFixed(1)}x faster`);
+    if (import.meta.env.DEV) {
+      console.log(`   🔄 Chat Switch: ${improvements.chatSwitchSpeed.toFixed(1)}x faster`);
+    if (import.meta.env.DEV) {
+      console.log(`   🔁 Page Refresh: ${improvements.pageRefreshSpeed.toFixed(1)}x faster`);
+    }
 
-    console.log('\n🎯 WHAT IS ACTUALLY ACHIEVABLE:');
+    if (import.meta.env.DEV) {
+      console.log('\n🎯 WHAT IS ACTUALLY ACHIEVABLE:');
+    }
 
     if (improvements.uiResponsiveness > 10) {
-      console.log('✅ UI updates: Near-instant (< 5ms vs 50-100ms)');
+      if (import.meta.env.DEV) {
+        console.log('✅ UI updates: Near-instant (< 5ms vs 50-100ms)');
+      }
     } else {
-      console.log('⚠️ UI updates: Modest improvement (measurable but not revolutionary)');
-    }
+      if (import.meta.env.DEV) {
+        console.log('⚠️ UI updates: Modest improvement (measurable but not revolutionary)');
+      }
 
     if (improvements.pageRefreshSpeed > 50) {
-      console.log('✅ Message persistence: Revolutionary (instant vs seconds)');
+      if (import.meta.env.DEV) {
+        console.log('✅ Message persistence: Revolutionary (instant vs seconds)');
+      }
     } else {
-      console.log('⚠️ Message persistence: Significant but not revolutionary');
+      if (import.meta.env.DEV) {
+        console.log('⚠️ Message persistence: Significant but not revolutionary');
+      }
+
+    if (import.meta.env.DEV) {
+      console.log('\n🚫 WHAT IS NOT ACHIEVABLE:');
+    if (import.meta.env.DEV) {
+      console.log('❌ Cannot fix slow backend (12.7s delay needs backend optimization)');
+    if (import.meta.env.DEV) {
+      console.log('❌ Cannot eliminate network latency completely');
+    if (import.meta.env.DEV) {
+      console.log('❌ Cannot make API calls truly instant');
     }
 
-    console.log('\n🚫 WHAT IS NOT ACHIEVABLE:');
-    console.log('❌ Cannot fix slow backend (12.7s delay needs backend optimization)');
-    console.log('❌ Cannot eliminate network latency completely');
-    console.log('❌ Cannot make API calls truly instant');
-
-    console.log('\n💡 HONEST CONCLUSION:');
-    console.log('=====================================');
+    if (import.meta.env.DEV) {
+      console.log('\n💡 HONEST CONCLUSION:');
+    if (import.meta.env.DEV) {
+      console.log('=====================================');
+    }
 
     const avgImprovement = Object.values(improvements).reduce((a, b) => a + b, 0) / Object.values(improvements).length;
 
     if (avgImprovement > 10) {
-      console.log('🎉 SIGNIFICANT IMPROVEMENTS: These optimizations provide substantial, measurable benefits');
+      if (import.meta.env.DEV) {
+        console.log('🎉 SIGNIFICANT IMPROVEMENTS: These optimizations provide substantial, measurable benefits');
+      }
     } else if (avgImprovement > 3) {
-      console.log('👍 MEANINGFUL IMPROVEMENTS: Noticeable performance gains for users');
+      if (import.meta.env.DEV) {
+        console.log('👍 MEANINGFUL IMPROVEMENTS: Noticeable performance gains for users');
+      }
     } else {
-      console.log('⚠️ MODEST IMPROVEMENTS: Some benefits but not revolutionary');
-    }
+      if (import.meta.env.DEV) {
+        console.log('⚠️ MODEST IMPROVEMENTS: Some benefits but not revolutionary');
+      }
 
-    console.log('\n📈 IMPACT ON 12.7s DELAY PROBLEM:');
+    if (import.meta.env.DEV) {
+      console.log('\n📈 IMPACT ON 12.7s DELAY PROBLEM:');
     if (improvements.sendMessageSpeed > 5) {
-      console.log('✅ UI feels instant while backend processes in background');
-      console.log('✅ User perception: Problem solved (even if backend is still slow)');
+      if (import.meta.env.DEV) {
+        console.log('✅ UI feels instant while backend processes in background');
+      if (import.meta.env.DEV) {
+        console.log('✅ User perception: Problem solved (even if backend is still slow)');
+      }
     } else {
-      console.log('⚠️ Improvements help but may not fully mask backend slowness');
-    }
+      if (import.meta.env.DEV) {
+        console.log('⚠️ Improvements help but may not fully mask backend slowness');
+      }
 
     return {
       improvements,
@@ -443,8 +524,6 @@ class RealPerformanceValidation {
     } catch (error) {
       return null;
     }
-  }
-}
 
 // Create global instance
 const realValidator = new RealPerformanceValidation();
@@ -458,10 +537,14 @@ if (typeof window !== 'undefined') {
     api: () => realValidator.testAPIPerformance()
   };
 
-  console.log('📊 Real Performance Validator loaded');
-  console.log('   Commands:');
-  console.log('   - window.validateReal.run() - Honest performance comparison');
-  console.log('   - window.validateReal.ui() - Test UI performance only');
-}
+  if (import.meta.env.DEV) {
+    console.log('📊 Real Performance Validator loaded');
+  if (import.meta.env.DEV) {
+    console.log('   Commands:');
+  if (import.meta.env.DEV) {
+    console.log('   - window.validateReal.run() - Honest performance comparison');
+  if (import.meta.env.DEV) {
+    console.log('   - window.validateReal.ui() - Test UI performance only');
+  }
 
 export default realValidator; 

@@ -3,11 +3,14 @@
  * 频道预加载服务 - 快速首屏加载
  */
 
+import { ref, computed } from 'vue';
 import { useChatStore } from '@/stores/chat';
-import { useAuthStore } from '@/stores/auth';
-import realtimeCommunicationService from '@/services/sse';
-import api from '@/services/api';
+import { useUserStore } from '@/stores/user';
 import { useWorkspaceStore } from '@/stores/workspace';
+import { useAuthStore } from '@/stores/auth';
+import { useNotifications } from '@/composables/useNotifications';
+import minimalSSE from '@/services/sse-minimal';
+import api from '@/services/api';
 
 class ChannelPreloaderService {
   constructor() {
@@ -54,13 +57,13 @@ class ChannelPreloaderService {
       const result = await this.preloadPromise;
       return result;
     } catch (error) {
-      console.error('❌ [PRELOADER] Preloading failed:', error);
+      if (import.meta.env.DEV) {
+        console.error('❌ [PRELOADER] Preloading failed:', error);
       throw error;
     } finally {
       this.isPreloading = false;
       this.preloadPromise = null;
     }
-  }
 
   /**
    * 执行预加载逻辑
@@ -104,7 +107,9 @@ class ChannelPreloaderService {
       return this.preloadedData;
 
     } catch (error) {
-      console.error('📦 [PRELOADER] Preload failed:', error);
+      if (import.meta.env.DEV) {
+        console.error('📦 [PRELOADER] Preload failed:', error);
+      }
 
       // 即使失败也返回一个基本结构
       this.preloadedData = {
@@ -117,7 +122,6 @@ class ChannelPreloaderService {
 
       throw error;
     }
-  }
 
   /**
    * 预加载频道列表
@@ -127,7 +131,8 @@ class ChannelPreloaderService {
       const startTime = performance.now();
 
       // Preload channels
-      console.log('📦 [PRELOADER] Fetching channels...');
+      if (import.meta.env.DEV) {
+        console.log('📦 [PRELOADER] Fetching channels...');
       const workspaceStore = useWorkspaceStore();
 
       // Use workspace store to fetch chats since chat store doesn't have fetchChats
@@ -170,11 +175,12 @@ class ChannelPreloaderService {
               acc[item.chat_id] = item.unread_count;
               return acc;
             }, {});
-          }
 
         }
       } catch (error) {
-        console.warn('📋 [PRELOADER] Failed to load unread counts:', error);
+        if (import.meta.env.DEV) {
+          console.warn('📋 [PRELOADER] Failed to load unread counts:', error);
+        }
         // 继续使用默认值0
       }
 
@@ -191,10 +197,10 @@ class ChannelPreloaderService {
       }));
 
     } catch (error) {
-      console.error('📋 [PRELOADER] Failed to preload channels:', error);
+      if (import.meta.env.DEV) {
+        console.error('📋 [PRELOADER] Failed to preload channels:', error);
       return [];
     }
-  }
 
   /**
    * 预加载SSE实时连接
@@ -202,7 +208,7 @@ class ChannelPreloaderService {
   async preloadSSEConnection(token) {
     try {
       // 异步连接SSE，不阻塞主要加载流程
-      const connectPromise = realtimeCommunicationService.connect(token);
+      const connectPromise = minimalSSE.connect(token);
 
       // 设置超时以避免长时间等待
       const timeoutPromise = new Promise((_, reject) =>
@@ -214,17 +220,18 @@ class ChannelPreloaderService {
       return true;
 
     } catch (error) {
-      console.warn('🔌 [PRELOADER] SSE connection failed, will retry in background:', error);
+      if (import.meta.env.DEV) {
+        console.warn('🔌 [PRELOADER] SSE connection failed, will retry in background:', error);
+      }
 
       // SSE连接失败不应该阻塞主要流程
       // 稍后在后台重试
       setTimeout(() => {
-        realtimeCommunicationService.connect(token).catch(console.warn);
+        minimalSSE.connect(token).catch(console.warn);
       }, 3000);
 
       return false;
     }
-  }
 
   /**
    * 获取预加载的数据
@@ -232,7 +239,6 @@ class ChannelPreloaderService {
   getPreloadedChannels() {
     if (this.isCacheValid()) {
       return this.preloadedData.channels;
-    }
     return null;
   }
 
@@ -262,9 +268,10 @@ class ChannelPreloaderService {
     this.backgroundRefreshTimer = setInterval(() => {
       if (!this.isCacheValid() && !this.isPreloading) {
         this.startPreloading().catch(error => {
-          console.warn('🔄 [PRELOADER] Background refresh failed:', error);
+          if (import.meta.env.DEV) {
+            console.warn('🔄 [PRELOADER] Background refresh failed:', error);
+          }
         });
-      }
     }, 30000);
   }
 
@@ -276,7 +283,6 @@ class ChannelPreloaderService {
       clearInterval(this.backgroundRefreshTimer);
       this.backgroundRefreshTimer = null;
     }
-  }
 
   /**
    * 手动刷新数据
@@ -312,7 +318,6 @@ class ChannelPreloaderService {
 
       this.preloadedData.channels.unshift(formattedChannel);
     }
-  }
 
   /**
    * 从缓存中移除频道
@@ -323,7 +328,6 @@ class ChannelPreloaderService {
         channel => channel.id !== channelId
       );
     }
-  }
 
   /**
    * 更新频道未读计数
@@ -336,10 +340,9 @@ class ChannelPreloaderService {
         channel.unread_count = unreadCount;
 
       } else {
-        console.warn(`📦 [PRELOADER] Channel ${channelId} not found in preloaded data`);
-      }
-    }
-  }
+        if (import.meta.env.DEV) {
+          console.warn(`📦 [PRELOADER] Channel ${channelId} not found in preloaded data`);
+        }
 
   /**
    * 增加频道未读计数
@@ -352,8 +355,6 @@ class ChannelPreloaderService {
         channel.unread_count += increment;
 
       }
-    }
-  }
 
   /**
    * 重置频道未读计数
@@ -385,7 +386,7 @@ class ChannelPreloaderService {
     this.preloadPromise = null;
 
     // 断开SSE连接
-    realtimeCommunicationService.disconnect();
+    minimalSSE.disconnect();
 
   }
 
@@ -400,21 +401,24 @@ class ChannelPreloaderService {
     // 🔥 并行启动：数据预加载 + SSE连接
     const [dataPromise, connectPromise] = await Promise.allSettled([
       this.preloadChannels(chatStore),
-      realtimeCommunicationService.connect(token)
+      minimalSSE.connect(token)
     ]);
 
     // 检查预加载结果
     if (dataPromise.status === 'fulfilled') {
     } else {
-      console.warn('⚠️ [PRELOADER] Data preloading failed:', dataPromise.reason);
-    }
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ [PRELOADER] Data preloading failed:', dataPromise.reason);
+      }
 
     // 检查SSE连接结果
     if (connectPromise.status === 'fulfilled') {
     } else {
-      console.warn('⚠️ [PRELOADER] Real-time connection failed:', connectPromise.reason);
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ [PRELOADER] Real-time connection failed:', connectPromise.reason);
+      }
       // SSE连接失败时，仍然可以尝试在后台重连
-      realtimeCommunicationService.connect(token).catch(console.warn);
+      minimalSSE.connect(token).catch(console.warn);
     }
 
     const endTime = performance.now();
@@ -430,14 +434,14 @@ class ChannelPreloaderService {
    */
   disconnect() {
     // 断开SSE连接
-    realtimeCommunicationService.disconnect();
+    minimalSSE.disconnect();
 
     // 清除缓存
     this.clearCache();
 
-    console.log('🧹 [PRELOADER] Cleanup completed');
-  }
-}
+    if (import.meta.env.DEV) {
+      console.log('🧹 [PRELOADER] Cleanup completed');
+    }
 
 // 单例实例
 const channelPreloaderService = new ChannelPreloaderService();

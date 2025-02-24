@@ -4,21 +4,21 @@
 
 class SSEDebugTool {
   constructor() {
-    this.isEnabled = process.env.NODE_ENV === 'development';
+    this.isEnabled = import.meta.env.DEV;
     this.logs = [];
     this.maxLogs = 100;
     
     if (typeof window !== 'undefined') {
       window.sseDebugTool = this;
     }
-  }
 
   /**
    * 启用调试模式
    */
   enable() {
     this.isEnabled = true;
-    console.log('🔧 SSE Debug Tool enabled');
+    if (import.meta.env.DEV) {
+      console.log('🔧 SSE Debug Tool enabled');
     this.showCurrentStatus();
   }
 
@@ -27,8 +27,9 @@ class SSEDebugTool {
    */
   disable() {
     this.isEnabled = false;
-    console.log('🔧 SSE Debug Tool disabled');
-  }
+    if (import.meta.env.DEV) {
+      console.log('🔧 SSE Debug Tool disabled');
+    }
 
   /**
    * 记录调试信息
@@ -64,14 +65,16 @@ class SSEDebugTool {
     // 全局管理器状态
     if (typeof window !== 'undefined' && window.sseGlobalManager) {
       const status = window.sseGlobalManager.getStatus();
-      console.log('📊 全局管理器状态:', status);
-    }
+      if (import.meta.env.DEV) {
+        console.log('📊 全局管理器状态:', status);
+      }
 
     // 连接服务状态
     if (typeof window !== 'undefined' && window.realtimeCommunicationService) {
       const connectionState = window.realtimeCommunicationService.getConnectionState();
-      console.log('🔌 连接服务状态:', connectionState);
-    }
+      if (import.meta.env.DEV) {
+        console.log('🔌 连接服务状态:', connectionState);
+      }
 
     console.groupEnd();
   }
@@ -81,35 +84,35 @@ class SSEDebugTool {
    */
   resetGlobalManager() {
     if (typeof window !== 'undefined' && window.sseGlobalManager) {
-      console.warn('🚨 重置SSE全局管理器');
+      if (import.meta.env.DEV) {
+        console.warn('🚨 重置SSE全局管理器');
       window.sseGlobalManager.reset();
       this.log('warn', 'Global manager reset by debug tool');
     }
-  }
 
   /**
    * 强制终止所有连接
    */
   forceTerminateAll() {
     if (typeof window !== 'undefined' && window.sseGlobalManager) {
-      console.warn('🚨 强制终止所有SSE连接');
+      if (import.meta.env.DEV) {
+        console.warn('🚨 强制终止所有SSE连接');
       window.sseGlobalManager.banAllSSEConnections('调试工具强制终止');
       this.log('warn', 'All connections terminated by debug tool');
     }
-  }
 
   /**
    * 模拟网络错误
    */
   simulateNetworkError() {
     if (typeof window !== 'undefined' && window.realtimeCommunicationService) {
-      console.warn('🚨 模拟网络错误');
+      if (import.meta.env.DEV) {
+        console.warn('🚨 模拟网络错误');
       const mockError = new Error('Simulated network error');
       mockError.type = 'error';
       window.realtimeCommunicationService.handleError(mockError);
       this.log('warn', 'Simulated network error');
     }
-  }
 
   /**
    * 获取详细的连接报告
@@ -136,9 +139,9 @@ class SSEDebugTool {
       if (window.realtimeCommunicationService) {
         report.connectionService = window.realtimeCommunicationService.getConnectionState();
       }
-    }
 
-    console.log('📋 SSE连接详细报告:', report);
+    if (import.meta.env.DEV) {
+      console.log('📋 SSE连接详细报告:', report);
     return report;
   }
 
@@ -163,22 +166,26 @@ class SSEDebugTool {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    console.log('📁 SSE调试日志已导出');
-  }
+    if (import.meta.env.DEV) {
+      console.log('📁 SSE调试日志已导出');
+    }
 
   /**
    * 清除日志
    */
   clearLogs() {
     this.logs = [];
-    console.log('🗑️ SSE调试日志已清除');
-  }
+    if (import.meta.env.DEV) {
+      console.log('🗑️ SSE调试日志已清除');
+    }
 
   /**
    * 显示帮助信息
    */
   showHelp() {
-    console.log(`
+    if (import.meta.env.DEV) {
+      console.log(`
+    }
 🔧 SSE调试工具使用指南
 
 可用命令:
@@ -198,13 +205,12 @@ class SSEDebugTool {
   window.realtimeCommunicationService - SSE连接服务
     `);
   }
-}
 
 // 创建全局实例
 const sseDebugTool = new SSEDebugTool();
 
 // 在开发环境下自动启用
-if (process.env.NODE_ENV === 'development') {
+if (import.meta.env.DEV) {
   setTimeout(() => {
     sseDebugTool.enable();
     sseDebugTool.showHelp();

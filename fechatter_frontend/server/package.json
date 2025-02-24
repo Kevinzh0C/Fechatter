@@ -1,0 +1,27 @@
+{
+  "name": "fechatter-bot-mock-api",
+  "version": "1.0.0",
+  "description": "Mock Bot API server for Fechatter development",
+  "main": "bot-mock.js",
+  "scripts": {
+    "start": "node bot-mock.js",
+    "dev": "nodemon bot-mock.js",
+    "install": "npm install --no-fund --no-audit"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "mock",
+    "api",
+    "bot",
+    "translation",
+    "development"
+  ],
+  "author": "Fechatter Team",
+  "license": "MIT"
+}

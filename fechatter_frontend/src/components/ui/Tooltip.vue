@@ -100,7 +100,7 @@ onUnmounted(() => {
 /* Tooltip Base */
 .tooltip {
   position: absolute;
-  z-index: 9999;
+  z-index: var(--z-tooltip, 9900);
   pointer-events: none;
   font-size: 12px;
   font-weight: 500;
@@ -109,6 +109,8 @@ onUnmounted(() => {
   border-radius: 6px;
   padding: 0;
   max-width: 200px;
+  /* Ensure proper stacking context */
+  isolation: isolate;
 }
 
 /* Tooltip Content */

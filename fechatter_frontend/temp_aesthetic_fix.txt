@@ -1,0 +1,41 @@
+  <template>
+   <!-- 🎨 AESTHETIC RESTORATION: 恢复人体工学美学设计 -->
+    <div class="simple-message-list unified-aesthetic" ref="scrollContainer" @scroll="debouncedHandleScroll">
+
+      <!-- Loading Indicator -->
+      <div v-if="loading && messages.length === 0" class="loading-indicator">
+        <div class="loading-spinner"></div>
+        <span>Loading messages...</span>
+      </div>
+
+      <!-- 🔥 DIRECT RENDERING: 应用统一美学系统 -->
+      <template v-for="item in enhancedMessages"
+        :key="item.id || item._stableKey || `divider_${item.type}_${item.id}`">
+        
+        <!-- Time Session Divider -->
+        <TimeSessionDivider 
+          v-if="item.type === 'date-divider' || item.type === 'session-divider'" 
+          :divider="item"
+          :compact="item.subType === 'short-break'" />
+
+        <!-- 📝 PROTECTED DiscordMessageItem - 强制保护原始美学 -->
+        <DiscordMessageItem 
+          v-else
+          :message="item" 
+          :current-user-id="currentUserId" 
+          :chat-id="chatId"
+          :data-message-id="item.id"
+          :ref="el => registerMessageElement(item.id, el)"
+          @user-profile-opened="$emit('user-profile-opened', $event)" 
+          @dm-created="$emit('dm-created', $event)" 
+          class="protected-message-item" />
+        
+      </template>
+
+      <!-- Scroll to Bottom Button -->
+      <button v-if="showScrollToBottomButton" @click="scrollToBottom(true)" class="scroll-to-bottom-button">
+        ↓ 最新
+      </button>
+
+    </div>
+  </template>

@@ -1,0 +1,410 @@
+<template>
+  <!-- 🎨 AESTHETIC RESTORATION: 恢复人体工学美学设计 -->
+  <div class="simple-message-list unified-aesthetic" ref="scrollContainer" @scroll="debouncedHandleScroll">
+
+    <!-- Loading Indicator -->
+    <div v-if="loading && messages.length === 0" class="loading-indicator">
+      <div class="loading-spinner"></div>
+      <span>Loading messages...</span>
+    </div>
+
+    <!-- 🔥 DIRECT RENDERING: 应用统一美学系统 -->
+    <template v-for="item in enhancedMessages"
+      :key="item.id || item._stableKey || `divider_${item.type}_${item.id}`">
+      
+      <!-- Time Session Divider -->
+      <TimeSessionDivider 
+        v-if="item.type === 'date-divider' || item.type === 'session-divider'" 
+        :divider="item"
+        :compact="item.subType === 'short-break'" />
+
+      <!-- 📝 PROTECTED DiscordMessageItem - 强制保护原始美学 -->
+      <DiscordMessageItem 
+        v-else
+        :message="item" 
+        :current-user-id="currentUserId" 
+        :chat-id="chatId"
+        :data-message-id="item.id"
+        :ref="el => registerMessageElement(item.id, el)"
+        @user-profile-opened="$emit('user-profile-opened', $event)" 
+        @dm-created="$emit('dm-created', $event)" 
+        class="protected-message-item" />
+      
+    </template>
+
+    <!-- Scroll to Bottom Button -->
+    <button v-if="showScrollToBottomButton" @click="scrollToBottom(true)" class="scroll-to-bottom-button">
+      ↓ 最新
+    </button>
+
+  </div>
+</template>
+
+<script setup>
+import { ref, nextTick, watch, computed } from 'vue';
+import DiscordMessageItem from '@/components/discord/DiscordMessageItem.vue';
+import TimeSessionDivider from './TimeSessionDivider.vue';
+import { messageSessionGrouper } from '@/services/MessageSessionGrouper.js';
+
+const props = defineProps({
+  messages: { type: Array, default: () => [] },
+  currentUserId: { type: Number, required: true },
+  loading: { type: Boolean, default: false },
+  chatId: { type: [Number, String], default: null },
+  hasMoreMessages: { type: Boolean, default: false }
+});
+
+const emit = defineEmits(['user-profile-opened', 'dm-created', 'load-more-messages']);
+
+// 🔥 MINIMAL State
+const scrollContainer = ref(null);
+const showScrollToBottomButton = ref(false);
+const messageElements = ref(new Map());
+const messageGroupingState = ref({ groupedMessages: [], lastProcessedCount: 0 });
+
+// 🎯 Core: Enhanced message rendering (ultra-simplified)
+const enhancedMessages = computed(() => {
+  if (!props.messages?.length) return [];
+
+  if (messageGroupingState.value.lastProcessedCount !== props.messages.length) {
+    const result = messageSessionGrouper.analyzeAndGroupMessages(props.messages, props.chatId);
+    messageGroupingState.value = {
+      groupedMessages: result.groupedMessages,
+      lastProcessedCount: props.messages.length
+    };
+  }
+
+  return messageGroupingState.value.groupedMessages;
+});
+
+// 🔥 MINIMAL: Element registration
+const registerMessageElement = (messageId, el) => {
+  if (el) {
+    messageElements.value.set(messageId, el);
+    window.messageDisplayGuarantee?.markMessageDisplayed?.(parseInt(messageId), el, parseInt(props.chatId));
+  } else {
+    messageElements.value.delete(messageId);
+  }
+};
+
+// 🔥 MINIMAL: Scroll functions
+const scrollToBottom = (smooth = false) => {
+  const container = scrollContainer.value;
+  if (!container) return;
+
+  container.scrollTo({
+    top: container.scrollHeight,
+    behavior: smooth ? 'smooth' : 'instant'
+  });
+  showScrollToBottomButton.value = false;
+};
+
+// 🔥 MINIMAL: Scroll handler
+const debouncedHandleScroll = (() => {
+  let timeoutId = null;
+  return () => {
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      const container = scrollContainer.value;
+      if (!container) return;
+
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      showScrollToBottomButton.value = scrollTop + clientHeight < scrollHeight - 100;
+    }, 50);
+  };
+})();
+
+// 🔥 Watch for new messages - auto scroll if near bottom
+watch(() => props.messages?.length, (newLength, oldLength) => {
+  if (newLength > (oldLength || 0)) {
+    nextTick(() => {
+      const container = scrollContainer.value;
+      if (!container) return;
+
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      if (scrollTop + clientHeight >= scrollHeight - 150) {
+        scrollToBottom(true);
+      }
+    });
+  }
+});
+
+defineExpose({ scrollToBottom, scrollContainer });
+</script>
+
+<style scoped>
+/* 🎨 UNIFIED AESTHETIC RESTORATION - 统一美学恢复 */
+.simple-message-list.unified-aesthetic {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  background-color: var(--bg-primary, #fdfcfa);
+  scroll-behavior: smooth;
+  contain: layout style paint;
+  
+  /* 🎯 恢复视觉呼吸感 */
+  padding: var(--space-5, 16px) 0;
+  
+  /* 🎯 统一字体系统 - Discord标准 */
+  font-family: var(--font-family-primary, "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif);
+  font-size: var(--font-size-base, 16px);
+  line-height: var(--line-height-base, 1.375);
+  
+  /* 🎯 微妙滚动体验 */
+  scroll-padding-top: 16px;
+}
+
+/* 🔥 CRITICAL: 强制保护DiscordMessageItem原始美学 - 最高优先级 */
+.simple-message-list.unified-aesthetic :deep(.discord-message),
+.simple-message-list.unified-aesthetic :deep(.protected-message-item) {
+  /* 🎯 恢复原始精确间距 - 绝对优先级 */
+  padding: var(--message-padding-top, 2px) var(--message-padding-right, 16px) var(--message-padding-bottom, 2px) var(--message-padding-left, 72px) !important;
+  min-height: var(--message-min-height, 44px) !important;
+  margin-bottom: var(--message-spacing, 8px) !important;
+  
+  /* 🎯 恢复微妙交互反馈 */
+  transition: all var(--transition-fast, 0.06s ease) !important;
+  border-radius: var(--radius-sm, 4px);
+  position: relative;
+  
+  /* 🎯 确保布局稳定 */
+  contain: layout style;
+  
+  /* 🎯 强制字体统一 */
+  font-family: var(--font-family-primary, "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif) !important;
+}
+
+.simple-message-list.unified-aesthetic :deep(.discord-message:hover),
+.simple-message-list.unified-aesthetic :deep(.protected-message-item:hover) {
+  background-color: var(--bg-message-hover, rgba(4, 4, 5, 0.07)) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm, 0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+/* 🎯 头像精确定位恢复 - 绝对保护 */
+.simple-message-list.unified-aesthetic :deep(.message-avatar-slot) {
+  position: absolute !important;
+  left: var(--avatar-offset-left, 16px) !important;
+  top: var(--avatar-offset-top, 2px) !important;
+  width: var(--avatar-size, 40px) !important;
+  height: var(--avatar-size, 40px) !important;
+  border-radius: 50%;
+  overflow: hidden;
+  
+  /* 🎯 微妙边框增强视觉层次 */
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  box-shadow: var(--shadow-sm, 0 2px 4px rgba(0, 0, 0, 0.1));
+  flex-shrink: 0;
+}
+
+/* 🎯 文本层次优化 - 强制保护 */
+.simple-message-list.unified-aesthetic :deep(.sender-name) {
+  font-size: var(--font-size-base, 1rem) !important;
+  font-weight: 500 !important;
+  color: var(--text-primary, #060607) !important;
+  line-height: var(--line-height-base, 1.375) !important;
+  margin-bottom: 2px !important;
+  font-family: var(--font-family-primary, "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif) !important;
+}
+
+.simple-message-list.unified-aesthetic :deep(.message-timestamp) {
+  font-size: var(--font-size-sm, 0.75rem) !important;
+  color: var(--text-muted, #6b7280) !important;
+  font-weight: 400 !important;
+  line-height: var(--line-height-base, 1.375) !important;
+  font-family: var(--font-family-primary, "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif) !important;
+}
+
+.simple-message-list.unified-aesthetic :deep(.message-text) {
+  font-size: var(--font-size-base, 1rem) !important;
+  color: var(--text-primary, #2e3338) !important;
+  line-height: var(--line-height-base, 1.375) !important;
+  word-wrap: break-word;
+  margin: 0;
+  font-family: var(--font-family-primary, "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif) !important;
+}
+
+/* 🎯 时间分隔符美学间距 - 恢复呼吸感 */
+.simple-message-list.unified-aesthetic :deep(.time-session-divider) {
+  margin: 20px 0 !important;
+  padding: 12px 16px;
+  
+  /* 🎯 微妙视觉分隔 */
+  position: relative;
+  font-family: var(--font-family-primary, "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif) !important;
+}
+
+.simple-message-list.unified-aesthetic :deep(.time-session-divider::after) {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: var(--message-padding-left, 72px);
+  right: var(--message-padding-right, 16px);
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(0, 0, 0, 0.1) 50%, 
+    transparent 100%);
+  opacity: 0.6;
+}
+
+/* 🎯 Loading状态美学优化 */
+.loading-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: var(--text-muted, #6b7280);
+  font-size: 14px;
+  font-family: var(--font-family-primary, "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif);
+  
+  /* 🎯 优雅的加载体验 */
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.9) 0%, 
+    rgba(248, 250, 252, 0.9) 100%);
+  border-radius: 8px;
+  margin: 16px;
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-sm, 0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(59, 130, 246, 0.2);
+  border-top: 2px solid var(--primary, #3b82f6);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 🎯 滚动到底部按钮美学增强 */
+.scroll-to-bottom-button {
+  position: fixed;
+  bottom: 100px;
+  right: 20px;
+  background: linear-gradient(135deg, var(--primary, #3b82f6) 0%, #6366f1 100%);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 16px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  cursor: pointer;
+  z-index: 1000;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font-family-primary, "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif);
+  transition: all 0.3s ease;
+  
+  /* 🎯 微妙动画提示 */
+  animation: subtle-pulse 2s ease-in-out infinite;
+}
+
+.scroll-to-bottom-button:hover {
+  background: linear-gradient(135deg, var(--primary-hover, #2563eb) 0%, #4f46e5 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+}
+
+@keyframes subtle-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.9; }
+}
+
+/* 🎯 响应式美学适配 */
+@media (max-width: 768px) {
+  .simple-message-list.unified-aesthetic {
+    padding: 12px 0;
+  }
+  
+  .simple-message-list.unified-aesthetic :deep(.discord-message),
+  .simple-message-list.unified-aesthetic :deep(.protected-message-item) {
+    padding: 2px 12px 2px 56px !important;
+    margin-bottom: 6px !important;
+  }
+  
+  .simple-message-list.unified-aesthetic :deep(.message-avatar-slot) {
+    left: 12px !important;
+    width: 32px !important;
+    height: 32px !important;
+  }
+  
+  .simple-message-list.unified-aesthetic :deep(.time-session-divider) {
+    margin: 16px 0 !important;
+    padding: 8px 12px;
+  }
+  
+  .simple-message-list.unified-aesthetic :deep(.time-session-divider::after) {
+    left: 56px;
+    right: 12px;
+  }
+}
+
+/* 🌙 暗色模式美学适配 */
+@media (prefers-color-scheme: dark) {
+  .simple-message-list.unified-aesthetic {
+    background: var(--bg-primary, #1f2937);
+  }
+  
+  .simple-message-list.unified-aesthetic :deep(.discord-message:hover),
+  .simple-message-list.unified-aesthetic :deep(.protected-message-item:hover) {
+    background-color: var(--bg-message-hover, rgba(255, 255, 255, 0.06)) !important;
+  }
+  
+  .simple-message-list.unified-aesthetic :deep(.time-session-divider::after) {
+    background: linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(255, 255, 255, 0.1) 50%, 
+      transparent 100%);
+  }
+  
+  .simple-message-list.unified-aesthetic :deep(.message-avatar-slot) {
+    border-color: rgba(0, 0, 0, 0.3);
+  }
+  
+  .loading-indicator {
+    background: linear-gradient(135deg, 
+      rgba(31, 41, 55, 0.9) 0%, 
+      rgba(55, 65, 81, 0.9) 100%);
+    color: #9ca3af;
+  }
+  
+  .loading-spinner {
+    border-color: rgba(96, 165, 250, 0.2);
+    border-top-color: #60a5fa;
+  }
+}
+
+/* 🎯 无障碍优化 */
+@media (prefers-reduced-motion: reduce) {
+  .simple-message-list.unified-aesthetic :deep(.discord-message),
+  .simple-message-list.unified-aesthetic :deep(.protected-message-item),
+  .scroll-to-bottom-button,
+  .loading-spinner {
+    animation: none !important;
+    transition: none !important;
+  }
+  
+  .simple-message-list.unified-aesthetic :deep(.discord-message:hover),
+  .simple-message-list.unified-aesthetic :deep(.protected-message-item:hover) {
+    transform: none !important;
+  }
+}
+
+/* 🎯 高对比度模式支持 */
+@media (prefers-contrast: high) {
+  .simple-message-list.unified-aesthetic :deep(.discord-message),
+  .simple-message-list.unified-aesthetic :deep(.protected-message-item) {
+    border: 1px solid currentColor;
+  }
+  
+  .simple-message-list.unified-aesthetic :deep(.message-avatar-slot) {
+    border: 3px solid currentColor;
+  }
+}
+</style>

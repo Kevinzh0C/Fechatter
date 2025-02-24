@@ -15,7 +15,9 @@ export class SearchDiagnostic {
    * 执行完整的搜索功能诊断
    */
   async runFullDiagnostic() {
-    console.log('🔍 [SearchDiagnostic] Starting comprehensive search diagnostic...');
+    if (import.meta.env.DEV) {
+      console.log('🔍 [SearchDiagnostic] Starting comprehensive search diagnostic...');
+    }
     
     const results = {
       timestamp: new Date().toISOString(),
@@ -89,7 +91,6 @@ export class SearchDiagnostic {
         error: error.message
       };
     }
-  }
 
   /**
    * 测试Token有效性
@@ -150,7 +151,6 @@ export class SearchDiagnostic {
         error: error.message
       };
     }
-  }
 
   /**
    * 测试API连通性
@@ -191,7 +191,6 @@ export class SearchDiagnostic {
         error: error.message
       };
     }
-  }
 
   /**
    * 测试搜索功能
@@ -241,8 +240,6 @@ export class SearchDiagnostic {
           }
         };
       }
-    }
-  }
 
   /**
    * 测试错误处理
@@ -273,13 +270,14 @@ export class SearchDiagnostic {
         }
       };
     }
-  }
 
   /**
    * 自动修复常见问题
    */
   async attemptAutoFix() {
-    console.log('🔧 [SearchDiagnostic] Attempting automatic fixes...');
+    if (import.meta.env.DEV) {
+      console.log('🔧 [SearchDiagnostic] Attempting automatic fixes...');
+    }
     
     const fixes = [];
 
@@ -313,32 +311,45 @@ export class SearchDiagnostic {
   printDiagnosticReport() {
     const { results } = this;
     
-    console.log('\n🔍 ========== SEARCH DIAGNOSTIC REPORT ==========');
-    console.log(`⏰ Timestamp: ${results.timestamp}`);
-    console.log(`✅ Passed: ${results.summary.passed}`);
-    console.log(`❌ Failed: ${results.summary.failed}`);
-    console.log(`⚠️  Warnings: ${results.summary.warnings}`);
-    console.log('\n📋 Test Results:');
+    if (import.meta.env.DEV) {
+      console.log('\n🔍 ========== SEARCH DIAGNOSTIC REPORT ==========');
+    if (import.meta.env.DEV) {
+      console.log(`⏰ Timestamp: ${results.timestamp}`);
+    if (import.meta.env.DEV) {
+      console.log(`✅ Passed: ${results.summary.passed}`);
+    if (import.meta.env.DEV) {
+      console.log(`❌ Failed: ${results.summary.failed}`);
+    if (import.meta.env.DEV) {
+      console.log(`⚠️  Warnings: ${results.summary.warnings}`);
+    if (import.meta.env.DEV) {
+      console.log('\n📋 Test Results:');
+    }
     
     Object.entries(results.tests).forEach(([testName, result]) => {
       const icon = result.status === 'PASS' ? '✅' : result.status === 'FAIL' ? '❌' : '⚠️';
-      console.log(`${icon} ${testName}: ${result.message}`);
+      if (import.meta.env.DEV) {
+        console.log(`${icon} ${testName}: ${result.message}`);
+      }
       
       if (result.details) {
-        console.log('   Details:', result.details);
-      }
+        if (import.meta.env.DEV) {
+          console.log('   Details:', result.details);
+        }
       
       if (result.error) {
-        console.log('   Error:', result.error);
-      }
+        if (import.meta.env.DEV) {
+          console.log('   Error:', result.error);
+        }
       
       if (result.suggestion) {
-        console.log('   💡 Suggestion:', result.suggestion);
-      }
+        if (import.meta.env.DEV) {
+          console.log('   💡 Suggestion:', result.suggestion);
+        }
     });
     
-    console.log('🔍 ============================================\n');
-  }
+    if (import.meta.env.DEV) {
+      console.log('🔍 ============================================\n');
+    }
 
   /**
    * 获取修复建议
@@ -361,7 +372,6 @@ export class SearchDiagnostic {
 
     return suggestions;
   }
-}
 
 // 创建全局实例
 const searchDiagnostic = new SearchDiagnostic();
@@ -374,10 +384,14 @@ if (typeof window !== 'undefined') {
   window.diagnoseSeart = () => searchDiagnostic.runFullDiagnostic();
   window.fixSearch = () => searchDiagnostic.attemptAutoFix();
   
-  console.log('🔍 Search diagnostic tools available:');
-  console.log('   window.searchDiagnostic.runFullDiagnostic() - Full diagnostic');
-  console.log('   window.diagnoseSeart() - Quick diagnostic');
-  console.log('   window.fixSearch() - Attempt auto-fix');
-}
+  if (import.meta.env.DEV) {
+    console.log('🔍 Search diagnostic tools available:');
+  if (import.meta.env.DEV) {
+    console.log('   window.searchDiagnostic.runFullDiagnostic() - Full diagnostic');
+  if (import.meta.env.DEV) {
+    console.log('   window.diagnoseSeart() - Quick diagnostic');
+  if (import.meta.env.DEV) {
+    console.log('   window.fixSearch() - Attempt auto-fix');
+  }
 
 export default searchDiagnostic;

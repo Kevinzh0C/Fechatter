@@ -23,7 +23,8 @@ export class LoginFlowDebugger {
     };
 
     this.logs.push(logEntry);
-    console.log(`🔍 [${timestamp}ms] ${message}`, data || '');
+    if (import.meta.env.DEV) {
+      console.log(`🔍 [${timestamp}ms] ${message}`, data || '');
     return logEntry;
   }
 
@@ -118,7 +119,6 @@ export class LoginFlowDebugger {
 
     } catch (error) {
       this.log('❌ Auth store login failed', { error: error.message });
-    }
 
     // Step 4: Test token retrieval
     this.log('🔑 Testing token retrieval methods');
@@ -158,9 +158,12 @@ export class LoginFlowDebugger {
     };
 
     console.group('🔍 Login Flow Debug Report');
-    console.log('📋 Summary:', report.summary);
-    console.log('📊 Final State:', report.finalState);
-    console.log('💡 Recommendations:', report.recommendations);
+    if (import.meta.env.DEV) {
+      console.log('📋 Summary:', report.summary);
+    if (import.meta.env.DEV) {
+      console.log('📊 Final State:', report.finalState);
+    if (import.meta.env.DEV) {
+      console.log('💡 Recommendations:', report.recommendations);
     console.groupEnd();
 
     return report;
@@ -175,7 +178,6 @@ export class LoginFlowDebugger {
         description: 'User appears authenticated but no token available',
         solution: 'Check tokenManager.setTokens() call in auth store login method'
       });
-    }
 
     if (state.authStore.hasUser && !state.authStore.isAuthenticated) {
       recommendations.push({
@@ -183,7 +185,6 @@ export class LoginFlowDebugger {
         description: 'User object exists but not marked as authenticated',
         solution: 'Verify auth state setting in login method'
       });
-    }
 
     if (!state.localStorage.exists && state.authStore.isAuthenticated) {
       recommendations.push({
@@ -191,7 +192,6 @@ export class LoginFlowDebugger {
         description: 'User authenticated but no localStorage data',
         solution: 'Check persistAuth() call in auth store'
       });
-    }
 
     if (state.tokenManager.isExpired) {
       recommendations.push({
@@ -199,18 +199,16 @@ export class LoginFlowDebugger {
         description: 'Token is expired right after login',
         solution: 'Check server clock synchronization and token expiration time'
       });
-    }
 
     return recommendations;
   }
-}
 
 // Global debugger instance
 export const loginDebugger = new LoginFlowDebugger();
 
 // Expose to window for easy console access
 if (typeof window !== 'undefined') {
-  window.debugLogin = async (email = 'admin@test.com', password = 'super123') => {
+  window.debugLogin = async (email = 'admin@test.com', password = 'password') => {
     const flowDebugger = new LoginFlowDebugger();
     return await flowDebugger.debugLogin(email, password);
   };

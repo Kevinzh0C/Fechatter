@@ -322,7 +322,6 @@ const toggleUserSelection = (user: UserProfileResponse) => {
     } else {
       selectedUsers.value.push(user);
     }
-  }
 };
 
 const removeUserSelection = (userId: number) => {
@@ -884,7 +883,6 @@ onMounted(() => {
   to {
     transform: rotate(360deg);
   }
-}
 
 /* 响应式设计 */
 @media (max-width: 768px) {
@@ -913,5 +911,4 @@ onMounted(() => {
   .btn {
     width: 100%;
   }
-}
 </style>

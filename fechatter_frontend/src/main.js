@@ -1,453 +1,416 @@
 import { createApp } from "vue";
 import { createPinia } from "pinia";
-
-// Import unified error handler FIRST - before any other error handling
-import unifiedErrorHandler from "./utils/unifiedErrorHandler";
-
-// Import content script error suppressor after unified handler
-import contentScriptSuppressor from "./utils/contentScriptErrorSuppressor";
-
-// Import quick navigation fix
-import { applyAllFixes } from "./utils/quickNavigationFix";
-
 import App from "./App.vue";
 import router from "./router";
 import authPlugin from "./plugins/auth";
-import errorMonitor from "./utils/errorMonitor";
-import healthCheck, { startHealthMonitoring } from "./utils/healthCheck";
-import { initializeConfig } from "@/utils/configLoader";
-import { updateApiInstance } from "@/services/api";
-import { analytics } from "./lib/analytics-protobuf";
 import { errorHandler } from "./utils/errorHandler";
-import logCleaner from "./utils/logCleaner";
+// Removed unused protobuf analytics import to avoid variable name conflict
+import sseConnectionManager from './utils/sseConnectionManager';
+import minimalMessagePersistence from './utils/minimalMessagePersistence';
+import minimalSSE from './services/sse-minimal';
+// Import extension error suppressor to handle browser extension errors
+import './utils/extensionErrorSuppressor.js';
 
-// Import development optimizer
-import developmentOptimizer from "./utils/developmentOptimizer";
+// 🎨 AESTHETIC RESTORATION: Import unified design system FIRST to override conflicts
+import './styles/unified-aesthetic-system.css';
+import './style.css';
+import './styles/z-index.css';
 
-// Import extension conflict handler for production-level error isolation
-import extensionConflictHandler from "./utils/extensionConflictHandler";
+// 🛡️ Security Initializations - MUST load first (restored after aesthetic fix)
+import secureLogger from './utils/secureLogger'
+import './utils/extensionErrorSuppressor'
+import requestConflictResolver from './utils/requestConflictResolver'
 
-// Import aggressive extension blocker
-import aggressiveExtensionBlocker from "./utils/aggressiveExtensionBlocker";
+// Performance monitoring (development only)
+import performanceMonitor from './utils/performanceMonitor'
 
-// Import chat optimizations
-import { injectOptimizationStyles } from "./utils/chatOptimizations";
+// 🔧 NEW: System Monitor for comprehensive debugging and performance monitoring
+import { systemMonitor } from './utils/systemMonitor.js';
 
-// Import token manager and make it globally available
-import tokenManager from '@/services/tokenManager';
-window.tokenManager = tokenManager;
+// 🏥 NEW: Quick Health Check for instant system status
+import { quickHealthCheck } from './utils/quickHealthCheck.js';
 
-// Import real-time communication service - use minimal version
-import minimalSSE from '@/services/sse-minimal';
+// Service imports
+import { useAuthStore } from './stores/auth'
+import { useChatStore } from './stores/chat'
+import { useUserStore } from './stores/user'
+import { useWorkspaceStore } from './stores/workspace'
 
-// Import SSE connection manager
-import sseConnectionManager from '@/utils/sseConnectionManager';
+// 🛡️ NEW: Import Message Display Guarantee system
+import { messageDisplayGuarantee } from './services/messageSystem/MessageDisplayGuarantee.js';
+import { messageDisplayGuaranteeVerification } from './utils/messageDisplayGuaranteeVerification.js';
 
+// 🔧 NEW: Import UnifiedMessageService for global availability
+import { unifiedMessageService } from './services/messageSystem/UnifiedMessageService.js';
+
+import { guaranteedScrollToBottom } from '@/services/GuaranteedScrollToBottom.js'
+import { scrollToBottomValidator } from '@/utils/scrollToBottomValidator.js'
+
+// Import Analytics client instance
+import analytics from './services/analytics-client.js'
+
+// Enhanced console state detection function
+function detectConsoleAccess() {
+  let devtools = {
+    open: false,
+    orientation: null
+  };
+
+  const threshold = 160;
+
+  if (window.outerHeight - window.innerHeight > threshold ||
+    window.outerWidth - window.innerWidth > threshold) {
+    devtools.open = true;
+    devtools.orientation = window.outerHeight - window.innerHeight > threshold ? 'vertical' : 'horizontal';
+  }
+
+  return devtools;
+}
+
+// Enhanced console state detection
+const devtools = detectConsoleAccess();
+
+// --- 🛡️ SIMPLIFIED SAFETY INITIALIZATION ---
+// Simplified safety - no external dependency needed
+const simplifiedSafety = {
+  initialize: (devtools) => {
+    if (import.meta.env.DEV) {
+      console.log('🛡️ Simplified Safety active (Development Mode)');
+    }
+  },
+  getSecurityStatus: () => ({
+    debugSuppressed: import.meta.env.PROD,
+    environment: import.meta.env.MODE,
+    devtools: detectConsoleAccess()
+  })
+};
+
+simplifiedSafety.initialize(devtools);
+console.log('🛡️ Production Safety Wrapper active');
+
+// --- 📊 PERFORMANCE MONITORING ---
+performanceMonitor.initialize();
+console.log('📊 Performance Monitor loaded - use window.perfAnalytics() to view stats');
+
+// --- 🔧 SYSTEM MONITORING ---
+if (import.meta.env.DEV) {
+  console.log('🔧 System Monitor initialized - use window.debugSystem() for health check');
+  console.log('📊 Available debug commands: debugSystem(), debugMessageService(), debugCache(), debugComponents(), debugPerformance(), debugMemory(), debugFullReport()');
+  console.log('🏥 Quick Health Check available - use window.quickHealthCheck() for instant status overview');
+}
+
+// --- 🚀 INITIALIZE CORE APPLICATION ---
 const app = createApp(App);
 const pinia = createPinia();
 
-// 配置Vue错误处理器
 app.config.errorHandler = (err, instance, info) => {
-  errorMonitor.logError(err, {
-    component: instance?.$options.name || 'Unknown',
-    componentInfo: info,
-    type: 'VUE_ERROR'
+  errorHandler.handle(err, {
+    context: 'Vue Error Handler',
+    component: instance?.$options?.name || 'Unknown Component',
+    info
   });
-
-  // 发送错误到analytics
-  analytics.trackError(err, `Vue Error in ${instance?.$options.name || 'Unknown'} - ${info}`, 'VUE_ERROR');
 };
 
-// 配置Vue警告处理器（开发环境）
+app.use(pinia);
+app.use(router);
+app.use(authPlugin);
+
+// Make analytics available globally
+app.config.globalProperties.$analytics = analytics
+app.provide('analytics', analytics)
+
+// Load debug tools in development
 if (import.meta.env.DEV) {
-  app.config.warnHandler = (msg, instance, trace) => {
-    errorMonitor.logWarning(msg, {
-      component: instance?.$options.name || 'Unknown',
-      trace
-    });
-  };
+  import('./utils/messageDebugger');
+  import('./utils/performanceMonitor');
+  import('./utils/duplicateDebugger');
+  import('./utils/devConsoleHelpers'); // Import dev console helpers for log management
+  import('./utils/messageDisplayDiagnostics'); // Import message display diagnostics
+  import('./utils/authDiagnostics'); // Import authentication diagnostics
+  import('./utils/systemDiagnostics'); // Import master system diagnostics
+  import('./utils/messageServiceDiagnostics'); // Import UnifiedMessageService diagnostics
+  import('./utils/fetchMoreMessagesTest'); // Import fetchMoreMessages fix verification
+  import('./utils/systemHealthValidator'); // Import system health validator
+
+  // 🆕 NEW: Import advanced UX systems for development
+  import('./services/ProgressiveLoadManager.js'); // Import progressive loading system
+  import('./services/MessageSessionGrouper.js'); // Import message grouping system
 }
 
-// 注册插件（顺序很重要）
-app.use(pinia);  // Pinia必须先注册
-app.use(router);
-app.use(authPlugin);  // Auth插件在router之后
+// Import performance validator for development testing
+if (import.meta.env.DEV) {
+  import('./utils/navigationPerformanceValidator.js').then(module => {
+    console.log('🔍 Navigation Performance Validator loaded - use window.testNavigationPerformance(fromChatId, toChatId) to test');
+  });
+}
 
-// 异步初始化应用
-async function initializeApp() {
+// Initialize security measures
+if (import.meta.env.DEV) {
+  console.log('🔒 Initializing Fechatter Security Layer...')
+}
+
+// Apply simplified safety policies
+const securityStatus = simplifiedSafety.getSecurityStatus()
+if (import.meta.env.DEV) {
+  console.log('🛡️ Security Status:', securityStatus)
+}
+
+// Set up global error handling with security considerations
+window.addEventListener('error', (event) => {
+  errorHandler.handle(event.error, {
+    context: 'Global Error Handler',
+    filename: event.filename
+  })
+})
+
+window.addEventListener('unhandledrejection', (event) => {
+  errorHandler.handle(event.reason, {
+    context: 'Unhandled Promise Rejection'
+  })
+})
+
+// Initialize stores with error handling
+async function initializeStores() {
   try {
-    // 1. Initialize error handling and extension conflict protection
-    errorHandler.initialize();
-    extensionConflictHandler.initialize();
+    const authStore = useAuthStore()
+    const chatStore = useChatStore()
+    const userStore = useUserStore()
+    const workspaceStore = useWorkspaceStore()
 
-    // 注册认证错误处理器
-    errorHandler.registerHandler('auth', (error, details) => {
-      console.log('Auth error handled, redirecting to login...');
-      // 认证错误已由 errorHandler.handleAuthError() 处理
-    });
+    // Initialize auth state from storage
+    await authStore.initialize()
 
-    // 2. 初始化配置系统
-    await initializeConfig();
+    if (import.meta.env.DEV) {
+      console.log('✅ Application stores initialized')
+    }
 
-    // 3. 更新API实例使用新配置
-    updateApiInstance();
-
-    // 4. 挂载应用
-    app.mount('#app');
-
-    // 5. Apply navigation fixes
-    setTimeout(() => {
-      applyAllFixes();
-      console.log('✨ Navigation fixes applied');
-    }, 1000);
-
-    // 6. Inject chat optimization styles
-    injectOptimizationStyles();
-    console.log('✨ Chat optimizations applied');
-
-    // 7. Initialize SSE connection manager
-    const { useAuthStore } = await import('@/stores/auth');
-    const authStore = useAuthStore();
-    sseConnectionManager.initialize(router, authStore);
-
-    // 8. 跟踪应用启动事件
-    analytics.trackAppStart();
+    if (import.meta.env.DEV) {
+      performanceMonitor.endOperation('app-initialization', {
+        status: 'success',
+        storesInitialized: true
+      })
+    }
 
   } catch (error) {
-    console.error('❌ Failed to initialize Fechatter Frontend:', error);
-
-    // 降级处理：使用默认配置挂载应用
-    console.warn('⚠️ Falling back to default configuration');
-    app.mount('#app');
+    if (import.meta.env.DEV) {
+      console.error('❌ Failed to initialize stores:', error)
+    }
+    errorHandler.handle(error, {
+      context: 'Store Initialization',
+      critical: true
+    })
   }
 }
 
-// 启动应用
-initializeApp();
+// --- 🛡️ MESSAGE DISPLAY GUARANTEE INITIALIZATION ---
+if (import.meta.env.DEV) {
+  console.log('🛡️ Initializing Message Display Guarantee system...');
+}
 
-// 全局暴露router供store使用
-window.$router = router;
+// Enable the guarantee system
+messageDisplayGuarantee.setEnabled(true);
 
-// ===== 全局对象暴露 =====
+// Make globally available for debugging
+window.messageDisplayGuarantee = messageDisplayGuarantee;
+
+// 🛡️ NEW: Make UnifiedMessageService globally available for system monitoring
+window.unifiedMessageService = unifiedMessageService;
+
+if (import.meta.env.DEV) {
+  console.log('✅ Message Display Guarantee system ready');
+  console.log('✅ UnifiedMessageService globally available');
+
+  // Add debugging helper
+  window.debugMessageGuarantee = () => {
+    console.group('🛡️ Message Display Guarantee Debug Info');
+    console.log('Metrics:', messageDisplayGuarantee.getMetrics());
+    console.log('Full Debug Info:', messageDisplayGuarantee.exportDebugInfo());
+    console.groupEnd();
+  };
+
+  // 🔧 NEW: Add quick control methods
+  window.disableMessageGuarantee = (duration = 30000) => {
+    messageDisplayGuarantee.temporaryDisable(duration);
+  };
+
+  window.enableMessageGuaranteeDebug = () => {
+    messageDisplayGuarantee.enableDebugMode();
+  };
+
+  window.disableMessageGuaranteeDebug = () => {
+    messageDisplayGuarantee.disableDebugMode();
+  };
+
+  // 🛡️ NEW: Initialize verification system
+  console.log('🔍 Initializing Message Display Guarantee Verification...');
+  window.messageDisplayGuaranteeVerification = messageDisplayGuaranteeVerification;
+
+  // Add verification command
+  window.verifyMessageDisplayGuarantee = async () => {
+    console.log('🛡️ Starting Message Display Guarantee Verification...');
+    return await messageDisplayGuaranteeVerification.runCompleteVerification();
+  };
+
+  console.log('✅ Verification system ready - use window.verifyMessageDisplayGuarantee() to test');
+  console.log('🔬 Message Display Diagnostics ready - use diagnoseDhat(chatId) to analyze message display issues');
+  console.log('🔐 Authentication Diagnostics ready - use diagnoseDAuth() to analyze auth issues, fixDAuth() to auto-fix');
+  console.log('📨 Message Service Diagnostics ready - use diagnoseDMessageService(chatId) to analyze service issues, fixDMessageService() to auto-fix');
+  console.log('🔧 FetchMore Fix Test ready - use testFetchMoreFix(chatId) to verify the ReferenceError fix, quickTestFetchMore(chatId) for quick check');
+  console.log('🏥 Master System Diagnostics ready - use diagnoseDSystem(chatId) for complete health check, fixDSystem() to auto-fix all');
+}
+
+// Initialize stores with guarantee system integration
+initializeStores().then(() => {
+  console.log('✅ Application stores initialized');
+}).catch(error => {
+  console.error('Failed to initialize stores:', error);
+});
+
+// Mount application with security checks
+async function mountApp() {
+  try {
+    await initializeStores()
+
+    // 🔧 REFACTORED: Use dependency injection instead of global access
+    const authStore = useAuthStore()
+    const chatStore = useChatStore()
+    const userStore = useUserStore()
+    const workspaceStore = useWorkspaceStore()
+
+    // 🎯 NEW: Configure dependency injection container
+    if (import.meta.env.DEV) {
+      import('./services/DIContainer.js').then(({ container, configureServices }) => {
+        configureServices(container)
+        container.install(app)
+        console.log('✅ Dependency injection container configured')
+      }).catch(error => {
+        console.warn('⚠️ DIContainer failed to load:', error)
+      })
+    }
+
+    // 🔧 DEPRECATED: Keep minimal global access for backward compatibility
+    // Will be removed in future refactoring phases
+    if (import.meta.env.DEV) {
+      window.__pinia_stores__ = {
+        auth: () => authStore,
+        chat: () => chatStore,
+        user: () => userStore,
+        workspace: () => workspaceStore,
+      };
+      console.warn('⚠️ Global store access is deprecated. Use dependency injection instead.')
+    }
+
+    // Security validation
+    if (import.meta.env.PROD && !securityStatus.debugSuppressed) {
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ Security Warning: Debug logs not properly suppressed in production')
+      }
+    }
+
+    app.mount('#app')
+    if (import.meta.env.DEV) {
+      console.log('🚀 Fechatter application mounted successfully')
+    }
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+      if (import.meta.env.DEV) {
+        performanceMonitor.clearReports()
+      }
+      requestConflictResolver.abortAllRequests()
+    })
+
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('❌ Failed to mount application:', error)
+    }
+    errorHandler.handle(error, {
+      context: 'Application Mount',
+      critical: true
+    })
+
+    // Show user-friendly error
+    document.body.innerHTML = `
+      <div style="
+        display: flex; 
+        justify-content: center; 
+        align-items: center; 
+        height: 100vh; 
+        font-family: Arial, sans-serif;
+        background: #f5f5f5;
+      ">
+        <div style="
+          text-align: center; 
+          padding: 2rem; 
+          background: white; 
+          border-radius: 8px; 
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          max-width: 400px;
+        ">
+          <h2 style="color: #e74c3c; margin-bottom: 1rem;">Application Error</h2>
+          <p style="color: #666; margin-bottom: 1.5rem;">
+            Unable to start the application. Please refresh the page or contact support.
+          </p>
+          <button 
+            onclick="window.location.reload()" 
+            style="
+              background: #3498db; 
+              color: white; 
+              border: none; 
+              padding: 0.75rem 1.5rem; 
+              border-radius: 4px; 
+              cursor: pointer;
+              font-size: 1rem;
+            "
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    `
+  }
+}
+
+// Start application
+mountApp()
+
 window.app = app;
 window.pinia = pinia;
-window.$router = router; // 为健康检查提供router访问
-
-// Expose errorHandler globally for application-wide access
+window.$router = router;
 window.errorHandler = errorHandler;
-
-// Expose SSE connection manager for debugging
 window.sseConnectionManager = sseConnectionManager;
 
-// 启动健康监控
-try {
-  // 开发环境：使用优化的间隔
-  const healthCheckInterval = import.meta.env.DEV
-    ? developmentOptimizer.getConfig('healthCheck').intervalMs
-    : 60000; // 生产环境1分钟
+// Expose security utilities for API parameter limiting
+window.securityUtils = {
+  enforceApiLimits: (params) => {
+    // Limit API request parameters to prevent DoS
+    const MAX_LIMIT = 100;
+    const sanitized = { ...params };
 
-  startHealthMonitoring(healthCheckInterval);
-  console.log(`✅ Health monitoring started with ${healthCheckInterval / 60000}min intervals`);
-} catch (error) {
-  console.warn('⚠️ Failed to start health monitoring:', error.message);
-}
-
-// 开发环境：显示优化状态
-if (import.meta.env.DEV) {
-  console.log('🔧 Development optimizations active');
-  console.log('💡 Use window.dev for development helpers');
-
-  // Import health check helper in development
-  import('./utils/devHealthCheckHelper.js').then(() => {
-    console.log('🏥 Health check helper loaded - use window.healthHelper');
-  }).catch(err => {
-    console.warn('Failed to load health check helper:', err);
-  });
-
-  // Import SSE cleanup utility in development
-  import('./utils/sseCleanup.js').then(() => {
-    console.log('🧹 SSE cleanup utility loaded - use window.cleanupSSE()');
-  }).catch(err => {
-    console.warn('Failed to load SSE cleanup utility:', err);
-  });
-
-  // Import connection test to verify fix
-  import('./utils/connectionTest.js').then(() => {
-    console.log('🔧 Connection test loaded - verifying no localhost errors');
-  }).catch(err => {
-    console.warn('Failed to load connection test:', err);
-  });
-
-  // Import extension conflict test to verify conflict handler
-  import('./utils/extensionConflictTest.js').then(() => {
-    console.log('🔧 Extension conflict test loaded - verifying conflict handling');
-  }).catch(err => {
-    console.warn('Failed to load extension conflict test:', err);
-  });
-
-  // Import login flow debugger for authentication issue diagnosis
-  import('./utils/loginFlowDebugger.js').then(() => {
-    console.log('🔍 Login flow debugger loaded - use window.debugLogin()');
-  }).catch(err => {
-    console.warn('Failed to load login flow debugger:', err);
-  });
-
-  // Import security test for JWT protection verification
-  import('./utils/securityTest.js').then(() => {
-    console.log('🛡️ Security test loaded - use window.testSecurity()');
-  }).catch(err => {
-    console.warn('Failed to load security test:', err);
-  });
-
-  // Import error handler test to verify showNotification fix
-  import('./utils/errorHandlerTest.js').then(() => {
-    console.log('🛠️ Error handler test loaded - use window.testCurrentError()');
-  }).catch(err => {
-    console.warn('Failed to load error handler test:', err);
-  });
-
-  // Import network conflict test for extension request conflicts
-  import('./utils/networkConflictTest.js').then(() => {
-    console.log('🌐 Network conflict test loaded - verifying extension conflict handling');
-  }).catch(err => {
-    console.warn('Failed to load network conflict test:', err);
-  });
-
-  // Import test manager for centralized test control
-  import('./utils/testManager.js').then(() => {
-    console.log('🧪 Test Manager loaded - use window.tests.show() for available tests');
-  }).catch(err => {
-    console.warn('Failed to load test manager:', err);
-  });
-
-  // Import content script error suppression test
-  import('./utils/testContentScriptErrorSuppression.js').then(() => {
-    console.log('🔇 Content script error suppression test loaded - use window.testContentScriptErrorSuppression()');
-  }).catch(err => {
-    console.warn('Failed to load content script error suppression test:', err);
-  });
-
-  // Import auth state diagnostic
-  import('./utils/authStateDiagnostic.js').then(() => {
-    console.log('🔍 Auth state diagnostic loaded - use window.diagnoseAuthState()');
-  }).catch(err => {
-    console.warn('Failed to load auth state diagnostic:', err);
-  });
-
-  // Import presence optimization config
-  import('./utils/presenceOptimization.js').then(() => {
-    console.log('👁️ Presence optimization loaded - use window.presenceConfig');
-  }).catch(err => {
-    console.warn('Failed to load presence optimization:', err);
-  });
-
-  // Import presence behavior test
-  import('./utils/presenceTest.js').then(() => {
-    console.log('🧪 Presence test loaded - use window.testPresenceBehavior()');
-  }).catch(err => {
-    console.warn('Failed to load presence test:', err);
-  });
-
-  // Import SSE robustness guide
-  import('./utils/sseRobustnessGuide.js').then(() => {
-    console.log('🛡️ SSE robustness guide loaded - use window.sseRobustness');
-  }).catch(err => {
-    console.warn('Failed to load SSE robustness guide:', err);
-  });
-
-  // Import SSE robustness test
-  import('./utils/testSSERobustness.js').then(() => {
-    console.log('🧪 SSE robustness test loaded - use window.testSSERobustness()');
-  }).catch(err => {
-    console.warn('Failed to load SSE robustness test:', err);
-  });
-
-  // Import minimal SSE test
-  import('./utils/testMinimalSSE.js').then(() => {
-    console.log('🧪 Minimal SSE test loaded - use window.testMinimalSSE() or window.compareSSE()');
-  }).catch(err => {
-    console.warn('Failed to load minimal SSE test:', err);
-  });
-
-  // Import SSE simplification guide
-  import('./utils/sseSimplificationGuide.js').then(() => {
-    console.log('📚 SSE simplification guide loaded - use window.sseSimplification');
-  }).catch(err => {
-    console.warn('Failed to load SSE simplification guide:', err);
-  });
-
-  // Import auth state sync verification test
-  import('./test/verify-auth-sync.js').then(() => {
-    console.log('🔐 Auth state sync test loaded - use window.verifyAuthStateSync()');
-  }).catch(err => {
-    console.warn('Failed to load auth state sync test:', err);
-  });
-
-  // Import group chat debug tool
-  import('./utils/debugGroupChatIssue.js').then(() => {
-    console.log('🐛 Group chat debug tool loaded - use window.debugGroupChat()');
-  }).catch(err => {
-    console.warn('Failed to load group chat debug tool:', err);
-  });
-
-  // Import message loading debug tool
-  import('./utils/debugMessageLoading.js').then(() => {
-    console.log('📨 Message loading debug tool loaded - use window.debugMessageLoading()');
-  }).catch(err => {
-    console.warn('Failed to load message loading debug tool:', err);
-  });
-
-  // Import network message diagnostic tool
-  import('./utils/networkMessageDiagnostic.js').then(() => {
-    console.log('🔬 Network message diagnostic loaded - use window.diagnoseMessages()');
-  }).catch(err => {
-    console.warn('Failed to load network message diagnostic:', err);
-  });
-
-  // Import emergency message fix
-  import('./utils/emergencyMessageFix.js').then(() => {
-    console.log('🚨 Emergency message fix loaded - use window.fixMessages()');
-  }).catch(err => {
-    console.warn('Failed to load emergency message fix:', err);
-  });
-
-  // Import message chain diagnostic tool - REMOVED: file does not exist
-  // import('./utils/messageChainDiagnostic.js').then(module => {
-  //   window.messageChainDiagnostic = module.default;
-  //   console.log('🔍 Message Chain Diagnostic loaded. Run window.testMessageChain() to start');
-  // });
-
-  // Import request isolation test tool
-  import('./utils/testRequestIsolation.js').then(() => {
-    console.log('🛡️ Request isolation test loaded - use window.testRequestIsolation()');
-  }).catch(err => {
-    console.warn('Failed to load request isolation test:', err);
-  });
-
-  // Import message diagnostic tool
-  import('./utils/messageDiagnostic.js').then(() => {
-    console.log('📊 Message diagnostic loaded - use window.diagnoseMessages()');
-  }).catch(err => {
-    console.warn('Failed to load message diagnostic:', err);
-  });
-
-  // Import auth loop fix test
-  import('./utils/testAuthLoopFix.js').then(() => {
-    console.log('🔐 Auth loop fix test loaded - use window.testAuthLoopFix()');
-  }).catch(err => {
-    console.warn('Failed to load auth loop fix test:', err);
-  });
-
-  // Import extension conflict fix test
-  import('./utils/testExtensionConflictFix.js').then(() => {
-    console.log('🧩 Extension conflict fix test loaded - use window.testExtensionConflictFix()');
-  }).catch(err => {
-    console.warn('Failed to load extension conflict fix test:', err);
-  });
-
-  // Import extension coordination test
-  import('./utils/testExtensionCoordination.js').then(() => {
-    console.log('🤝 Extension coordination test loaded - use window.testExtensionCoordination()');
-  }).catch(err => {
-    console.warn('Failed to load extension coordination test:', err);
-  });
-
-  // Import console monitor for debugging
-  import('./utils/consoleMonitor.js').then(() => {
-    console.log('📊 Console monitor loaded - use window.consoleMonitor.generateReport()');
-  }).catch(err => {
-    console.warn('Failed to load console monitor:', err);
-  });
-
-  // Import verification script
-  import('./utils/verifyAllFixes.js').then(() => {
-    console.log('✅ Verification script loaded - use window.verifyAllFixes()');
-  }).catch(err => {
-    console.warn('Failed to load verification script:', err);
-  });
-
-  // Import message display test
-  import('./utils/testMessageDisplay.js').then(() => {
-    console.log('💬 Message display test loaded - use window.testMessageDisplay()');
-  }).catch(err => {
-    console.warn('Failed to load message display test:', err);
-  });
-
-  // Import message loading diagnostic
-  import('./utils/messageLoadingDiagnostic.js').then(() => {
-    console.log('🔍 Message loading diagnostic loaded - use window.diagnoseMessageLoading()');
-  }).catch(err => {
-    console.warn('Failed to load message loading diagnostic:', err);
-  });
-
-  // Import message user profile diagnostic
-  import('./utils/messageUserProfileDiagnostic.js').then(() => {
-    console.log('👤 Message user profile diagnostic loaded - use window.diagnoseMessageUserProfiles()');
-  }).catch(err => {
-    console.warn('Failed to load message user profile diagnostic:', err);
-  });
-
-  // Import channel switch diagnostic
-  import('./utils/channelSwitchDiagnostic.js').then(() => {
-    console.log('🔄 Channel switch diagnostic loaded - use window.diagnoseChannelSwitch()');
-  }).catch(err => {
-    console.warn('Failed to load channel switch diagnostic:', err);
-  });
-
-  // Import strict channel validation test
-  import('./utils/strictChannelValidationTest.js').then(() => {
-    console.log('🔍 Strict channel validation test loaded - use window.testStrictChannelValidation()');
-  }).catch(err => {
-    console.warn('Failed to load strict channel validation test:', err);
-  });
-
-  // Import error source preservation test
-  import('./utils/testErrorSourcePreservation.js').then(() => {
-    console.log('🔍 Error source preservation test loaded - use window.testErrorSourcePreservation()');
-  }).catch(err => {
-    console.warn('Failed to load error source preservation test:', err);
-  });
-
-  // Import transparent error handling verification
-  import('./utils/verifyTransparentErrorHandling.js').then(() => {
-    console.log('🔬 Transparent error handling verification loaded - use window.verifyTransparentErrorHandling()');
-  }).catch(err => {
-    console.warn('Failed to load transparent error handling verification:', err);
-  });
-
-  // Import pragmatic suppressor test
-  import('./utils/testPragmaticSuppressor.js').then(() => {
-    console.log('🧪 Pragmatic suppressor test loaded - use window.testPragmaticSuppressor()');
-  }).catch(err => {
-    console.warn('Failed to load pragmatic suppressor test:', err);
-  });
-
-  // Import unified error handler test
-  import('./utils/testUnifiedErrorHandler.js').then(() => {
-    console.log('🧪 Unified error handler test loaded - use window.testUnifiedErrorHandler()');
-  }).catch(err => {
-    console.warn('Failed to load unified error handler test:', err);
-  });
-
-  // Import other diagnostic tools - REMOVED: redundant/non-existent
-  // import('./utils/networkMessageDiagnostic.js').then(module => {
-  //   window.networkDiagnostic = module.default;
-  // });
-}
-
-// 生产环境错误上报（可以集成到你的错误追踪服务）
-if (import.meta.env.PROD) {
-  errorMonitor.subscribe((errorEntry) => {
-    // 这里可以集成Sentry、LogRocket等错误追踪服务
-    if (errorEntry.type === 'ERROR' || errorEntry.critical) {
-      console.error('Production error:', errorEntry);
-      // 例如: Sentry.captureException(errorEntry.error);
+    if (sanitized.limit && sanitized.limit > MAX_LIMIT) {
+      sanitized.limit = MAX_LIMIT;
+      if (import.meta.env.DEV) {
+        console.warn(`🚨 API limit parameter capped from ${params.limit} to ${MAX_LIMIT}`);
+      }
     }
-  });
-}
 
-// 页面卸载时跟踪应用退出事件
+    return sanitized;
+  },
+
+  sanitizeDisplayId: (id) => {
+    // Obfuscate IDs for display in logs
+    if (!id) return 'unknown';
+    return `${String(id).slice(0, 2)}***`;
+  }
+};
+
 window.addEventListener('beforeunload', () => {
-  analytics.trackAppExit(1); // exit code 1 for normal exit
-  analytics.destroy(); // 清理资源并发送剩余事件
+  analytics.track('app_exit', { exit_code: 1 });
+  analytics.destroy();
 });
+
+// 🎯 Initialize guaranteed scroll system
+if (import.meta.env.DEV) {
+  window.guaranteedScrollToBottom = guaranteedScrollToBottom;
+  console.log('🎯 GuaranteedScrollToBottom system loaded');
+}

@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔐 File Upload Auth Diagnostic - Fechatter</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 16px;
+    }
+
+    .diagnostic-section {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 2px solid #dee2e6;
+    }
+
+    .diagnostic-section.success {
+      border-color: #28a745;
+      background: #d4edda;
+    }
+
+    .diagnostic-section.warning {
+      border-color: #ffc107;
+      background: #fff3cd;
+    }
+
+    .diagnostic-section.error {
+      border-color: #dc3545;
+      background: #f8d7da;
+    }
+
+    .diagnostic-section h2 {
+      margin-top: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-icon {
+      font-size: 24px;
+    }
+
+    .test-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .test-item {
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      padding: 15px;
+      transition: all 0.2s;
+    }
+
+    .test-item.success {
+      border-color: #28a745;
+      background: #f8fff9;
+    }
+
+    .test-item.error {
+      border-color: #dc3545;
+      background: #fff8f8;
+    }
+
+    .test-item h3 {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+      color: #495057;
+    }
+
+    .test-value {
+      font-family: monospace;
+      font-size: 12px;
+      color: #6c757d;
+      word-break: break-all;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+
+    .token-preview {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 10px;
+      margin: 10px 0;
+      font-family: monospace;
+      font-size: 12px;
+      word-break: break-all;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background 0.2s;
+      margin-right: 10px;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    button:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+
+    .log-box {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 14px;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 20px;
+    }
+
+    .log-entry {
+      margin-bottom: 5px;
+      padding: 3px 0;
+    }
+
+    .log-success {
+      color: #4caf50;
+    }
+
+    .log-error {
+      color: #f44336;
+    }
+
+    .log-warning {
+      color: #ff9800;
+    }
+
+    .log-info {
+      color: #2196f3;
+    }
+
+    .test-controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .file-input-area {
+      border: 2px dashed #007bff;
+      border-radius: 8px;
+      padding: 30px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin: 20px 0;
+    }
+
+    .file-input-area:hover {
+      background: #f0f8ff;
+      border-color: #0056b3;
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    .api-test-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .api-test {
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      padding: 15px;
+    }
+
+    .api-test h4 {
+      margin: 0 0 10px 0;
+      color: #495057;
+    }
+
+    .api-response {
+      background: #f8f9fa;
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 12px;
+      font-family: monospace;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+
+    .auth-chain {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin: 20px 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+
+    .chain-step {
+      min-width: 150px;
+      text-align: center;
+      padding: 15px;
+      background: white;
+      border: 2px solid #dee2e6;
+      border-radius: 6px;
+    }
+
+    .chain-step.success {
+      border-color: #28a745;
+      background: #d4edda;
+    }
+
+    .chain-step.error {
+      border-color: #dc3545;
+      background: #f8d7da;
+    }
+
+    .chain-arrow {
+      font-size: 24px;
+      color: #6c757d;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔐 File Upload Auth Diagnostic</h1>
+    <p class="subtitle">Diagnose authentication and file upload issues in Fechatter</p>
+
+    <!-- Authentication Status -->
+    <div class="diagnostic-section" id="auth-status">
+      <h2>
+        <span class="status-icon">🔑</span>
+        Authentication Status
+      </h2>
+      <div class="test-grid" id="auth-tests">
+        <!-- Will be populated by JavaScript -->
+      </div>
+    </div>
+
+    <!-- Token Analysis -->
+    <div class="diagnostic-section" id="token-status">
+      <h2>
+        <span class="status-icon">🎫</span>
+        Token Analysis
+      </h2>
+      <div id="token-details">
+        <div class="token-preview" id="token-preview">
+          Loading token information...
+        </div>
+      </div>
+    </div>
+
+    <!-- API Connectivity -->
+    <div class="diagnostic-section" id="api-status">
+      <h2>
+        <span class="status-icon">🌐</span>
+        API Connectivity Tests
+      </h2>
+      <div class="api-test-grid" id="api-tests">
+        <!-- Will be populated by JavaScript -->
+      </div>
+    </div>
+
+    <!-- File Upload Test -->
+    <div class="diagnostic-section" id="upload-status">
+      <h2>
+        <span class="status-icon">📤</span>
+        File Upload Test
+      </h2>
+      <div class="file-input-area" onclick="selectFile()">
+        <p>📁 Click to select a file for testing</p>
+        <p style="font-size: 14px; color: #6c757d;">We'll test the complete upload chain</p>
+      </div>
+      <input type="file" id="fileInput" accept="image/*">
+      <div id="file-info"></div>
+    </div>
+
+    <!-- Auth Chain Visualization -->
+    <div class="diagnostic-section">
+      <h2>
+        <span class="status-icon">🔗</span>
+        Authentication Chain
+      </h2>
+      <div class="auth-chain" id="auth-chain">
+        <div class="chain-step" id="step-localstorage">
+          <strong>LocalStorage</strong>
+          <div>auth_token</div>
+        </div>
+        <div class="chain-arrow">→</div>
+        <div class="chain-step" id="step-tokenmanager">
+          <strong>TokenManager</strong>
+          <div>In-memory</div>
+        </div>
+        <div class="chain-arrow">→</div>
+        <div class="chain-step" id="step-axios">
+          <strong>Axios Headers</strong>
+          <div>Authorization</div>
+        </div>
+        <div class="chain-arrow">→</div>
+        <div class="chain-step" id="step-request">
+          <strong>HTTP Request</strong>
+          <div>Bearer token</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Test Controls -->
+    <div class="test-controls">
+      <button onclick="runFullDiagnostic()">🔍 Run Full Diagnostic</button>
+      <button onclick="testAuthOnly()">🔑 Test Auth Only</button>
+      <button onclick="testRemoteAPI()">🌐 Test Remote API</button>
+      <button onclick="clearAndRetest()">🔄 Clear & Retest</button>
+      <button onclick="forceLogin()">🚪 Force Re-login</button>
+    </div>
+
+    <!-- Diagnostic Log -->
+    <div class="log-box" id="logBox"></div>
+  </div>
+
+  <script>
+    let selectedFile = null;
+
+    // Log function
+    function log(message, type = 'info') {
+      const logBox = document.getElementById('logBox');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logBox.appendChild(entry);
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    // Get auth token from various sources
+    function getAuthTokens() {
+      const tokens = {
+        localStorage: {
+          auth_token: localStorage.getItem('auth_token'),
+          auth: localStorage.getItem('auth'),
+          refresh_token: localStorage.getItem('refresh_token'),
+          fechatter_access_token: localStorage.getItem('fechatter_access_token')
+        },
+        sessionStorage: {
+          auth_token: sessionStorage.getItem('auth_token')
+        }
+      };
+
+      // Try to parse auth object
+      try {
+        if (tokens.localStorage.auth) {
+          tokens.authObject = JSON.parse(tokens.localStorage.auth);
+        }
+      } catch (e) {
+        tokens.authParseError = e.message;
+      }
+
+      return tokens;
+    }
+
+    // Test authentication status
+    async function testAuthStatus() {
+      log('🔍 Testing authentication status...', 'info');
+
+      const authTests = document.getElementById('auth-tests');
+      authTests.innerHTML = '';
+
+      const tokens = getAuthTokens();
+      const results = [];
+
+      // Test 1: Check localStorage tokens
+      const hasToken = !!(tokens.localStorage.auth_token || tokens.authObject?.tokens?.accessToken);
+      results.push({
+        name: 'Token Exists',
+        value: hasToken ? 'Yes' : 'No',
+        status: hasToken ? 'success' : 'error',
+        details: hasToken ? 'Token found in storage' : 'No token found'
+      });
+
+      // Test 2: Check token format
+      const token = tokens.localStorage.auth_token || tokens.authObject?.tokens?.accessToken;
+      const isValidFormat = token && token.length > 20 && (token.includes('.') || token.length > 100);
+      results.push({
+        name: 'Token Format',
+        value: isValidFormat ? 'Valid' : 'Invalid',
+        status: isValidFormat ? 'success' : 'error',
+        details: token ? `Length: ${token.length}` : 'No token'
+      });
+
+      // Test 3: Check user data
+      const hasUser = !!(tokens.authObject?.user || localStorage.getItem('auth_user'));
+      results.push({
+        name: 'User Data',
+        value: hasUser ? 'Present' : 'Missing',
+        status: hasUser ? 'success' : 'error',
+        details: hasUser ? 'User data found' : 'No user data'
+      });
+
+      // Test 4: Check token expiry
+      if (tokens.authObject?.tokens?.expiresAt) {
+        const expiresAt = new Date(tokens.authObject.tokens.expiresAt);
+        const isExpired = expiresAt < new Date();
+        results.push({
+          name: 'Token Expiry',
+          value: isExpired ? 'Expired' : 'Valid',
+          status: isExpired ? 'error' : 'success',
+          details: `Expires: ${expiresAt.toLocaleString()}`
+        });
+      }
+
+      // Display results
+      results.forEach(result => {
+        const testItem = document.createElement('div');
+        testItem.className = `test-item ${result.status}`;
+        testItem.innerHTML = `
+          <h3>${result.name}</h3>
+          <div class="test-value">${result.value}</div>
+          <small>${result.details}</small>
+        `;
+        authTests.appendChild(testItem);
+      });
+
+      // Update section status
+      const authSection = document.getElementById('auth-status');
+      const hasErrors = results.some(r => r.status === 'error');
+      authSection.className = `diagnostic-section ${hasErrors ? 'error' : 'success'}`;
+
+      // Display token preview
+      if (token) {
+        document.getElementById('token-preview').innerHTML = `
+          <strong>Token Preview:</strong><br>
+          ${token.substring(0, 50)}...<br>
+          <strong>Length:</strong> ${token.length} characters<br>
+          <strong>Type:</strong> ${token.startsWith('Bearer ') ? 'Bearer Token' : 'Raw Token'}
+        `;
+      }
+
+      return !hasErrors;
+    }
+
+    // Test API connectivity
+    async function testAPIConnectivity() {
+      log('🌐 Testing API connectivity...', 'info');
+
+      const apiTests = document.getElementById('api-tests');
+      apiTests.innerHTML = '';
+
+      const tokens = getAuthTokens();
+      const token = tokens.localStorage.auth_token || tokens.authObject?.tokens?.accessToken;
+
+      // Test 1: Basic connectivity (no auth)
+      const basicTest = document.createElement('div');
+      basicTest.className = 'api-test';
+      basicTest.innerHTML = '<h4>Basic Connectivity</h4><div>Testing...</div>';
+      apiTests.appendChild(basicTest);
+
+      try {
+        const response = await fetch('/api/health', {
+          method: 'GET'
+        });
+
+        basicTest.innerHTML = `
+          <h4>Basic Connectivity</h4>
+          <div>Status: ${response.status} ${response.statusText}</div>
+          <div class="api-response">${await response.text()}</div>
+        `;
+        basicTest.style.borderColor = response.ok ? '#28a745' : '#dc3545';
+
+        log(`Basic connectivity: ${response.status}`, response.ok ? 'success' : 'error');
+      } catch (error) {
+        basicTest.innerHTML = `
+          <h4>Basic Connectivity</h4>
+          <div>Error: ${error.message}</div>
+        `;
+        basicTest.style.borderColor = '#dc3545';
+        log(`Basic connectivity error: ${error.message}`, 'error');
+      }
+
+      // Test 2: Authenticated request
+      const authTest = document.createElement('div');
+      authTest.className = 'api-test';
+      authTest.innerHTML = '<h4>Authenticated Request</h4><div>Testing...</div>';
+      apiTests.appendChild(authTest);
+
+      if (token) {
+        try {
+          const response = await fetch('/api/user/me', {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          const responseText = await response.text();
+          authTest.innerHTML = `
+            <h4>Authenticated Request</h4>
+            <div>Status: ${response.status} ${response.statusText}</div>
+            <div class="api-response">${responseText}</div>
+          `;
+          authTest.style.borderColor = response.ok ? '#28a745' : '#dc3545';
+
+          log(`Authenticated request: ${response.status}`, response.ok ? 'success' : 'error');
+
+          if (response.status === 401) {
+            log('⚠️ 401 Unauthorized: Token may be invalid or expired', 'warning');
+          }
+        } catch (error) {
+          authTest.innerHTML = `
+            <h4>Authenticated Request</h4>
+            <div>Error: ${error.message}</div>
+          `;
+          authTest.style.borderColor = '#dc3545';
+          log(`Authenticated request error: ${error.message}`, 'error');
+        }
+      } else {
+        authTest.innerHTML = `
+          <h4>Authenticated Request</h4>
+          <div>Skipped: No token available</div>
+        `;
+        authTest.style.borderColor = '#ffc107';
+      }
+
+      // Update section status
+      const apiSection = document.getElementById('api-status');
+      apiSection.className = 'diagnostic-section';
+    }
+
+    // Test file upload
+    async function testFileUpload() {
+      if (!selectedFile) {
+        log('❌ Please select a file first', 'error');
+        return;
+      }
+
+      log('📤 Testing file upload...', 'info');
+
+      const tokens = getAuthTokens();
+      const token = tokens.localStorage.auth_token || tokens.authObject?.tokens?.accessToken;
+
+      if (!token) {
+        log('❌ No authentication token found', 'error');
+        updateChainStep('step-localstorage', 'error');
+        return;
+      }
+
+      updateChainStep('step-localstorage', 'success');
+      updateChainStep('step-tokenmanager', 'success');
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      try {
+        log(`Uploading ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} KB)...`, 'info');
+
+        const response = await fetch('/api/files/single', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        updateChainStep('step-axios', response.status !== 401 ? 'success' : 'error');
+        updateChainStep('step-request', response.ok ? 'success' : 'error');
+
+        if (response.ok) {
+          const data = await response.json();
+          log('✅ Upload successful!', 'success');
+          log(`Response: ${JSON.stringify(data)}`, 'info');
+
+          document.getElementById('upload-status').className = 'diagnostic-section success';
+        } else {
+          const errorText = await response.text();
+          log(`❌ Upload failed: ${response.status} ${response.statusText}`, 'error');
+          log(`Response: ${errorText}`, 'error');
+
+          if (response.status === 401) {
+            log('🔐 Authentication failed. Possible causes:', 'warning');
+            log('  - Token is expired', 'warning');
+            log('  - Token format is incorrect', 'warning');
+            log('  - Server expects different auth header format', 'warning');
+            log('  - User session was invalidated server-side', 'warning');
+          }
+
+          document.getElementById('upload-status').className = 'diagnostic-section error';
+        }
+      } catch (error) {
+        log(`❌ Network error: ${error.message}`, 'error');
+        updateChainStep('step-request', 'error');
+        document.getElementById('upload-status').className = 'diagnostic-section error';
+      }
+    }
+
+    // Update auth chain visualization
+    function updateChainStep(stepId, status) {
+      const step = document.getElementById(stepId);
+      step.className = `chain-step ${status}`;
+    }
+
+    // File selection
+    function selectFile() {
+      document.getElementById('fileInput').click();
+    }
+
+    document.getElementById('fileInput').addEventListener('change', function (e) {
+      selectedFile = e.target.files[0];
+      if (selectedFile) {
+        document.getElementById('file-info').innerHTML = `
+          <p>Selected: <strong>${selectedFile.name}</strong> (${(selectedFile.size / 1024).toFixed(1)} KB)</p>
+        `;
+        log(`Selected file: ${selectedFile.name}`, 'info');
+      }
+    });
+
+    // Test functions
+    async function runFullDiagnostic() {
+      log('🚀 Starting full diagnostic...', 'info');
+
+      await testAuthStatus();
+      await testAPIConnectivity();
+
+      if (selectedFile) {
+        await testFileUpload();
+      } else {
+        log('ℹ️ Select a file to test upload functionality', 'info');
+      }
+
+      log('✅ Full diagnostic complete', 'success');
+    }
+
+    async function testAuthOnly() {
+      await testAuthStatus();
+    }
+
+    async function testRemoteAPI() {
+      log('🌐 Testing remote API directly...', 'info');
+
+      const tokens = getAuthTokens();
+      const token = tokens.localStorage.auth_token || tokens.authObject?.tokens?.accessToken;
+
+      // Test direct to gateway
+      try {
+        const response = await fetch('http://45.77.178.85:8080/api/health', {
+          method: 'GET',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+
+        log(`Remote API health check: ${response.status}`, response.ok ? 'success' : 'error');
+      } catch (error) {
+        log(`Remote API error: ${error.message}`, 'error');
+      }
+    }
+
+    function clearAndRetest() {
+      if (confirm('This will clear your authentication. Continue?')) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth');
+        localStorage.removeItem('auth_user');
+        localStorage.removeItem('refresh_token');
+
+        log('🧹 Cleared authentication data', 'warning');
+        setTimeout(() => {
+          runFullDiagnostic();
+        }, 100);
+      }
+    }
+
+    function forceLogin() {
+      if (confirm('This will redirect you to login. Continue?')) {
+        window.location.href = '/login';
+      }
+    }
+
+    // Initial load
+    window.addEventListener('load', () => {
+      log('🔧 File Upload Auth Diagnostic loaded', 'info');
+      log('Click "Run Full Diagnostic" to begin', 'info');
+      testAuthStatus();
+    });
+  </script>
+</body>
+
+</html>

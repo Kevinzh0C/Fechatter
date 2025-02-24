@@ -9,7 +9,7 @@
         <h1>Welcome back, {{ userName }}!</h1>
         <p>You're in the <strong>{{ workspaceName }}</strong> workspace. Ready to collaborate?</p>
       </div>
-      
+
       <!-- Quick Stats -->
       <div class="slack-quick-stats">
         <div class="stat-card">
@@ -25,26 +25,28 @@
           <div class="stat-label">Messages</div>
         </div>
       </div>
-      
+
       <!-- Quick Actions -->
       <div class="slack-welcome-actions">
         <button @click="$emit('create-channel')" class="slack-btn slack-btn-primary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
           </svg>
           Create a channel
         </button>
-        
+
         <button @click="$emit('create-dm')" class="slack-btn slack-btn-secondary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+            <path
+              d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
           </svg>
           Send a message
         </button>
-        
+
         <button @click="$emit('join-channel')" class="slack-btn slack-btn-outline">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
           </svg>
           Browse channels
         </button>
@@ -54,12 +56,8 @@
       <div v-if="recentChannels.length > 0" class="slack-recent-activity">
         <h3>Your channels</h3>
         <div class="channel-list">
-          <div 
-            v-for="channel in recentChannels" 
-            :key="channel.id"
-            @click="$emit('navigate-channel', channel.id)"
-            class="channel-card"
-          >
+          <div v-for="channel in recentChannels" :key="channel.id" @click="$emit('navigate-channel', channel.id)"
+            class="channel-card">
             <div class="channel-icon">
               {{ channel.chat_type === 'PrivateChannel' ? '🔒' : '#' }}
             </div>
@@ -170,6 +168,8 @@ const recentChannels = computed(() => {
 
 <style scoped>
 .slack-welcome {
+  /* Enable vertical scroll for overflow */
+  overflow-y: auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -179,6 +179,9 @@ const recentChannels = computed(() => {
 }
 
 .slack-welcome-content {
+  /* Prevent content overflow and allow scroll */
+  max-height: calc(100vh - 4rem);
+  overflow-y: auto;
   max-width: 800px;
   width: 100%;
   background: white;
@@ -452,17 +455,17 @@ const recentChannels = computed(() => {
   .slack-welcome-content {
     padding: 2rem 1.5rem;
   }
-  
+
   .slack-quick-stats {
     grid-template-columns: 1fr;
   }
-  
+
   .slack-welcome-actions {
     flex-direction: column;
   }
-  
+
   .feature-grid {
     grid-template-columns: 1fr;
   }
 }
-</style> 
+</style>

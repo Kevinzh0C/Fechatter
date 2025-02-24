@@ -1,12 +1,7 @@
 <template>
-  <transition
-    enter-active-class="transition-all duration-300 ease-out"
-    enter-from-class="opacity-0 translate-y-2"
-    enter-to-class="opacity-100 translate-y-0"
-    leave-active-class="transition-all duration-200 ease-in"
-    leave-from-class="opacity-100 translate-y-0"
-    leave-to-class="opacity-0 translate-y-2"
-  >
+  <transition enter-active-class="transition-all duration-300 ease-out" enter-from-class="opacity-0 translate-y-2"
+    enter-to-class="opacity-100 translate-y-0" leave-active-class="transition-all duration-200 ease-in"
+    leave-from-class="opacity-100 translate-y-0" leave-to-class="opacity-0 translate-y-2">
     <div v-if="typingUsers.length > 0" class="typing-indicator">
       <div class="flex items-center space-x-2 px-4 py-2 text-sm text-gray-600">
         <div class="typing-animation">
@@ -22,7 +17,8 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import realtimeCommunicationService from '@/services/sse';
+import minimalSSE from '@/services/sse-minimal';
+import { useAuthStore } from '@/stores/auth';
 
 const props = defineProps({
   chatId: {
@@ -42,7 +38,7 @@ const typingUsers = ref([]);
 const typingText = computed(() => {
   const count = typingUsers.value.length;
   if (count === 0) return '';
-  
+
   if (count === 1) {
     return `${typingUsers.value[0].userName} is typing...`;
   } else if (count === 2) {
@@ -58,9 +54,9 @@ function handleTypingStatus(data) {
     // Ignore typing status from other chats or self
     return;
   }
-  
+
   const userIndex = typingUsers.value.findIndex(u => u.userId === data.userId);
-  
+
   if (data.isTyping) {
     // Add or update typing user
     if (userIndex === -1) {
@@ -78,7 +74,7 @@ function handleTypingStatus(data) {
       typingUsers.value.splice(userIndex, 1);
     }
   }
-  
+
   // Clean up stale typing indicators (older than 5 seconds)
   const now = Date.now();
   typingUsers.value = typingUsers.value.filter(u => now - u.timestamp < 5000);
@@ -104,12 +100,12 @@ function stopCleanup() {
 // Lifecycle
 onMounted(() => {
   // Listen for typing status events
-  realtimeCommunicationService.on('typing_status', handleTypingStatus);
+  minimalSSE.on('typing_status', handleTypingStatus);
   startCleanup();
 });
 
 onUnmounted(() => {
-  realtimeCommunicationService.off('typing_status', handleTypingStatus);
+  minimalSSE.off('typing_status', handleTypingStatus);
   stopCleanup();
 });
 </script>
@@ -147,10 +143,14 @@ onUnmounted(() => {
 }
 
 @keyframes typing {
-  0%, 60%, 100% {
+
+  0%,
+  60%,
+  100% {
     opacity: 0.3;
     transform: translateY(0);
   }
+
   30% {
     opacity: 1;
     transform: translateY(-4px);

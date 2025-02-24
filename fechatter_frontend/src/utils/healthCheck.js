@@ -261,7 +261,9 @@ class HealthCheckSystem {
           const chatMethodsOk = chatStore ? chatMethods.every(method => {
             const exists = typeof chatStore[method] === 'function';
             if (!exists) {
-              console.warn(`ChatStore method missing: ${method}`);
+              if (import.meta.env.DEV) {
+                console.warn(`ChatStore method missing: ${method}`);
+              }
             }
             return exists;
           }) : false;
@@ -269,7 +271,9 @@ class HealthCheckSystem {
           const workspaceMethodsOk = workspaceStore ? workspaceMethods.every(method => {
             const exists = typeof workspaceStore[method] === 'function';
             if (!exists) {
-              console.warn(`WorkspaceStore method missing: ${method}`);
+              if (import.meta.env.DEV) {
+                console.warn(`WorkspaceStore method missing: ${method}`);
+              }
             }
             return exists;
           }) : false;
@@ -525,7 +529,9 @@ class HealthCheckSystem {
 
       // 只有在真正关键的检查失败时才记录错误，但不抛出异常
       if (check.critical && !result.success && !shouldSkipLogging) {
-        console.warn(`⚠️ [HEALTH] Critical check failed: ${check.name}`, fullResult.details);
+        if (import.meta.env.DEV) {
+          console.warn(`⚠️ [HEALTH] Critical check failed: ${check.name}`, fullResult.details);
+        }
 
         // 记录错误但不让它导致应用崩溃
         try {
@@ -536,7 +542,9 @@ class HealthCheckSystem {
             severity: 'warning' // 降低严重度，避免闪退
           }, { component: 'HealthCheck', nonCritical: true });
         } catch (logError) {
-          console.warn('Failed to log health check error:', logError);
+          if (import.meta.env.DEV) {
+            console.warn('Failed to log health check error:', logError);
+          }
         }
       } else if (!result.success && shouldSkipLogging) {
         // 开发环境的非关键错误，只记录到控制台
@@ -545,7 +553,9 @@ class HealthCheckSystem {
 
       return fullResult;
     } catch (error) {
-      console.warn(`⚠️ [HEALTH] Check ${checkId} failed:`, error.message);
+      if (import.meta.env.DEV) {
+        console.warn(`⚠️ [HEALTH] Check ${checkId} failed:`, error.message);
+      }
 
       const errorResult = {
         success: false,
@@ -572,7 +582,9 @@ class HealthCheckSystem {
             preventCrash: true
           });
         } catch (logError) {
-          console.warn('Failed to log health check error:', logError);
+          if (import.meta.env.DEV) {
+            console.warn('Failed to log health check error:', logError);
+          }
         }
       }
 
@@ -727,32 +739,43 @@ class HealthCheckSystem {
           setTimeout(() => {
             // 安全地运行初始健康检查
             this.runAllChecksSafely().catch(error => {
-              console.warn('⚠️ [HEALTH] Initial health check failed:', error.message);
+              if (import.meta.env.DEV) {
+                console.warn('⚠️ [HEALTH] Initial health check failed:', error.message);
+              }
             });
 
             // 设置定期检查，使用安全模式
             this.autoCheckInterval = setInterval(() => {
               this.runAllChecksSafely().catch(error => {
-                console.warn('⚠️ [HEALTH] Scheduled health check failed:', error.message);
+                if (import.meta.env.DEV) {
+                  console.warn('⚠️ [HEALTH] Scheduled health check failed:', error.message);
+                }
               });
             }, optimizedInterval);
           }, startDelay);
 
           if (isDev) {
-            console.log(`🔧 [HEALTH] Health monitoring will start in ${startDelay / 1000}s with ${optimizedInterval / 60000}min intervals`);
+            if (import.meta.env.DEV) {
+              console.log(`🔧 [HEALTH] Health monitoring will start in ${startDelay / 1000}s with ${optimizedInterval / 60000}min intervals`);
+            }
           }
-
         } else if (retryCount < maxRetries) {
           setTimeout(() => checkAppReady(retryCount + 1), 1000);
         } else {
-          console.warn('⚠️ [HEALTH] Application failed to initialize after maximum retries. Health monitoring disabled.');
+          if (import.meta.env.DEV) {
+            console.warn('⚠️ [HEALTH] Application failed to initialize after maximum retries. Health monitoring disabled.');
+          }
         }
       } catch (error) {
         if (retryCount < maxRetries) {
-          console.warn(`⚠️ [HEALTH] Error checking app readiness (attempt ${retryCount + 1}/${maxRetries}):`, error.message);
-          setTimeout(() => checkAppReady(retryCount + 1), 1000);
+          if (import.meta.env.DEV) {
+            console.warn(`⚠️ [HEALTH] Error checking app readiness (attempt ${retryCount + 1}/${maxRetries}):`, error.message);
+            setTimeout(() => checkAppReady(retryCount + 1), 1000);
+          }
         } else {
-          console.warn('⚠️ [HEALTH] Failed to start health monitoring after maximum retries:', error.message);
+          if (import.meta.env.DEV) {
+            console.warn('⚠️ [HEALTH] Failed to start health monitoring after maximum retries:', error.message);
+          }
         }
       }
     };
@@ -772,21 +795,23 @@ class HealthCheckSystem {
   async runAllChecksSafely() {
     // 检查应用状态
     if (!window.app || !window.pinia) {
-      console.warn('🏥 [HEALTH] Application not ready for health checks');
-      return {
-        results: [],
-        summary: {
-          total: 0,
-          passed: 0,
-          failed: 0,
-          criticalFailed: 0,
-          healthScore: 0,
-          isHealthy: false,
-          lastCheck: new Date().toISOString(),
-          error: 'Application not ready'
-        },
-        timestamp: new Date().toISOString()
-      };
+      if (import.meta.env.DEV) {
+        console.warn('🏥 [HEALTH] Application not ready for health checks');
+        return {
+          results: [],
+          summary: {
+            total: 0,
+            passed: 0,
+            failed: 0,
+            criticalFailed: 0,
+            healthScore: 0,
+            isHealthy: false,
+            lastCheck: new Date().toISOString(),
+            error: 'Application not ready'
+          },
+          timestamp: new Date().toISOString()
+        };
+      }
     }
 
     return this.runAllChecks();

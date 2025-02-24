@@ -10,7 +10,7 @@ import type { Chat, User } from '@/types/chat';
 export type ChatRoomState = 'INIT' | 'LOADING' | 'READY' | 'SCROLLING' | 'SENDING' | 'CLOSED';
 
 // Events
-export type ChatRoomEvent = 
+export type ChatRoomEvent =
   | { type: 'LOAD'; payload: { chatId: string } }
   | { type: 'LOADED' }
   | { type: 'SEND_MESSAGE'; payload: { content: string; files?: File[] } }
@@ -101,8 +101,8 @@ export function useChatRoom() {
   });
 
   const canDeleteChat = computed(() => {
-    return currentChat.value && 
-           authStore.user?.id === currentChat.value.owner_id;
+    return currentChat.value &&
+      authStore.user?.id === currentChat.value.owner_id;
   });
 
   const canSendMessage = computed(() => {
@@ -112,9 +112,9 @@ export function useChatRoom() {
   // State machine transition
   const transition = (event: ChatRoomEvent): void => {
     const currentState = state.value.state;
-    
+
     console.log(`ChatRoom transition: ${currentState} + ${event.type} = ?`);
-    
+
     switch (currentState) {
       case 'INIT':
         if (event.type === 'LOAD') {
@@ -122,7 +122,7 @@ export function useChatRoom() {
           loadChatData(event.payload.chatId);
         }
         break;
-        
+
       case 'LOADING':
         if (event.type === 'LOADED') {
           state.value.state = 'READY';
@@ -132,7 +132,7 @@ export function useChatRoom() {
           toast.error(event.payload.message);
         }
         break;
-        
+
       case 'READY':
         if (event.type === 'SEND_MESSAGE') {
           state.value.state = 'SENDING';
@@ -144,7 +144,7 @@ export function useChatRoom() {
           loadChatData(event.payload.chatId);
         }
         break;
-        
+
       case 'SENDING':
         if (event.type === 'MESSAGE_SENT') {
           state.value.state = 'READY';
@@ -154,13 +154,13 @@ export function useChatRoom() {
           toast.error(event.payload.message);
         }
         break;
-        
+
       case 'SCROLLING':
         if (event.type === 'SCROLL_COMPLETE') {
           state.value.state = 'READY';
         }
         break;
-        
+
       default:
         if (event.type === 'CLOSE') {
           state.value.state = 'CLOSED';
@@ -171,7 +171,7 @@ export function useChatRoom() {
   // Load chat data
   const loadChatData = async (chatId: string): Promise<void> => {
     if (!chatId) return;
-    
+
     try {
       state.value.loading = true;
       state.value.error = null;
@@ -200,8 +200,8 @@ export function useChatRoom() {
       transition({ type: 'LOADED' });
     } catch (error) {
       console.error('Failed to load chat data:', error);
-      transition({ 
-        type: 'ERROR', 
+      transition({
+        type: 'ERROR',
         payload: { message: 'Failed to load chat data' }
       });
     } finally {
@@ -212,7 +212,7 @@ export function useChatRoom() {
   // Send message with validation and rate limiting
   const sendMessage = async (payload: SendMessagePayload): Promise<void> => {
     const { content, files } = payload;
-    
+
     // Validation
     if (!content.trim() && (!files || files.length === 0)) {
       toast.warning('Please enter a message or attach a file');
@@ -254,8 +254,8 @@ export function useChatRoom() {
       transition({ type: 'MESSAGE_SENT' });
     } catch (error) {
       console.error('Failed to send message:', error);
-      transition({ 
-        type: 'ERROR', 
+      transition({
+        type: 'ERROR',
         payload: { message: 'Failed to send message. Please try again.' }
       });
     }

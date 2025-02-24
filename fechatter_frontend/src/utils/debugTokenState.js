@@ -15,12 +15,15 @@ export const debugTokenState = () => {
   const storedAuth = localStorage.getItem('auth');
 
   // Check localStorage
-  console.log('📦 localStorage auth data:', storedAuth ? 'EXISTS' : 'MISSING');
+  if (import.meta.env.DEV) {
+    console.log('📦 localStorage auth data:', storedAuth ? 'EXISTS' : 'MISSING');
+  }
 
   if (storedAuth) {
     try {
       const parsedAuth = JSON.parse(storedAuth);
-      console.log('📦 localStorage structure:', {
+      if (import.meta.env.DEV) {
+        console.log('📦 localStorage structure:', {
         hasUser: !!parsedAuth.user,
         hasTokens: !!parsedAuth.tokens,
         userEmail: parsedAuth.user?.email,
@@ -31,13 +34,14 @@ export const debugTokenState = () => {
         issuedAt: parsedAuth.tokens?.issuedAt ? new Date(parsedAuth.tokens.issuedAt).toISOString() : 'NULL',
       });
     } catch (error) {
-      console.error('📦 localStorage parsing error:', error);
-    }
-  }
+      if (import.meta.env.DEV) {
+        console.error('📦 localStorage parsing error:', error);
+      }
 
   // Check authStore state
-  console.log('🏪 authStore state:', {
-    isAuthenticated: authStore.isAuthenticated,
+  if (import.meta.env.DEV) {
+    console.log('🏪 authStore state:', {
+        isAuthenticated: authStore.isAuthenticated,
     hasUser: !!authStore.user,
     userEmail: authStore.user?.email,
     isInitialized: authStore.isInitialized,
@@ -46,8 +50,9 @@ export const debugTokenState = () => {
   });
 
   // Check tokenManager state
-  console.log('🔐 tokenManager state:', {
-    hasAccessToken: !!tokenManager.getAccessToken(),
+  if (import.meta.env.DEV) {
+    console.log('🔐 tokenManager state:', {
+        hasAccessToken: !!tokenManager.getAccessToken(),
     accessToken: tokenManager.getAccessToken() ? tokenManager.getAccessToken().substring(0, 20) + '...' : 'NULL',
     isTokenExpired: tokenManager.isTokenExpired(),
     shouldRefreshToken: tokenManager.shouldRefreshToken(),
@@ -56,8 +61,9 @@ export const debugTokenState = () => {
 
   // Check tokens object directly
   const tokens = tokenManager.getTokens();
-  console.log('🔑 tokenManager.tokens:', {
-    accessToken: tokens.accessToken ? tokens.accessToken.substring(0, 20) + '...' : 'NULL',
+  if (import.meta.env.DEV) {
+    console.log('🔑 tokenManager.tokens:', {
+        accessToken: tokens.accessToken ? tokens.accessToken.substring(0, 20) + '...' : 'NULL',
     refreshToken: tokens.refreshToken ? tokens.refreshToken.substring(0, 20) + '...' : 'NULL',
     expiresAt: tokens.expiresAt ? new Date(tokens.expiresAt).toISOString() : 'NULL',
     issuedAt: tokens.issuedAt ? new Date(tokens.issuedAt).toISOString() : 'NULL',
@@ -79,13 +85,17 @@ export const debugTokenState = () => {
   }
 
   if (inconsistencies.length > 0) {
-    console.warn('⚠️ Detected inconsistencies:');
+    if (import.meta.env.DEV) {
+      console.warn('⚠️ Detected inconsistencies:');
     inconsistencies.forEach((issue, index) => {
-      console.warn(`${index + 1}. ${issue}`);
+      if (import.meta.env.DEV) {
+        console.warn(`${index + 1}. ${issue}`);
+      }
     });
   } else {
-    console.log('✅ No inconsistencies detected');
-  }
+    if (import.meta.env.DEV) {
+      console.log('✅ No inconsistencies detected');
+    }
 
   console.groupEnd();
 
@@ -115,7 +125,8 @@ export const fixTokenState = async () => {
     const storedAuth = localStorage.getItem('auth');
 
     if (!storedAuth) {
-      console.log('📦 No stored auth data, clearing all state');
+      if (import.meta.env.DEV) {
+        console.log('📦 No stored auth data, clearing all state');
       authStore.clearAuth();
       console.groupEnd();
       return { success: true, action: 'cleared_all_state' };
@@ -125,7 +136,8 @@ export const fixTokenState = async () => {
 
     // Check if stored tokens exist
     if (!parsedAuth.tokens || !parsedAuth.tokens.accessToken) {
-      console.log('🔑 No valid tokens in storage, clearing auth state');
+      if (import.meta.env.DEV) {
+        console.log('🔑 No valid tokens in storage, clearing auth state');
       authStore.clearAuth();
       console.groupEnd();
       return { success: true, action: 'cleared_invalid_auth' };
@@ -137,20 +149,24 @@ export const fixTokenState = async () => {
     const isStoredTokenExpired = !tokenExpiresAt || (now + 30000) > tokenExpiresAt; // 30s buffer
 
     if (isStoredTokenExpired) {
-      console.log('🔑 Stored access token is expired, checking refresh token...');
+      if (import.meta.env.DEV) {
+        console.log('🔑 Stored access token is expired, checking refresh token...');
+      }
 
       // Check if refresh token is also expired
       const refreshTokenExpired = parsedAuth.tokens.absoluteExpiry && now > parsedAuth.tokens.absoluteExpiry;
 
       if (refreshTokenExpired || !parsedAuth.tokens.refreshToken) {
-        console.log('🔑 Refresh token also expired or missing, clearing all auth state');
+        if (import.meta.env.DEV) {
+          console.log('🔑 Refresh token also expired or missing, clearing all auth state');
         authStore.clearAuth();
         console.groupEnd();
         return { success: true, action: 'cleared_expired_tokens' };
       }
 
       // Try to refresh the expired token
-      console.log('🔄 Attempting to refresh expired token...');
+      if (import.meta.env.DEV) {
+        console.log('🔄 Attempting to refresh expired token...');
       tokenManager.setTokens({
         accessToken: parsedAuth.tokens.accessToken,
         refreshToken: parsedAuth.tokens.refreshToken,
@@ -161,18 +177,21 @@ export const fixTokenState = async () => {
 
       try {
         await tokenManager.refreshToken();
-        console.log('✅ Token refreshed successfully');
+        if (import.meta.env.DEV) {
+          console.log('✅ Token refreshed successfully');
         console.groupEnd();
         return { success: true, action: 'token_refreshed' };
       } catch (refreshError) {
-        console.error('❌ Token refresh failed:', refreshError);
+        if (import.meta.env.DEV) {
+          console.error('❌ Token refresh failed:', refreshError);
         authStore.clearAuth();
         console.groupEnd();
         return { success: false, action: 'refresh_failed', error: refreshError.message };
       }
     } else {
       // Token is not expired, just reinitialize tokenManager
-      console.log('🔄 Reinitializing tokenManager with valid stored tokens');
+      if (import.meta.env.DEV) {
+        console.log('🔄 Reinitializing tokenManager with valid stored tokens');
       tokenManager.setTokens({
         accessToken: parsedAuth.tokens.accessToken,
         refreshToken: parsedAuth.tokens.refreshToken,
@@ -181,13 +200,15 @@ export const fixTokenState = async () => {
         absoluteExpiry: parsedAuth.tokens.absoluteExpiry,
       });
 
-      console.log('✅ Token state synchronized successfully');
+      if (import.meta.env.DEV) {
+        console.log('✅ Token state synchronized successfully');
       console.groupEnd();
       return { success: true, action: 'synchronized' };
     }
 
   } catch (error) {
-    console.error('❌ Failed to fix token state:', error);
+    if (import.meta.env.DEV) {
+      console.error('❌ Failed to fix token state:', error);
     authStore.clearAuth();
     console.groupEnd();
     return { success: false, action: 'fix_failed', error: error.message };
@@ -203,11 +224,13 @@ export const diagnoseTokenPersistence = async () => {
   const authStore = useAuthStore();
 
   // Step 1: Check current state
-  console.log('📊 Step 1: Current State Analysis');
+  if (import.meta.env.DEV) {
+    console.log('📊 Step 1: Current State Analysis');
   debugTokenState();
 
   // Step 2: Try to manually set and retrieve token
-  console.log('\n📊 Step 2: Manual Token Test');
+  if (import.meta.env.DEV) {
+    console.log('\n📊 Step 2: Manual Token Test');
   const testToken = 'test_token_' + Date.now();
   const testTokenData = {
     accessToken: testToken,
@@ -216,15 +239,20 @@ export const diagnoseTokenPersistence = async () => {
     issuedAt: Date.now()
   };
 
-  console.log('Setting test token:', testTokenData.accessToken);
+  if (import.meta.env.DEV) {
+    console.log('Setting test token:', testTokenData.accessToken);
   tokenManager.setTokens(testTokenData);
 
   const retrievedToken = tokenManager.getAccessToken();
-  console.log('Retrieved token:', retrievedToken);
-  console.log('Token set successfully:', retrievedToken === testToken);
+  if (import.meta.env.DEV) {
+    console.log('Retrieved token:', retrievedToken);
+  if (import.meta.env.DEV) {
+    console.log('Token set successfully:', retrievedToken === testToken);
+  }
 
   // Step 3: Check localStorage persistence
-  console.log('\n📊 Step 3: LocalStorage Persistence Test');
+  if (import.meta.env.DEV) {
+    console.log('\n📊 Step 3: LocalStorage Persistence Test');
   const testAuthData = {
     user: { id: 1, email: 'test@example.com' },
     tokens: tokenManager.getTokens(),
@@ -237,54 +265,64 @@ export const diagnoseTokenPersistence = async () => {
 
   if (storedTest) {
     const parsed = JSON.parse(storedTest);
-    console.log('LocalStorage write/read test:', {
-      success: true,
+    if (import.meta.env.DEV) {
+      console.log('LocalStorage write/read test:', {
+        success: true,
       hasTokens: !!parsed.tokens,
       tokenMatch: parsed.tokens?.accessToken === testToken
     });
     localStorage.removeItem('auth_test');
   } else {
-    console.error('LocalStorage write/read test failed');
-  }
+    if (import.meta.env.DEV) {
+      console.error('LocalStorage write/read test failed');
+    }
 
   // Step 4: Check auth store persist method
-  console.log('\n📊 Step 4: Auth Store Persist Test');
+  if (import.meta.env.DEV) {
+    console.log('\n📊 Step 4: Auth Store Persist Test');
   if (authStore.isAuthenticated) {
-    console.log('Calling persistAuth()...');
+    if (import.meta.env.DEV) {
+      console.log('Calling persistAuth()...');
     authStore.persistAuth();
 
     const storedAuth = localStorage.getItem('auth');
     if (storedAuth) {
       const parsed = JSON.parse(storedAuth);
-      console.log('Persisted auth data:', {
+      if (import.meta.env.DEV) {
+        console.log('Persisted auth data:', {
         hasUser: !!parsed.user,
         hasTokens: !!parsed.tokens,
         hasAccessToken: !!parsed.tokens?.accessToken,
         tokenLength: parsed.tokens?.accessToken?.length || 0
       });
-    }
   } else {
-    console.log('Cannot test persistAuth - user not authenticated');
-  }
+    if (import.meta.env.DEV) {
+      console.log('Cannot test persistAuth - user not authenticated');
+    }
 
   // Step 5: Check for any errors or exceptions
-  console.log('\n📊 Step 5: Error Detection');
+  if (import.meta.env.DEV) {
+    console.log('\n📊 Step 5: Error Detection');
   try {
     // Test token manager internal state
     const tokenStatus = tokenManager.getStatus();
-    console.log('Token Manager Status:', tokenStatus);
+    if (import.meta.env.DEV) {
+      console.log('Token Manager Status:', tokenStatus);
+    }
 
     // Test if tokens object is properly structured
     const tokens = tokenManager.getTokens();
-    console.log('Token structure valid:', {
-      hasAccessToken: 'accessToken' in tokens,
+    if (import.meta.env.DEV) {
+      console.log('Token structure valid:', {
+        hasAccessToken: 'accessToken' in tokens,
       hasRefreshToken: 'refreshToken' in tokens,
       hasExpiresAt: 'expiresAt' in tokens,
       hasIssuedAt: 'issuedAt' in tokens
     });
   } catch (error) {
-    console.error('Error during diagnosis:', error);
-  }
+    if (import.meta.env.DEV) {
+      console.error('Error during diagnosis:', error);
+    }
 
   // Clean up test token
   tokenManager.clearTokens();

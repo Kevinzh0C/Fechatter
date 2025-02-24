@@ -150,7 +150,6 @@ export default {
     const toggleDropdown = async () => {
       if (!isOpen.value && workspaces.value.length === 0) {
         await fetchWorkspaces()
-      }
       isOpen.value = !isOpen.value
     }
 
@@ -172,7 +171,6 @@ export default {
       } finally {
         loadingWorkspaces.value = false
       }
-    }
 
     const selectWorkspace = async (workspace) => {
       if (switching.value || workspace.id === currentWorkspace.value?.id) {
@@ -212,7 +210,6 @@ export default {
         switching.value = false
         switchingToId.value = null
       }
-    }
 
     // Lifecycle
     onMounted(() => {
@@ -225,7 +222,6 @@ export default {
       if (isOpen.value && !event.target.closest('.workspace-selector')) {
         closeDropdown()
       }
-    }
 
     onMounted(() => {
       document.addEventListener('click', handleClickOutside)
@@ -252,8 +248,6 @@ export default {
       fetchWorkspaces,
       selectWorkspace,
     }
-  }
-}
 </script>
 
 <style scoped>

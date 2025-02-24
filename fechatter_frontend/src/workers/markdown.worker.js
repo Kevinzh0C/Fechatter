@@ -40,7 +40,6 @@ async function processMarkdown(id, content, immediate = false) {
       }, 50);
       pendingTasks.set(id, timer);
     });
-  }
 
   return performProcessing(id, content);
 }
@@ -93,14 +92,14 @@ async function performProcessing(id, content) {
     };
     
   } catch (error) {
-    console.error('Markdown processing error:', error);
+    if (import.meta.env.DEV) {
+      console.error('Markdown processing error:', error);
     return {
       id,
       type: 'error',
       error: error.message
     };
   }
-}
 
 // Diff two AST trees and return patches
 function diffAST(oldNode, newNode, path = []) {
@@ -149,7 +148,6 @@ function diffAST(oldNode, newNode, path = []) {
       newNode,
       changes: propsChanged
     });
-  }
   
   // Compare children
   if (oldNode.children && newNode.children) {
@@ -163,7 +161,6 @@ function diffAST(oldNode, newNode, path = []) {
       );
       patches.push(...childPatches);
     }
-  }
   
   return patches;
 }
@@ -212,8 +209,6 @@ async function generatePartialUpdates(fullAst, patches) {
         ...patch,
         selector: generateSelector(patch.path)
       });
-    }
-  }
   
   return updates;
 }
@@ -247,7 +242,6 @@ function generateSelector(path) {
       segments.push(`:nth-child(${path[i + 1] + 1})`);
       i++; // Skip the number
     }
-  }
   
   // Generate a data attribute selector for precise targeting
   return `[data-md-path="${path.join('-')}"]`;
@@ -261,7 +255,6 @@ function cleanup(id) {
     clearTimeout(pendingTasks.get(id));
     pendingTasks.delete(id);
   }
-}
 
 // Message handler
 self.addEventListener('message', async (event) => {

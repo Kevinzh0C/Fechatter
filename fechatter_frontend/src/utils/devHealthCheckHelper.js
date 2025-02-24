@@ -23,10 +23,10 @@ class DevHealthCheckHelper {
       this.logCheckResult(checkId, result);
       return result;
     } catch (error) {
-      console.error(`❌ Failed to run check ${checkId}:`, error);
+      if (import.meta.env.DEV) {
+        console.error(`❌ Failed to run check ${checkId}:`, error);
       return null;
     }
-  }
 
   /**
    * Run all health checks and display summary
@@ -37,7 +37,9 @@ class DevHealthCheckHelper {
       const results = await healthCheck.default.runAllChecksSafely();
 
       console.group('🏥 Health Check Results');
-      console.log('Summary:', results.summary);
+      if (import.meta.env.DEV) {
+        console.log('Summary:', results.summary);
+      }
 
       // Group results by status
       const passed = results.results.filter(r => r.success);
@@ -46,7 +48,9 @@ class DevHealthCheckHelper {
       if (passed.length > 0) {
         console.group('✅ Passed Checks');
         passed.forEach(r => {
-          console.log(`${r.checkName}:`, r.details);
+          if (import.meta.env.DEV) {
+            console.log(`${r.checkName}:`, r.details);
+          }
         });
         console.groupEnd();
       }
@@ -54,7 +58,9 @@ class DevHealthCheckHelper {
       if (failed.length > 0) {
         console.group('❌ Failed Checks');
         failed.forEach(r => {
-          console.error(`${r.checkName}:`, r.error || r.details);
+          if (import.meta.env.DEV) {
+            console.error(`${r.checkName}:`, r.error || r.details);
+          }
         });
         console.groupEnd();
       }
@@ -63,23 +69,27 @@ class DevHealthCheckHelper {
 
       return results;
     } catch (error) {
-      console.error('❌ Failed to run health checks:', error);
+      if (import.meta.env.DEV) {
+        console.error('❌ Failed to run health checks:', error);
       return null;
     }
-  }
 
   /**
    * Monitor specific checks continuously
    */
   startMonitoring(checkIds = ['stores_functional', 'sse_connection'], intervalMs = 5000) {
     if (this.isMonitoring) {
-      console.warn('⚠️ Monitoring already active');
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ Monitoring already active');
       return;
     }
 
     this.isMonitoring = true;
-    console.log(`🔍 Starting health check monitoring for: ${checkIds.join(', ')}`);
-    console.log(`📊 Interval: ${intervalMs}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`🔍 Starting health check monitoring for: ${checkIds.join(', ')}`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 Interval: ${intervalMs}ms`);
+    }
 
     this.monitorInterval = setInterval(async () => {
       console.group(`🔄 Health Check Monitor - ${new Date().toLocaleTimeString()}`);
@@ -88,9 +98,9 @@ class DevHealthCheckHelper {
         const result = await this.runSingleCheck(checkId);
         if (result) {
           const status = result.success ? '✅' : '❌';
-          console.log(`${status} ${checkId}:`, result.details || result.error);
-        }
-      }
+          if (import.meta.env.DEV) {
+            console.log(`${status} ${checkId}:`, result.details || result.error);
+          }
 
       console.groupEnd();
     }, intervalMs);
@@ -104,9 +114,9 @@ class DevHealthCheckHelper {
       clearInterval(this.monitorInterval);
       this.monitorInterval = null;
       this.isMonitoring = false;
-      console.log('🛑 Health check monitoring stopped');
-    }
-  }
+      if (import.meta.env.DEV) {
+        console.log('🛑 Health check monitoring stopped');
+      }
 
   /**
    * Log check result to history
@@ -124,7 +134,6 @@ class DevHealthCheckHelper {
     if (this.checkHistory.length > this.maxHistorySize) {
       this.checkHistory = this.checkHistory.slice(0, this.maxHistorySize);
     }
-  }
 
   /**
    * Get check history
@@ -132,7 +141,6 @@ class DevHealthCheckHelper {
   getHistory(checkId = null) {
     if (checkId) {
       return this.checkHistory.filter(h => h.checkId === checkId);
-    }
     return this.checkHistory;
   }
 
@@ -143,8 +151,9 @@ class DevHealthCheckHelper {
     console.group('🔍 Health Check Issue Analysis');
 
     // Check app initialization
-    console.log('App Status:', {
-      hasApp: !!window.app,
+    if (import.meta.env.DEV) {
+      console.log('App Status:', {
+        hasApp: !!window.app,
       hasPinia: !!window.pinia,
       hasRouter: !!window.$router,
       hasSSE: !!window.realtimeCommunicationService
@@ -154,21 +163,23 @@ class DevHealthCheckHelper {
     if (window.pinia) {
       try {
         const authStore = window.pinia._s.get('auth');
-        console.log('Auth Status:', {
-          hasToken: !!authStore?.token,
+        if (import.meta.env.DEV) {
+          console.log('Auth Status:', {
+        hasToken: !!authStore?.token,
           hasUser: !!authStore?.user,
           isAuthenticated: authStore?.isAuthenticated
         });
       } catch (e) {
-        console.warn('Could not access auth store:', e.message);
-      }
-    }
+        if (import.meta.env.DEV) {
+          console.warn('Could not access auth store:', e.message);
+        }
 
     // Check SSE status
     if (window.realtimeCommunicationService) {
       const sseState = window.realtimeCommunicationService.getConnectionState();
-      console.log('SSE Status:', sseState);
-    }
+      if (import.meta.env.DEV) {
+        console.log('SSE Status:', sseState);
+      }
 
     console.groupEnd();
   }
@@ -183,28 +194,32 @@ class DevHealthCheckHelper {
     try {
       const { initializeConfig } = await import('./configLoader.js');
       await initializeConfig();
-      console.log('✅ Configuration initialized');
+      if (import.meta.env.DEV) {
+        console.log('✅ Configuration initialized');
+      }
     } catch (e) {
-      console.error('❌ Failed to initialize config:', e.message);
-    }
+      if (import.meta.env.DEV) {
+        console.error('❌ Failed to initialize config:', e.message);
+      }
 
     // Fix 2: Try to connect SSE if authenticated
     if (window.realtimeCommunicationService && window.pinia) {
       try {
         const authStore = window.pinia._s.get('auth');
         if (authStore?.token && !window.realtimeCommunicationService.isConnected) {
-          console.log('🔌 Attempting SSE connection...');
+          if (import.meta.env.DEV) {
+            console.log('🔌 Attempting SSE connection...');
           await window.realtimeCommunicationService.connect(authStore.token);
-          console.log('✅ SSE connection attempted');
-        }
+          if (import.meta.env.DEV) {
+            console.log('✅ SSE connection attempted');
+          }
       } catch (e) {
-        console.error('❌ Failed to connect SSE:', e.message);
-      }
-    }
+        if (import.meta.env.DEV) {
+          console.error('❌ Failed to connect SSE:', e.message);
+        }
 
     console.groupEnd();
   }
-}
 
 // Create singleton instance
 const devHealthCheckHelper = new DevHealthCheckHelper();
@@ -226,9 +241,12 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
     api: () => devHealthCheckHelper.runSingleCheck('api_connection')
   };
 
-  console.log('💡 Health Check Helper available at window.healthHelper');
-  console.log('   Commands: run(), runAll(), monitor(), analyze(), fix()');
-  console.log('   Shortcuts: stores(), sse(), api()');
-}
+  if (import.meta.env.DEV) {
+    console.log('💡 Health Check Helper available at window.healthHelper');
+  if (import.meta.env.DEV) {
+    console.log('   Commands: run(), runAll(), monitor(), analyze(), fix()');
+  if (import.meta.env.DEV) {
+    console.log('   Shortcuts: stores(), sse(), api()');
+  }
 
 export default devHealthCheckHelper; 

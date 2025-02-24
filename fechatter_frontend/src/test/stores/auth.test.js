@@ -15,7 +15,7 @@ describe('Auth Store', () => {
   describe('login', () => {
     it('should successfully login with super user', async () => {
       const store = useAuthStore();
-      const result = await store.login('super@test.com', 'super123');
+      const result = await store.login('super@test.com', 'password');
 
       expect(result).toBe(true);
       expect(store.token).toBe('super_token_123');

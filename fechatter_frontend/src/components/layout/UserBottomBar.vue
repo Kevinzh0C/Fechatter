@@ -2,15 +2,8 @@
   <div class="user-bottom-bar">
     <div class="user-section" @click="toggleUserMenu" ref="userSection">
       <!-- User Avatar -->
-      <div class="user-avatar-container">
-        <img v-if="currentUser?.avatar_url" :src="currentUser.avatar_url" :alt="currentUser.fullname"
-          class="user-avatar" @error="handleAvatarError" />
-        <div v-else class="user-avatar user-avatar-placeholder">
-          <span class="avatar-initials">{{ getUserInitials(currentUser?.fullname) }}</span>
-        </div>
-
-        <!-- Online Status Indicator -->
-        <div class="status-indicator" :class="getStatusClass()"></div>
+      <div class="user-avatar">
+        <Avatar :user="currentUser" :size="32" :show-status="true" :status="currentUser?.status?.toLowerCase()" />
       </div>
 
       <!-- User Info -->
@@ -71,6 +64,8 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUserStore } from '@/stores/user'
 import Icon from '@/components/ui/Icon.vue'
+import presenceService from '@/services/presence'
+import Avatar from '@/components/ui/Avatar.vue'
 
 // Props
 const props = defineProps({
@@ -99,6 +94,11 @@ const canSwitchRole = computed(() => {
   return currentUser.value?.role === 'admin' || currentUser.value?.role === 'moderator'
 })
 
+const isOnline = computed(() => {
+  if (!currentUser.value) return false;
+  return presenceService.isUserOnline(currentUser.value.id);
+})
+
 // Methods
 const toggleUserMenu = () => {
   showUserMenu.value = !showUserMenu.value
@@ -124,19 +124,12 @@ const handleAvatarError = () => {
 }
 
 const getStatusClass = () => {
-  // Get user's online status - could be connected to presence system
-  return 'status-online' // Default to online for now
+  return isOnline.value ? 'status-online' : 'status-offline';
 }
 
 const getStatusText = () => {
-  // Return user status text
-  if (currentUser.value?.role === 'admin') {
-    return 'Administrator'
-  }
-  if (currentUser.value?.role === 'moderator') {
-    return 'Moderator'
-  }
-  return 'Online'
+  if (currentUser.value?.role === 'admin') return 'Administrator';
+  return isOnline.value ? 'Online' : 'Offline';
 }
 
 const openProfile = () => {
@@ -159,11 +152,30 @@ const switchRole = () => {
 
 const signOut = async () => {
   closeUserMenu()
+  console.log('🚪 [USER_BAR] Starting sign out process...')
+
   try {
-    await authStore.logout()
-    router.push('/login')
+    // Auth store logout now handles everything including navigation
+    await authStore.logout('You have been signed out successfully.')
+    console.log('✅ [USER_BAR] Sign out completed')
   } catch (error) {
-    console.error('Failed to sign out:', error)
+    console.error('❌ [USER_BAR] Sign out failed:', error)
+
+    // Emergency fallback only if auth store logout completely fails
+    try {
+      console.log('🚨 [USER_BAR] Using emergency fallback...')
+
+      // Clear critical storage
+      localStorage.clear()
+      sessionStorage.clear()
+
+      // Force page reload to login
+      window.location.href = '/login'
+    } catch (fallbackError) {
+      console.error('❌ [USER_BAR] Emergency fallback failed:', fallbackError)
+      // Last resort: show user manual instructions
+      alert('Please manually refresh the page and try logging in again.')
+    }
   }
 }
 
@@ -216,41 +228,12 @@ onUnmounted(() => {
 }
 
 /* User Avatar */
-.user-avatar-container {
+.user-avatar {
   position: relative;
   flex-shrink: 0;
 }
 
-.user-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  transition: all 0.2s ease;
-}
-
-.user-avatar-placeholder {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #5865f2, #7983f5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  transition: all 0.2s ease;
-}
-
-.avatar-initials {
-  font-size: 16px;
-  font-weight: 600;
-  color: white;
-  text-transform: uppercase;
-}
-
-.user-section:hover .user-avatar,
-.user-section:hover .user-avatar-placeholder {
+.user-avatar:hover {
   border-color: rgba(255, 255, 255, 0.4);
   transform: scale(1.05);
 }
@@ -348,9 +331,11 @@ onUnmounted(() => {
     0 8px 16px rgba(0, 0, 0, 0.1),
     0 0 0 1px rgba(0, 0, 0, 0.05);
   overflow: hidden;
-  z-index: 1000;
+  z-index: var(--z-dropdown, 1000);
   backdrop-filter: blur(20px);
   margin-bottom: 8px;
+  /* Ensure proper stacking context */
+  isolation: isolate;
 }
 
 /* Menu Header */
@@ -465,16 +450,6 @@ onUnmounted(() => {
     padding: 12px;
   }
 
-  .user-avatar,
-  .user-avatar-placeholder {
-    width: 44px;
-    height: 44px;
-  }
-
-  .avatar-initials {
-    font-size: 18px;
-  }
-
   .user-name {
     font-size: 15px;
   }
@@ -511,7 +486,6 @@ onUnmounted(() => {
 
   .user-section,
   .user-avatar,
-  .user-avatar-placeholder,
   .menu-indicator,
   .chevron-icon {
     transition: none;

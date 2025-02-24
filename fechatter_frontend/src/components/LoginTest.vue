@@ -46,7 +46,7 @@ import axios from 'axios';
 const authStore = useAuthStore();
 
 const email = ref('admin@test.com');
-const password = ref('super123');
+const password = ref('password');
 const result = ref('');
 const resultClass = ref('');
 const logs = ref([]);
@@ -59,7 +59,7 @@ function log(message) {
 
 function fillTestCredentials() {
   email.value = 'admin@test.com';
-  password.value = 'super123';
+  password.value = 'password';
   log('Filled test credentials');
 }
 

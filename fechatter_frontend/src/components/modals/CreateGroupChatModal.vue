@@ -18,13 +18,8 @@
           <label for="groupName" class="block text-sm font-medium text-gray-700 mb-2">
             Group Name (Optional)
           </label>
-          <input
-            id="groupName"
-            v-model="groupName"
-            type="text"
-            placeholder="Enter group name..."
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
+          <input id="groupName" v-model="groupName" type="text" placeholder="Enter group name..."
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
           <p class="text-xs text-gray-500 mt-1">
             If left empty, the group will be named after its members
           </p>
@@ -36,21 +31,13 @@
             Add Members
           </label>
           <div class="relative">
-            <input
-              id="memberSearch"
-              v-model="searchQuery"
-              type="text"
-              placeholder="Search users..."
+            <input id="memberSearch" v-model="searchQuery" type="text" placeholder="Search users..."
               @input="searchUsers"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <div v-if="searchResults.length > 0" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
-              <div
-                v-for="user in searchResults"
-                :key="user.id"
-                @click="addMember(user)"
-                class="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
-              >
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            <div v-if="searchResults.length > 0"
+              class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
+              <div v-for="user in searchResults" :key="user.id" @click="addMember(user)"
+                class="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center">
                 <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-sm font-medium mr-3">
                   {{ user.name.charAt(0).toUpperCase() }}
                 </div>
@@ -69,16 +56,10 @@
             Selected Members ({{ selectedMembers.length }})
           </label>
           <div class="flex flex-wrap gap-2">
-            <div
-              v-for="member in selectedMembers"
-              :key="member.id"
-              class="inline-flex items-center bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full"
-            >
+            <div v-for="member in selectedMembers" :key="member.id"
+              class="inline-flex items-center bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">
               <span>{{ member.name }}</span>
-              <button
-                @click="removeMember(member.id)"
-                class="ml-2 text-blue-600 hover:text-blue-800"
-              >
+              <button @click="removeMember(member.id)" class="ml-2 text-blue-600 hover:text-blue-800">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
@@ -94,23 +75,15 @@
           </label>
           <div class="space-y-2">
             <label class="flex items-center">
-              <input
-                v-model="groupType"
-                type="radio"
-                value="public"
-                class="text-blue-600 border-gray-300 focus:ring-blue-500"
-              />
+              <input v-model="groupType" type="radio" value="public"
+                class="text-blue-600 border-gray-300 focus:ring-blue-500" />
               <span class="ml-2 text-sm text-gray-700">
                 <strong>Public</strong> - Anyone in the workspace can join
               </span>
             </label>
             <label class="flex items-center">
-              <input
-                v-model="groupType"
-                type="radio"
-                value="private"
-                class="text-blue-600 border-gray-300 focus:ring-blue-500"
-              />
+              <input v-model="groupType" type="radio" value="private"
+                class="text-blue-600 border-gray-300 focus:ring-blue-500" />
               <span class="ml-2 text-sm text-gray-700">
                 <strong>Private</strong> - Only invited members can join
               </span>
@@ -123,28 +96,18 @@
           <label for="description" class="block text-sm font-medium text-gray-700 mb-2">
             Description (Optional)
           </label>
-          <textarea
-            id="description"
-            v-model="description"
-            rows="3"
-            placeholder="What's this group about?"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-          ></textarea>
+          <textarea id="description" v-model="description" rows="3" placeholder="What's this group about?"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"></textarea>
         </div>
       </div>
 
       <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-        <button
-          @click="closeModal"
-          class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
-        >
+        <button @click="closeModal"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500">
           Cancel
         </button>
-        <button
-          @click="createGroupChat"
-          :disabled="selectedMembers.length === 0 || isCreating"
-          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+        <button @click="createGroupChat" :disabled="selectedMembers.length === 0 || isCreating"
+          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
           <span v-if="isCreating">Creating...</span>
           <span v-else>Create Group</span>
         </button>
@@ -204,8 +167,8 @@ function searchUsers() {
   const query = searchQuery.value.toLowerCase();
   searchResults.value = props.availableUsers.filter(user => {
     const isAlreadySelected = selectedMembers.value.some(member => member.id === user.id);
-    const matchesQuery = user.name.toLowerCase().includes(query) || 
-                        user.email.toLowerCase().includes(query);
+    const matchesQuery = user.name.toLowerCase().includes(query) ||
+      user.email.toLowerCase().includes(query);
     return !isAlreadySelected && matchesQuery;
   });
 }

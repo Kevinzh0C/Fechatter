@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔍 快速诊断 - User 9 问题分析</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #ff9a56 0%, #ff6b95 100%);
+    }
+
+    .container {
+      background: white;
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 10px;
+      color: white;
+    }
+
+    .diagnosis-result {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .problem-explanation {
+      background: #f8d7da;
+      border: 2px solid #dc3545;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .solution {
+      background: #d1edff;
+      border: 2px solid #007bff;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .code-block {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      overflow-x: auto;
+      margin: 10px 0;
+      font-size: 14px;
+    }
+
+    .data-flow {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 15px 0;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 5px;
+    }
+
+    .step.ok {
+      background: #d4edda;
+      border-left: 4px solid #28a745;
+    }
+
+    .step.error {
+      background: #f8d7da;
+      border-left: 4px solid #dc3545;
+    }
+
+    .step.warning {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+    }
+
+    .icon {
+      font-size: 1.5em;
+      margin-right: 15px;
+    }
+
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    .highlight {
+      background: #ffeb3b;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔍 快速诊断 - "User 9" 问题分析</h1>
+      <p>根据你的截图进行详细分析</p>
+    </div>
+
+    <div class="diagnosis-result">
+      <h3>📊 诊断结果确认</h3>
+      <p><strong>问题类型:</strong> 数据传输断点 - 后端未返回用户信息</p>
+      <p><strong>症状:</strong> 显示 <span class="highlight">"User 9"</span> 而不是真实姓名</p>
+      <p><strong>影响消息:</strong> Message ID 24, Sender ID 9</p>
+      <p><strong>根本原因:</strong> API响应中 <code>sender</code> 字段为 <code>null</code></p>
+    </div>
+
+    <div class="problem-explanation">
+      <h3>🚨 为什么会出现"User 9"？</h3>
+
+      <div class="data-flow">
+        <h4>数据传输链路分析</h4>
+
+        <div class="step ok">
+          <span class="icon">💾</span>
+          <div>
+            <strong>1. 数据库 (45.77.178.85)</strong><br>
+            <small>✅ 有完整的用户信息 (id=9的真实姓名存在)</small>
+          </div>
+        </div>
+
+        <div class="step error">
+          <span class="icon">⚠️</span>
+          <div>
+            <strong>2. 后端查询</strong><br>
+            <small>❌ 只查询messages表，没有JOIN users表</small>
+          </div>
+        </div>
+
+        <div class="step error">
+          <span class="icon">🔧</span>
+          <div>
+            <strong>3. API返回</strong><br>
+            <small>❌ sender字段为null，只有sender_id</small>
+          </div>
+        </div>
+
+        <div class="step warning">
+          <span class="icon">🎨</span>
+          <div>
+            <strong>4. 前端降级处理</strong><br>
+            <small>⚠️ 自动生成 "User " + sender_id = "User 9"</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="code-block">
+        // 当前API返回 (有问题)
+        {
+        "id": 24,
+        "content": "客户反馈来钱包bug，正在修复中",
+        "sender_id": 9,
+        "sender_name": "User 9", // ← 前端生成的fallback
+        "sender": null // ← 这是问题根源！
+        }</div>
+    </div>
+
+    <div class="solution">
+      <h3>🛠️ 立即修复方案</h3>
+      <p><strong>目标:</strong> 让API返回完整的sender信息</p>
+
+      <h4>修复步骤:</h4>
+      <ol>
+        <li><strong>修改后端应用服务</strong> - 添加用户信息查询</li>
+        <li><strong>重新编译部署</strong> - 应用修复代码</li>
+        <li><strong>验证修复效果</strong> - 确认显示真实姓名</li>
+      </ol>
+
+      <button onclick="showFixCode()">📝 查看修复代码</button>
+      <button onclick="testAPI()">🧪 测试当前API</button>
+    </div>
+
+    <div id="fixCodeSection" style="display: none;">
+      <h4>🔧 后端修复代码</h4>
+      <p><strong>文件:</strong> <code>fechatter_server_src/src/services/application/workers/message/service.rs</code></p>
+
+      <div class="code-block">
+        // 替换 list_messages 方法
+        pub async fn list_messages(
+        &self,
+        user_id: UserId,
+        chat_id: ChatId,
+        query: ListMessages,
+        ) -> Result&lt;Vec&lt;MessageView&gt;, AppError&gt; {
+        let messages = self
+        .domain_service
+        .list_messages(query, i64::from(chat_id), i64::from(user_id))
+        .await
+        .map_err(AppError::from)?;
+
+        // 🔧 FIX: 为每条消息添加发送者信息
+        let mut message_views = Vec::new();
+
+        for message in messages {
+        let mut message_view = MessageView::from(message.clone());
+
+        // 从数据库获取发送者信息
+        if let Ok(Some(sender_user)) = self.domain_service
+        .get_user_by_id(i64::from(message.sender_id))
+        .await
+        {
+        message_view.sender = Some(MessageSender {
+        id: i64::from(message.sender_id),
+        fullname: sender_user.fullname, // ← 真实姓名！
+        username: sender_user.username,
+        email: Some(sender_user.email),
+        });
+        }
+
+        message_views.push(message_view);
+        }
+
+        Ok(message_views)
+        }
+      </div>
+    </div>
+
+    <div id="testResult" style="display: none;"></div>
+
+    <div class="solution">
+      <h3>✅ 修复后的预期效果</h3>
+      <div class="code-block">
+        // 修复后API返回 (正确)
+        {
+        "id": 24,
+        "content": "客户反馈来钱包bug，正在修复中",
+        "sender_id": 9,
+        "sender": {
+        "id": 9,
+        "fullname": "张三", // ← 来自45.77.178.85的真实姓名
+        "username": "zhangsan",
+        "email": "zhangsan@example.com"
+        }
+        }</div>
+
+      <p><strong>结果:</strong> 前端将显示 <span class="highlight">"张三"</span> 而不是 <span class="highlight">"User 9"</span></p>
+    </div>
+  </div>
+
+  <script>
+    function showFixCode() {
+      const section = document.getElementById('fixCodeSection');
+      section.style.display = section.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function testAPI() {
+      const resultDiv = document.getElementById('testResult');
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = '<p>🔄 正在测试当前API状态...</p>';
+
+      try {
+        // 尝试获取当前聊天的消息
+        const chatId = getChatIdFromURL();
+        if (!chatId) {
+          throw new Error('无法从URL获取聊天ID');
+        }
+
+        const response = await fetch(`/api/chat/${chatId}/messages`, {
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          throw new Error(`API请求失败: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const messages = data.data || data;
+
+        if (!Array.isArray(messages) || messages.length === 0) {
+          resultDiv.innerHTML = '<div class="problem-explanation"><p>❌ 没有找到消息数据</p></div>';
+          return;
+        }
+
+        // 查找sender_id为9的消息
+        const message9 = messages.find(m => m.sender_id === 9);
+
+        let result = '<div class="diagnosis-result">';
+        result += '<h4>🧪 API测试结果</h4>';
+
+        if (message9) {
+          result += `<p><strong>找到Sender ID 9的消息:</strong></p>`;
+          result += `<div class="code-block">${JSON.stringify(message9, null, 2)}</div>`;
+
+          if (message9.sender && message9.sender.fullname && message9.sender.fullname !== 'User 9') {
+            result += '<p style="color: green;">✅ <strong>已修复！</strong> 显示真实用户名</p>';
+          } else {
+            result += '<p style="color: red;">❌ <strong>仍需修复</strong> - sender字段为空或显示"User 9"</p>';
+          }
+        } else {
+          result += '<p>ℹ️ 当前页面没有Sender ID 9的消息</p>';
+          result += `<p>测试了 ${messages.length} 条消息</p>`;
+        }
+
+        result += '</div>';
+        resultDiv.innerHTML = result;
+
+      } catch (error) {
+        resultDiv.innerHTML = `<div class="problem-explanation">
+                    <p>❌ <strong>测试失败</strong></p>
+                    <p>错误: ${error.message}</p>
+                </div>`;
+      }
+    }
+
+    function getChatIdFromURL() {
+      const path = window.location.pathname;
+      const match = path.match(/\/chat\/(\d+)/);
+      return match ? match[1] : null;
+    }
+  </script>
+</body>
+
+</html>

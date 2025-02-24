@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>深度DOM拆解分析</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .panel {
+      background: white;
+      margin: 10px 0;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .title {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .item {
+      margin: 5px 0;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .warning {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .info {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+
+    button {
+      background: #7c3aed;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      margin: 5px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #5b21b6;
+    }
+
+    .code {
+      background: #1a1a1a;
+      color: #00ff00;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 11px;
+    }
+
+    .structure {
+      border-left: 3px solid #ccc;
+      padding-left: 10px;
+      margin-left: 10px;
+    }
+
+    .level-0 {
+      border-color: #e74c3c;
+    }
+
+    .level-1 {
+      border-color: #f39c12;
+    }
+
+    .level-2 {
+      border-color: #2ecc71;
+    }
+
+    .level-3 {
+      border-color: #3498db;
+    }
+
+    .highlight {
+      background: #ffeb3b;
+      padding: 2px 4px;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="panel">
+    <div class="title">🔍 深度DOM拆解分析工具</div>
+    <button onclick="analyzeMessageDOM()">DOM结构分析</button>
+    <button onclick="analyzeMessageContent()">消息内容分析</button>
+    <button onclick="analyzeVisibility()">可见性分析</button>
+    <button onclick="analyzeCSSIssues()">CSS问题分析</button>
+    <button onclick="analyzeVueReactivity()">Vue响应性分析</button>
+    <button onclick="fullDeepAnalysis()">完整深度分析</button>
+  </div>
+
+  <div class="panel">
+    <div class="title">📊 分析结果</div>
+    <div id="results"></div>
+  </div>
+
+  <script>
+    function log(message, type = 'info', level = 0) {
+      const results = document.getElementById('results');
+      const div = document.createElement('div');
+      div.className = `item ${type} structure level-${level}`;
+      div.innerHTML = message;
+      results.appendChild(div);
+    }
+
+    function clear() {
+      document.getElementById('results').innerHTML = '';
+    }
+
+    function analyzeMessageDOM() {
+      clear();
+      log('🔍 开始DOM结构深度分析...', 'info', 0);
+
+      // 1. 主容器分析
+      const messageList = document.querySelector('.simple-message-list');
+      const messagesWrapper = document.querySelector('.messages-wrapper');
+
+      log('📦 主容器层级:', 'info', 0);
+      log(`SimpleMessageList: ${messageList ? '✅' : '❌'} ${messageList ? messageList.offsetWidth + '×' + messageList.offsetHeight + 'px' : ''}`, messageList ? 'success' : 'error', 1);
+      log(`MessagesWrapper: ${messagesWrapper ? '✅' : '❌'} ${messagesWrapper ? messagesWrapper.offsetWidth + '×' + messagesWrapper.offsetHeight + 'px' : ''}`, messagesWrapper ? 'success' : 'error', 1);
+
+      if (!messagesWrapper) {
+        log('❌ 关键容器缺失，无法继续分析', 'error', 1);
+        return;
+      }
+
+      // 2. 子元素分析
+      const children = Array.from(messagesWrapper.children);
+      log(`📋 子元素总数: ${children.length}`, 'info', 1);
+
+      let dividerCount = 0;
+      let messageWrapperCount = 0;
+      let otherCount = 0;
+
+      children.forEach((child, index) => {
+        const tagName = child.tagName.toLowerCase();
+        const className = child.className || '';
+
+        if (className.includes('message-wrapper')) {
+          messageWrapperCount++;
+          if (index < 5) { // 只分析前5个
+            analyzeMessageWrapper(child, messageWrapperCount, 2);
+          }
+        } else if (tagName.includes('time-session-divider') || className.includes('divider')) {
+          dividerCount++;
+        } else {
+          otherCount++;
+        }
+      });
+
+      log(`📊 元素类型统计:`, 'info', 1);
+      log(`  消息容器: ${messageWrapperCount}`, messageWrapperCount > 0 ? 'success' : 'warning', 2);
+      log(`  分割线: ${dividerCount}`, 'info', 2);
+      log(`  其他: ${otherCount}`, otherCount === 0 ? 'success' : 'warning', 2);
+    }
+
+    function analyzeMessageWrapper(wrapper, index, level) {
+      const messageId = wrapper.dataset.messageId || '未知';
+      const rect = wrapper.getBoundingClientRect();
+
+      log(`🔍 消息容器 #${index} (ID: ${messageId}):`, 'info', level);
+      log(`  尺寸: ${rect.width.toFixed(1)}×${rect.height.toFixed(1)}px`, rect.width > 0 && rect.height > 0 ? 'success' : 'error', level + 1);
+      log(`  位置: top=${rect.top.toFixed(1)}, left=${rect.left.toFixed(1)}`, 'info', level + 1);
+      log(`  可见性: ${wrapper.offsetParent !== null ? '可见' : '不可见'}`, wrapper.offsetParent !== null ? 'success' : 'error', level + 1);
+
+      // 分析MessageItem
+      const messageItem = wrapper.querySelector('.message-item');
+      if (messageItem) {
+        analyzeMessageItem(messageItem, messageId, level + 1);
+      } else {
+        log(`  ❌ 缺少MessageItem组件`, 'error', level + 1);
+      }
+    }
+
+    function analyzeMessageItem(messageItem, messageId, level) {
+      const rect = messageItem.getBoundingClientRect();
+
+      log(`💬 MessageItem组件:`, 'info', level);
+      log(`  尺寸: ${rect.width.toFixed(1)}×${rect.height.toFixed(1)}px`, rect.width > 0 && rect.height > 0 ? 'success' : 'error', level + 1);
+
+      // 检查关键子元素
+      const messageHeader = messageItem.querySelector('.message-header');
+      const messageContent = messageItem.querySelector('.message-content');
+      const messageText = messageItem.querySelector('.message-text');
+      const debugNoContent = messageItem.querySelector('.debug-no-content');
+
+      log(`  Header: ${messageHeader ? '存在' : '缺失'}`, messageHeader ? 'success' : 'warning', level + 1);
+      log(`  Content容器: ${messageContent ? '存在' : '缺失'}`, messageContent ? 'success' : 'error', level + 1);
+      log(`  Text内容: ${messageText ? '存在' : '缺失'}`, messageText ? 'success' : 'warning', level + 1);
+      log(`  调试信息: ${debugNoContent ? '显示' : '无'}`, debugNoContent ? 'warning' : 'info', level + 1);
+
+      if (messageContent) {
+        analyzeMessageContent(messageContent, messageId, level + 1);
+      }
+    }
+
+    function analyzeMessageContent(contentEl, messageId, level) {
+      const rect = contentEl.getBoundingClientRect();
+      const styles = getComputedStyle(contentEl);
+
+      log(`📝 消息内容分析:`, 'info', level);
+      log(`  内容尺寸: ${rect.width.toFixed(1)}×${rect.height.toFixed(1)}px`, rect.height > 0 ? 'success' : 'error', level + 1);
+      log(`  显示状态: ${styles.display}`, styles.display !== 'none' ? 'success' : 'error', level + 1);
+      log(`  可见性: ${styles.visibility}`, styles.visibility !== 'hidden' ? 'success' : 'error', level + 1);
+      log(`  透明度: ${styles.opacity}`, parseFloat(styles.opacity) > 0 ? 'success' : 'error', level + 1);
+
+      // 检查文本内容
+      const textContent = contentEl.textContent.trim();
+      const innerHTML = contentEl.innerHTML.trim();
+
+      log(`  文本长度: ${textContent.length}`, textContent.length > 0 ? 'success' : 'warning', level + 1);
+      if (textContent.length === 0 && innerHTML.length > 0) {
+        log(`  HTML内容: ${innerHTML.substring(0, 100)}...`, 'warning', level + 1);
+      }
+      if (textContent.length > 0) {
+        log(`  文本预览: "${textContent.substring(0, 50)}${textContent.length > 50 ? '...' : ''}"`, 'success', level + 1);
+      }
+    }
+
+    function analyzeVisibility() {
+      clear();
+      log('👁️ 开始可见性深度分析...', 'info', 0);
+
+      const messageWrappers = document.querySelectorAll('.message-wrapper');
+
+      if (messageWrappers.length === 0) {
+        log('❌ 没有找到消息容器', 'error', 1);
+        return;
+      }
+
+      let stats = {
+        total: messageWrappers.length,
+        visible: 0,
+        hidden: 0,
+        zeroSize: 0,
+        withContent: 0,
+        withoutContent: 0
+      };
+
+      messageWrappers.forEach((wrapper, index) => {
+        const rect = wrapper.getBoundingClientRect();
+        const isVisible = rect.width > 0 && rect.height > 0;
+        const messageItem = wrapper.querySelector('.message-item');
+        const hasTextContent = messageItem ? messageItem.textContent.trim().length > 0 : false;
+
+        if (rect.width === 0 || rect.height === 0) {
+          stats.zeroSize++;
+        } else if (isVisible) {
+          stats.visible++;
+        } else {
+          stats.hidden++;
+        }
+
+        if (hasTextContent) {
+          stats.withContent++;
+        } else {
+          stats.withoutContent++;
+        }
+
+        // 详细分析前3个
+        if (index < 3) {
+          const messageId = wrapper.dataset.messageId || '未知';
+          log(`消息 ${index + 1} (ID: ${messageId}):`, 'info', 1);
+          log(`  可见性: ${isVisible ? '可见' : '不可见'}`, isVisible ? 'success' : 'error', 2);
+          log(`  有内容: ${hasTextContent ? '是' : '否'}`, hasTextContent ? 'success' : 'warning', 2);
+
+          if (!isVisible && messageItem) {
+            const itemStyles = getComputedStyle(messageItem);
+            log(`  CSS问题检查:`, 'warning', 2);
+            log(`    display: ${itemStyles.display}`, itemStyles.display !== 'none' ? 'success' : 'error', 3);
+            log(`    visibility: ${itemStyles.visibility}`, itemStyles.visibility !== 'hidden' ? 'success' : 'error', 3);
+            log(`    opacity: ${itemStyles.opacity}`, parseFloat(itemStyles.opacity) > 0 ? 'success' : 'error', 3);
+          }
+        }
+      });
+
+      log(`📊 可见性统计:`, 'info', 1);
+      log(`  总计: ${stats.total}`, 'info', 2);
+      log(`  可见: ${stats.visible} (${(stats.visible / stats.total * 100).toFixed(1)}%)`, stats.visible > 0 ? 'success' : 'error', 2);
+      log(`  隐藏: ${stats.hidden}`, stats.hidden === 0 ? 'success' : 'warning', 2);
+      log(`  零尺寸: ${stats.zeroSize}`, stats.zeroSize === 0 ? 'success' : 'error', 2);
+      log(`  有内容: ${stats.withContent}`, stats.withContent > 0 ? 'success' : 'warning', 2);
+      log(`  无内容: ${stats.withoutContent}`, stats.withoutContent === 0 ? 'success' : 'warning', 2);
+    }
+
+    function analyzeCSSIssues() {
+      clear();
+      log('🎨 开始CSS问题分析...', 'info', 0);
+
+      const messagesWrapper = document.querySelector('.messages-wrapper');
+      const messageWrappers = document.querySelectorAll('.message-wrapper');
+
+      // 检查主容器CSS
+      if (messagesWrapper) {
+        const styles = getComputedStyle(messagesWrapper);
+        log('📦 MessagesWrapper CSS状态:', 'info', 1);
+        log(`  display: ${styles.display}`, styles.display === 'block' || styles.display === 'flex' ? 'success' : 'error', 2);
+        log(`  height: ${styles.height}`, 'info', 2);
+        log(`  min-height: ${styles.minHeight}`, styles.minHeight.includes('vh') ? 'warning' : 'success', 2);
+        log(`  overflow: ${styles.overflow}`, 'info', 2);
+        log(`  position: ${styles.position}`, 'info', 2);
+      }
+
+      // 检查消息容器CSS
+      if (messageWrappers.length > 0) {
+        const firstWrapper = messageWrappers[0];
+        const messageItem = firstWrapper.querySelector('.message-item');
+
+        if (messageItem) {
+          const wrapperStyles = getComputedStyle(firstWrapper);
+          const itemStyles = getComputedStyle(messageItem);
+
+          log('📝 MessageWrapper CSS状态:', 'info', 1);
+          log(`  display: ${wrapperStyles.display}`, wrapperStyles.display !== 'none' ? 'success' : 'error', 2);
+          log(`  height: ${wrapperStyles.height}`, 'info', 2);
+          log(`  margin: ${wrapperStyles.margin}`, 'info', 2);
+
+          log('💬 MessageItem CSS状态:', 'info', 1);
+          log(`  display: ${itemStyles.display}`, itemStyles.display !== 'none' ? 'success' : 'error', 2);
+          log(`  visibility: ${itemStyles.visibility}`, itemStyles.visibility !== 'hidden' ? 'success' : 'error', 2);
+          log(`  opacity: ${itemStyles.opacity}`, parseFloat(itemStyles.opacity) > 0 ? 'success' : 'error', 2);
+          log(`  height: ${itemStyles.height}`, 'info', 2);
+          log(`  background: ${itemStyles.backgroundColor}`, 'info', 2);
+
+          // 检查内容容器
+          const messageContent = messageItem.querySelector('.message-content');
+          if (messageContent) {
+            const contentStyles = getComputedStyle(messageContent);
+            log('📄 MessageContent CSS状态:', 'info', 1);
+            log(`  display: ${contentStyles.display}`, contentStyles.display !== 'none' ? 'success' : 'error', 2);
+            log(`  height: ${contentStyles.height}`, 'info', 2);
+            log(`  margin-left: ${contentStyles.marginLeft}`, 'info', 2);
+          }
+        }
+      }
+    }
+
+    function analyzeVueReactivity() {
+      clear();
+      log('⚡ 开始Vue响应性分析...', 'info', 0);
+
+      const messageList = document.querySelector('.simple-message-list');
+
+      if (messageList && messageList.__vueParentComponent) {
+        const component = messageList.__vueParentComponent;
+        const setupState = component.setupState || {};
+
+        log('🔧 Vue组件状态详细分析:', 'info', 1);
+
+        // 分析enhancedMessages
+        if (setupState.enhancedMessages) {
+          const enhanced = setupState.enhancedMessages;
+          log(`📋 enhancedMessages: ${enhanced.length} 项`, enhanced.length > 0 ? 'success' : 'warning', 2);
+
+          const messages = enhanced.filter(item => !item.type || (item.type !== 'date-divider' && item.type !== 'session-divider'));
+          const dividers = enhanced.filter(item => item.type === 'date-divider' || item.type === 'session-divider');
+
+          log(`  消息数量: ${messages.length}`, messages.length > 0 ? 'success' : 'warning', 3);
+          log(`  分割线数量: ${dividers.length}`, 'info', 3);
+
+          // 详细检查前3个消息对象
+          messages.slice(0, 3).forEach((msg, index) => {
+            log(`  消息 ${index + 1} (ID: ${msg.id}):`, 'info', 3);
+            log(`    content: ${msg.content ? '存在' : '缺失'} ${msg.content ? '(' + msg.content.length + '字符)' : ''}`, msg.content ? 'success' : 'error', 4);
+            log(`    sender_id: ${msg.sender_id || '缺失'}`, msg.sender_id ? 'success' : 'warning', 4);
+            log(`    created_at: ${msg.created_at || '缺失'}`, msg.created_at ? 'success' : 'warning', 4);
+            log(`    关键字段: ${Object.keys(msg).join(', ')}`, 'info', 4);
+          });
+        }
+
+        // 分析props
+        if (component.props) {
+          log(`📥 Props状态:`, 'info', 2);
+          log(`  messages: ${component.props.messages?.length || 0} 条`, 'info', 3);
+          log(`  chatId: ${component.props.chatId}`, 'info', 3);
+          log(`  currentUserId: ${component.props.currentUserId}`, 'info', 3);
+        }
+
+      } else {
+        log('❌ 无法访问Vue组件实例', 'error', 1);
+      }
+    }
+
+    function fullDeepAnalysis() {
+      clear();
+      log('🔍 开始完整深度分析...', 'info', 0);
+
+      setTimeout(() => {
+        analyzeMessageDOM();
+        setTimeout(() => {
+          analyzeVisibility();
+          setTimeout(() => {
+            analyzeCSSIssues();
+            setTimeout(() => {
+              analyzeVueReactivity();
+
+              // 最终根因推理
+              setTimeout(() => {
+                log('🎯 根因推理分析:', 'info', 0);
+
+                const messageWrappers = document.querySelectorAll('.message-wrapper');
+                const visibleMessages = Array.from(messageWrappers).filter(w => {
+                  const item = w.querySelector('.message-item');
+                  return item && item.textContent.trim().length > 0;
+                });
+                const debugNoContent = document.querySelectorAll('.debug-no-content');
+
+                if (messageWrappers.length === 0) {
+                  log('🚨 根因：Vue组件未渲染任何消息容器', 'error', 1);
+                } else if (debugNoContent.length > 0) {
+                  log('🚨 根因：消息对象缺少content字段', 'error', 1);
+                  log(`  发现 ${debugNoContent.length} 个无内容消息`, 'error', 2);
+                } else if (visibleMessages.length === 0) {
+                  log('🚨 根因：CSS样式导致消息内容隐藏', 'error', 1);
+                } else {
+                  log('✅ 消息显示正常', 'success', 1);
+                }
+
+                log('🔧 建议修复策略:', 'info', 1);
+                if (debugNoContent.length > 0) {
+                  log('  1. 检查API返回的消息对象结构', 'warning', 2);
+                  log('  2. 确保content字段正确映射', 'warning', 2);
+                } else {
+                  log('  1. 检查CSS样式继承问题', 'warning', 2);
+                  log('  2. 验证Vue条件渲染逻辑', 'warning', 2);
+                }
+              }, 200);
+            }, 200);
+          }, 200);
+        }, 200);
+      }, 100);
+    }
+
+    // 自动运行深度分析
+    window.addEventListener('load', () => {
+      setTimeout(fullDeepAnalysis, 1500);
+    });
+  </script>
+</body>
+
+</html>

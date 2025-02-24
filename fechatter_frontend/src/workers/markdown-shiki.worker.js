@@ -34,7 +34,6 @@ const initHighlighter = async () => {
         'plaintext'
       ]
     });
-  }
   return shikiHighlighter;
 };
 
@@ -53,7 +52,6 @@ function rehypeShiki(options = {}) {
     visit(tree, 'element', (node, index, parent) => {
       if (node.tagName === 'pre' && node.children?.[0]?.tagName === 'code') {
         codeBlocks.push({ node, index, parent });
-      }
     });
 
     // Process code blocks in parallel
@@ -95,7 +93,6 @@ function rehypeShiki(options = {}) {
             properties: { className: ['code-title'] },
             children: [{ type: 'text', value: metadata.title }]
           });
-        }
 
         // Parse the highlighted HTML
         const { fromHtml } = await import('hast-util-from-html');
@@ -108,14 +105,15 @@ function rehypeShiki(options = {}) {
             highlightLines: metadata.highlightLines,
             startLine: metadata.startLine
           });
-        }
 
         wrapper.children.push(preNode);
 
         // Replace the original node
         parent.children[index] = wrapper;
       } catch (error) {
-        console.error('Failed to highlight code:', error);
+        if (import.meta.env.DEV) {
+          console.error('Failed to highlight code:', error);
+        }
         // Keep original node on error
       }
     });
@@ -130,7 +128,6 @@ function extractLanguage(codeNode) {
   if (Array.isArray(className)) {
     const langClass = className.find(c => c.startsWith('language-'));
     return langClass ? langClass.replace('language-', '') : 'plaintext';
-  }
   return 'plaintext';
 }
 
@@ -170,9 +167,6 @@ function addLineNumbers(preNode, options) {
             lines.push({ type: 'line', elements: [{ ...node, value: nodeLines[i] }] });
           } else {
             currentLine.elements.push({ ...node, value: nodeLines[i] });
-          }
-        }
-      }
     } else if (node.children) {
       node.children.forEach(processNode);
     } else {
@@ -180,7 +174,6 @@ function addLineNumbers(preNode, options) {
       if (currentLine.type === 'line') {
         currentLine.elements.push(node);
       }
-    }
   };
 
   codeNode.children.forEach(processNode);
@@ -223,7 +216,6 @@ function addLineNumbers(preNode, options) {
 
     codeNode.children.push(lineElement);
   });
-}
 
 // Initialize the markdown processor with Shiki
 const createProcessor = (theme = 'dark') => {
@@ -263,7 +255,6 @@ async function processMarkdown(id, content, options = {}) {
       }, 50);
       pendingTasks.set(id, timer);
     });
-  }
 
   return performProcessing(id, content, theme);
 }
@@ -330,14 +321,14 @@ async function performProcessing(id, content, theme) {
     };
     
   } catch (error) {
-    console.error('Markdown processing error:', error);
+    if (import.meta.env.DEV) {
+      console.error('Markdown processing error:', error);
     return {
       id,
       type: 'error',
       error: error.message
     };
   }
-}
 
 // Simplified AST diffing (reuse from original)
 function diffAST(oldNode, newNode, path = []) {
@@ -363,7 +354,6 @@ function diffAST(oldNode, newNode, path = []) {
   if (oldNode.value !== newNode.value || 
       JSON.stringify(oldNode.position) !== JSON.stringify(newNode.position)) {
     patches.push({ type: 'update', path: [...path], oldNode, newNode });
-  }
   
   if (oldNode.children && newNode.children) {
     const maxLength = Math.max(oldNode.children.length, newNode.children.length);
@@ -375,7 +365,6 @@ function diffAST(oldNode, newNode, path = []) {
       );
       patches.push(...childPatches);
     }
-  }
   
   return patches;
 }
@@ -389,7 +378,6 @@ function cleanup(id) {
     clearTimeout(pendingTasks.get(id));
     pendingTasks.delete(id);
   }
-}
 
 // Message handler
 self.addEventListener('message', async (event) => {

@@ -1,57 +1,152 @@
 /**
- * Secure Logger
- * Prevents accidental JWT token exposure in console logs
+ * Production-Grade Secure Logger
+ * Implements environment-aware logging with complete debug suppression in production
  */
 
-export class SecureLogger {
+class SecureLogger {
   constructor() {
+    this.environment = import.meta.env.MODE || 'development';
+    this.isDevelopment = this.environment === 'development';
+    this.isProduction = this.environment === 'production';
+
+    // Production security settings
+    this.productionConfig = {
+      allowDebug: false,
+      allowInfo: false,
+      allowWarn: true,
+      allowError: true,
+      sanitizeData: true,
+      maxLogLength: 100
+    };
+
+    // Development settings
+    this.developmentConfig = {
+      allowDebug: true,
+      allowInfo: true,
+      allowWarn: true,
+      allowError: true,
+      sanitizeData: false,
+      maxLogLength: 1000
+    };
+
+    this.config = this.isProduction ? this.productionConfig : this.developmentConfig;
     this.sensitivePatterns = [
-      /eyJ[A-Za-z0-9-_]*\.[A-Za-z0-9-_]*\.[A-Za-z0-9-_]*/g, // JWT pattern
-      /Bearer\s+[A-Za-z0-9-_\.]+/gi, // Bearer token pattern
-      /access_token[=:]\s*[A-Za-z0-9-_\.]+/gi, // access_token parameter
-      /token[=:]\s*[A-Za-z0-9-_\.]+/gi, // generic token pattern
+      /chatId/i,
+      /messageId/i,
+      /userId/i,
+      /token/i,
+      /password/i,
+      /secret/i,
+      /api[_-]?key/i,
+      /authorization/i,
+      /bearer/i,
+      /timestamp/i,
+      /debug.*raw/i,
+      /performance/i
     ];
-    this.replacement = '[TOKEN_REDACTED]';
+
+    this.initialize();
+  }
+
+  initialize() {
+    if (this.isProduction) {
+      this.suppressProductionLogs();
+    }
+
+    if (import.meta.env.DEV) {
+      console.log(`🔒 SecureLogger initialized (${this.environment})`);
+    }
   }
 
   /**
-   * Sanitize a message to remove sensitive information
+   * Completely suppress debug logs in production
    */
-  sanitize(message) {
-    if (typeof message !== 'string') {
-      // For objects, convert to string then sanitize
-      try {
-        message = JSON.stringify(message);
-      } catch (e) {
-        message = String(message);
+  suppressProductionLogs() {
+    // Store original methods
+    this.originalMethods = {
+      log: console.log,
+      debug: console.debug,
+      info: console.info,
+      warn: console.warn,
+      error: console.error
+    };
+
+    // Override console methods in production
+    console.log = this.isProduction ? () => { } : console.log;
+    console.debug = this.isProduction ? () => { } : console.debug;
+    console.info = this.isProduction ? () => { } : console.info;
+
+    // Keep warnings and errors but sanitize them
+    console.warn = (...args) => {
+      if (this.config.allowWarn) {
+        const sanitized = this.sanitizeArgs(args);
+        this.originalMethods.warn(...sanitized);
       }
+    };
+
+    console.error = (...args) => {
+      if (this.config.allowError) {
+        const sanitized = this.sanitizeArgs(args);
+        this.originalMethods.error(...sanitized);
+      }
+    };
+  }
+
+  /**
+   * Sanitize arguments to remove sensitive information
+   */
+  sanitizeArgs(args) {
+    if (!this.config.sanitizeData) {
+      return args;
     }
 
-    let sanitized = message;
-    this.sensitivePatterns.forEach(pattern => {
-      sanitized = sanitized.replace(pattern, this.replacement);
+    return args.map(arg => {
+      if (typeof arg === 'string') {
+        return this.sanitizeString(arg);
+      } else if (typeof arg === 'object' && arg !== null) {
+        return this.sanitizeObject(arg);
+      }
+      return arg;
     });
+  }
+
+  /**
+   * Sanitize string content
+   */
+  sanitizeString(str) {
+    let sanitized = str;
+
+    // Remove sensitive patterns
+    this.sensitivePatterns.forEach(pattern => {
+      sanitized = sanitized.replace(pattern, '[REDACTED]');
+    });
+
+    // Limit length
+    if (sanitized.length > this.config.maxLogLength) {
+      sanitized = sanitized.substring(0, this.config.maxLogLength) + '...[TRUNCATED]';
+    }
 
     return sanitized;
   }
 
   /**
-   * Sanitize an object by recursively checking all string values
+   * Sanitize object content
    */
   sanitizeObject(obj) {
-    if (!obj || typeof obj !== 'object') {
-      return obj;
-    }
-
     if (Array.isArray(obj)) {
-      return obj.map(item => this.sanitizeObject(item));
+      return obj.map(item =>
+        typeof item === 'object' ? this.sanitizeObject(item) : item
+      );
     }
 
     const sanitized = {};
     for (const [key, value] of Object.entries(obj)) {
-      if (typeof value === 'string') {
-        sanitized[key] = this.sanitize(value);
-      } else if (typeof value === 'object') {
+      // Skip sensitive keys entirely
+      if (this.sensitivePatterns.some(pattern => pattern.test(key))) {
+        sanitized[key] = '[REDACTED]';
+      } else if (typeof value === 'string') {
+        sanitized[key] = this.sanitizeString(value);
+      } else if (typeof value === 'object' && value !== null) {
         sanitized[key] = this.sanitizeObject(value);
       } else {
         sanitized[key] = value;
@@ -62,54 +157,71 @@ export class SecureLogger {
   }
 
   /**
-   * Safe console.log
+   * Safe console.debug
    */
-  log(...args) {
-    const sanitizedArgs = args.map(arg =>
-      typeof arg === 'string' ? this.sanitize(arg) : this.sanitizeObject(arg)
-    );
-    console.log(...sanitizedArgs);
+  debug(...args) {
+    if (this.config.allowDebug) {
+      const sanitizedArgs = this.sanitizeArgs(args);
+      console.debug(...sanitizedArgs);
+    }
+  }
+
+  /**
+   * Safe console.info
+   */
+  info(...args) {
+    if (this.config.allowInfo) {
+      const sanitizedArgs = this.sanitizeArgs(args);
+      console.info(...sanitizedArgs);
+    }
   }
 
   /**
    * Safe console.warn
    */
   warn(...args) {
-    const sanitizedArgs = args.map(arg =>
-      typeof arg === 'string' ? this.sanitize(arg) : this.sanitizeObject(arg)
-    );
-    console.warn(...sanitizedArgs);
+    if (this.config.allowWarn) {
+      const sanitizedArgs = this.sanitizeArgs(args);
+      if (import.meta.env.DEV) {
+        console.warn(...sanitizedArgs);
+      }
+    }
   }
 
   /**
    * Safe console.error
    */
   error(...args) {
-    const sanitizedArgs = args.map(arg =>
-      typeof arg === 'string' ? this.sanitize(arg) : this.sanitizeObject(arg)
-    );
-    console.error(...sanitizedArgs);
+    if (this.config.allowError) {
+      const sanitizedArgs = this.sanitizeArgs(args);
+      if (import.meta.env.DEV) {
+        console.error(...sanitizedArgs);
+      }
+    }
   }
 
   /**
-   * Safe console.debug
+   * Development-only performance logging
    */
-  debug(...args) {
-    const sanitizedArgs = args.map(arg =>
-      typeof arg === 'string' ? this.sanitize(arg) : this.sanitizeObject(arg)
-    );
-    console.debug(...sanitizedArgs);
+  performance(label, data) {
+    if (this.isDevelopment) {
+      if (import.meta.env.DEV) {
+        console.log(`📊 [PERF] ${label}:`, data);
+      }
+    }
+  }
+
+  /**
+   * Restore original console methods (for debugging)
+   */
+  restore() {
+    if (this.originalMethods) {
+      Object.assign(console, this.originalMethods);
+    }
   }
 }
 
-// Global instance
-export const secureLogger = new SecureLogger();
+// Create singleton instance
+const secureLogger = new SecureLogger();
 
-// Helper functions for common use
-export const secureLog = (...args) => secureLogger.log(...args);
-export const secureWarn = (...args) => secureLogger.warn(...args);
-export const secureError = (...args) => secureLogger.error(...args);
-export const secureDebug = (...args) => secureLogger.debug(...args);
-
-// Export for use in other modules
 export default secureLogger; 

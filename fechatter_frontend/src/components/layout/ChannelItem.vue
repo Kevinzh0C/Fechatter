@@ -3,7 +3,8 @@
     'active': isActive,
     'unread': hasUnread,
     'muted': channel.is_muted
-  }" @click="$emit('click', channel)" @contextmenu="$emit('context-menu', $event)">
+  }" @click="handleClick" @contextmenu="$emit('context-menu', $event)" @mouseenter="handleMouseEnter"
+    @mouseleave="handleMouseLeave">
     <!-- Channel Icon -->
     <div class="channel-icon">
       <Icon :name="getChannelIcon()" />
@@ -42,13 +43,21 @@
           <span></span>
         </div>
       </div>
+
+      <!-- Loading Indicator (for preloading feedback) -->
+      <div v-if="isPreloading" class="preload-indicator">
+        <div class="preload-spinner"></div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { useChatStore } from '@/stores/chat'
+import { createNavigationHelper } from '@/services/navigation/NavigationManager'
 import Icon from '@/components/ui/Icon.vue'
+import { useRouter } from 'vue-router'
 
 // Props
 const props = defineProps({
@@ -67,7 +76,18 @@ const props = defineProps({
 })
 
 // Emits
-defineEmits(['click', 'context-menu'])
+const emit = defineEmits(['click', 'context-menu'])
+
+// Store
+const chatStore = useChatStore()
+
+// State
+const preloadTimer = ref(null)
+const isPreloading = ref(false)
+
+// Get navigation methods
+const router = useRouter()
+const navigationHelper = createNavigationHelper(router, chatStore)
 
 // Computed
 const hasUnread = computed(() => {
@@ -127,6 +147,57 @@ const formatTime = (timestamp) => {
 
   return messageTime.toLocaleDateString()
 }
+
+// Handle click
+const handleClick = async () => {
+  if (props.channel.id.toString().startsWith('preview-dm-')) {
+    return;
+  }
+
+  // Clear any pending preload
+  if (preloadTimer.value) {
+    clearTimeout(preloadTimer.value)
+    preloadTimer.value = null
+  }
+
+  // 🔧 FIXED: Emit click event to parent AND handle navigation
+  emit('click', props.channel);
+
+  try {
+    // Use pre-initialized navigation helper
+    await navigationHelper.navigateToChat(props.channel.id);
+  } catch (error) {
+    console.error('Navigation failed:', error);
+  }
+}
+
+// Handle mouse enter - preload after delay
+const handleMouseEnter = () => {
+  // Don't preload if already active
+  if (props.isActive) return
+
+  // Preload after 300ms hover
+  preloadTimer.value = setTimeout(async () => {
+    try {
+      isPreloading.value = true
+      await navigationHelper.preloadChat(props.channel.id)
+    } catch (error) {
+      // Preload errors are non-critical
+      console.debug('Preload failed:', error)
+    } finally {
+      isPreloading.value = false
+    }
+  }, 300)
+}
+
+// Handle mouse leave - cancel preload
+const handleMouseLeave = () => {
+  if (preloadTimer.value) {
+    clearTimeout(preloadTimer.value)
+    preloadTimer.value = null
+  }
+  isPreloading.value = false
+}
 </script>
 
 <style scoped>
@@ -162,14 +233,14 @@ const formatTime = (timestamp) => {
 }
 
 .channel-item.unread {
-  color: rgba(255, 255, 255, 0.95);
+  color: white;
+  /* Brighter for unread */
 }
 
-/* Keep font weight consistent regardless of unread status
 .channel-item.unread .name-text {
   font-weight: 600;
+  /* Bolder for unread */
 }
-*/
 
 .channel-item.muted {
   opacity: 0.5;
@@ -231,9 +302,16 @@ const formatTime = (timestamp) => {
   flex-shrink: 0;
 }
 
-/* Hide last message preview for cleaner look */
+/* Show last message preview */
 .last-message {
-  display: none;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  gap: 4px;
 }
 
 /* 🔔 Channel Status */
@@ -340,48 +418,71 @@ const formatTime = (timestamp) => {
     height: 18px;
     font-size: 12px;
   }
-}
 
-/* 🎯 Touch-friendly */
-@media (hover: none) and (pointer: coarse) {
-  .channel-item {
-    min-height: 44px;
+  /* 🎯 Touch-friendly */
+  @media (hover: none) and (pointer: coarse) {
+    .channel-item {
+      min-height: 44px;
+    }
+
+    /* 🎭 Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+
+      .channel-item,
+      .typing-dots span {
+        animation: none;
+        transition: none;
+      }
+
+      /* 🌙 Focus States */
+      .channel-item:focus-visible {
+        outline: 2px solid rgba(88, 101, 242, 0.5);
+        outline-offset: 2px;
+      }
+
+      /* 🎨 High Contrast */
+      @media (prefers-contrast: high) {
+        .channel-item {
+          border: 1px solid transparent;
+        }
+
+        .channel-item:hover {
+          border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .channel-item.active {
+          border-color: white;
+          background: rgba(255, 255, 255, 0.15);
+        }
+
+        .unread-badge {
+          border: 1px solid white;
+        }
+      }
+    }
   }
 }
 
-/* 🎭 Reduced Motion */
-@media (prefers-reduced-motion: reduce) {
-
-  .channel-item,
-  .typing-dots span {
-    animation: none;
-    transition: none;
-  }
+/* Preload indicator */
+.preload-indicator {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
-/* 🌙 Focus States */
-.channel-item:focus-visible {
-  outline: 2px solid rgba(88, 101, 242, 0.5);
-  outline-offset: 2px;
+.preload-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
-/* 🎨 High Contrast */
-@media (prefers-contrast: high) {
-  .channel-item {
-    border: 1px solid transparent;
-  }
-
-  .channel-item:hover {
-    border-color: rgba(255, 255, 255, 0.2);
-  }
-
-  .channel-item.active {
-    border-color: white;
-    background: rgba(255, 255, 255, 0.15);
-  }
-
-  .unread-badge {
-    border: 1px solid white;
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 </style>

@@ -10,19 +10,26 @@ class CompleteMessageFlowDiagnostic {
     this.isTracing = false;
     this.expectedOrder = null;
 
-    console.log('🔬 Complete Message Flow Diagnostic initialized');
-    console.log('📋 Will trace: UI Click → Store → API → Processing → Display');
-  }
+    if (import.meta.env.DEV) {
+      console.log('🔬 Complete Message Flow Diagnostic initialized');
+    if (import.meta.env.DEV) {
+      console.log('📋 Will trace: UI Click → Store → API → Processing → Display');
+    }
 
   /**
    * Start complete flow tracing
    * 开始完整流程追踪
    */
   startCompleteTrace() {
-    console.log('\n🔬 STARTING COMPLETE MESSAGE FLOW TRACE');
-    console.log('=======================================');
-    console.log('🎯 Tracing from channel click to message display');
-    console.log('📊 Will analyze every function and statement');
+    if (import.meta.env.DEV) {
+      console.log('\n🔬 STARTING COMPLETE MESSAGE FLOW TRACE');
+    if (import.meta.env.DEV) {
+      console.log('=======================================');
+    if (import.meta.env.DEV) {
+      console.log('🎯 Tracing from channel click to message display');
+    if (import.meta.env.DEV) {
+      console.log('📊 Will analyze every function and statement');
+    }
 
     this.isTracing = true;
     this.traceLog = [];
@@ -35,8 +42,11 @@ class CompleteMessageFlowDiagnostic {
     this.interceptDataProcessing();
     this.interceptUIRendering();
 
-    console.log('✅ All interceptors installed');
-    console.log('👆 Now click on a channel to start tracing...');
+    if (import.meta.env.DEV) {
+      console.log('✅ All interceptors installed');
+    if (import.meta.env.DEV) {
+      console.log('👆 Now click on a channel to start tracing...');
+    }
 
     return this;
   }
@@ -45,7 +55,9 @@ class CompleteMessageFlowDiagnostic {
    * Intercept UI events (channel clicks)
    */
   interceptUIEvents() {
-    console.log('🔧 Installing UI event interceptors...');
+    if (import.meta.env.DEV) {
+      console.log('🔧 Installing UI event interceptors...');
+    }
 
     // Intercept channel click events
     const originalAddEventListener = Element.prototype.addEventListener;
@@ -81,13 +93,14 @@ class CompleteMessageFlowDiagnostic {
         return originalPush.call(this, location);
       }.bind(this);
     }
-  }
 
   /**
    * Intercept store actions
    */
   interceptStoreActions() {
-    console.log('🔧 Installing store interceptors...');
+    if (import.meta.env.DEV) {
+      console.log('🔧 Installing store interceptors...');
+    }
 
     const chatStore = this.getChatStore();
     if (!chatStore) return;
@@ -212,7 +225,9 @@ class CompleteMessageFlowDiagnostic {
    * Intercept API requests
    */
   interceptAPIRequests() {
-    console.log('🔧 Installing API interceptors...');
+    if (import.meta.env.DEV) {
+      console.log('🔧 Installing API interceptors...');
+    }
 
     // Intercept fetch with detailed request/response analysis
     const originalFetch = window.fetch;
@@ -262,7 +277,6 @@ class CompleteMessageFlowDiagnostic {
               error: parseError.message,
               timestamp: Date.now()
             });
-          }
 
           return response;
 
@@ -276,7 +290,6 @@ class CompleteMessageFlowDiagnostic {
 
           throw fetchError;
         }
-      }
 
       return originalFetch.apply(window, args);
     }.bind(this);
@@ -286,7 +299,9 @@ class CompleteMessageFlowDiagnostic {
    * Intercept data processing
    */
   interceptDataProcessing() {
-    console.log('🔧 Installing data processing interceptors...');
+    if (import.meta.env.DEV) {
+      console.log('🔧 Installing data processing interceptors...');
+    }
 
     // Intercept Array.prototype.sort to catch any sorting operations
     const originalSort = Array.prototype.sort;
@@ -306,7 +321,6 @@ class CompleteMessageFlowDiagnostic {
           } : null,
           timestamp: Date.now()
         });
-      }
 
       const result = originalSort.apply(this, args);
 
@@ -336,7 +350,9 @@ class CompleteMessageFlowDiagnostic {
    * Intercept UI rendering
    */
   interceptUIRendering() {
-    console.log('🔧 Installing UI rendering interceptors...');
+    if (import.meta.env.DEV) {
+      console.log('🔧 Installing UI rendering interceptors...');
+    }
 
     // Monitor DOM mutations for message rendering
     const observer = new MutationObserver((mutations) => {
@@ -364,7 +380,6 @@ class CompleteMessageFlowDiagnostic {
               this.analyzeDOMOrder();
             }, 100);
           }
-        }
       });
     });
 
@@ -401,7 +416,6 @@ class CompleteMessageFlowDiagnostic {
         created_at: messages[i].created_at,
         content: messages[i].content?.substring(0, 30)
       });
-    }
 
     // Check chronological order
     for (let i = 1; i < orderAnalysis.timestamps.length; i++) {
@@ -417,8 +431,6 @@ class CompleteMessageFlowDiagnostic {
           prevMessage: prev.messageId,
           currMessage: curr.messageId
         });
-      }
-    }
 
     this.logStep('ORDER_ANALYSIS', 'message_order', orderAnalysis);
 
@@ -448,7 +460,6 @@ class CompleteMessageFlowDiagnostic {
       newestLast: this.expectedOrder[this.expectedOrder.length - 1],
       timestamp: Date.now()
     });
-  }
 
   /**
    * Analyze DOM order
@@ -498,21 +509,26 @@ class CompleteMessageFlowDiagnostic {
 
     this.traceLog.push(entry);
 
-    console.log(`🔬 [${entry.sequenceNumber}] ${category}:${action}`, data);
-  }
+    if (import.meta.env.DEV) {
+      console.log(`🔬 [${entry.sequenceNumber}] ${category}:${action}`, data);
+    }
 
   /**
    * Stop tracing and generate comprehensive report
    */
   stopAndAnalyze() {
-    console.log('\n📊 STOPPING TRACE AND GENERATING COMPREHENSIVE REPORT');
-    console.log('====================================================');
+    if (import.meta.env.DEV) {
+      console.log('\n📊 STOPPING TRACE AND GENERATING COMPREHENSIVE REPORT');
+    if (import.meta.env.DEV) {
+      console.log('====================================================');
+    }
 
     this.isTracing = false;
     this.restoreInterceptors();
 
     if (this.traceLog.length === 0) {
-      console.log('⚠️ No trace data collected. Make sure to click on a channel after starting trace.');
+      if (import.meta.env.DEV) {
+        console.log('⚠️ No trace data collected. Make sure to click on a channel after starting trace.');
       return;
     }
 
@@ -527,35 +543,44 @@ class CompleteMessageFlowDiagnostic {
    * Generate complete flow report
    */
   generateCompleteReport() {
-    console.log('\n📋 COMPLETE FLOW REPORT');
-    console.log('=======================');
+    if (import.meta.env.DEV) {
+      console.log('\n📋 COMPLETE FLOW REPORT');
+    if (import.meta.env.DEV) {
+      console.log('=======================');
+    }
 
     // Group by category
     const categories = {};
     this.traceLog.forEach(entry => {
       if (!categories[entry.category]) {
         categories[entry.category] = [];
-      }
       categories[entry.category].push(entry);
     });
 
     // Report each category
     Object.keys(categories).forEach(category => {
-      console.log(`\n📂 ${category}:`);
-      console.log(`${'='.repeat(category.length + 5)}`);
+      if (import.meta.env.DEV) {
+        console.log(`\n📂 ${category}:`);
+      if (import.meta.env.DEV) {
+        console.log(`${'='.repeat(category.length + 5)}`);
+      }
 
       categories[category].forEach(entry => {
-        console.log(`   [${entry.sequenceNumber}] ${entry.action}:`, entry.data);
+        if (import.meta.env.DEV) {
+          console.log(`   [${entry.sequenceNumber}] ${entry.action}:`, entry.data);
+        }
       });
     });
-  }
 
   /**
    * Generate root cause analysis
    */
   generateRootCauseAnalysis() {
-    console.log('\n🔍 ROOT CAUSE ANALYSIS');
-    console.log('======================');
+    if (import.meta.env.DEV) {
+      console.log('\n🔍 ROOT CAUSE ANALYSIS');
+    if (import.meta.env.DEV) {
+      console.log('======================');
+    }
 
     // Find all order analyses
     const orderAnalyses = this.traceLog.filter(entry =>
@@ -563,24 +588,31 @@ class CompleteMessageFlowDiagnostic {
     );
 
     if (orderAnalyses.length === 0) {
-      console.log('⚠️ No order analysis data found');
+      if (import.meta.env.DEV) {
+        console.log('⚠️ No order analysis data found');
       return;
     }
 
-    console.log('\n📊 Order violations found:');
+    if (import.meta.env.DEV) {
+      console.log('\n📊 Order violations found:');
     orderAnalyses.forEach(analysis => {
       const data = analysis.data;
       const status = data.isChronological ? '✅ CORRECT' : '❌ WRONG';
 
-      console.log(`\n🔍 Stage: ${data.stage} - ${status}`);
-      console.log(`   Messages: ${data.messageCount}`);
+      if (import.meta.env.DEV) {
+        console.log(`\n🔍 Stage: ${data.stage} - ${status}`);
+      if (import.meta.env.DEV) {
+        console.log(`   Messages: ${data.messageCount}`);
+      }
 
       if (!data.isChronological) {
-        console.log(`   Violations: ${data.violations.length}`);
+        if (import.meta.env.DEV) {
+          console.log(`   Violations: ${data.violations.length}`);
         data.violations.forEach((violation, i) => {
-          console.log(`     [${i + 1}] Position ${violation.position}: Message ${violation.currMessage} (${new Date(violation.currTimestamp).toLocaleTimeString()}) should come after ${violation.prevMessage} (${new Date(violation.prevTimestamp).toLocaleTimeString()})`);
+          if (import.meta.env.DEV) {
+            console.log(`     [${i + 1}] Position ${violation.position}: Message ${violation.currMessage} (${new Date(violation.currTimestamp).toLocaleTimeString()}) should come after ${violation.prevMessage} (${new Date(violation.prevTimestamp).toLocaleTimeString()})`);
+          }
         });
-      }
     });
 
     // Identify the exact point where order breaks
@@ -591,8 +623,11 @@ class CompleteMessageFlowDiagnostic {
    * Identify exact point where order breaks
    */
   identifyOrderBreakPoint(orderAnalyses) {
-    console.log('\n🎯 ORDER BREAK POINT ANALYSIS');
-    console.log('==============================');
+    if (import.meta.env.DEV) {
+      console.log('\n🎯 ORDER BREAK POINT ANALYSIS');
+    if (import.meta.env.DEV) {
+      console.log('==============================');
+    }
 
     let firstCorrect = null;
     let firstIncorrect = null;
@@ -604,28 +639,39 @@ class CompleteMessageFlowDiagnostic {
         firstIncorrect = analysis;
         break;
       }
-    }
 
     if (firstCorrect && firstIncorrect) {
-      console.log(`🔍 Order breaks between:`);
-      console.log(`   ✅ Last correct: ${firstCorrect.data.stage}`);
-      console.log(`   ❌ First incorrect: ${firstIncorrect.data.stage}`);
-      console.log(`\n💡 Root cause likely in the processing between these stages`);
+      if (import.meta.env.DEV) {
+        console.log(`🔍 Order breaks between:`);
+      if (import.meta.env.DEV) {
+        console.log(`   ✅ Last correct: ${firstCorrect.data.stage}`);
+      if (import.meta.env.DEV) {
+        console.log(`   ❌ First incorrect: ${firstIncorrect.data.stage}`);
+      if (import.meta.env.DEV) {
+        console.log(`\n💡 Root cause likely in the processing between these stages`);
+      }
     } else if (!firstCorrect) {
-      console.log(`🚨 Order is wrong from the very beginning (${orderAnalyses[0]?.data.stage})`);
-      console.log(`💡 Root cause: API response or data source`);
+      if (import.meta.env.DEV) {
+        console.log(`🚨 Order is wrong from the very beginning (${orderAnalyses[0]?.data.stage})`);
+      if (import.meta.env.DEV) {
+        console.log(`💡 Root cause: API response or data source`);
+      }
     } else {
-      console.log(`✅ All analyzed stages show correct order`);
-      console.log(`💡 Issue might be in UI rendering or untraced processing`);
-    }
-  }
+      if (import.meta.env.DEV) {
+        console.log(`✅ All analyzed stages show correct order`);
+      if (import.meta.env.DEV) {
+        console.log(`💡 Issue might be in UI rendering or untraced processing`);
+      }
 
   /**
    * Generate fix recommendations
    */
   generateFixRecommendations() {
-    console.log('\n💡 FIX RECOMMENDATIONS');
-    console.log('=======================');
+    if (import.meta.env.DEV) {
+      console.log('\n💡 FIX RECOMMENDATIONS');
+    if (import.meta.env.DEV) {
+      console.log('=======================');
+    }
 
     // Analyze where the problem occurs
     const orderAnalyses = this.traceLog.filter(entry =>
@@ -637,46 +683,65 @@ class CompleteMessageFlowDiagnostic {
     const sortWrong = orderAnalyses.some(a => a.data.stage === 'AFTER_SORT' && !a.data.isChronological);
 
     if (apiWrong) {
-      console.log('🔧 API LEVEL FIX NEEDED:');
-      console.log('   Backend API returns messages in wrong order');
-      console.log('   Solution: Fix backend SQL query ORDER BY created_at ASC');
-      console.log('   Temp fix: Sort on frontend after API response');
-    }
+      if (import.meta.env.DEV) {
+        console.log('🔧 API LEVEL FIX NEEDED:');
+      if (import.meta.env.DEV) {
+        console.log('   Backend API returns messages in wrong order');
+      if (import.meta.env.DEV) {
+        console.log('   Solution: Fix backend SQL query ORDER BY created_at ASC');
+      if (import.meta.env.DEV) {
+        console.log('   Temp fix: Sort on frontend after API response');
+      }
 
     if (storeWrong) {
-      console.log('🔧 STORE LEVEL FIX NEEDED:');
-      console.log('   Store processing corrupts message order');
-      console.log('   Solution: Fix store message processing logic');
-    }
+      if (import.meta.env.DEV) {
+        console.log('🔧 STORE LEVEL FIX NEEDED:');
+      if (import.meta.env.DEV) {
+        console.log('   Store processing corrupts message order');
+      if (import.meta.env.DEV) {
+        console.log('   Solution: Fix store message processing logic');
+      }
 
     if (sortWrong) {
-      console.log('🔧 SORTING LOGIC FIX NEEDED:');
-      console.log('   Array sort function has wrong logic');
-      console.log('   Solution: Fix sort comparator function');
-    }
+      if (import.meta.env.DEV) {
+        console.log('🔧 SORTING LOGIC FIX NEEDED:');
+      if (import.meta.env.DEV) {
+        console.log('   Array sort function has wrong logic');
+      if (import.meta.env.DEV) {
+        console.log('   Solution: Fix sort comparator function');
+      }
 
-    console.log('\n🚀 IMMEDIATE ACTIONS:');
-    console.log('   1. Apply emergency fix: window.completeFlow.emergencyFix()');
-    console.log('   2. Re-run trace to verify: window.completeFlow.startCompleteTrace()');
-    console.log('   3. Monitor specific stage: Check logs above');
-  }
+    if (import.meta.env.DEV) {
+      console.log('\n🚀 IMMEDIATE ACTIONS:');
+    if (import.meta.env.DEV) {
+      console.log('   1. Apply emergency fix: window.completeFlow.emergencyFix()');
+    if (import.meta.env.DEV) {
+      console.log('   2. Re-run trace to verify: window.completeFlow.startCompleteTrace()');
+    if (import.meta.env.DEV) {
+      console.log('   3. Monitor specific stage: Check logs above');
+    }
 
   /**
    * Apply emergency fix based on analysis
    */
   emergencyFix() {
-    console.log('\n🚨 APPLYING EMERGENCY FIX BASED ON ANALYSIS');
-    console.log('===========================================');
+    if (import.meta.env.DEV) {
+      console.log('\n🚨 APPLYING EMERGENCY FIX BASED ON ANALYSIS');
+    if (import.meta.env.DEV) {
+      console.log('===========================================');
+    }
 
     const chatStore = this.getChatStore();
     if (!chatStore) {
-      console.log('❌ Cannot fix: chat store not available');
+      if (import.meta.env.DEV) {
+        console.log('❌ Cannot fix: chat store not available');
       return;
     }
 
     // Fix current messages
     if (chatStore.messages && chatStore.messages.length > 0) {
-      console.log('🔧 Fixing current messages...');
+      if (import.meta.env.DEV) {
+        console.log('🔧 Fixing current messages...');
       const before = chatStore.messages.map(m => this.formatTime(m.created_at)).join(' → ');
 
       chatStore.messages.sort((a, b) => {
@@ -684,16 +749,20 @@ class CompleteMessageFlowDiagnostic {
       });
 
       const after = chatStore.messages.map(m => this.formatTime(m.created_at)).join(' → ');
-      console.log(`   Before: ${before}`);
-      console.log(`   After:  ${after}`);
-    }
+      if (import.meta.env.DEV) {
+        console.log(`   Before: ${before}`);
+      if (import.meta.env.DEV) {
+        console.log(`   After:  ${after}`);
+      }
 
     // Install permanent fix
     this.installPermanentFix(chatStore);
 
-    console.log('✅ Emergency fix applied');
-    console.log('🔄 Refresh page or switch channels to test');
-  }
+    if (import.meta.env.DEV) {
+      console.log('✅ Emergency fix applied');
+    if (import.meta.env.DEV) {
+      console.log('🔄 Refresh page or switch channels to test');
+    }
 
   /**
    * Install permanent fix
@@ -711,16 +780,17 @@ class CompleteMessageFlowDiagnostic {
           result.sort((a, b) => {
             return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
           });
-          console.log('🔧 Auto-sorted messages chronologically');
-        }
+          if (import.meta.env.DEV) {
+            console.log('🔧 Auto-sorted messages chronologically');
+          }
 
         return result;
       };
 
       chatStore._permanentOrderFixInstalled = true;
-      console.log('✅ Permanent sorting fix installed');
-    }
-  }
+      if (import.meta.env.DEV) {
+        console.log('✅ Permanent sorting fix installed');
+      }
 
   /**
    * Restore interceptors
@@ -731,7 +801,6 @@ class CompleteMessageFlowDiagnostic {
       this.domObserver.disconnect();
       this.domObserver = null;
     }
-  }
 
   /**
    * Get chat store reference
@@ -742,7 +811,6 @@ class CompleteMessageFlowDiagnostic {
     } catch (error) {
       return null;
     }
-  }
 
   /**
    * Format time for display
@@ -753,8 +821,6 @@ class CompleteMessageFlowDiagnostic {
     } catch (error) {
       return timestamp;
     }
-  }
-}
 
 // Create global instance
 const completeFlowDiagnostic = new CompleteMessageFlowDiagnostic();
@@ -769,15 +835,23 @@ if (typeof window !== 'undefined') {
     stop: () => completeFlowDiagnostic.stopAndAnalyze(),
     fix: () => completeFlowDiagnostic.emergencyFix(),
     run: () => {
-      console.log('🔬 Starting complete flow trace...');
-      console.log('👆 Click on a channel after this message to trace the full flow');
+      if (import.meta.env.DEV) {
+        console.log('🔬 Starting complete flow trace...');
+      if (import.meta.env.DEV) {
+        console.log('👆 Click on a channel after this message to trace the full flow');
       return completeFlowDiagnostic.startCompleteTrace();
     }
   };
 
-  console.log('🔬 Complete Message Flow Diagnostic loaded');
-  console.log('   Commands:');
-  console.log('   - window.completeFlow.run() - Start tracing (then click channel)');
-  console.log('   - window.completeFlow.stop() - Stop and analyze');
-  console.log('   - window.completeFlow.fix() - Apply emergency fix');
+  if (import.meta.env.DEV) {
+    console.log('🔬 Complete Message Flow Diagnostic loaded');
+  if (import.meta.env.DEV) {
+    console.log('   Commands:');
+  if (import.meta.env.DEV) {
+    console.log('   - window.completeFlow.run() - Start tracing (then click channel)');
+  if (import.meta.env.DEV) {
+    console.log('   - window.completeFlow.stop() - Stop and analyze');
+  if (import.meta.env.DEV) {
+    console.log('   - window.completeFlow.fix() - Apply emergency fix');
+  }
 } 

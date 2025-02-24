@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎨 黄金分割头像系统验证</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            color: #1e293b;
+            line-height: 1.618;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 32px;
+            font-weight: 680;
+            margin-bottom: 16px;
+        }
+        .content { padding: 40px; }
+        .message-demo {
+            display: flex;
+            gap: 20px;
+            padding: 16px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 3px solid transparent;
+        }
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .username {
+            font-weight: 520;
+            font-size: 13px;
+            opacity: 0.72;
+        }
+        .btn {
+            background: #6366F1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 黄金分割头像系统验证</h1>
+            <p>蓝紫色谱用户识别系统</p>
+        </div>
+        <div class="content">
+            <button class="btn" onclick="generateUsers()">🎲 生成用户</button>
+            <div id="messageDemo"></div>
+        </div>
+    </div>
+    <script>
+        const AVATAR_COLORS = [
+            '#3B82F6', '#8B5CF6', '#6366F1', '#4F46E5', '#7C3AED',
+            '#2563EB', '#A78BFA', '#60A5FA', '#5B21B6', '#1D4ED8'
+        ];
+        const users = ['张明', '李华', '王强', '陈美', '刘伟'];
+        
+        function generateUsers() {
+            const demo = document.getElementById('messageDemo');
+            demo.innerHTML = '';
+            users.forEach((user, i) => {
+                const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
+                const initials = user.substring(0, 1);
+                demo.innerHTML += `
+                    <div class="message-demo">
+                        <div class="avatar" style="background-color: ${color}">${initials}</div>
+                        <div>
+                            <div class="username" style="color: ${color}">${user}</div>
+                            <div>这是一条测试消息，验证黄金分割比例设计。</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        generateUsers();
+    </script>
+</body>
+</html>
+
+

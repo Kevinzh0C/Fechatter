@@ -1,0 +1,176 @@
+syntax = "proto3";
+
+package fechatter.v1;
+
+// 分析事件
+message AnalyticsEvent {
+  EventContext context = 1;
+  oneof event_type {
+    AppStartEvent app_start = 10;
+    AppExitEvent app_exit = 11;
+    UserLoginEvent user_login = 12;
+    UserLogoutEvent user_logout = 13;
+    UserRegisterEvent user_register = 14;
+    ChatCreatedEvent chat_created = 15;
+    MessageSentEvent message_sent = 16;
+    ChatJoinedEvent chat_joined = 17;
+    ChatLeftEvent chat_left = 18;
+    NavigationEvent navigation = 19;
+    FileUploadedEvent file_uploaded = 20;
+    FileDownloadedEvent file_downloaded = 21;
+    SearchPerformedEvent search_performed = 22;
+    NotificationReceivedEvent notification_received = 23;
+    ErrorOccurredEvent error_occurred = 24;
+    BotResponseEvent bot_response = 25;
+  }
+}
+
+// 事件上下文
+message EventContext {
+  string client_id = 1;
+  string session_id = 2;
+  string user_id = 3;
+  string app_version = 4;
+  int64 client_ts = 5;
+  int64 server_ts = 6;
+  string user_agent = 7;
+  string ip = 8;
+  SystemInfo system = 9;
+  GeoLocation geo = 10;
+}
+
+// 系统信息
+message SystemInfo {
+  string os = 1;
+  string arch = 2;
+  string locale = 3;
+  string timezone = 4;
+  string browser = 5;
+  string browser_version = 6;
+}
+
+// 地理位置
+message GeoLocation {
+  string country = 1;
+  string region = 2;
+  string city = 3;
+}
+
+// 应用启动事件
+message AppStartEvent {
+}
+
+// 应用退出事件
+message AppExitEvent {
+  int32 exit_code = 1;
+}
+
+// 用户登录事件
+message UserLoginEvent {
+  string email = 1;
+  string login_method = 2;
+}
+
+// 用户登出事件
+message UserLogoutEvent {
+  string email = 1;
+}
+
+// 用户注册事件
+message UserRegisterEvent {
+  string email = 1;
+  string workspace_id = 2;
+  string registration_method = 3;
+}
+
+// 聊天创建事件
+message ChatCreatedEvent {
+  string workspace_id = 1;
+  string chat_type = 2;
+  int32 initial_members_count = 3;
+}
+
+// 消息发送事件
+message MessageSentEvent {
+  string chat_id = 1;
+  string message_type = 2;
+  int32 message_length = 3;
+  bool has_attachments = 4;
+  bool has_mentions = 5;
+  bool has_reactions = 6;
+}
+
+// 聊天加入事件
+message ChatJoinedEvent {
+  string chat_id = 1;
+  string join_method = 2;
+}
+
+// 聊天离开事件
+message ChatLeftEvent {
+  string chat_id = 1;
+  string leave_reason = 2;
+}
+
+// 导航事件
+message NavigationEvent {
+  string from = 1;
+  string to = 2;
+  int32 duration_ms = 3;
+}
+
+// 文件上传事件
+message FileUploadedEvent {
+  string file_type = 1;
+  int64 file_size = 2;
+  string upload_method = 3;
+  int32 upload_duration_ms = 4;
+}
+
+// 文件下载事件
+message FileDownloadedEvent {
+  string file_type = 1;
+  int64 file_size = 2;
+  int32 download_duration_ms = 3;
+}
+
+// 搜索执行事件
+message SearchPerformedEvent {
+  string search_type = 1;
+  int32 query_length = 2;
+  int32 results_count = 3;
+  int32 search_duration_ms = 4;
+  bool has_filters = 5;
+}
+
+// 通知接收事件
+message NotificationReceivedEvent {
+  string notification_type = 1;
+  string source = 2;
+  bool was_clicked = 3;
+}
+
+// 错误发生事件
+message ErrorOccurredEvent {
+  string error_type = 1;
+  string error_code = 2;
+  string error_message = 3;
+  string stack_trace = 4;
+  string context = 5;
+}
+
+// 机器人响应事件
+message BotResponseEvent {
+  string bot_id = 1;
+  string chat_id = 2;
+  string response_type = 3;
+  uint64 response_time_ms = 4;
+  uint32 tokens_used = 5;
+  bool success = 6;
+  string error_message = 7;
+}
+
+// 批量记录事件请求
+message BatchRecordEventsRequest {
+  repeated AnalyticsEvent events = 1;
+} 

@@ -1,19 +1,29 @@
 <template>
-  <div class="discord-markdown" v-html="renderedContent" @click="handleClick" />
+  <div class="discord-markdown" @click="handleClick">
+    <div v-for="(block, index) in processedBlocks" :key="index">
+      <!-- 代码块 -->
+      <CodeHighlight 
+        v-if="block.type === 'code'" 
+        :code="block.content"
+        :language="block.language"
+        :show-line-numbers="false"
+        :show-header="true"
+        class="discord-code-block-wrapper"
+      />
+      <!-- 普通内容 -->
+      <div v-else v-html="block.content" class="discord-content-block"></div>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
-import { remark } from 'remark';
-import remarkGfm from 'remark-gfm';
-import remarkBreaks from 'remark-breaks';
-import remarkHtml from 'remark-html';
-import { createHighlighter } from 'shiki';
+import { ref, computed, watch, onMounted } from 'vue'
+import CodeHighlight from '../chat/CodeHighlight.vue'
 
 const props = defineProps({
   content: {
     type: String,
-    required: true
+    default: ''
   },
   enableGfm: {
     type: Boolean,
@@ -22,344 +32,105 @@ const props = defineProps({
   enableBreaks: {
     type: Boolean,
     default: true
-  },
-  theme: {
-    type: String,
-    default: 'github-light'
-  },
-  darkTheme: {
-    type: String,
-    default: 'github-dark'
   }
-});
+})
 
-const emit = defineEmits(['link-click', 'mention-click', 'channel-click']);
+const emit = defineEmits(['link-click', 'mention-click', 'channel-click'])
 
-// Shiki高亮器
-let highlighter = null;
-const isHighlighterReady = ref(false);
+// Process content into blocks (code blocks and regular content)
+const processedBlocks = computed(() => {
+  if (!props.content) return []
 
-// 当前主题
-const currentTheme = computed(() => {
-  // 检测页面主要背景色来决定主题
-  const bodyBg = getComputedStyle(document.body).backgroundColor;
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || 
-                 window.matchMedia('(prefers-color-scheme: dark)').matches ||
-                 bodyBg.includes('rgb(26, 27, 29)'); // 检测深色背景
-  
-  // 针对白色聊天背景，使用适中的主题
-  return isDark ? 'github-dark' : 'github-light';
-});
+  const blocks = []
+  const content = props.content
 
-// 初始化Shiki高亮器
-const initializeHighlighter = async () => {
-  try {
-    highlighter = await createHighlighter({
-      themes: ['github-dark', 'github-light', 'monokai', 'dracula', 'nord'],
-      langs: [
-        'javascript',
-        'typescript',
-        'python',
-        'rust',
-        'java',
-        'cpp',
-        'c',
-        'csharp',
-        'go',
-        'ruby',
-        'php',
-        'html',
-        'css',
-        'scss',
-        'json',
-        'yaml',
-        'toml',
-        'xml',
-        'sql',
-        'bash',
-        'shell',
-        'powershell',
-        'dockerfile',
-        'markdown',
-        'vue',
-        'jsx',
-        'tsx',
-        'svelte',
-        'kotlin',
-        'swift',
-        'dart',
-        'lua',
-        'perl',
-        'r'
-      ]
-    });
-    isHighlighterReady.value = true;
-  } catch (error) {
-    console.error('Failed to initialize Shiki highlighter:', error);
-    isHighlighterReady.value = false;
-  }
-};
+  // Split content by code blocks (```language...```)
+  const codeBlockRegex = /```(\w+)?\n?([\s\S]*?)```/g
+  let lastIndex = 0
+  let match
 
-// 代码高亮函数
-const highlightCode = (code, lang) => {
-  if (!highlighter || !isHighlighterReady.value) {
-    return `<pre class="discord-code-block"><code class="discord-code">${escapeHtml(code)}</code></pre>`;
-  }
-
-  try {
-    // Language mapping for common aliases
-    const languageMap = {
-      'react': 'jsx',
-      'reactjs': 'jsx',
-      'ts': 'typescript',
-      'js': 'javascript',
-      'py': 'python',
-      'rs': 'rust',
-      'sh': 'bash',
-      'yml': 'yaml',
-      'htm': 'html'
-    };
-
-    // Map language or default to 'text'
-    const mappedLang = languageMap[lang] || lang || 'text';
-
-    const highlighted = highlighter.codeToHtml(code, {
-      lang: mappedLang,
-      theme: currentTheme.value,
-      transformers: [{
-        pre(node) {
-          node.properties.class = 'discord-code-block shiki';
-          // 移除Shiki的内联样式，使用我们的CSS
-          node.properties.style = '';
-        },
-        code(node) {
-          node.properties.class = 'discord-code shiki-code';
-        }
-      }]
-    });
-
-    // 添加复制按钮和语言标签
-    const languageLabel = lang ? lang.toUpperCase() : 'TEXT';
-    const copyButton = `
-      <div class="code-header">
-        <span class="code-language">${languageLabel}</span>
-        <button class="copy-code-btn" onclick="copyCodeToClipboard(this)" data-code="${encodeURIComponent(code)}">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2 2v1"></path>
-          </svg>
-          Copy
-        </button>
-      </div>
-    `;
-
-    return `<div class="code-container">${copyButton}${highlighted}</div>`;
-  } catch (error) {
-    console.warn(`Code highlighting failed for language '${lang}':`, error.message);
-    // Fallback to plain text with styling
-    const languageLabel = lang ? lang.toUpperCase() : 'TEXT';
-    const copyButton = `
-      <div class="code-header">
-        <span class="code-language">${languageLabel}</span>
-        <button class="copy-code-btn" onclick="copyCodeToClipboard(this)" data-code="${encodeURIComponent(code)}">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2 2v1"></path>
-          </svg>
-          Copy
-        </button>
-      </div>
-    `;
-    return `<div class="code-container">${copyButton}<pre class="discord-code-block"><code class="discord-code">${escapeHtml(code)}</code></pre></div>`;
-  }
-};
-
-// HTML转义
-const escapeHtml = (text) => {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-};
-
-// Markdown处理器
-const processor = computed(() => {
-  let proc = remark();
-
-  if (props.enableGfm) {
-    proc = proc.use(remarkGfm);
-  }
-
-  if (props.enableBreaks) {
-    proc = proc.use(remarkBreaks);
-  }
-
-  return proc.use(remarkHtml, {
-    sanitize: false
-  });
-});
-
-// 渲染内容
-const renderedContent = computed(() => {
-  if (!props.content) return '';
-
-  try {
-    // 预处理Discord特殊语法
-    let processedContent = props.content
-      // 处理Discord风格的mentions
-      .replace(/<@(\d+)>/g, '[@$1](@$1)')
-      // 处理Discord风格的channels
-      .replace(/<#(\d+)>/g, '[#$1](#$1)')
-      // 处理Discord风格的roles
-      .replace(/<@&(\d+)>/g, '[@&$1](@&$1)')
-      // 处理Discord风格的emojis
-      .replace(/<:([\w_]+):(\d+)>/g, ':$1:')
-      // 处理spoiler标签
-      .replace(/\|\|(.*?)\|\|/g, '<span class="discord-spoiler" onclick="this.classList.toggle(\'revealed\')">$1</span>');
-
-    // 处理markdown
-    const result = processor.value.processSync(processedContent);
-    let html = result.toString();
-
-    // 后处理：增强代码块
-    html = html.replace(/<pre><code class="language-(\w+)">([\s\S]*?)<\/code><\/pre>/g, (match, lang, code) => {
-      const decodedCode = code
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&amp;/g, '&')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'");
-      
-      return highlightCode(decodedCode, lang);
-    });
-
-    // 处理无语言的代码块
-    html = html.replace(/<pre><code>([\s\S]*?)<\/code><\/pre>/g, (match, code) => {
-      const decodedCode = code
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&amp;/g, '&')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'");
-      
-      return highlightCode(decodedCode, '');
-    });
-
-    // 处理行内代码
-    html = html.replace(/<code>(.*?)<\/code>/g, '<code class="discord-inline-code">$1</code>');
-
-    // 处理链接
-    html = html.replace(/<a href="([^"]*)"[^>]*>(.*?)<\/a>/g, (match, href, text) => {
-      if (href.startsWith('#')) {
-        return `<span class="discord-channel-link" data-channel="${href.slice(1)}">${text}</span>`;
-      } else if (href.startsWith('@')) {
-        return `<span class="discord-mention" data-user="${href.slice(1)}">${text}</span>`;
-      } else {
-        return `<a href="${href}" class="discord-link" target="_blank" rel="noopener noreferrer">${text}</a>`;
+  while ((match = codeBlockRegex.exec(content)) !== null) {
+    // Add regular content before code block
+    if (match.index > lastIndex) {
+      const regularContent = content.slice(lastIndex, match.index)
+      if (regularContent.trim()) {
+        blocks.push({
+          type: 'content',
+          content: renderRegularMarkdown(regularContent)
+        })
       }
-    });
+    }
 
-    // 处理引用块
-    html = html.replace(/<blockquote>([\s\S]*?)<\/blockquote>/g, '<div class="discord-quote">$1</div>');
+    // Add code block
+    blocks.push({
+      type: 'code',
+      language: match[1] || null,
+      content: match[2].trim()
+    })
 
-    // 处理表格
-    html = html.replace(/<table>([\s\S]*?)<\/table>/g, '<div class="discord-table-container"><table class="discord-table">$1</table></div>');
-
-    return html;
-  } catch (error) {
-    console.error('Markdown processing failed:', error);
-    return escapeHtml(props.content);
+    lastIndex = match.index + match[0].length
   }
-});
 
-// 点击事件处理
+  // Add remaining regular content
+  if (lastIndex < content.length) {
+    const remainingContent = content.slice(lastIndex)
+    if (remainingContent.trim()) {
+      blocks.push({
+        type: 'content',
+        content: renderRegularMarkdown(remainingContent)
+      })
+    }
+  }
+
+  // If no code blocks found, treat entire content as regular
+  if (blocks.length === 0) {
+    blocks.push({
+      type: 'content',
+      content: renderRegularMarkdown(content)
+    })
+  }
+
+  return blocks
+})
+
+// Basic markdown rendering function for non-code content
+const renderRegularMarkdown = (content) => {
+  if (!content) return ''
+
+  // Escape HTML first
+  let processed = content
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+
+  // Basic markdown patterns
+  processed = processed
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/~~(.*?)~~/g, '<del>$1</del>')
+    .replace(/`([^`]+)`/g, '<code class="discord-inline-code">$1</code>')
+    .replace(/\n/g, '<br>')
+
+  return processed
+}
+
+// Click event handler
 const handleClick = (event) => {
-  const target = event.target;
+  const target = event.target
 
   if (target.classList.contains('discord-link')) {
-    event.preventDefault();
-    emit('link-click', target.href);
+    event.preventDefault()
+    emit('link-click', target.href)
   } else if (target.classList.contains('discord-mention')) {
-    event.preventDefault();
-    emit('mention-click', target.dataset.user);
+    event.preventDefault()
+    emit('mention-click', target.dataset.user)
   } else if (target.classList.contains('discord-channel-link')) {
-    event.preventDefault();
-    emit('channel-click', target.dataset.channel);
+    event.preventDefault()
+    emit('channel-click', target.dataset.channel)
   }
-};
-
-// 全局复制代码函数
-const setupCopyFunction = () => {
-  if (!window.copyCodeToClipboard) {
-    window.copyCodeToClipboard = async (button) => {
-      try {
-        const code = decodeURIComponent(button.dataset.code);
-        await navigator.clipboard.writeText(code);
-
-        const originalContent = button.innerHTML;
-        button.innerHTML = `
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M20 6L9 17l-5-5"></path>
-          </svg>
-          Copied!
-        `;
-        button.classList.add('copied');
-
-        setTimeout(() => {
-          button.innerHTML = originalContent;
-          button.classList.remove('copied');
-        }, 2000);
-      } catch (error) {
-        console.error('Failed to copy code:', error);
-
-        button.innerHTML = `
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 6L6 18M6 6l12 12"></path>
-          </svg>
-          Failed
-        `;
-        button.classList.add('failed');
-
-        setTimeout(() => {
-          button.innerHTML = `
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-            Copy
-          `;
-          button.classList.remove('failed');
-        }, 2000);
-      }
-    };
-  }
-};
-
-onMounted(async () => {
-  await initializeHighlighter();
-  setupCopyFunction();
-  
-  // 监听主题变化
-  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-  const handleThemeChange = () => {
-    // 触发重新渲染以应用新主题
-    if (highlighter && isHighlighterReady.value) {
-      nextTick(() => {
-        // 重新处理代码块
-        const codeBlocks = document.querySelectorAll('.discord-code-block.shiki');
-        codeBlocks.forEach(block => {
-          block.classList.add('theme-updated');
-        });
-      });
-    }
-  };
-  
-  mediaQuery.addEventListener('change', handleThemeChange);
-  
-  // 清理
-  return () => {
-    mediaQuery.removeEventListener('change', handleThemeChange);
-  };
-});
+}
 </script>
 
 <style scoped>
@@ -369,6 +140,25 @@ onMounted(async () => {
   line-height: 1.375;
   word-wrap: break-word;
   font-size: 1rem;
+}
+
+/* 内容块样式 */
+.discord-content-block {
+  margin: 0;
+}
+
+.discord-content-block + .discord-content-block {
+  margin-top: 8px;
+}
+
+/* 代码块包装器样式 */
+.discord-code-block-wrapper {
+  margin: 12px 0;
+}
+
+.discord-content-block + .discord-code-block-wrapper,
+.discord-code-block-wrapper + .discord-content-block {
+  margin-top: 12px;
 }
 
 /* 段落 */
@@ -803,6 +593,7 @@ onMounted(async () => {
   from {
     opacity: 0.8;
   }
+
   to {
     opacity: 1;
   }

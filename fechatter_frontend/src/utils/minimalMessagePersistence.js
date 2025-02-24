@@ -11,7 +11,7 @@ class MinimalMessagePersistence {
     this.MAX_CACHE_SIZE = 50; // 每个聊天最多缓存50条消息
     this.MAX_CHATS = 10;      // 最多缓存10个聊天
 
-    console.log('💾 Minimal Message Persistence initialized');
+    // console.log('💾 Minimal Message Persistence initialized');
   }
 
   /**
@@ -49,7 +49,9 @@ class MinimalMessagePersistence {
 
     } catch (error) {
       // 静默失败，不影响正常功能
-      console.warn('Failed to save message to localStorage:', error);
+      if (import.meta.env.DEV) {
+        console.warn('Failed to save message to localStorage:', error);
+      }
     }
   }
 
@@ -69,10 +71,12 @@ class MinimalMessagePersistence {
       // 保存到localStorage
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allMessages));
 
-      console.log(`💾 Saved ${messages.length} messages for chat ${chatId}`);
+      // console.log(`💾 Saved ${messages.length} messages for chat ${chatId}`);
 
     } catch (error) {
-      console.warn('Failed to save messages to localStorage:', error);
+      if (import.meta.env.DEV) {
+        console.warn('Failed to save messages to localStorage:', error);
+      }
     }
   }
 
@@ -87,13 +91,15 @@ class MinimalMessagePersistence {
       const allMessages = this.getAllMessages();
       const messages = allMessages[chatId] || [];
 
-      if (messages.length > 0) {
-        console.log(`📦 Restored ${messages.length} messages for chat ${chatId}`);
-      }
+      // if (messages.length > 0) {
+      //   console.log(`📦 Restored ${messages.length} messages for chat ${chatId}`);
+      // }
 
       return messages;
     } catch (error) {
-      console.warn('Failed to get messages from localStorage:', error);
+      if (import.meta.env.DEV) {
+        console.warn('Failed to get messages from localStorage:', error);
+      }
       return [];
     }
   }
@@ -107,7 +113,9 @@ class MinimalMessagePersistence {
       const stored = localStorage.getItem(this.STORAGE_KEY);
       return stored ? JSON.parse(stored) : {};
     } catch (error) {
-      console.warn('Failed to parse stored messages:', error);
+      if (import.meta.env.DEV) {
+        console.warn('Failed to parse stored messages:', error);
+      }
       return {};
     }
   }
@@ -130,7 +138,9 @@ class MinimalMessagePersistence {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allMessages));
 
     } catch (error) {
-      console.warn('Failed to remove message from localStorage:', error);
+      if (import.meta.env.DEV) {
+        console.warn('Failed to remove message from localStorage:', error);
+      }
     }
   }
 
@@ -145,7 +155,7 @@ class MinimalMessagePersistence {
 
       // 如果缓存的聊天数量超过限制，只保留最近的
       if (chatIds.length > this.MAX_CHATS) {
-        console.log(`🧹 Cleaning up message cache: ${chatIds.length} chats -> ${this.MAX_CHATS} chats`);
+        // console.log(`🧹 Cleaning up message cache: ${chatIds.length} chats -> ${this.MAX_CHATS} chats`);
 
         // 简单策略：保留前MAX_CHATS个聊天
         const toKeep = chatIds.slice(0, this.MAX_CHATS);
@@ -172,7 +182,9 @@ class MinimalMessagePersistence {
       }
 
     } catch (error) {
-      console.warn('Failed to cleanup message cache:', error);
+      if (import.meta.env.DEV) {
+        console.warn('Failed to cleanup message cache:', error);
+      }
     }
   }
 
@@ -183,9 +195,11 @@ class MinimalMessagePersistence {
   clear() {
     try {
       localStorage.removeItem(this.STORAGE_KEY);
-      console.log('🗑️ All cached messages cleared');
+      // console.log('🗑️ All cached messages cleared');
     } catch (error) {
-      console.warn('Failed to clear message cache:', error);
+      if (import.meta.env.DEV) {
+        console.warn('Failed to clear message cache:', error);
+      }
     }
   }
 
@@ -228,16 +242,16 @@ class MinimalMessagePersistence {
 const minimalMessagePersistence = new MinimalMessagePersistence();
 
 // 暴露到window对象用于调试
-if (typeof window !== 'undefined') {
-  window.msgPersist = {
-    save: (chatId, message) => minimalMessagePersistence.saveMessage(chatId, message),
-    get: (chatId) => minimalMessagePersistence.getMessages(chatId),
-    cleanup: () => minimalMessagePersistence.cleanup(),
-    clear: () => minimalMessagePersistence.clear(),
-    stats: () => minimalMessagePersistence.getStats()
-  };
+// if (typeof window !== 'undefined') {
+//   window.msgPersist = {
+//     save: (chatId, message) => minimalMessagePersistence.saveMessage(chatId, message),
+//     get: (chatId) => minimalMessagePersistence.getMessages(chatId),
+//     cleanup: () => minimalMessagePersistence.cleanup(),
+//     clear: () => minimalMessagePersistence.clear(),
+//     stats: () => minimalMessagePersistence.getStats()
+//   };
 
-  console.log('💾 Message Persistence available at window.msgPersist');
-}
+//   console.log('💾 Message Persistence available at window.msgPersist');
+// }
 
 export default minimalMessagePersistence; 

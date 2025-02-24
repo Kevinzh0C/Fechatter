@@ -183,7 +183,6 @@ export default {
 
       for (const [prefix, color] of Object.entries(colors)) {
         if (type.startsWith(prefix)) return color
-      }
       return 'text-gray-400'
     }
 
@@ -325,11 +324,9 @@ export default {
                   // Clear auth state to allow retry
                   authStore.clearAuth()
                 }
-              }
 
               retryCheck()
             }
-          }
 
           // Start verification process
           verifyTokenAndNavigate()
@@ -352,7 +349,6 @@ export default {
           monitor.showSummary()
         }, 1000)
       }
-    }
 
     // 监听监控事件
     const handleMonitorEvent = (e) => {
@@ -374,7 +370,6 @@ export default {
       if (e.detail.source === 'promise_rejection') {
         console.log('🔧 [LOGIN] Browser extension interference detected and handled')
       }
-    }
 
     onMounted(() => {
       window.addEventListener('login-monitor-event', handleMonitorEvent)
@@ -389,7 +384,7 @@ export default {
       // 预填充测试数据（开发环境）
       if (import.meta.env.DEV) {
         loginData.value.username = 'admin@test.com'
-        loginData.value.password = 'super123'
+        loginData.value.password = 'password'
 
         // Show extension conflict report in development
         setTimeout(() => {
@@ -421,6 +416,4 @@ export default {
       duration,
       getEventColor
     }
-  }
-}
 </script>

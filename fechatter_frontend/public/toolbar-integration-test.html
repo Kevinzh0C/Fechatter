@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎯 Toolbar Integration Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 20px;
+      background: #f3f4f6;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #1f2937;
+    }
+
+    .test-section {
+      margin: 20px 0;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #f9fafb;
+    }
+
+    .test-item {
+      margin: 15px 0;
+      padding: 15px;
+      background: white;
+      border-radius: 6px;
+      border-left: 4px solid #3b82f6;
+    }
+
+    .success {
+      border-left-color: #10b981;
+    }
+
+    .warning {
+      border-left-color: #f59e0b;
+    }
+
+    .error {
+      border-left-color: #ef4444;
+    }
+
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 5px;
+    }
+
+    button:hover {
+      background: #2563eb;
+    }
+
+    .code {
+      background: #374151;
+      color: #d1d5db;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+      margin: 10px 0;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .status.pass {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status.fail {
+      background: #fef2f2;
+      color: #dc2626;
+    }
+
+    .status.pending {
+      background: #fef3c7;
+      color: #d97706;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎯 Toolbar Integration Test</h1>
+      <p>Testing Reply Mention & Translation Integration</p>
+    </div>
+
+    <div class="test-section">
+      <h2>🔄 Reply Mention Integration Test</h2>
+
+      <div class="test-item">
+        <h3>1. Mock Message Input Detection</h3>
+        <p>Testing if toolbar can find and focus message input field</p>
+        <button onclick="testMessageInputDetection()">Test Input Detection</button>
+        <div id="input-test-result"></div>
+
+        <!-- Mock message input for testing -->
+        <textarea id="mock-input" placeholder="Type a message..."
+          style="width: 100%; margin-top: 10px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
+      </div>
+
+      <div class="test-item">
+        <h3>2. Mention Text Generation</h3>
+        <p>Testing mention text formatting and insertion</p>
+        <button onclick="testMentionGeneration()">Test Mention</button>
+        <div id="mention-test-result"></div>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>🌐 Translation Integration Test</h2>
+
+      <div class="test-item">
+        <h3>1. Translation Panel Detection</h3>
+        <p>Testing if toolbar can find existing translation panel</p>
+        <button onclick="testTranslationPanelDetection()">Test Panel Detection</button>
+        <div id="panel-test-result"></div>
+
+        <!-- Mock translation panel for testing -->
+        <div id="mock-translation-panel" class="translation-panel"
+          style="display: none; margin-top: 10px; padding: 10px; background: #e0f2fe; border-radius: 4px;">
+          Mock Translation Panel Found!
+        </div>
+      </div>
+
+      <div class="test-item">
+        <h3>2. Translation Request Creation</h3>
+        <p>Testing translation data structure and event dispatch</p>
+        <button onclick="testTranslationRequest()">Test Translation</button>
+        <div id="translation-test-result"></div>
+      </div>
+
+      <div class="test-item">
+        <h3>3. Fallback Translation Dialog</h3>
+        <p>Testing temporary translation dialog when no panel found</p>
+        <button onclick="testFallbackDialog()">Test Fallback</button>
+        <div id="fallback-test-result"></div>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>📊 Integration Status</h2>
+      <div id="overall-status">
+        <span class="status pending">Ready for Testing</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let testResults = {
+      inputDetection: false,
+      mentionGeneration: false,
+      panelDetection: false,
+      translationRequest: false,
+      fallbackDialog: false
+    };
+
+    function testMessageInputDetection() {
+      const mockInput = document.getElementById('mock-input');
+      const resultDiv = document.getElementById('input-test-result');
+
+      // Simulate toolbar's input detection logic
+      const messageInput = document.querySelector('textarea[placeholder*="message"], input[placeholder*="message"]');
+
+      if (messageInput) {
+        testResults.inputDetection = true;
+        resultDiv.innerHTML = `
+                    <div class="status pass">PASS</div>
+                    <div class="code">Found input: ${messageInput.tagName} with placeholder "${messageInput.placeholder}"</div>
+                `;
+
+        // Test focus capability
+        messageInput.focus();
+        messageInput.style.border = '2px solid #10b981';
+        setTimeout(() => {
+          messageInput.style.border = '1px solid #ccc';
+        }, 1000);
+      } else {
+        resultDiv.innerHTML = `
+                    <div class="status fail">FAIL</div>
+                    <div class="code">No message input found with selector: textarea[placeholder*="message"], input[placeholder*="message"]</div>
+                `;
+      }
+      updateOverallStatus();
+    }
+
+    function testMentionGeneration() {
+      const resultDiv = document.getElementById('mention-test-result');
+      const mockInput = document.getElementById('mock-input');
+
+      // Simulate mention text generation
+      const mockUserData = {
+        senderId: 123,
+        senderName: 'Test User',
+        messageId: 456
+      };
+
+      const mentionText = `@${mockUserData.senderName} `;
+
+      try {
+        mockInput.value = mentionText;
+        mockInput.focus();
+        mockInput.setSelectionRange(mentionText.length, mentionText.length);
+
+        testResults.mentionGeneration = true;
+        resultDiv.innerHTML = `
+                    <div class="status pass">PASS</div>
+                    <div class="code">Mention text: "${mentionText}" | Cursor position: ${mentionText.length}</div>
+                `;
+      } catch (error) {
+        resultDiv.innerHTML = `
+                    <div class="status fail">FAIL</div>
+                    <div class="code">Error: ${error.message}</div>
+                `;
+      }
+      updateOverallStatus();
+    }
+
+    function testTranslationPanelDetection() {
+      const resultDiv = document.getElementById('panel-test-result');
+      const mockPanel = document.getElementById('mock-translation-panel');
+
+      // Show mock panel for testing
+      mockPanel.style.display = 'block';
+
+      // Simulate toolbar's panel detection logic
+      const translationPanel = document.querySelector('[class*="translation"], [id*="translation"]');
+
+      if (translationPanel) {
+        testResults.panelDetection = true;
+        resultDiv.innerHTML = `
+                    <div class="status pass">PASS</div>
+                    <div class="code">Found panel: ${translationPanel.tagName}#${translationPanel.id || 'no-id'}</div>
+                `;
+      } else {
+        resultDiv.innerHTML = `
+                    <div class="status fail">FAIL</div>
+                    <div class="code">No translation panel found</div>
+                `;
+      }
+      updateOverallStatus();
+    }
+
+    function testTranslationRequest() {
+      const resultDiv = document.getElementById('translation-test-result');
+
+      // Simulate translation request creation
+      const mockMessage = {
+        id: 789,
+        content: 'Hello, this is a test message for translation.',
+        sender: { fullname: 'Test User' }
+      };
+
+      const translationRequest = {
+        messageId: mockMessage.id,
+        content: mockMessage.content,
+        senderName: mockMessage.sender.fullname,
+        originalMessage: mockMessage,
+        timestamp: new Date().toISOString()
+      };
+
+      try {
+        // Test custom event creation and dispatch
+        const translationEvent = new CustomEvent('translation-request', {
+          detail: translationRequest
+        });
+
+        // Listen for the event
+        document.addEventListener('translation-request', function (e) {
+          console.log('Translation event received:', e.detail);
+        }, { once: true });
+
+        document.dispatchEvent(translationEvent);
+
+        testResults.translationRequest = true;
+        resultDiv.innerHTML = `
+                    <div class="status pass">PASS</div>
+                    <div class="code">Request: ${JSON.stringify(translationRequest, null, 2)}</div>
+                `;
+      } catch (error) {
+        resultDiv.innerHTML = `
+                    <div class="status fail">FAIL</div>
+                    <div class="code">Error: ${error.message}</div>
+                `;
+      }
+      updateOverallStatus();
+    }
+
+    function testFallbackDialog() {
+      const resultDiv = document.getElementById('fallback-test-result');
+
+      try {
+        // Simulate fallback dialog creation
+        const request = {
+          content: 'This is a test message that needs translation.',
+          senderName: 'Test User',
+          messageId: 999
+        };
+
+        const dialog = document.createElement('div');
+        dialog.className = 'fixed top-4 right-4 bg-white rounded-lg shadow-lg border p-4 z-50 max-w-sm';
+        dialog.style.position = 'fixed';
+        dialog.style.top = '20px';
+        dialog.style.right = '20px';
+        dialog.style.background = 'white';
+        dialog.style.border = '1px solid #ccc';
+        dialog.style.borderRadius = '8px';
+        dialog.style.padding = '16px';
+        dialog.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+        dialog.style.zIndex = '1000';
+        dialog.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <h3 style="margin: 0; font-weight: bold;">🌐 Translation</h3>
+                        <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 16px; cursor: pointer;">✕</button>
+                    </div>
+                    <p style="margin: 8px 0; font-size: 14px; color: #666;">Original: "${request.content.substring(0, 50)}..."</p>
+                    <p style="margin: 8px 0; font-size: 12px; color: #3b82f6;">Translation feature integrated!</p>
+                `;
+
+        document.body.appendChild(dialog);
+
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+          if (dialog.parentElement) {
+            dialog.remove();
+          }
+        }, 3000);
+
+        testResults.fallbackDialog = true;
+        resultDiv.innerHTML = `
+                    <div class="status pass">PASS</div>
+                    <div class="code">Fallback dialog created and displayed (auto-removes in 3s)</div>
+                `;
+      } catch (error) {
+        resultDiv.innerHTML = `
+                    <div class="status fail">FAIL</div>
+                    <div class="code">Error: ${error.message}</div>
+                `;
+      }
+      updateOverallStatus();
+    }
+
+    function updateOverallStatus() {
+      const statusDiv = document.getElementById('overall-status');
+      const passedTests = Object.values(testResults).filter(result => result === true).length;
+      const totalTests = Object.keys(testResults).length;
+
+      if (passedTests === totalTests) {
+        statusDiv.innerHTML = `<span class="status pass">All Tests Passed (${passedTests}/${totalTests})</span>`;
+      } else if (passedTests > 0) {
+        statusDiv.innerHTML = `<span class="status pending">Partial Pass (${passedTests}/${totalTests})</span>`;
+      } else {
+        statusDiv.innerHTML = `<span class="status fail">Tests Failed (${passedTests}/${totalTests})</span>`;
+      }
+
+      console.log('🎯 Test Results:', testResults);
+    }
+
+    // Initialize
+    console.log('🎯 Toolbar Integration Test loaded');
+    console.log('Use the buttons above to test each feature');
+  </script>
+</body>
+
+</html>

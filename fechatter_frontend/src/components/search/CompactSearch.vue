@@ -334,7 +334,6 @@ const search = async () => {
   } finally {
     searchState.value.loading = false
   }
-}
 
 const loadMore = async () => {
   if (!searchState.value.pagination.hasMore || searchState.value.loading) return
@@ -367,7 +366,6 @@ const loadMore = async () => {
   } finally {
     searchState.value.loading = false
   }
-}
 
 const clearFilters = () => {
   timeRange.value = 'all'
@@ -386,7 +384,6 @@ const clearAll = () => {
     hasMore: false,
     page: 1
   }
-}
 
 const highlightSearchTerms = (text) => {
   if (!query.value) return text
@@ -490,7 +487,6 @@ onMounted(async () => {
   .text-gray-400 {
     @apply text-gray-700;
   }
-}
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
@@ -499,5 +495,4 @@ onMounted(async () => {
     transition: none;
     animation: none;
   }
-}
 </style>

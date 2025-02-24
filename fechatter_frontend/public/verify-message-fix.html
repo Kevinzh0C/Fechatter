@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>消息修复验证 - Fechatter</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f8f9fa; }
+        .card { background: white; border-radius: 12px; padding: 24px; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .status { padding: 12px; border-radius: 8px; margin: 10px 0; font-weight: 500; }
+        .success { background: #d1edff; color: #0969da; }
+        .error { background: #ffe6e6; color: #d73a49; }
+        .warning { background: #fff3cd; color: #856404; }
+        .btn { padding: 12px 24px; background: #0969da; color: white; border: none; border-radius: 6px; cursor: pointer; margin: 10px 5px; font-weight: bold; }
+        .btn:hover { background: #0550ae; }
+        .code { background: #f6f8fa; border: 1px solid #d1d9e0; border-radius: 6px; padding: 16px; font-family: monospace; font-size: 14px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔍 消息修复验证工具</h1>
+    
+    <div class="card">
+        <h2>✅ 已应用的修复</h2>
+        <div class="status success">
+            <strong>SimpleMessageList.vue</strong> - 移除了容器高度限制 (height: 100% → min-height: 100vh)
+        </div>
+        <div class="status success">
+            <strong>MessageItem.vue</strong> - 添加了安全内容渲染 (safeFormattedContent)
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2>🧪 快速验证步骤</h2>
+        <ol>
+            <li><strong>刷新页面</strong> - 重新加载Fechatter应用</li>
+            <li><strong>进入聊天频道</strong> - 选择任意频道</li>
+            <li><strong>检查消息显示</strong> - 确认消息内容可见</li>
+            <li><strong>滚动测试</strong> - 向上滚动查看历史消息</li>
+        </ol>
+        
+        <button onclick="showVerificationScript()" class="btn">📋 获取控制台验证脚本</button>
+        <div id="verificationScript" style="display: none;">
+            <h3>在浏览器控制台执行以下代码：</h3>
+            <div class="code">
+// 验证消息修复效果
+const messageElements = document.querySelectorAll('[data-message-id]');
+console.log('🔍 检测到', messageElements.length, '个消息元素');
+
+let visibleCount = 0;
+let hasContentCount = 0;
+
+messageElements.forEach((el, index) => {
+    const id = el.getAttribute('data-message-id');
+    const textEl = el.querySelector('.message-text');
+    const isVisible = textEl && getComputedStyle(textEl).display !== 'none';
+    const hasContent = textEl && textEl.innerHTML.trim().length > 0;
+    
+    if (isVisible) visibleCount++;
+    if (hasContent) hasContentCount++;
+    
+    console.log(`消息 ${id}:`, {
+        element: '✅',
+        textContainer: textEl ? '✅' : '❌',
+        visible: isVisible ? '✅' : '❌',
+        hasContent: hasContent ? '✅' : '❌',
+        content: textEl?.innerHTML.substring(0, 50) + '...'
+    });
+});
+
+console.log('📊 验证结果:', {
+    总消息数: messageElements.length,
+    可见消息数: visibleCount,
+    有内容消息数: hasContentCount,
+    修复成功率: Math.round((hasContentCount / messageElements.length) * 100) + '%'
+});
+
+if (hasContentCount === messageElements.length) {
+    console.log('🎉 修复成功！所有消息都正常显示');
+} else {
+    console.log('⚠️ 部分消息仍有问题，可能需要额外修复');
+}
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2>🚨 如果问题仍然存在</h2>
+        <p>如果消息内容仍然不显示，可能是以下原因：</p>
+        <ul>
+            <li><strong>浏览器缓存</strong> - 尝试硬刷新 (Ctrl+Shift+R)</li>
+            <li><strong>Vue组件状态</strong> - 消息数据本身缺失</li>
+            <li><strong>CSS冲突</strong> - 其他样式覆盖了修复</li>
+        </ul>
+        
+        <button onclick="showEmergencyFix()" class="btn" style="background: #dc3545;">🚨 紧急修复</button>
+        <div id="emergencyFix" style="display: none;">
+            <h3>紧急CSS修复（在控制台执行）：</h3>
+            <div class="code">
+// 强制显示所有消息内容
+const style = document.createElement('style');
+style.innerHTML = `
+[data-message-id] .message-text {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    color: #374151 !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+    min-height: 1em !important;
+}
+
+[data-message-id] .message-text:empty::before {
+    content: "[消息内容]" !important;
+    color: #6b7280 !important;
+    font-style: italic !important;
+}
+`;
+document.head.appendChild(style);
+console.log('🎨 已应用紧急CSS修复');
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2>📈 预期改进</h2>
+        <div class="status success">
+            <strong>修复前</strong>：只显示时间分隔符，消息内容不可见<br>
+            <strong>修复后</strong>：所有消息内容正常显示，支持滚动查看历史
+        </div>
+    </div>
+
+    <script>
+        function showVerificationScript() {
+            const div = document.getElementById('verificationScript');
+            div.style.display = div.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        function showEmergencyFix() {
+            const div = document.getElementById('emergencyFix');
+            div.style.display = div.style.display === 'none' ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>

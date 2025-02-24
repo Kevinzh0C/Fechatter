@@ -1,14 +1,72 @@
 /**
- * Content Script Error Suppressor
- * Registers with unified error handler for content script error suppression
+ * Enhanced Content Script Error Suppressor
+ * Suppresses errors from browser extensions and content scripts to keep console clean
+ * Now includes async response listener errors
  */
 
 class ContentScriptErrorSuppressor {
   constructor() {
-    this.suppressedErrors = new Map();
-    this.errorCount = 0;
-    this.maxErrors = 100;
     this.initialized = false;
+    this.mode = 'transparent';
+    this.totalSuppressed = 0;
+    this.uniqueErrors = 0;
+    this.suppressedMessages = new Set();
+    this.recentErrors = [];
+    this.maxRecentErrors = 50;
+
+    // 🔧 FIX: Enhanced extension error patterns
+    this.extensionErrorPatterns = [
+      // Original patterns
+      /content script/i,
+      /script injected/i,
+      /extension context/i,
+      /\bextension\b.*\berror\b/i,
+      /chrome-extension:/,
+      /moz-extension:/,
+      /webkit-extension:/,
+      /safari-extension:/,
+
+      // 🔧 NEW: Async response listener errors
+      /listener indicated an asynchronous response.*message channel closed/i,
+      /asynchronous response.*channel closed/i,
+      /listener.*returning true.*channel closed/i,
+
+      // 🔧 NEW: Common extension-related errors
+      /cannot access contents of url/i,
+      /cannot access a chrome:/i,
+      /extension context invalidated/i,
+      /receiving end does not exist/i,
+      /disconnected port object/i,
+      /port.*disconnected/i,
+
+      // 🔧 NEW: Specific Chrome extension errors
+      /unchecked runtime\.lastError/i,
+      /the message port closed before a response was received/i,
+      /trying to use a disconnected port object/i,
+      /could not establish connection.*receiving end does not exist/i
+    ];
+
+    this.sourcePatterns = [
+      // Script injection sources
+      /:\/\/[^\/]*\/content_script\.js/,
+      /:\/\/[^\/]*\/inject\.js/,
+      /:\/\/[^\/]*\/background\.js/,
+      /chrome-extension:\/\//,
+      /moz-extension:\/\//,
+      /webkit-extension:\/\//,
+      /safari-extension:\/\//,
+
+      // 🔧 NEW: Anonymous/generated script sources
+      /^<anonymous>$/,
+      /^eval$/,
+      /^\s*$/,
+      /^VM\d+/,
+
+      // 🔧 NEW: Extension-like stack traces
+      /at Object\.\w+ \(chrome-extension:/,
+      /at Object\.\w+ \(moz-extension:/,
+      /at \w+\.js:\d+:\d+\)$/
+    ];
   }
 
   /**
@@ -26,114 +84,52 @@ class ContentScriptErrorSuppressor {
       );
 
       this.initialized = true;
-      console.debug('[ContentScript] Registered with unified error handler');
+      console.debug('[ContentScript] Registered with unified error handler (transparent mode)');
     } else {
-      console.error('[ContentScript] Unified error handler not found!');
+      if (import.meta.env.DEV) {
+        console.warn('[ContentScript] Unified error handler not found, will initialize when available');
+      }
+
+      // Try again later
+      setTimeout(() => {
+        if (!this.initialized) {
+          this.initialize();
+        }
+      }, 100);
     }
-
-    // Handle unhandled rejections (these still need direct handling)
-    this.handleUnhandledRejections();
-
-    // Handle global errors (these still need direct handling)
-    this.handleGlobalErrors();
 
     // Provide utility functions
     this.provideUtilities();
   }
 
   /**
-   * Handle error for unified system
+   * Handle error for unified system (transparent mode)
+   * Only returns 'suppress' for content script errors, undefined for all others
    */
-  handleError({ args, errorString }) {
-    // Extract real source from call stack for annotation
-    const stack = new Error().stack;
-    const realSource = this.extractRealSource(stack);
-
+  handleError({ errorInfo, errorString }) {
     // Check if this is a content script error
     if (this.isContentScriptError(errorString)) {
-      this.errorCount++;
-      this.recordSuppressed(errorString, realSource);
-      return 'suppress'; // Tell unified handler to suppress
+      this.totalSuppressed++;
+      this.uniqueErrors++;
+      this.recordSuppressed(errorString, this.getErrorSource(errorInfo));
+      return 'suppress'; // Tell unified handler to suppress this error
     }
 
-    // For non-content-script errors, add source annotation
-    if (realSource && !realSource.includes('unifiedErrorHandler')) {
-      // Modify args to include source
-      const sourceTag = `\x1b[90m[from ${realSource}]\x1b[0m`;
-      return {
-        action: 'modify',
-        args: [sourceTag, ...args]
-      };
-    }
-
-    return 'pass'; // Let it through unchanged
+    // For all other errors, return undefined to let them pass through transparently
+    return undefined;
   }
 
   /**
-   * Extract the real source file and line from stack trace
+   * Get error source from error info
    */
-  extractRealSource(stack) {
-    if (!stack) return null;
-
-    const lines = stack.split('\n');
-
-    // Skip first few lines that are from error handling system
-    for (let i = 3; i < Math.min(lines.length, 8); i++) {
-      const line = lines[i];
-
-      // Skip our own files and error handling files
-      if (line.includes('contentScriptErrorSuppressor.js')) continue;
-      if (line.includes('unifiedErrorHandler.js')) continue;
-      if (line.includes('developmentOptimizer.js')) continue;
-      if (line.includes('consoleMonitor.js')) continue;
-      if (line.includes('extensionConflictHandler.js')) continue;
-      if (line.includes('<anonymous>')) continue;
-
-      // Try to extract file:line info
-      const match = line.match(/at\s+(?:.*?\s+\()?(.*?):(\d+):\d+\)?$/);
-      if (match) {
-        let filepath = match[1];
-        const lineNum = match[2];
-
-        // Clean up the filepath
-        filepath = filepath.split('/').pop().split('?')[0];
-
-        return `${filepath}:${lineNum}`;
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Handle unhandled promise rejections
-   */
-  handleUnhandledRejections() {
-    window.addEventListener('unhandledrejection', (event) => {
-      const error = event.reason;
-      const errorString = this.getErrorString(error);
-
-      if (this.isContentScriptError(errorString)) {
-        event.preventDefault();
-        this.errorCount++;
-        this.recordSuppressed(errorString, 'unhandled-rejection');
-      }
-    }, true);
-  }
-
-  /**
-   * Handle global error events
-   */
-  handleGlobalErrors() {
-    window.addEventListener('error', (event) => {
-      const errorString = this.getErrorString(event.error || event);
-
-      if (this.isContentScriptError(errorString)) {
-        event.preventDefault();
-        this.errorCount++;
-        this.recordSuppressed(errorString, 'global-error');
-      }
-    }, true);
+  getErrorSource(errorInfo) {
+    if (errorInfo.type === 'global-error') {
+      return `${errorInfo.filename}:${errorInfo.lineno}`;
+    } else if (errorInfo.type === 'unhandled-rejection') {
+      return 'unhandled-rejection';
+    } else if (errorInfo.type === 'manual') {
+      return 'manual';
+    return 'unknown';
   }
 
   /**
@@ -142,25 +138,14 @@ class ContentScriptErrorSuppressor {
   recordSuppressed(errorString, source) {
     const key = errorString.substring(0, 100);
 
-    if (!this.suppressedErrors.has(key)) {
-      this.suppressedErrors.set(key, {
-        fullError: errorString,
-        count: 0,
-        firstSeen: Date.now(),
-        lastSeen: Date.now(),
-        source: source || 'unknown'
-      });
+    if (!this.suppressedMessages.has(key)) {
+      this.suppressedMessages.add(key);
     }
 
-    const record = this.suppressedErrors.get(key);
-    record.count++;
-    record.lastSeen = Date.now();
-
-    // Limit map size
-    if (this.suppressedErrors.size > this.maxErrors) {
-      const firstKey = this.suppressedErrors.keys().next().value;
-      this.suppressedErrors.delete(firstKey);
-    }
+    // Limit recent errors
+    if (this.recentErrors.length >= this.maxRecentErrors) {
+      this.recentErrors.shift();
+    this.recentErrors.push(key);
   }
 
   /**
@@ -170,57 +155,42 @@ class ContentScriptErrorSuppressor {
     // Show suppressed errors
     window.showSuppressedErrors = () => {
       console.group('🔇 Suppressed Content Script Errors');
-      console.log(`Total suppressed: ${this.errorCount}`);
-      console.log(`Unique errors: ${this.suppressedErrors.size}`);
-      console.log('');
+      if (import.meta.env.DEV) {
+        console.log(`Total suppressed: ${this.totalSuppressed}`);
+      if (import.meta.env.DEV) {
+        console.log(`Unique errors: ${this.uniqueErrors}`);
+      if (import.meta.env.DEV) {
+        console.log('');
+      }
 
-      this.suppressedErrors.forEach((record, key) => {
-        console.log(`[${record.source}] ${key}... (×${record.count})`);
-        if (record.count > 1) {
-          console.log(`  First seen: ${new Date(record.firstSeen).toLocaleTimeString()}`);
-          console.log(`  Last seen: ${new Date(record.lastSeen).toLocaleTimeString()}`);
+      this.suppressedMessages.forEach((key) => {
+        if (import.meta.env.DEV) {
+          console.log(`[${this.getErrorSource(errorInfo)}] ${key}...`);
         }
       });
       console.groupEnd();
     };
-  }
 
-  /**
-   * Get error string from various error types
-   */
-  getErrorString(error) {
-    if (!error) return '';
-
-    if (error.message && error.filename) {
-      return `${error.message} at ${error.filename}:${error.lineno}:${error.colno}`;
-    }
-
-    if (error.stack) return error.stack;
-    if (error.message) return error.message;
-
-    return String(error);
+    // Enhanced debugging function
+    window.debugContentScriptErrors = () => {
+      const stats = this.getStats();
+      console.group('🔍 Content Script Error Debug Info');
+      if (import.meta.env.DEV) {
+        console.log('Stats:', stats);
+      if (import.meta.env.DEV) {
+        console.log('Unified handler stats:', window.unifiedErrorHandler?.getStats());
+      if (import.meta.env.DEV) {
+        console.log('Handler initialized:', this.initialized);
+      console.groupEnd();
+    };
   }
 
   /**
    * Check if an error is from a content script
    */
   isContentScriptError(errorString) {
-    const patterns = [
-      /content[\s-]?script\.js/i,
-      /chrome-extension:\/\//,
-      /moz-extension:\/\//,
-      /extension:\/\//,
-      /fetchError:\s*Failed to fetch/i,
-      /at\s+[fFpP][l15]\.\s*sendMessage/i,
-      /Failed to execute 'fetch' on 'Window'/i,
-      /Extension context invalidated/i,
-      /The message port closed before a response was received/i,
-      /at\s+Zx\s+\(/i,
-      /at\s+ul\.sendMessage/i,
-      /at\s+async\s+ot\s+\(/i
-    ];
-
-    return patterns.some(pattern => pattern.test(errorString));
+    return this.extensionErrorPatterns.some(pattern => pattern.test(errorString)) ||
+      this.sourcePatterns.some(pattern => pattern.test(errorString));
   }
 
   /**
@@ -228,10 +198,11 @@ class ContentScriptErrorSuppressor {
    */
   getStats() {
     return {
-      totalSuppressed: this.errorCount,
-      uniqueErrors: this.suppressedErrors.size,
-      recentErrors: Array.from(this.suppressedErrors.keys()).slice(-5),
-      initialized: this.initialized
+      totalSuppressed: this.totalSuppressed,
+      uniqueErrors: this.uniqueErrors,
+      recentErrors: this.recentErrors,
+      initialized: this.initialized,
+      mode: this.mode
     };
   }
 
@@ -239,10 +210,33 @@ class ContentScriptErrorSuppressor {
    * Clear suppressed errors
    */
   clear() {
-    this.suppressedErrors.clear();
-    this.errorCount = 0;
+    this.suppressedMessages.clear();
+    this.totalSuppressed = 0;
+    this.uniqueErrors = 0;
+    this.recentErrors = [];
   }
-}
+
+  /**
+   * Test content script error detection
+   */
+  testDetection() {
+    const testErrors = [
+      'Error: fetchError: Failed to fetch',
+      'TypeError: Cannot read property at chrome-extension://abc123/content.js:45',
+      'ReferenceError: ul.sendMessage is not defined',
+      'Error: Extension context invalidated',
+      'Normal application error that should not be suppressed'
+    ];
+
+    console.group('🧪 Content Script Error Detection Test');
+    testErrors.forEach((error, index) => {
+      const isContentScript = this.isContentScriptError(error);
+      if (import.meta.env.DEV) {
+        console.log(`${index + 1}. ${isContentScript ? '🔇' : '✅'} ${error.substring(0, 50)}...`);
+      }
+    });
+    console.groupEnd();
+  }
 
 // Create and export singleton instance
 const contentScriptSuppressor = new ContentScriptErrorSuppressor();
@@ -254,7 +248,9 @@ if (typeof window !== 'undefined') {
     contentScriptSuppressor.initialize();
     window.contentScriptSuppressor = contentScriptSuppressor;
 
-    console.log('💡 Content script error suppression registered');
+    if (import.meta.env.DEV) {
+      console.log('💡 Content script error suppression registered (transparent mode)');
+    }
   }, 50);
 }
 

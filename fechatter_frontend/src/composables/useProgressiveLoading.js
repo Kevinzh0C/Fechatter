@@ -98,7 +98,6 @@ export function useProgressiveLoading(options = {}) {
         index: startIndex + i,
         createdAt: Date.now()
       });
-    }
     
     metrics.value.skeletonCount += count;
     return items;
@@ -117,7 +116,6 @@ export function useProgressiveLoading(options = {}) {
         metrics.value.preloadHits++;
         return;
       }
-    }
     
     metrics.value.preloadMisses++;
     
@@ -162,7 +160,8 @@ export function useProgressiveLoading(options = {}) {
         error
       });
       
-      console.error('Preload failed:', error);
+      if (import.meta.env.DEV) {
+        console.error('Preload failed:', error);
       throw error;
     }
   };
@@ -185,7 +184,6 @@ export function useProgressiveLoading(options = {}) {
         const skeleton = createSkeletonItems(1, i)[0];
         displayItems.push(skeleton);
       }
-    }
     
     return displayItems;
   };
@@ -200,8 +198,6 @@ export function useProgressiveLoading(options = {}) {
           index >= range.start && 
           index <= range.end) {
         return true;
-      }
-    }
     return false;
   };
 

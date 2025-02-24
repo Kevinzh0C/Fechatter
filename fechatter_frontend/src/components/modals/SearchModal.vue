@@ -173,7 +173,6 @@ watch(() => props.modelValue, (newVal) => {
     nextTick(() => {
       searchInput.value?.focus();
     });
-  }
 });
 
 // Methods
@@ -186,7 +185,6 @@ function handleBackdropClick(event) {
   if (event.target === event.currentTarget) {
     close();
   }
-}
 
 function clearSearch() {
   searchQuery.value = '';
@@ -223,7 +221,6 @@ async function performSearch() {
   } finally {
     loading.value = false;
   }
-}
 
 function debouncedSearch() {
   if (debounceTimer) {
@@ -267,8 +264,6 @@ function formatTime(timestamp) {
       day: 'numeric',
       year: 'numeric'
     });
-  }
-}
 
 async function jumpToMessage(result) {
   // Close modal
@@ -286,7 +281,6 @@ async function jumpToMessage(result) {
     messageId: result.id,
     chatId: result.chat_id
   });
-}
 </script>
 
 <style scoped>
@@ -449,7 +443,6 @@ async function jumpToMessage(result) {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
 
 /* Empty State */
 .empty-state {
@@ -711,5 +704,4 @@ async function jumpToMessage(result) {
     border-color: #4b5563;
     color: #f9fafb;
   }
-}
 </style>

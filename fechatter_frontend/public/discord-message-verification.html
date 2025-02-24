@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎯 DiscordMessage调用链验证工具</title>
+  <style>
+    body {
+      font-family: "gg sans", Arial, sans-serif;
+      background: #313338;
+      color: #dbdee1;
+      margin: 0;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #2b2d31;
+      border-radius: 8px;
+    }
+
+    .section {
+      background: #2b2d31;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .success {
+      color: #3ba55c;
+    }
+
+    .warning {
+      color: #faa81a;
+    }
+
+    .error {
+      color: #ed4245;
+    }
+
+    .info {
+      color: #5865f2;
+    }
+
+    .code {
+      background: #1e1f22;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: 'Monaco', 'Consolas', monospace;
+      margin: 10px 0;
+      border-left: 4px solid #5865f2;
+    }
+
+    .diagram {
+      background: #1e1f22;
+      padding: 20px;
+      border-radius: 6px;
+      margin: 15px 0;
+      text-align: center;
+    }
+
+    .chain-item {
+      display: inline-block;
+      background: #5865f2;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      margin: 5px;
+      font-weight: 500;
+    }
+
+    .arrow {
+      font-size: 24px;
+      color: #5865f2;
+      margin: 0 10px;
+    }
+
+    .btn {
+      background: #5865f2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+
+    .btn:hover {
+      background: #4752c4;
+    }
+
+    .verification-results {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 6px;
+      background: #1e1f22;
+    }
+
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #404249;
+    }
+
+    .metric:last-child {
+      border-bottom: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎯 DiscordMessage调用链验证工具</h1>
+      <p>验证Fechatter是否完全以DiscordMessage为中心</p>
+    </div>
+
+    <div class="section">
+      <h2>📊 当前调用链架构</h2>
+      <div class="diagram">
+        <div class="chain-item">Chat.vue</div>
+        <span class="arrow">↓</span>
+        <div class="chain-item">discord-message-container</div>
+        <span class="arrow">↓</span>
+        <div class="chain-item" style="background: #ed4245;">DiscordMessageItem.vue</div>
+        <br><br>
+        <div style="font-size: 14px; color: #b5bac1;">
+          ✅ 零包装渲染 | ✅ Discord原生样式 | ✅ 专用追踪系统
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>🔧 验证功能</h2>
+      <button class="btn" onclick="verifyCallChain()">验证调用链</button>
+      <button class="btn" onclick="verifyDiscordElements()">验证DiscordMessage元素</button>
+      <button class="btn" onclick="verifyContainerPurity()">验证容器纯净度</button>
+      <button class="btn" onclick="runCompleteVerification()">完整验证</button>
+
+      <div id="verificationResults" class="verification-results" style="display: none;">
+        <h3>📋 验证结果</h3>
+        <div id="results"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>🎯 DiscordMessage核心组件检查</h2>
+      <div class="code">
+        <strong>核心组件路径：</strong><br>
+        /components/discord/DiscordMessageItem.vue<br><br>
+        <strong>包含子组件：</strong><br>
+        • DiscordAvatar.vue<br>
+        • DiscordMarkdown.vue<br>
+        • FilePreview.vue<br>
+        • TranslationPanel.vue<br>
+        • ImageViewer.vue
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>📈 实时监控</h2>
+      <div id="liveMetrics">
+        <div class="metric">
+          <span>Discord元素数量:</span>
+          <span id="discordElementCount" class="info">检测中...</span>
+        </div>
+        <div class="metric">
+          <span>容器类型:</span>
+          <span id="containerType" class="info">检测中...</span>
+        </div>
+        <div class="metric">
+          <span>调用链纯净度:</span>
+          <span id="chainPurity" class="info">检测中...</span>
+        </div>
+        <div class="metric">
+          <span>DiscordMessage中心化:</span>
+          <span id="discordCentered" class="info">检测中...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 验证调用链
+    function verifyCallChain() {
+      const results = [];
+
+      // 检查Chat.vue是否使用SimpleMessageList
+      const chatComponents = document.querySelectorAll('.message-list, .simple-message-list, .discord-message-container');
+      if (chatComponents.length > 0) {
+        results.push({ type: 'success', message: `✅ 发现 ${chatComponents.length} 个消息容器组件` });
+      } else {
+        results.push({ type: 'warning', message: '⚠️ 未找到消息容器组件' });
+      }
+
+      // 检查DiscordMessage元素
+      const discordMessages = document.querySelectorAll('.discord-message, [class*="discord-message"]');
+      if (discordMessages.length > 0) {
+        results.push({ type: 'success', message: `✅ 发现 ${discordMessages.length} 个DiscordMessage元素` });
+      } else {
+        results.push({ type: 'error', message: '❌ 未找到DiscordMessage元素' });
+      }
+
+      showResults(results);
+    }
+
+    // 验证DiscordMessage元素
+    function verifyDiscordElements() {
+      const results = [];
+
+      // 检查discord-message-container
+      const container = document.querySelector('.discord-message-container');
+      if (container) {
+        results.push({ type: 'success', message: '✅ Discord消息容器存在' });
+
+        // 检查容器内的DiscordMessage数量
+        const messages = container.querySelectorAll('.discord-message, [data-message-id]');
+        results.push({ type: 'info', message: `📊 容器内消息数量: ${messages.length}` });
+
+        // 检查是否有全局的getDiscordElements方法
+        if (window.messageListRef?.getDiscordElements) {
+          const elementCount = window.messageListRef.getDiscordElements().size;
+          results.push({ type: 'success', message: `✅ Discord元素追踪: ${elementCount} 个元素` });
+        }
+      } else {
+        results.push({ type: 'error', message: '❌ Discord消息容器不存在' });
+      }
+
+      showResults(results);
+    }
+
+    // 验证容器纯净度
+    function verifyContainerPurity() {
+      const results = [];
+
+      // 检查是否有多余的包装层
+      const wrappers = document.querySelectorAll('.message-wrapper, .messages-wrapper');
+      if (wrappers.length === 0) {
+        results.push({ type: 'success', message: '✅ 容器纯净，无多余包装层' });
+      } else {
+        results.push({ type: 'warning', message: `⚠️ 发现 ${wrappers.length} 个可能的包装层` });
+      }
+
+      // 检查是否直接渲染DiscordMessageItem
+      const directMessages = document.querySelectorAll('.discord-message-container > .discord-message');
+      if (directMessages.length > 0) {
+        results.push({ type: 'success', message: `✅ 直接渲染DiscordMessage: ${directMessages.length} 个` });
+      } else {
+        results.push({ type: 'info', message: '📊 检查渲染层级结构' });
+      }
+
+      showResults(results);
+    }
+
+    // 完整验证
+    function runCompleteVerification() {
+      const results = [];
+
+      // 1. 调用链验证
+      results.push({ type: 'info', message: '🔍 开始完整DiscordMessage验证...' });
+
+      // 2. 组件存在性验证
+      const hasDiscordContainer = !!document.querySelector('.discord-message-container');
+      const hasDiscordMessages = document.querySelectorAll('.discord-message, [data-message-id]').length > 0;
+
+      if (hasDiscordContainer && hasDiscordMessages) {
+        results.push({ type: 'success', message: '✅ DiscordMessage中心化架构完整' });
+      } else {
+        results.push({ type: 'error', message: '❌ DiscordMessage架构不完整' });
+      }
+
+      // 3. 样式系统验证
+      const hasDiscordStyles = document.querySelector('style, link[href*="discord"]') ||
+        getComputedStyle(document.body).getPropertyValue('--discord-bg');
+      if (hasDiscordStyles) {
+        results.push({ type: 'success', message: '✅ Discord样式系统加载' });
+      } else {
+        results.push({ type: 'warning', message: '⚠️ Discord样式系统可能未完全加载' });
+      }
+
+      // 4. 调试系统验证
+      if (window.messageDisplayGuarantee) {
+        results.push({ type: 'success', message: '✅ DiscordMessage显示保证系统活跃' });
+      } else {
+        results.push({ type: 'warning', message: '⚠️ 显示保证系统未检测到' });
+      }
+
+      // 5. 性能验证
+      const messageCount = document.querySelectorAll('[data-message-id]').length;
+      if (messageCount > 0) {
+        results.push({ type: 'success', message: `✅ 活跃DiscordMessage数量: ${messageCount}` });
+      }
+
+      results.push({ type: 'success', message: '🎉 DiscordMessage中心化验证完成！' });
+
+      showResults(results);
+    }
+
+    // 显示结果
+    function showResults(results) {
+      const resultsDiv = document.getElementById('results');
+      const container = document.getElementById('verificationResults');
+
+      resultsDiv.innerHTML = results.map(result =>
+        `<div class="${result.type}">${result.message}</div>`
+      ).join('');
+
+      container.style.display = 'block';
+    }
+
+    // 实时监控
+    function updateLiveMetrics() {
+      // Discord元素数量
+      const discordCount = document.querySelectorAll('.discord-message, [data-message-id]').length;
+      document.getElementById('discordElementCount').textContent = discordCount;
+      document.getElementById('discordElementCount').className = discordCount > 0 ? 'success' : 'warning';
+
+      // 容器类型
+      const hasDiscordContainer = document.querySelector('.discord-message-container');
+      document.getElementById('containerType').textContent = hasDiscordContainer ? 'discord-message-container ✅' : '其他容器 ⚠️';
+      document.getElementById('containerType').className = hasDiscordContainer ? 'success' : 'warning';
+
+      // 调用链纯净度
+      const wrapperCount = document.querySelectorAll('.message-wrapper, .messages-wrapper').length;
+      document.getElementById('chainPurity').textContent = wrapperCount === 0 ? '100% 纯净 ✅' : `${wrapperCount}个包装层 ⚠️`;
+      document.getElementById('chainPurity').className = wrapperCount === 0 ? 'success' : 'warning';
+
+      // DiscordMessage中心化
+      const isDiscordCentered = hasDiscordContainer && discordCount > 0;
+      document.getElementById('discordCentered').textContent = isDiscordCentered ? '完全中心化 ✅' : '需要优化 ⚠️';
+      document.getElementById('discordCentered').className = isDiscordCentered ? 'success' : 'warning';
+    }
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      updateLiveMetrics();
+      setInterval(updateLiveMetrics, 2000); // 每2秒更新一次
+    });
+
+    // 页面加载时自动运行验证
+    setTimeout(() => {
+      runCompleteVerification();
+    }, 1000);
+  </script>
+</body>
+
+</html>

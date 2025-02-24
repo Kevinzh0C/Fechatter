@@ -4,41 +4,27 @@
     <div class="search-container">
       <div class="search-input-wrapper">
         <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" />
         </svg>
-        
-        <input
-          ref="searchInput"
-          v-model="searchQuery"
-          @input="handleSearchInput"
-          @keydown="handleKeydown"
-          type="text"
-          :placeholder="`Search in ${chatName || 'this channel'}...`"
-          class="search-input"
-        />
-        
+
+        <input ref="searchInput" v-model="searchQuery" @input="handleSearchInput" @keydown="handleKeydown" type="text"
+          :placeholder="`Search in ${chatName || 'this channel'}...`" class="search-input" />
+
         <div class="search-actions">
           <!-- Clear button -->
-          <button
-            v-if="searchQuery"
-            @click="clearSearch"
-            class="action-btn"
-            title="Clear search"
-          >
+          <button v-if="searchQuery" @click="clearSearch" class="action-btn" title="Clear search">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              <path
+                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
             </svg>
           </button>
-          
+
           <!-- Advanced search toggle -->
-          <button
-            @click="toggleAdvanced"
-            class="action-btn"
-            :class="{ active: showAdvanced }"
-            title="Advanced search"
-          >
+          <button @click="toggleAdvanced" class="action-btn" :class="{ active: showAdvanced }" title="Advanced search">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/>
+              <path
+                d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z" />
             </svg>
           </button>
         </div>
@@ -48,7 +34,7 @@
       <div v-if="searchActive" class="search-stats">
         <span v-if="loading" class="stats-loading">
           <svg class="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="40 20"/>
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="40 20" />
           </svg>
           Searching...
         </span>
@@ -58,27 +44,19 @@
         <span v-else-if="searchPerformed" class="stats-empty">
           No results found
         </span>
-        
+
         <!-- Navigation buttons -->
         <div v-if="results.length > 1" class="search-nav">
-          <button
-            @click="navigatePrevious"
-            :disabled="currentResult === 0"
-            class="nav-btn"
-            title="Previous result (Shift+Enter)"
-          >
+          <button @click="navigatePrevious" :disabled="currentResult === 0" class="nav-btn"
+            title="Previous result (Shift+Enter)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+              <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
             </svg>
           </button>
-          <button
-            @click="navigateNext"
-            :disabled="currentResult === results.length - 1"
-            class="nav-btn"
-            title="Next result (Enter)"
-          >
+          <button @click="navigateNext" :disabled="currentResult === results.length - 1" class="nav-btn"
+            title="Next result (Enter)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L14.17 12z"/>
+              <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L14.17 12z" />
             </svg>
           </button>
         </div>
@@ -92,11 +70,7 @@
           <!-- From User -->
           <div class="filter-group">
             <label class="filter-label">From:</label>
-            <select 
-              v-model="filters.sender_id" 
-              @change="performSearch"
-              class="filter-select"
-            >
+            <select v-model="filters.sender_id" @change="performSearch" class="filter-select">
               <option value="">Anyone</option>
               <option v-for="member in chatMembers" :key="member.id" :value="member.id">
                 {{ member.fullname || member.username || 'Unknown' }}
@@ -107,11 +81,7 @@
           <!-- Date Range -->
           <div class="filter-group">
             <label class="filter-label">When:</label>
-            <select 
-              v-model="datePreset" 
-              @change="handleDatePresetChange"
-              class="filter-select"
-            >
+            <select v-model="datePreset" @change="handleDatePresetChange" class="filter-select">
               <option value="">Any time</option>
               <option value="today">Today</option>
               <option value="yesterday">Yesterday</option>
@@ -123,31 +93,15 @@
 
           <!-- Custom Date Range -->
           <div v-if="datePreset === 'custom'" class="filter-group date-range">
-            <input 
-              type="date" 
-              v-model="filters.start_date"
-              @change="performSearch"
-              class="filter-input"
-              max="today"
-            />
+            <input type="date" v-model="filters.start_date" @change="performSearch" class="filter-input" max="today" />
             <span class="date-separator">to</span>
-            <input 
-              type="date" 
-              v-model="filters.end_date"
-              @change="performSearch"
-              class="filter-input"
-              max="today"
-            />
+            <input type="date" v-model="filters.end_date" @change="performSearch" class="filter-input" max="today" />
           </div>
 
           <!-- Has Attachments -->
           <div class="filter-group">
             <label class="filter-checkbox">
-              <input 
-                type="checkbox" 
-                v-model="filters.has_files"
-                @change="performSearch"
-              />
+              <input type="checkbox" v-model="filters.has_files" @change="performSearch" />
               <span>Has files</span>
             </label>
           </div>
@@ -155,11 +109,7 @@
           <!-- Sort Order -->
           <div class="filter-group">
             <label class="filter-label">Sort:</label>
-            <select 
-              v-model="filters.sort" 
-              @change="performSearch"
-              class="filter-select"
-            >
+            <select v-model="filters.sort" @change="performSearch" class="filter-select">
               <option value="relevance">Most relevant</option>
               <option value="date_desc">Newest first</option>
               <option value="date_asc">Oldest first</option>
@@ -190,7 +140,7 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useChatStore } from '@/stores/chat';
 import { useNotifications } from '@/composables/useNotifications';
-import { SearchService } from '@/services/api';
+import api from '@/services/api';
 
 const props = defineProps({
   chatId: {
@@ -240,12 +190,12 @@ let searchTimer = null;
 // Methods
 const handleSearchInput = () => {
   clearTimeout(searchTimer);
-  
+
   if (!searchQuery.value.trim()) {
     clearSearchResults();
     return;
   }
-  
+
   searchTimer = setTimeout(() => {
     performSearch();
   }, 300); // 300ms debounce
@@ -279,23 +229,23 @@ const performSearch = async () => {
     });
 
     const response = await SearchService.search(searchParams);
-    
+
     // Handle response data format
     results.value = response.results || [];
     currentResult.value = results.value.length > 0 ? 0 : -1;
-    
+
     // Emit results to parent
     emit('search-results', {
       query,
       results: results.value,
       filters: filters.value
     });
-    
+
     // Highlight first result
     if (results.value.length > 0) {
       highlightCurrentResult();
     }
-    
+
   } catch (error) {
     console.error('Search failed:', error);
     const { notifyError } = useNotifications();
@@ -383,7 +333,7 @@ const resetFilters = () => {
 const handleDatePresetChange = () => {
   const today = new Date();
   const formatDate = (date) => date.toISOString().split('T')[0];
-  
+
   switch (datePreset.value) {
     case 'today':
       filters.value.start_date = formatDate(today);
@@ -414,17 +364,17 @@ const handleDatePresetChange = () => {
       filters.value.start_date = '';
       filters.value.end_date = '';
   }
-  
+
   performSearch();
 };
 
 const exportResults = async () => {
   if (results.value.length === 0) return;
-  
+
   try {
     const { notifyInfo } = useNotifications();
     notifyInfo('Preparing export...');
-    
+
     // Format results for export
     const exportData = results.value.map(r => ({
       date: new Date(r.created_at).toLocaleString(),
@@ -432,7 +382,7 @@ const exportResults = async () => {
       message: r.content,
       hasFiles: r.files?.length > 0 ? 'Yes' : 'No'
     }));
-    
+
     // Convert to CSV
     const csv = [
       ['Date', 'Sender', 'Message', 'Has Files'],
@@ -443,7 +393,7 @@ const exportResults = async () => {
         row.hasFiles
       ])
     ].map(row => row.join(',')).join('\n');
-    
+
     // Download
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -452,7 +402,7 @@ const exportResults = async () => {
     a.download = `search-results-${props.chatName}-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    
+
     const { notifySuccess } = useNotifications();
     notifySuccess('Search results exported successfully');
   } catch (error) {
@@ -465,10 +415,10 @@ const exportResults = async () => {
 // Computed
 const hasActiveFilters = computed(() => {
   return filters.value.sender_id ||
-         filters.value.start_date ||
-         filters.value.end_date ||
-         filters.value.has_files ||
-         filters.value.sort !== 'relevance';
+    filters.value.start_date ||
+    filters.value.end_date ||
+    filters.value.has_files ||
+    filters.value.sort !== 'relevance';
 });
 
 // Focus management
@@ -503,6 +453,19 @@ defineExpose({
   clearSearch,
   performSearch
 });
+
+// Simple SearchService implementation
+const SearchService = {
+  async search(params) {
+    try {
+      const response = await api.get('/search/messages', { params });
+      return response.data || { results: [], total: 0 };
+    } catch (error) {
+      console.error('Search error:', error);
+      return { results: [], total: 0 };
+    }
+  }
+};
 </script>
 
 <style scoped>
@@ -767,6 +730,7 @@ defineExpose({
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -781,13 +745,13 @@ defineExpose({
   .advanced-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .date-range {
     grid-column: span 1;
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .date-separator {
     text-align: center;
   }
