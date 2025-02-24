@@ -19,8 +19,11 @@ class BackendPerformanceDiagnostic {
    * Run complete diagnostic
    */
   async runDiagnostic() {
-    console.log('🔍 Starting Backend Performance Diagnostic...');
-    console.log('📍 Server:', this.serverInfo.ip + ':' + this.serverInfo.port);
+    if (import.meta.env.DEV) {
+      console.log('🔍 Starting Backend Performance Diagnostic...');
+    if (import.meta.env.DEV) {
+      console.log('📍 Server:', this.serverInfo.ip + ':' + this.serverInfo.port);
+    }
 
     const results = {
       timestamp: new Date().toISOString(),
@@ -52,7 +55,9 @@ class BackendPerformanceDiagnostic {
    * Test 1: Network Latency
    */
   async testNetworkLatency() {
-    console.log('\n📡 Test 1: Network Latency Analysis');
+    if (import.meta.env.DEV) {
+      console.log('\n📡 Test 1: Network Latency Analysis');
+    }
 
     const results = {
       testName: 'Network Latency',
@@ -69,12 +74,12 @@ class BackendPerformanceDiagnostic {
         });
       } catch (e) {
         // Expected in no-cors mode
-      }
       const end = performance.now();
       const latency = end - start;
       results.measurements.push(latency);
-      console.log(`  Attempt ${i + 1}: ${latency.toFixed(2)}ms`);
-    }
+      if (import.meta.env.DEV) {
+        console.log(`  Attempt ${i + 1}: ${latency.toFixed(2)}ms`);
+      }
 
     const avgLatency = results.measurements.reduce((a, b) => a + b, 0) / results.measurements.length;
     results.averageLatency = avgLatency;
@@ -87,7 +92,9 @@ class BackendPerformanceDiagnostic {
    * Test 2: API Response Time Breakdown
    */
   async testAPIResponseTime() {
-    console.log('\n⏱️ Test 2: API Response Time Breakdown');
+    if (import.meta.env.DEV) {
+      console.log('\n⏱️ Test 2: API Response Time Breakdown');
+    }
 
     const results = {
       testName: 'API Response Time',
@@ -121,11 +128,13 @@ class BackendPerformanceDiagnostic {
           analysis: responseTime > endpoint.expectedTime * 3 ? 'SLOW' : 'OK'
         });
 
-        console.log(`  ${endpoint.path}: ${responseTime.toFixed(0)}ms (${response.status})`);
+        if (import.meta.env.DEV) {
+          console.log(`  ${endpoint.path}: ${responseTime.toFixed(0)}ms (${response.status})`);
+        }
       } catch (error) {
-        console.log(`  ${endpoint.path}: FAILED - ${error.message}`);
-      }
-    }
+        if (import.meta.env.DEV) {
+          console.log(`  ${endpoint.path}: FAILED - ${error.message}`);
+        }
 
     return results;
   }
@@ -134,7 +143,9 @@ class BackendPerformanceDiagnostic {
    * Test 3: Message Processing Analysis
    */
   async analyzeMessageProcessing() {
-    console.log('\n💬 Test 3: Message Processing Analysis');
+    if (import.meta.env.DEV) {
+      console.log('\n💬 Test 3: Message Processing Analysis');
+    }
 
     const messagePerf = window.msgPerf?.getStats() || {};
     const slowRequests = window.msgPerf?.getSlowRequests() || [];
@@ -155,7 +166,9 @@ class BackendPerformanceDiagnostic {
    * Test 4: Docker Container Analysis
    */
   analyzeDockerSetup() {
-    console.log('\n🐳 Test 4: Docker Container Analysis');
+    if (import.meta.env.DEV) {
+      console.log('\n🐳 Test 4: Docker Container Analysis');
+    }
 
     return {
       testName: 'Docker Setup',
@@ -183,7 +196,9 @@ class BackendPerformanceDiagnostic {
    * Test 5: Backend Architecture Analysis
    */
   analyzeBackendArchitecture() {
-    console.log('\n🏗️ Test 5: Backend Architecture Analysis');
+    if (import.meta.env.DEV) {
+      console.log('\n🏗️ Test 5: Backend Architecture Analysis');
+    }
 
     return {
       testName: 'Backend Architecture',
@@ -208,7 +223,6 @@ class BackendPerformanceDiagnostic {
           symptoms: ['Variable response times', 'Peak hour slowdowns'],
           likelihood: 'MEDIUM'
         }
-      }
     };
   }
 
@@ -241,59 +255,101 @@ class BackendPerformanceDiagnostic {
         impact: 'Significant network latency'
       };
     }
-  }
 
   /**
    * Generate diagnostic report
    */
   generateReport(results) {
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 BACKEND PERFORMANCE DIAGNOSTIC REPORT');
-    console.log('='.repeat(60));
+    if (import.meta.env.DEV) {
+      console.log('\n' + '='.repeat(60));
+    if (import.meta.env.DEV) {
+      console.log('📊 BACKEND PERFORMANCE DIAGNOSTIC REPORT');
+    if (import.meta.env.DEV) {
+      console.log('='.repeat(60));
+    }
 
-    console.log('\n🔍 ROOT CAUSE ANALYSIS:');
-    console.log('\nBased on the 8-second delay pattern, the most likely causes are:');
+    if (import.meta.env.DEV) {
+      console.log('\n🔍 ROOT CAUSE ANALYSIS:');
+    if (import.meta.env.DEV) {
+      console.log('\nBased on the 8-second delay pattern, the most likely causes are:');
+    }
 
-    console.log('\n1. 🗄️ DATABASE PERFORMANCE (90% likelihood)');
-    console.log('   - Symptoms: Consistent 8s delay across all message operations');
-    console.log('   - Cause: Unoptimized queries, missing indexes, or connection pooling issues');
-    console.log('   - Evidence: All message-related endpoints are slow');
+    if (import.meta.env.DEV) {
+      console.log('\n1. 🗄️ DATABASE PERFORMANCE (90% likelihood)');
+    if (import.meta.env.DEV) {
+      console.log('   - Symptoms: Consistent 8s delay across all message operations');
+    if (import.meta.env.DEV) {
+      console.log('   - Cause: Unoptimized queries, missing indexes, or connection pooling issues');
+    if (import.meta.env.DEV) {
+      console.log('   - Evidence: All message-related endpoints are slow');
+    }
 
-    console.log('\n2. 🐳 DOCKER CONFIGURATION (60% likelihood)');
-    console.log('   - Port mapping: 8080 -> 6688 adds overhead');
-    console.log('   - Container resource limits may be too restrictive');
-    console.log('   - Docker bridge network adds latency');
+    if (import.meta.env.DEV) {
+      console.log('\n2. 🐳 DOCKER CONFIGURATION (60% likelihood)');
+    if (import.meta.env.DEV) {
+      console.log('   - Port mapping: 8080 -> 6688 adds overhead');
+    if (import.meta.env.DEV) {
+      console.log('   - Container resource limits may be too restrictive');
+    if (import.meta.env.DEV) {
+      console.log('   - Docker bridge network adds latency');
+    }
 
-    console.log('\n3. 🌐 SERVER LOCATION (40% likelihood)');
-    console.log('   - Server IP suggests Vultr hosting');
-    console.log('   - Physical distance adds base latency');
-    console.log('   - But this alone cannot explain 8s delays');
+    if (import.meta.env.DEV) {
+      console.log('\n3. 🌐 SERVER LOCATION (40% likelihood)');
+    if (import.meta.env.DEV) {
+      console.log('   - Server IP suggests Vultr hosting');
+    if (import.meta.env.DEV) {
+      console.log('   - Physical distance adds base latency');
+    if (import.meta.env.DEV) {
+      console.log('   - But this alone cannot explain 8s delays');
+    }
 
-    console.log('\n4. 💾 BACKEND ARCHITECTURE (70% likelihood)');
-    console.log('   - Synchronous message processing');
-    console.log('   - No caching layer');
-    console.log('   - Inefficient data serialization');
+    if (import.meta.env.DEV) {
+      console.log('\n4. 💾 BACKEND ARCHITECTURE (70% likelihood)');
+    if (import.meta.env.DEV) {
+      console.log('   - Synchronous message processing');
+    if (import.meta.env.DEV) {
+      console.log('   - No caching layer');
+    if (import.meta.env.DEV) {
+      console.log('   - Inefficient data serialization');
+    }
 
-    console.log('\n✅ RECOMMENDED ACTIONS:');
-    console.log('1. Enable database query logging and analyze slow queries');
-    console.log('2. Add database indexes on chat_id and created_at columns');
-    console.log('3. Implement connection pooling if not already present');
-    console.log('4. Add Redis caching layer for frequently accessed data');
-    console.log('5. Use async message processing with message queues');
-    console.log('6. Monitor Docker container resources (docker stats)');
-    console.log('7. Consider upgrading server or moving closer to users');
+    if (import.meta.env.DEV) {
+      console.log('\n✅ RECOMMENDED ACTIONS:');
+    if (import.meta.env.DEV) {
+      console.log('1. Enable database query logging and analyze slow queries');
+    if (import.meta.env.DEV) {
+      console.log('2. Add database indexes on chat_id and created_at columns');
+    if (import.meta.env.DEV) {
+      console.log('3. Implement connection pooling if not already present');
+    if (import.meta.env.DEV) {
+      console.log('4. Add Redis caching layer for frequently accessed data');
+    if (import.meta.env.DEV) {
+      console.log('5. Use async message processing with message queues');
+    if (import.meta.env.DEV) {
+      console.log('6. Monitor Docker container resources (docker stats)');
+    if (import.meta.env.DEV) {
+      console.log('7. Consider upgrading server or moving closer to users');
+    }
 
-    console.log('\n💡 QUICK FIXES:');
-    console.log('1. Increase Docker container memory/CPU limits');
-    console.log('2. Enable database query caching');
-    console.log('3. Reduce message fetch limit from 15 to 10');
-    console.log('4. Implement backend response compression');
+    if (import.meta.env.DEV) {
+      console.log('\n💡 QUICK FIXES:');
+    if (import.meta.env.DEV) {
+      console.log('1. Increase Docker container memory/CPU limits');
+    if (import.meta.env.DEV) {
+      console.log('2. Enable database query caching');
+    if (import.meta.env.DEV) {
+      console.log('3. Reduce message fetch limit from 15 to 10');
+    if (import.meta.env.DEV) {
+      console.log('4. Implement backend response compression');
+    }
 
-    console.log('\n' + '='.repeat(60));
+    if (import.meta.env.DEV) {
+      console.log('\n' + '='.repeat(60));
+    }
 
     return results;
   }
-}
 
 // Create global instance
 const backendDiagnostic = new BackendPerformanceDiagnostic();
@@ -305,9 +361,12 @@ if (typeof window !== 'undefined') {
     info: () => console.log(backendDiagnostic.serverInfo)
   };
 
-  console.log('🔍 Backend Performance Diagnostic loaded');
-  console.log('   Run diagnostic: window.backendDiag.run()');
-  console.log('   Server info: window.backendDiag.info()');
-}
+  if (import.meta.env.DEV) {
+    console.log('🔍 Backend Performance Diagnostic loaded');
+  if (import.meta.env.DEV) {
+    console.log('   Run diagnostic: window.backendDiag.run()');
+  if (import.meta.env.DEV) {
+    console.log('   Server info: window.backendDiag.info()');
+  }
 
 export default backendDiagnostic; 

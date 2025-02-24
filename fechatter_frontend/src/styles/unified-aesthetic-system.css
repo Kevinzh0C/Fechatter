@@ -1,0 +1,201 @@
+/* 🎨 UNIFIED AESTHETIC SYSTEM - 统一美学设计系统
+ * 彻底替代3套冲突的CSS变量系统
+ * 恢复原始人体工学认知心理学美学设计
+ */
+
+:root {
+  /* ===== 🎯 权威色彩系统 - Discord优化版 ===== */
+
+  /* 主色系 - 统一所有 --discord-primary, --color-primary, --primary-color */
+  --primary: #5865f2;
+  --primary-hover: #4752c4;
+  --primary-active: #3c45a5;
+  --primary-light: rgba(88, 101, 242, 0.15);
+  --primary-subtle: rgba(88, 101, 242, 0.1);
+
+  /* 语义化背景 - 统一所有 --bg-*, --color-background */
+  --bg-app: #ffffff;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f2f3f5;
+  --bg-tertiary: #e3e5e8;
+  --bg-accent: #f6f6f7;
+  --bg-floating: #ffffff;
+
+  /* Discord精确交互色彩 */
+  --bg-message-hover: rgba(4, 4, 5, 0.07);
+  --bg-message-selected: rgba(88, 101, 242, 0.1);
+
+  /* 精确文字层次 - 统一所有 --text-*, --color-text */
+  --text-primary: #060607;
+  --text-secondary: #4e5058;
+  --text-muted: #6b7280;
+  --text-inverse: #ffffff;
+  --text-link: #006ce7;
+  --text-brand: #5865f2;
+
+  /* ===== 🎯 恢复原始人体工学间距系统 ===== */
+
+  /* Discord消息精确布局 - 恢复原始设计 */
+  --message-padding-top: 2px;
+  --message-padding-right: 16px;
+  --message-padding-bottom: 2px;
+  --message-padding-left: 72px;
+  /* 为40px头像 + 16px左边距 + 16px间隙 */
+  --message-min-height: 44px;
+  /* Apple/Google触摸标准 */
+  --message-spacing: 8px;
+  /* 消息间呼吸空间 */
+
+  /* 头像精确定位系统 */
+  --avatar-size: 40px;
+  /* 黄金比例尺寸 */
+  --avatar-offset-left: 16px;
+  /* 完美左边距 */
+  --avatar-offset-top: 2px;
+  /* 与文本基线对齐 */
+
+  /* ===== 🎯 统一字体系统 - Discord标准 ===== */
+
+  /* 主字体族 - 替代所有冲突的字体定义 */
+  --font-family-primary: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-family-mono: "Consolas", "Andale Mono WT", "Andale Mono", "Lucida Console", monospace;
+
+  /* 字体大小层次 */
+  --font-size-base: 1rem;
+  /* 16px - 基准 */
+  --font-size-sm: 0.75rem;
+  /* 12px */
+
+  /* 行高系统 */
+  --line-height-base: 1.375;
+  /* Discord标准 */
+
+  /* 过渡动画 - Discord精确时序 */
+  --transition-fast: 0.06s ease;
+  /* 微妙交互 */
+  --transition-medium: 0.15s ease;
+  /* 标准动画 */
+
+  /* 圆角和阴影 */
+  --radius-sm: 4px;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ===== 🌙 暗色主题 ===== */
+[data-theme="dark"] {
+  --bg-app: #313338;
+  --bg-primary: #313338;
+  --bg-secondary: #2b2d31;
+  --bg-message-hover: rgba(255, 255, 255, 0.06);
+  --text-primary: #f2f3f5;
+  --text-secondary: #b5bac1;
+  --text-muted: #9ca3af;
+}
+
+/* ===== 🎯 核心美学恢复 ===== */
+
+/* 全局字体统一 */
+html,
+body,
+#app {
+  font-family: var(--font-family-primary) !important;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  color: var(--text-primary);
+  background-color: var(--bg-app);
+}
+
+/* Discord消息核心美学恢复 */
+.discord-message {
+  /* 恢复原始精确间距 - 这是关键 */
+  padding: var(--message-padding-top) var(--message-padding-right) var(--message-padding-bottom) var(--message-padding-left) !important;
+  min-height: var(--message-min-height) !important;
+  margin-bottom: var(--message-spacing) !important;
+
+  /* 恢复微妙交互反馈 */
+  transition: all var(--transition-fast) !important;
+  border-radius: var(--radius-sm);
+  position: relative;
+}
+
+.discord-message:hover {
+  background-color: var(--bg-message-hover) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 头像精确定位恢复 */
+.message-avatar-slot,
+.discord-message .message-avatar-slot {
+  position: absolute !important;
+  left: var(--avatar-offset-left) !important;
+  top: var(--avatar-offset-top) !important;
+  width: var(--avatar-size) !important;
+  height: var(--avatar-size) !important;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* 文本层次恢复 */
+.sender-name,
+.discord-message .sender-name {
+  font-size: var(--font-size-base) !important;
+  font-weight: 500 !important;
+  color: var(--text-primary) !important;
+  line-height: var(--line-height-base) !important;
+  margin-bottom: 2px !important;
+}
+
+.message-timestamp,
+.discord-message .message-timestamp {
+  font-size: var(--font-size-sm) !important;
+  color: var(--text-muted) !important;
+  font-weight: 400 !important;
+}
+
+.message-text,
+.discord-message .message-text {
+  font-size: var(--font-size-base) !important;
+  color: var(--text-primary) !important;
+  line-height: var(--line-height-base) !important;
+  word-wrap: break-word;
+  margin: 0;
+}
+
+/* 时间分隔符美学 */
+.time-session-divider {
+  margin: 20px 0 !important;
+  padding: 12px 16px;
+}
+
+/* 确保消息列表整体美学 */
+.simple-message-list {
+  padding: 16px 0;
+  background-color: var(--bg-primary);
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  :root {
+    --message-padding-left: 56px;
+    --avatar-size: 32px;
+    --avatar-offset-left: 12px;
+    --message-spacing: 6px;
+  }
+}
+
+/* 无障碍支持 */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .discord-message:hover {
+    transform: none !important;
+  }
+}

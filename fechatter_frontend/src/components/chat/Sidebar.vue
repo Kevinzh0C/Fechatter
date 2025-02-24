@@ -2,48 +2,30 @@
   <!-- 🎨 现代人体工学设计的侧边栏 -->
   <aside class="modern-sidebar">
     <!-- 📍 工作区域头部 -->
-    <header class="workspace-header">
-      <div class="workspace-info" @click="toggleDropdown" role="button" tabindex="0" @keydown.enter="toggleDropdown">
-        <div class="workspace-title">
-          <h1>{{ workspaceName }}</h1>
-          <svg class="dropdown-icon" :class="{ 'rotated': dropdownVisible }" fill="none" stroke="currentColor"
-            viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-        <div class="workspace-status">
-          <div class="status-indicator"></div>
-          <span>活跃</span>
-        </div>
-      </div>
-
-      <!-- 🎛️ 下拉菜单 -->
-      <Transition name="workspace-dropdown">
-        <div v-if="dropdownVisible" class="workspace-dropdown">
-          <nav class="dropdown-menu">
-            <button @click="goToAdmin" class="menu-item">
-              <svg class="menu-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <span>管理后台</span>
-            </button>
-
-            <div class="menu-divider"></div>
-
-            <button @click="handleLogout" class="menu-item logout">
-              <svg class="menu-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              <span>退出登录</span>
-            </button>
-          </nav>
-        </div>
-      </Transition>
+    <header class="workspace-header" @click="toggleWorkspaceMenu">
+      <h1 class="workspace-name">{{ workspaceName }}</h1>
+      <Icon name="chevron-down" class="workspace-chevron" :class="{ 'rotated': isWorkspaceMenuOpen }" />
     </header>
+
+    <!-- 🎛️ 下拉菜单 -->
+    <Transition name="workspace-dropdown">
+      <div v-if="isWorkspaceMenuOpen" class="workspace-dropdown">
+        <nav class="dropdown-menu">
+          <button @click="invitePeople" class="menu-item">
+            <Icon name="user-plus" />
+            <span>Invite People</span>
+          </button>
+          <button @click="workspaceSettings" class="menu-item">
+            <Icon name="settings" />
+            <span>Workspace Settings</span>
+          </button>
+          <button @click="createWorkspace" class="menu-item">
+            <Icon name="plus-circle" />
+            <span>Create Workspace</span>
+          </button>
+        </nav>
+      </div>
+    </Transition>
 
     <!-- 📋 导航区域 -->
     <nav class="sidebar-navigation">
@@ -209,6 +191,12 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useWorkspaceStore } from '@/stores/workspace';
+import ChannelList from '@/components/layout/ChannelList.vue';
+import Icon from '@/components/ui/Icon.vue';
+
+const workspaceStore = useWorkspaceStore();
+const isWorkspaceMenuOpen = ref(false);
 
 const props = defineProps({
   workspaceName: {
@@ -243,8 +231,6 @@ const emit = defineEmits([
   'go-to-admin'
 ]);
 
-const dropdownVisible = ref(false);
-
 // 分离不同类型的频道
 const publicChannels = computed(() => {
   return props.channels.filter(channel => channel.type === 'public' || !channel.type);
@@ -255,20 +241,20 @@ const privateChannels = computed(() => {
 });
 
 // 切换下拉菜单
-function toggleDropdown() {
-  dropdownVisible.value = !dropdownVisible.value;
+function toggleWorkspaceMenu() {
+  isWorkspaceMenuOpen.value = !isWorkspaceMenuOpen.value;
 }
 
 // 处理登出
 function handleLogout() {
   emit('logout');
-  dropdownVisible.value = false;
+  isWorkspaceMenuOpen.value = false;
 }
 
 // 前往管理后台
 function goToAdmin() {
   emit('go-to-admin');
-  dropdownVisible.value = false;
+  isWorkspaceMenuOpen.value = false;
 }
 
 // 添加频道方法
@@ -296,7 +282,7 @@ function selectChannel(channelId) {
 // 处理外部点击关闭下拉菜单
 function handleOutsideClick(event) {
   if (!event.target.closest('.workspace-header')) {
-    dropdownVisible.value = false;
+    isWorkspaceMenuOpen.value = false;
   }
 }
 
@@ -326,42 +312,16 @@ onUnmounted(() => {
 
 /* 📍 工作区域头部 */
 .workspace-header {
-  padding: 16px 20px;
+  padding: 16px;
+  cursor: pointer;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.02);
   position: relative;
 }
 
-.workspace-info {
-  cursor: pointer;
-  padding: 12px 16px;
-  border-radius: 12px;
-  transition: all 0.2s ease;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid transparent;
-}
-
-.workspace-info:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
-  transform: translateY(-1px);
-}
-
-.workspace-info:focus {
-  outline: 2px solid #5865f2;
-  outline-offset: 2px;
-}
-
-.workspace-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.workspace-title h1 {
-  font-size: 18px;
-  font-weight: 700;
+.workspace-name {
+  font-size: 16px;
+  font-weight: 600;
   color: #ffffff;
   margin: 0;
   line-height: 1.2;
@@ -370,7 +330,7 @@ onUnmounted(() => {
   text-overflow: ellipsis;
 }
 
-.dropdown-icon {
+.workspace-chevron {
   width: 20px;
   height: 20px;
   color: rgba(255, 255, 255, 0.6);
@@ -378,25 +338,9 @@ onUnmounted(() => {
   transform-origin: center;
 }
 
-.dropdown-icon.rotated {
+.workspace-chevron.rotated {
   transform: rotate(180deg);
   color: #5865f2;
-}
-
-.workspace-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.status-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #23a55a;
-  box-shadow: 0 0 8px rgba(35, 165, 90, 0.5);
 }
 
 /* 🎛️ 下拉菜单 */
@@ -834,9 +778,9 @@ onUnmounted(() => {
 
   .channel-item,
   .dm-item,
-  .workspace-info,
+  .workspace-header,
   .add-button,
-  .dropdown-icon {
+  .workspace-chevron {
     transition: none;
   }
 

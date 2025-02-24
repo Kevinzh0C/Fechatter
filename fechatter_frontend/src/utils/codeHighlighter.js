@@ -51,14 +51,15 @@ class CodeHighlighterManager {
         langs: ['javascript', 'typescript', 'python', 'sql', 'json', 'bash'], // Common languages only
       });
 
-      console.log('✅ Code highlighter initialized as singleton');
+      if (import.meta.env.DEV) {
+        console.log('✅ Code highlighter initialized as singleton');
       return this.highlighter;
     } catch (error) {
-      console.error('Failed to initialize code highlighter:', error);
+      if (import.meta.env.DEV) {
+        console.error('Failed to initialize code highlighter:', error);
       this.initPromise = null;
       throw error;
     }
-  }
 
   /**
    * Highlight code with caching
@@ -74,7 +75,6 @@ class CodeHighlighterManager {
       lang: actualLang,
       theme
     });
-  }
 
   /**
    * Dispose highlighter instance
@@ -85,9 +85,9 @@ class CodeHighlighterManager {
       this.highlighter = null;
       this.initPromise = null;
       this.disposed = true;
-      console.log('🧹 Code highlighter disposed');
-    }
-  }
+      if (import.meta.env.DEV) {
+        console.log('🧹 Code highlighter disposed');
+      }
 
   /**
    * Get current status
@@ -99,7 +99,6 @@ class CodeHighlighterManager {
       loading: !!this.initPromise && !this.highlighter
     };
   }
-}
 
 // Export singleton instance
 const codeHighlighter = new CodeHighlighterManager();
@@ -109,7 +108,6 @@ if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => {
     codeHighlighter.dispose();
   });
-}
 
 export default codeHighlighter;
 

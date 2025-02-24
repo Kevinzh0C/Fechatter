@@ -99,7 +99,6 @@ export function usePerformanceMonitor() {
             case 'paint':
               if (entry.name === 'first-contentful-paint') {
                 metrics.value.fcp = entry.startTime;
-              }
               break;
 
             case 'largest-contentful-paint':
@@ -113,13 +112,11 @@ export function usePerformanceMonitor() {
             case 'layout-shift':
               if (!entry.hadRecentInput) {
                 metrics.value.cls = (metrics.value.cls || 0) + entry.value;
-              }
               break;
 
             case 'measure':
               if (entry.name === 'fechatter-tti') {
                 metrics.value.timeToInteractive = entry.duration;
-              }
               break;
 
             case 'navigation':
@@ -136,8 +133,9 @@ export function usePerformanceMonitor() {
         entryTypes: ['paint', 'largest-contentful-paint', 'first-input', 'layout-shift', 'measure', 'navigation']
       });
     } catch (error) {
-      console.warn('Performance Observer not supported:', error);
-    }
+      if (import.meta.env.DEV) {
+        console.warn('Performance Observer not supported:', error);
+      }
   };
 
   const monitorMemoryUsage = () => {
@@ -290,7 +288,6 @@ export function usePerformanceMonitor() {
         priority: 'high',
         message: 'Largest Contentful Paint is slow. Consider optimizing images and reducing server response time.',
       });
-    }
 
     if (metrics.value.fid > 100) {
       suggestions.push({
@@ -298,7 +295,6 @@ export function usePerformanceMonitor() {
         priority: 'medium',
         message: 'First Input Delay is high. Consider reducing JavaScript execution time.',
       });
-    }
 
     if (metrics.value.cls > 0.1) {
       suggestions.push({
@@ -306,7 +302,6 @@ export function usePerformanceMonitor() {
         priority: 'medium',
         message: 'Cumulative Layout Shift is high. Ensure elements have defined dimensions.',
       });
-    }
 
     if (metrics.value.memoryUsage?.percentage > 80) {
       suggestions.push({
@@ -314,7 +309,6 @@ export function usePerformanceMonitor() {
         priority: 'high',
         message: 'Memory usage is high. Consider optimizing component lifecycle and data management.',
       });
-    }
 
     const largeResources = metrics.value.resourceTiming.filter(resource => resource.size > 1000000);
     if (largeResources.length > 0) {
@@ -323,7 +317,6 @@ export function usePerformanceMonitor() {
         priority: 'medium',
         message: `${largeResources.length} large resources detected. Consider compression and lazy loading.`,
       });
-    }
 
     return suggestions;
   };
@@ -348,19 +341,25 @@ export function usePerformanceMonitor() {
     const suggestions = getOptimizationSuggestions();
 
     console.group('📊 Performance Metrics');
-    console.log('Overall Score:', score?.overall || 'N/A', `(Grade: ${score?.grade || 'N/A'})`);
-    console.log('Core Web Vitals:', {
-      FCP: metrics.value.fcp ? `${Math.round(metrics.value.fcp)}ms` : 'N/A',
+    if (import.meta.env.DEV) {
+      console.log('Overall Score:', score?.overall || 'N/A', `(Grade: ${score?.grade || 'N/A'})`);
+    if (import.meta.env.DEV) {
+      console.log('Core Web Vitals:', {
+        FCP: metrics.value.fcp ? `${Math.round(metrics.value.fcp)}ms` : 'N/A',
       LCP: metrics.value.lcp ? `${Math.round(metrics.value.lcp)}ms` : 'N/A',
       FID: metrics.value.fid ? `${Math.round(metrics.value.fid)}ms` : 'N/A',
       CLS: metrics.value.cls ? metrics.value.cls.toFixed(3) : 'N/A',
     });
-    console.log('Memory Usage:', metrics.value.memoryUsage?.percentage ? `${metrics.value.memoryUsage.percentage}%` : 'N/A');
-    console.log('Network:', metrics.value.connectionInfo?.effectiveType || 'N/A');
+    if (import.meta.env.DEV) {
+      console.log('Memory Usage:', metrics.value.memoryUsage?.percentage ? `${metrics.value.memoryUsage.percentage}%` : 'N/A');
+    if (import.meta.env.DEV) {
+      console.log('Network:', metrics.value.connectionInfo?.effectiveType || 'N/A');
+    }
 
     if (suggestions.length > 0) {
-      console.warn('Optimization Suggestions:', suggestions);
-    }
+      if (import.meta.env.DEV) {
+        console.warn('Optimization Suggestions:', suggestions);
+      }
 
     console.groupEnd();
   };

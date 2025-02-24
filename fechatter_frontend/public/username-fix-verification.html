@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>✅ 用户名修复验证工具</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    }
+
+    .container {
+      background: white;
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 10px;
+      color: white;
+    }
+
+    .check-item {
+      background: #f8f9fa;
+      border-left: 4px solid #28a745;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+    }
+
+    .check-item.failed {
+      border-left-color: #dc3545;
+      background: #fff5f5;
+    }
+
+    .status-icon {
+      font-size: 1.5em;
+      margin-right: 15px;
+    }
+
+    .api-test {
+      background: #e3f2fd;
+      border: 2px solid #2196f3;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .code-block {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+
+    button {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+
+    button:hover {
+      background: #218838;
+    }
+
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+    }
+
+    .success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+
+    .error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>✅ 用户名修复验证工具</h1>
+      <p>检查后端是否正确返回用户信息</p>
+    </div>
+
+    <div class="check-item">
+      <span class="status-icon">🔍</span>
+      <div>
+        <strong>检查项目1:</strong> 前端是否显示真实用户名（而不是"User X"）
+      </div>
+    </div>
+
+    <div class="check-item">
+      <span class="status-icon">📡</span>
+      <div>
+        <strong>检查项目2:</strong> API响应是否包含sender.fullname字段
+      </div>
+    </div>
+
+    <div class="check-item">
+      <span class="status-icon">🔗</span>
+      <div>
+        <strong>检查项目3:</strong> 后端数据库连接是否正常(45.77.178.85)
+      </div>
+    </div>
+
+    <div class="api-test">
+      <h3>🧪 API测试工具</h3>
+      <p>点击下面的按钮测试消息API响应</p>
+
+      <button onclick="testMessageAPI()">测试消息API</button>
+      <button onclick="checkCurrentMessages()">检查当前页面消息</button>
+
+      <div id="testResult" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="api-test">
+      <h3>📋 手动检查步骤</h3>
+      <ol>
+        <li><strong>打开浏览器开发者工具</strong> (F12)</li>
+        <li><strong>转到Network标签</strong></li>
+        <li><strong>刷新聊天页面</strong>，查看消息加载请求</li>
+        <li><strong>查找API响应</strong>，确认是否包含以下结构：</li>
+      </ol>
+
+      <div class="code-block">
+        {
+        "data": [
+        {
+        "id": 123,
+        "content": "测试消息",
+        "sender_id": 18,
+        "sender": {
+        "id": 18,
+        "fullname": "张三", // ← 应该有真实姓名
+        "username": "zhangsan",
+        "email": "zhangsan@example.com"
+        }
+        }
+        ]
+        }
+      </div>
+    </div>
+
+    <div class="api-test">
+      <h3>❌ 修复前的响应 (错误示例)</h3>
+      <div class="code-block">
+        {
+        "sender": null, // ← 这是问题！
+        "sender_id": 18
+        }
+      </div>
+    </div>
+
+    <div class="api-test">
+      <h3>✅ 修复后的响应 (正确示例)</h3>
+      <div class="code-block">
+        {
+        "sender": {
+        "id": 18,
+        "fullname": "张三", // ← 真实用户名
+        "username": "zhangsan",
+        "email": "zhangsan@example.com"
+        },
+        "sender_id": 18
+        }
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function testMessageAPI() {
+      const resultDiv = document.getElementById('testResult');
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = '<p>🔄 正在测试API...</p>';
+
+      try {
+        // 尝试获取当前聊天的消息
+        const chatId = getChatIdFromURL();
+        if (!chatId) {
+          throw new Error('无法从URL获取聊天ID');
+        }
+
+        const response = await fetch(`/api/chat/${chatId}/messages`, {
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          throw new Error(`API请求失败: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const messages = data.data || data;
+
+        if (!Array.isArray(messages) || messages.length === 0) {
+          resultDiv.innerHTML = '<p class="error">❌ 没有找到消息数据</p>';
+          return;
+        }
+
+        // 检查第一条消息是否有sender信息
+        const firstMessage = messages[0];
+        let result = '<div class="success">';
+
+        if (firstMessage.sender && firstMessage.sender.fullname) {
+          result += `<p>✅ <strong>修复成功！</strong></p>`;
+          result += `<p>📝 消息ID: ${firstMessage.id}</p>`;
+          result += `<p>👤 发送者: ${firstMessage.sender.fullname}</p>`;
+          result += `<p>📧 邮箱: ${firstMessage.sender.email || '未提供'}</p>`;
+        } else {
+          result += `<p>❌ <strong>仍需修复</strong></p>`;
+          result += `<p>问题: sender字段为空或缺少fullname</p>`;
+          result += `<p>当前sender值: ${JSON.stringify(firstMessage.sender)}</p>`;
+          result = result.replace('class="success"', 'class="error"');
+        }
+
+        result += '</div>';
+        resultDiv.innerHTML = result;
+
+      } catch (error) {
+        resultDiv.innerHTML = `<div class="error">
+          <p>❌ <strong>测试失败</strong></p>
+          <p>错误: ${error.message}</p>
+        </div>`;
+      }
+    }
+
+    function checkCurrentMessages() {
+      const resultDiv = document.getElementById('testResult');
+      resultDiv.style.display = 'block';
+
+      // 检查页面上是否有"User X"这样的显示
+      const messageElements = document.querySelectorAll('[data-message-id]');
+      const userPatternMatches = [];
+
+      messageElements.forEach(el => {
+        const text = el.textContent;
+        const userMatches = text.match(/User \d+/g);
+        if (userMatches) {
+          userPatternMatches.push(...userMatches);
+        }
+      });
+
+      if (userPatternMatches.length > 0) {
+        resultDiv.innerHTML = `<div class="error">
+          <p>❌ <strong>发现问题</strong></p>
+          <p>页面仍显示: ${userPatternMatches.slice(0, 3).join(', ')}</p>
+          <p>建议检查后端修复是否生效</p>
+        </div>`;
+      } else {
+        resultDiv.innerHTML = `<div class="success">
+          <p>✅ <strong>看起来不错！</strong></p>
+          <p>没有发现"User X"模式的显示</p>
+          <p>建议运行API测试确认后端数据</p>
+        </div>`;
+      }
+    }
+
+    function getChatIdFromURL() {
+      const path = window.location.pathname;
+      const match = path.match(/\/chat\/(\d+)/);
+      return match ? match[1] : null;
+    }
+
+    // 页面加载时自动检查
+    window.addEventListener('load', () => {
+      setTimeout(checkCurrentMessages, 1000);
+    });
+  </script>
+</body>
+
+</html>

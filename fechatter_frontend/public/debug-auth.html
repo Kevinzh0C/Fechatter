@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auth Debug - Fechatter DM Creation</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+      min-height: 100vh;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: #4a154b;
+      margin-bottom: 30px;
+    }
+
+    .debug-section {
+      margin: 20px 0;
+      padding: 20px;
+      border: 2px solid #e1e5e9;
+      border-radius: 12px;
+      background: #f8f9fa;
+    }
+
+    .status {
+      padding: 10px;
+      border-radius: 8px;
+      margin: 10px 0;
+      font-weight: bold;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+
+    button {
+      background: #4a154b;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 5px;
+    }
+
+    button:hover {
+      background: #5a1f5b;
+    }
+
+    .code-block {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
+      font-size: 14px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔐 Auth Debug - DM Creation Issue</h1>
+
+    <div class="debug-section">
+      <h3>1. Authentication Status</h3>
+      <button onclick="checkAuthStatus()">Check Auth Status</button>
+      <div id="auth-status"></div>
+    </div>
+
+    <div class="debug-section">
+      <h3>2. Token Analysis</h3>
+      <button onclick="analyzeToken()">Analyze Current Token</button>
+      <div id="token-analysis"></div>
+    </div>
+
+    <div class="debug-section">
+      <h3>3. Login Test</h3>
+      <button onclick="testLogin()">Test Login (super@test.com)</button>
+      <div id="login-test"></div>
+    </div>
+
+    <div class="debug-section">
+      <h3>4. Direct API Test</h3>
+      <button onclick="testDirectAPI()">Test DM Creation API</button>
+      <div id="api-test"></div>
+    </div>
+
+    <div class="debug-section">
+      <h3>5. Server Health Check</h3>
+      <button onclick="testServerHealth()">Check Server Health</button>
+      <div id="health-test"></div>
+    </div>
+  </div>
+
+  <script>
+    // Helper function to display results
+    function displayResult(elementId, content, type = 'info') {
+      const element = document.getElementById(elementId);
+      element.innerHTML = `<div class="status ${type}">${content}</div>`;
+    }
+
+    // Check authentication status
+    async function checkAuthStatus() {
+      try {
+        // Check localStorage tokens
+        const localStorageToken = localStorage.getItem('auth_token') || localStorage.getItem('token');
+
+        // Check if auth store is available
+        const authStore = window.pinia?._s?.get('auth');
+
+        // Check tokenManager
+        const tokenManagerToken = window.tokenManager?.getAccessToken();
+
+        const result = `
+<strong>Authentication Status:</strong><br>
+• localStorage token: ${localStorageToken ? '✅ Present (' + localStorageToken.substring(0, 20) + '...)' : '❌ Missing'}<br>
+• TokenManager token: ${tokenManagerToken ? '✅ Present (' + tokenManagerToken.substring(0, 20) + '...)' : '❌ Missing'}<br>
+• Auth store: ${authStore ? '✅ Available' : '❌ Not available'}<br>
+• Auth store authenticated: ${authStore?.isAuthenticated ? '✅ Yes' : '❌ No'}<br>
+• Current user: ${authStore?.user?.fullname || 'Not logged in'}
+                `;
+
+        displayResult('auth-status', result, localStorageToken || tokenManagerToken ? 'success' : 'error');
+      } catch (error) {
+        displayResult('auth-status', `Error checking auth status: ${error.message}`, 'error');
+      }
+    }
+
+    // Analyze current token
+    async function analyzeToken() {
+      try {
+        const token = localStorage.getItem('auth_token') ||
+          localStorage.getItem('token') ||
+          window.tokenManager?.getAccessToken();
+
+        if (!token) {
+          displayResult('token-analysis', 'No token found to analyze', 'error');
+          return;
+        }
+
+        // Decode JWT token (just the payload, no verification)
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+          displayResult('token-analysis', 'Invalid token format (not JWT)', 'error');
+          return;
+        }
+
+        const payload = JSON.parse(atob(parts[1]));
+        const now = Math.floor(Date.now() / 1000);
+        const isExpired = payload.exp && payload.exp < now;
+
+        const result = `
+<strong>Token Analysis:</strong><br>
+• Format: ${parts.length === 3 ? '✅ Valid JWT' : '❌ Invalid'}<br>
+• User ID: ${payload.sub || payload.id || 'Not found'}<br>
+• Issued at: ${payload.iat ? new Date(payload.iat * 1000).toLocaleString() : 'Not found'}<br>
+• Expires at: ${payload.exp ? new Date(payload.exp * 1000).toLocaleString() : 'Not found'}<br>
+• Is expired: ${isExpired ? '❌ Yes' : '✅ No'}<br>
+• Workspace ID: ${payload.workspace_id || 'Not found'}
+                `;
+
+        displayResult('token-analysis', result, isExpired ? 'error' : 'success');
+      } catch (error) {
+        displayResult('token-analysis', `Error analyzing token: ${error.message}`, 'error');
+      }
+    }
+
+    // Test login
+    async function testLogin() {
+      try {
+        displayResult('login-test', 'Attempting login...', 'info');
+
+        const response = await fetch('/api/signin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: 'super@test.com',
+            password: 'password'
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success && data.data?.access_token) {
+          const token = data.data.access_token;
+
+          // Save token
+          localStorage.setItem('auth_token', token);
+          localStorage.setItem('token', token);
+
+          // Update tokenManager if available
+          if (window.tokenManager) {
+            await window.tokenManager.setTokens({
+              accessToken: token,
+              refreshToken: data.data.refresh_token,
+              expiresAt: Date.now() + (data.data.expires_in * 1000),
+              issuedAt: Date.now()
+            });
+          }
+
+          displayResult('login-test', `✅ Login successful!<br>Token: ${token.substring(0, 30)}...<br>User: ${data.data.user.fullname}`, 'success');
+        } else {
+          displayResult('login-test', `❌ Login failed: ${data.error?.message || 'Unknown error'}`, 'error');
+        }
+      } catch (error) {
+        displayResult('login-test', `❌ Login error: ${error.message}`, 'error');
+      }
+    }
+
+    // Test direct API call
+    async function testDirectAPI() {
+      try {
+        const token = localStorage.getItem('auth_token') ||
+          localStorage.getItem('token') ||
+          window.tokenManager?.getAccessToken();
+
+        if (!token) {
+          displayResult('api-test', '❌ No authentication token available. Please login first.', 'error');
+          return;
+        }
+
+        displayResult('api-test', 'Testing DM creation API...', 'info');
+
+        const response = await fetch('/api/workspace/chats', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            name: 'Direct Message',
+            chat_type: 'Single',
+            members: [3],
+            description: null
+          })
+        });
+
+        const responseText = await response.text();
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch (e) {
+          data = { raw: responseText };
+        }
+
+        if (response.ok) {
+          displayResult('api-test', `✅ API call successful!<br>Status: ${response.status}<br>Response: ${JSON.stringify(data, null, 2)}`, 'success');
+        } else {
+          displayResult('api-test', `❌ API call failed<br>Status: ${response.status} ${response.statusText}<br>Response: ${JSON.stringify(data, null, 2)}`, 'error');
+        }
+      } catch (error) {
+        displayResult('api-test', `❌ API test error: ${error.message}`, 'error');
+      }
+    }
+
+    // Test server health
+    async function testServerHealth() {
+      try {
+        displayResult('health-test', 'Checking server health...', 'info');
+
+        const tests = [
+          { name: 'Local Proxy Health', url: '/health' },
+          { name: 'Remote Server Health', url: 'http://45.77.178.85:8080/health' }
+        ];
+
+        let results = '<strong>Health Check Results:</strong><br>';
+
+        for (const test of tests) {
+          try {
+            const response = await fetch(test.url);
+            const isOk = response.ok;
+            results += `• ${test.name}: ${isOk ? '✅ OK' : '❌ Failed'} (${response.status})<br>`;
+          } catch (error) {
+            results += `• ${test.name}: ❌ Error (${error.message})<br>`;
+          }
+        }
+
+        displayResult('health-test', results, 'info');
+      } catch (error) {
+        displayResult('health-test', `❌ Health check error: ${error.message}`, 'error');
+      }
+    }
+  </script>
+</body>
+
+</html>

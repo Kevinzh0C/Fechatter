@@ -10,10 +10,10 @@ export function useMessageBatcher() {
   const messageQueue = [];
   let flushTimer = null;
   let lastFlushTime = 0;
-  
+
   // 16ms = 1 frame at 60fps
   const BATCH_INTERVAL = 16;
-  
+
   // Performance monitoring
   const performanceMetrics = ref({
     totalBatches: 0,
@@ -31,7 +31,7 @@ export function useMessageBatcher() {
       ...message,
       queuedAt: performance.now()
     });
-    
+
     scheduleFlush();
   };
 
@@ -46,28 +46,28 @@ export function useMessageBatcher() {
         queuedAt: now
       });
     });
-    
+
     scheduleFlush();
   };
 
   // 防止并发刷新的标志
   let flushInProgress = false;
-  
+
   /**
    * Schedule batch flush
    */
   const scheduleFlush = () => {
     // 防止重复调度
     if (flushTimer || flushInProgress) return;
-    
+
     const now = performance.now();
     const timeSinceLastFlush = now - lastFlushTime;
-    
+
     // If we just flushed, wait for next frame
-    const delay = timeSinceLastFlush < BATCH_INTERVAL 
-      ? BATCH_INTERVAL - timeSinceLastFlush 
+    const delay = timeSinceLastFlush < BATCH_INTERVAL
+      ? BATCH_INTERVAL - timeSinceLastFlush
       : 0;
-    
+
     flushTimer = requestAnimationFrame(() => {
       flushTimer = null;
       if (!flushInProgress) {
@@ -81,46 +81,46 @@ export function useMessageBatcher() {
    */
   const flushBatch = () => {
     if (messageQueue.length === 0 || flushInProgress) return;
-    
+
     flushInProgress = true;
     const now = performance.now();
-    
+
     // 安全地复制和清空队列
     const batch = messageQueue.splice(0, messageQueue.length);
-    
+
     // Update metrics
     performanceMetrics.value.totalBatches++;
     performanceMetrics.value.totalMessages += batch.length;
-    performanceMetrics.value.avgBatchSize = 
+    performanceMetrics.value.avgBatchSize =
       performanceMetrics.value.totalMessages / performanceMetrics.value.totalBatches;
-    performanceMetrics.value.maxBatchSize = 
+    performanceMetrics.value.maxBatchSize =
       Math.max(performanceMetrics.value.maxBatchSize, batch.length);
     performanceMetrics.value.lastBatchTime = now - lastFlushTime;
-    
+
     lastFlushTime = now;
-    
+
     // Sort messages by timestamp to maintain order
     batch.sort((a, b) => {
       // First by created_at
       const timeA = new Date(a.created_at).getTime();
       const timeB = new Date(b.created_at).getTime();
       if (timeA !== timeB) return timeA - timeB;
-      
+
       // Then by queue time
       return a.queuedAt - b.queuedAt;
     });
-    
+
     // Remove duplicate messages
     const uniqueMessages = deduplicateMessages(batch);
-    
+
     // Emit batch
     batchedMessages.value = uniqueMessages;
-    
+
     // Log performance
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[MessageBatcher] Flushed ${uniqueMessages.length} messages in ${(now - batch[0].queuedAt).toFixed(2)}ms`);
+    if (import.meta.env.DEV) {
+      // console.log(`[MessageBatcher] Flushed ${uniqueMessages.length} messages in ${(now - batch[0].queuedAt).toFixed(2)}ms`);
     }
-    
+
     // 重置刷新标志
     flushInProgress = false;
   };
@@ -131,16 +131,16 @@ export function useMessageBatcher() {
   const deduplicateMessages = (messages) => {
     const seen = new Map();
     const result = [];
-    
+
     for (const msg of messages) {
       // 确保消息有有效的标识符
       const key = msg.id || msg.temp_id || `temp_${Date.now()}_${Math.floor(Math.random() * 16777215).toString(16)}`;
-      
+
       if (!key || key.toString().startsWith('temp_') && !msg.temp_id) {
         // 为没有ID的消息生成临时ID
         msg.temp_id = key;
       }
-      
+
       if (!seen.has(key)) {
         seen.set(key, true);
         result.push(msg);
@@ -150,15 +150,12 @@ export function useMessageBatcher() {
         if (index !== -1) {
           const existingTime = new Date(result[index].created_at || 0).getTime();
           const newTime = new Date(msg.created_at || 0).getTime();
-          
+
           // 只有当新消息确实更新时才替换
           if (newTime > existingTime || (!result[index].id && msg.id)) {
             result[index] = msg;
           }
-        }
-      }
-    }
-    
+
     return result;
   };
 
@@ -169,7 +166,6 @@ export function useMessageBatcher() {
     if (flushTimer) {
       cancelAnimationFrame(flushTimer);
       flushTimer = null;
-    }
     flushBatch();
   };
 
@@ -180,7 +176,6 @@ export function useMessageBatcher() {
     if (flushTimer) {
       cancelAnimationFrame(flushTimer);
       flushTimer = null;
-    }
     messageQueue.length = 0;
     batchedMessages.value = [];
     lastFlushTime = 0;
@@ -199,7 +194,6 @@ export function useMessageBatcher() {
         cancelAnimationFrame(flushTimer);
       }
     });
-  }
 
   // Manual cleanup method for non-component usage
   const cleanup = () => {

@@ -79,7 +79,6 @@ class ExtensionConflictHandler {
         this.handleConflict(errorString);
       }
     });
-  }
 
   /**
    * Detect installed extensions proactively
@@ -121,13 +120,12 @@ class ExtensionConflictHandler {
         const result = await check();
         if (result) {
           this.detectedConflicts.add(type);
-          console.log(`[ExtensionConflict] Detected: ${type}`);
-        }
+          if (import.meta.env.DEV) {
+            console.log(`[ExtensionConflict] Detected: ${type}`);
+          }
       } catch {
         // Ignore check failures
       }
-    }
-  }
 
   /**
    * Monitor for extension changes
@@ -145,9 +143,7 @@ class ExtensionConflictHandler {
                   this.detectedConflicts.add(type);
                 }
               });
-            }
           });
-        }
       });
     });
 
@@ -195,8 +191,9 @@ class ExtensionConflictHandler {
     this.errorCounts.set(errorMessage, count);
 
     // Log conflict
-    console.warn('[ExtensionConflict] Detected conflict:', {
-      message: errorMessage,
+    if (import.meta.env.DEV) {
+      console.warn('[ExtensionConflict] Detected conflict:', {
+        message: errorMessage,
       count,
       detectedExtensions: Array.from(this.detectedConflicts)
     });
@@ -210,7 +207,6 @@ class ExtensionConflictHandler {
     if (requestIsolation) {
       // Request isolation will handle retries
     }
-  }
 
   /**
    * Show conflict notification to user
@@ -230,7 +226,6 @@ class ExtensionConflictHandler {
         message = issue.message + '. ';
         solution = issue.solution;
       }
-    }
 
     // Use error handler if available
     if (window.errorHandler?.showNotification) {
@@ -242,9 +237,9 @@ class ExtensionConflictHandler {
         }
       });
     } else {
-      console.warn('[ExtensionConflict]', message + solution);
-    }
-  }
+      if (import.meta.env.DEV) {
+        console.warn('[ExtensionConflict]', message + solution);
+      }
 
   /**
    * Show detailed conflict report
@@ -257,9 +252,12 @@ class ExtensionConflictHandler {
     };
 
     console.group('🔍 Extension Conflict Report');
-    console.log('Detected Extensions:', report.detectedExtensions);
-    console.log('Error Counts:', report.errorCounts);
-    console.log('Recommendations:', report.recommendations);
+    if (import.meta.env.DEV) {
+      console.log('Detected Extensions:', report.detectedExtensions);
+    if (import.meta.env.DEV) {
+      console.log('Error Counts:', report.errorCounts);
+    if (import.meta.env.DEV) {
+      console.log('Recommendations:', report.recommendations);
     console.groupEnd();
 
     return report;
@@ -276,14 +274,12 @@ class ExtensionConflictHandler {
         type: 'Password Manager',
         action: 'Disable autofill for this site in your password manager settings'
       });
-    }
 
     if (this.detectedConflicts.has('ad_blocker')) {
       recommendations.push({
         type: 'Ad Blocker',
         action: 'Add this site to your ad blocker\'s whitelist'
       });
-    }
 
     recommendations.push({
       type: 'General',
@@ -299,7 +295,6 @@ class ExtensionConflictHandler {
   cleanup() {
     if (this.observer) {
       this.observer.disconnect();
-    }
     this.detectedConflicts.clear();
     this.errorCounts.clear();
   }
@@ -318,16 +313,14 @@ class ExtensionConflictHandler {
             this.handleConflict(errorString);
             // Don't suppress - let other handlers decide
             return 'pass';
-          }
           return 'pass';
         },
         30 // Higher priority than content script suppressor
       );
 
-      console.log('[ExtensionConflictHandler] Registered with unified handler');
-    }
-  }
-}
+      if (import.meta.env.DEV) {
+        console.log('[ExtensionConflictHandler] Registered with unified handler');
+      }
 
 // Export singleton instance
 const extensionConflictHandler = new ExtensionConflictHandler();

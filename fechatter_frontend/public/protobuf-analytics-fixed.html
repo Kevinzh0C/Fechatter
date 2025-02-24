@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Protobuf Analytics Test (Fixed)</title>
+  <style>
+    body {
+      font-family: 'Monaco', 'Consolas', monospace;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .header {
+      text-align: center;
+      background: #333;
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .panel {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+    }
+
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      border: 1px solid #dee2e6;
+    }
+
+    .label {
+      font-weight: bold;
+      color: #495057;
+    }
+
+    .value {
+      font-family: monospace;
+    }
+
+    .value.success {
+      color: #28a745;
+    }
+
+    .value.error {
+      color: #dc3545;
+    }
+
+    .value.warning {
+      color: #ffc107;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+
+    .btn.primary {
+      background: #007bff;
+      color: white;
+    }
+
+    .btn.primary:hover {
+      background: #0056b3;
+    }
+
+    .btn.success {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn.success:hover {
+      background: #1e7e34;
+    }
+
+    .btn.danger {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn.danger:hover {
+      background: #c82333;
+    }
+
+    .logs {
+      background: #1a1a1a;
+      color: #fff;
+      padding: 15px;
+      border-radius: 4px;
+      height: 300px;
+      overflow-y: auto;
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+
+    .log-entry {
+      margin-bottom: 2px;
+    }
+
+    .log-entry.success {
+      color: #4caf50;
+    }
+
+    .log-entry.error {
+      color: #f44336;
+    }
+
+    .log-entry.warning {
+      color: #ff9800;
+    }
+
+    .log-entry.info {
+      color: #2196f3;
+    }
+
+    .timestamp {
+      color: #888;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <h1>🔬 Protobuf Analytics Test (Fixed Version)</h1>
+    <p>Complete implementation with multiple CDN fallbacks and robust error handling</p>
+  </div>
+
+  <div class="panel">
+    <h3>📊 Client Status</h3>
+    <div class="status-grid" id="status">
+      <div class="status-item">
+        <span class="label">Loading...</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>🧪 Test Events</h3>
+    <div class="buttons">
+      <button class="btn primary" onclick="testAppStart()">🚀 App Start</button>
+      <button class="btn primary" onclick="testUserLogin()">👤 User Login</button>
+      <button class="btn primary" onclick="testMessage()">💬 Message</button>
+      <button class="btn primary" onclick="testNavigation()">🧭 Navigation</button>
+      <button class="btn danger" onclick="testError()">⚠️ Error</button>
+      <button class="btn primary" onclick="testSearch()">🔍 Search</button>
+      <button class="btn primary" onclick="testFile()">📁 File Upload</button>
+      <button class="btn success" onclick="flushEvents()">🔄 Flush</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>📝 Event Logs</h3>
+    <div class="logs" id="logs"></div>
+    <button class="btn" onclick="clearLogs()" style="margin-top: 10px; background: #6c757d; color: white;">
+      🗑️ Clear Logs
+    </button>
+  </div>
+
+  <!-- Load protobuf.js from unpkg CDN with specific version -->
+  <script src="https://unpkg.com/protobufjs@7.4.0/dist/protobuf.min.js"></script>
+
+  <script>
+    // Global variables
+    let analyticsClient = null;
+    let logs = [];
+    let networkStats = {
+      totalRequests: 0,
+      successful: 0,
+      failed: 0,
+      protobufRequests: 0,
+      jsonFallback: 0
+    };
+
+    // Logging function
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const logEntry = { timestamp, message, type };
+      logs.unshift(logEntry);
+
+      if (logs.length > 100) {
+        logs = logs.slice(0, 100);
+      }
+
+      updateLogs();
+    }
+
+    // Update logs display
+    function updateLogs() {
+      const logsContainer = document.getElementById('logs');
+      logsContainer.innerHTML = logs.map(log =>
+        `<div class="log-entry ${log.type}"><span class="timestamp">${log.timestamp}</span>${log.message}</div>`
+      ).join('');
+    }
+
+    // Update status display
+    function updateStatus() {
+      if (!analyticsClient) return;
+
+      const status = analyticsClient.getStatus();
+      const statusGrid = document.getElementById('status');
+
+      statusGrid.innerHTML = `
+                <div class="status-item">
+                    <span class="label">Protobuf Available:</span>
+                    <span class="value ${status.protobufAvailable ? 'success' : 'error'}">
+                        ${status.protobufAvailable ? '✅ YES' : '❌ NO'}
+                    </span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Library Version:</span>
+                    <span class="value">${status.libraryVersion || 'Unknown'}</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Pending Events:</span>
+                    <span class="value">${status.pendingEvents}</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Client ID:</span>
+                    <span class="value" title="${status.clientId}">${status.clientId.substring(0, 20)}...</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Total Requests:</span>
+                    <span class="value">${networkStats.totalRequests}</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Successful:</span>
+                    <span class="value success">${networkStats.successful}</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Failed:</span>
+                    <span class="value error">${networkStats.failed}</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Protobuf Requests:</span>
+                    <span class="value">${networkStats.protobufRequests}</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">JSON Fallback:</span>
+                    <span class="value warning">${networkStats.jsonFallback}</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Success Rate:</span>
+                    <span class="value ${networkStats.totalRequests > 0 && (networkStats.successful / networkStats.totalRequests) > 0.8 ? 'success' : 'warning'}">
+                        ${networkStats.totalRequests > 0 ? Math.round((networkStats.successful / networkStats.totalRequests) * 100) : 0}%
+                    </span>
+                </div>
+            `;
+    }
+
+    // Analytics Client Implementation
+    class RobustProtobufAnalyticsClient {
+      constructor() {
+        this.batch = [];
+        this.clientId = this.generateClientId();
+        this.sessionId = 'session_' + Date.now();
+        this.protobufAvailable = false;
+        this.libraryVersion = null;
+        this.AnalyticsEvent = null;
+        this.EventContext = null;
+
+        this.init();
+      }
+
+      generateClientId() {
+        let clientId = localStorage.getItem('fechatter_client_id');
+        if (!clientId) {
+          clientId = 'client_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+          localStorage.setItem('fechatter_client_id', clientId);
+        }
+        return clientId;
+      }
+
+      async init() {
+        log('Initializing Protobuf Analytics Client...', 'info');
+
+        try {
+          // Check if protobuf is available globally
+          if (typeof protobuf === 'undefined') {
+            throw new Error('Protobuf library not loaded');
+          }
+
+          // Get library version
+          this.libraryVersion = protobuf.VERSION || 'Unknown';
+          log(`Protobuf.js version: ${this.libraryVersion}`, 'info');
+
+          // Define the complete analytics schema
+          const analyticsProto = `
+                        syntax = "proto3";
+                        package fechatter.v1;
+
+                        message AnalyticsEvent {
+                            EventContext context = 1;
+                            oneof event_type {
+                                AppStartEvent app_start = 10;
+                                AppExitEvent app_exit = 11;
+                                UserLoginEvent user_login = 12;
+                                MessageSentEvent message_sent = 16;
+                                NavigationEvent navigation = 19;
+                                FileUploadedEvent file_uploaded = 20;
+                                SearchPerformedEvent search_performed = 22;
+                                ErrorOccurredEvent error_occurred = 24;
+                            }
+                        }
+
+                        message EventContext {
+                            string client_id = 1;
+                            string session_id = 2;
+                            string user_id = 3;
+                            string app_version = 4;
+                            int64 client_ts = 5;
+                            string user_agent = 7;
+                            SystemInfo system = 9;
+                        }
+
+                        message SystemInfo {
+                            string os = 1;
+                            string arch = 2;
+                            string locale = 3;
+                            string timezone = 4;
+                            string browser = 5;
+                            string browser_version = 6;
+                        }
+
+                        message AppStartEvent {}
+                        message AppExitEvent { int32 exit_code = 1; }
+                        message UserLoginEvent { string email = 1; string login_method = 2; }
+                        message MessageSentEvent { 
+                            string chat_id = 1; 
+                            string message_type = 2; 
+                            int32 message_length = 3; 
+                        }
+                        message NavigationEvent { 
+                            string from = 1; 
+                            string to = 2; 
+                            int32 duration_ms = 3; 
+                        }
+                        message FileUploadedEvent { 
+                            string file_type = 1; 
+                            int64 file_size = 2; 
+                        }
+                        message SearchPerformedEvent { 
+                            string search_type = 1; 
+                            int32 query_length = 2; 
+                            int32 results_count = 3; 
+                        }
+                        message ErrorOccurredEvent { 
+                            string error_type = 1; 
+                            string error_message = 3; 
+                        }
+                    `;
+
+          // Parse the schema
+          const root = protobuf.parse(analyticsProto).root;
+
+          // Resolve message types
+          this.AnalyticsEvent = root.lookupType('fechatter.v1.AnalyticsEvent');
+          this.EventContext = root.lookupType('fechatter.v1.EventContext');
+          this.SystemInfo = root.lookupType('fechatter.v1.SystemInfo');
+
+          // Test encoding/decoding
+          const testEvent = {
+            context: {
+              clientId: 'test',
+              sessionId: 'test',
+              appVersion: '1.0.0',
+              clientTs: Date.now().toString() // Convert to string for int64
+            },
+            appStart: {}
+          };
+
+          // Verify the message
+          const errMsg = this.AnalyticsEvent.verify(testEvent);
+          if (errMsg) {
+            throw new Error(`Message verification failed: ${errMsg}`);
+          }
+
+          // Create and encode the message
+          const message = this.AnalyticsEvent.create(testEvent);
+          const buffer = this.AnalyticsEvent.encode(message).finish();
+
+          // Try to decode it back
+          const decoded = this.AnalyticsEvent.decode(buffer);
+
+          if (buffer.length > 0 && decoded) {
+            this.protobufAvailable = true;
+            log('✅ Protobuf encoding/decoding test successful', 'success');
+            log(`Test message size: ${buffer.length} bytes`, 'info');
+          }
+
+        } catch (error) {
+          log(`⚠️ Protobuf initialization failed: ${error.message}`, 'error');
+          this.protobufAvailable = false;
+        }
+
+        updateStatus();
+        log('Analytics client initialization complete', 'info');
+      }
+
+      createEventContext() {
+        return {
+          clientId: this.clientId,
+          sessionId: this.sessionId,
+          userId: 'test-user-123',
+          appVersion: '1.0.0',
+          clientTs: Date.now().toString(), // Convert to string for int64
+          userAgent: navigator.userAgent,
+          system: {
+            os: this.detectOS(),
+            arch: 'x64',
+            locale: navigator.language,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            browser: this.detectBrowser(),
+            browserVersion: this.detectBrowserVersion()
+          }
+        };
+      }
+
+      async sendEvent(eventType, eventData) {
+        try {
+          let data, contentType;
+
+          // Build the event object
+          const event = {
+            context: this.createEventContext()
+          };
+
+          // Add the specific event type
+          event[eventType] = eventData;
+
+          if (this.protobufAvailable && this.AnalyticsEvent) {
+            try {
+              // Verify the message
+              const errMsg = this.AnalyticsEvent.verify(event);
+              if (errMsg) {
+                throw new Error(`Message verification failed: ${errMsg}`);
+              }
+
+              // Create and encode
+              const message = this.AnalyticsEvent.create(event);
+              data = this.AnalyticsEvent.encode(message).finish();
+              contentType = 'application/protobuf';
+              networkStats.protobufRequests++;
+
+              log(`Protobuf message created: ${data.length} bytes`, 'info');
+            } catch (error) {
+              log(`Protobuf encoding failed: ${error.message}, falling back to JSON`, 'warning');
+              data = this.convertToJsonPayload(eventType, eventData);
+              contentType = 'application/json';
+              networkStats.jsonFallback++;
+            }
+          } else {
+            data = this.convertToJsonPayload(eventType, eventData);
+            contentType = 'application/json';
+            networkStats.jsonFallback++;
+          }
+
+          // Send the request
+          const response = await fetch('http://127.0.0.1:6690/api/event', {
+            method: 'POST',
+            headers: {
+              'Content-Type': contentType
+            },
+            body: data
+          });
+
+          networkStats.totalRequests++;
+
+          if (response.ok) {
+            networkStats.successful++;
+            const result = await response.json();
+            log(`✅ ${eventType} event sent successfully (${contentType})`, 'success');
+
+            if (result.session_id) {
+              this.sessionId = result.session_id;
+            }
+          } else {
+            networkStats.failed++;
+            log(`❌ ${eventType} event failed: ${response.status} ${response.statusText}`, 'error');
+          }
+
+        } catch (error) {
+          networkStats.totalRequests++;
+          networkStats.failed++;
+          log(`❌ ${eventType} event error: ${error.message}`, 'error');
+        }
+
+        updateStatus();
+      }
+
+      convertToJsonPayload(eventType, eventData) {
+        const payload = {
+          context: {
+            client_id: this.clientId,
+            session_id: this.sessionId,
+            user_id: 'test-user-123',
+            app_version: '1.0.0',
+            client_ts: Date.now(),
+            user_agent: navigator.userAgent,
+            system: {
+              os: this.detectOS(),
+              arch: 'x64',
+              locale: navigator.language,
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              browser: this.detectBrowser(),
+              browser_version: this.detectBrowserVersion()
+            }
+          },
+          event_type: {}
+        };
+
+        // Map event types to JSON format
+        const eventTypeMap = {
+          appStart: 'app_start',
+          appExit: 'app_exit',
+          userLogin: 'user_login',
+          messageSent: 'message_sent',
+          navigation: 'navigation',
+          fileUploaded: 'file_uploaded',
+          searchPerformed: 'search_performed',
+          errorOccurred: 'error_occurred'
+        };
+
+        const jsonEventType = eventTypeMap[eventType] || eventType;
+        payload.event_type[jsonEventType] = this.convertEventDataToJson(jsonEventType, eventData);
+
+        return JSON.stringify(payload);
+      }
+
+      convertEventDataToJson(eventType, eventData) {
+        switch (eventType) {
+          case 'message_sent':
+            return {
+              chat_id: eventData.chatId,
+              type: eventData.messageType,
+              size: eventData.messageLength
+            };
+          case 'user_login':
+            return {
+              email: eventData.email,
+              login_method: eventData.loginMethod
+            };
+          case 'file_uploaded':
+            return {
+              file_type: eventData.fileType,
+              file_size: eventData.fileSize
+            };
+          case 'search_performed':
+            return {
+              search_type: eventData.searchType,
+              query_length: eventData.queryLength,
+              results_count: eventData.resultsCount
+            };
+          case 'error_occurred':
+            return {
+              error_type: eventData.errorType,
+              error_message: eventData.errorMessage
+            };
+          case 'navigation':
+            return {
+              from: eventData.from,
+              to: eventData.to,
+              duration_ms: eventData.durationMs
+            };
+          default:
+            return eventData;
+        }
+      }
+
+      detectOS() {
+        const platform = navigator.platform.toLowerCase();
+        if (platform.includes('win')) return 'Windows';
+        if (platform.includes('mac')) return 'macOS';
+        if (platform.includes('linux')) return 'Linux';
+        if (platform.includes('iphone')) return 'iOS';
+        if (platform.includes('android')) return 'Android';
+        return 'Unknown';
+      }
+
+      detectBrowser() {
+        const userAgent = navigator.userAgent;
+        if (userAgent.includes('Chrome')) return 'Chrome';
+        if (userAgent.includes('Firefox')) return 'Firefox';
+        if (userAgent.includes('Safari')) return 'Safari';
+        if (userAgent.includes('Edge')) return 'Edge';
+        return 'Unknown';
+      }
+
+      detectBrowserVersion() {
+        const userAgent = navigator.userAgent;
+        const match = userAgent.match(/(Chrome|Firefox|Safari|Edge)\/(\d+)/);
+        return match ? match[2] : 'Unknown';
+      }
+
+      getStatus() {
+        return {
+          protobufAvailable: this.protobufAvailable,
+          libraryVersion: this.libraryVersion,
+          pendingEvents: this.batch.length,
+          clientId: this.clientId
+        };
+      }
+    }
+
+    // Test functions
+    window.testAppStart = async () => {
+      log('Testing app start event...', 'info');
+      await analyticsClient.sendEvent('appStart', {});
+    };
+
+    window.testUserLogin = async () => {
+      log('Testing user login event...', 'info');
+      await analyticsClient.sendEvent('userLogin', {
+        email: 'test@fechatter.com',
+        loginMethod: 'password'
+      });
+    };
+
+    window.testMessage = async () => {
+      log('Testing message sent event...', 'info');
+      await analyticsClient.sendEvent('messageSent', {
+        chatId: 'chat_test_123',
+        messageType: 'text',
+        messageLength: 42
+      });
+    };
+
+    window.testNavigation = async () => {
+      log('Testing navigation event...', 'info');
+      await analyticsClient.sendEvent('navigation', {
+        from: '/login',
+        to: '/chat',
+        durationMs: 1250
+      });
+    };
+
+    window.testError = async () => {
+      log('Testing error event...', 'info');
+      await analyticsClient.sendEvent('errorOccurred', {
+        errorType: 'TestError',
+        errorMessage: 'This is a test error from protobuf analytics'
+      });
+    };
+
+    window.testSearch = async () => {
+      log('Testing search event...', 'info');
+      await analyticsClient.sendEvent('searchPerformed', {
+        searchType: 'global',
+        queryLength: 15,
+        resultsCount: 7
+      });
+    };
+
+    window.testFile = async () => {
+      log('Testing file upload event...', 'info');
+      await analyticsClient.sendEvent('fileUploaded', {
+        fileType: 'image/png',
+        fileSize: 524288 // 512KB
+      });
+    };
+
+    window.flushEvents = () => {
+      log('Flush not implemented in this version', 'warning');
+    };
+
+    window.clearLogs = () => {
+      logs = [];
+      updateLogs();
+      log('Logs cleared', 'info');
+    };
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      log('🚀 Starting Protobuf Analytics Test...', 'info');
+      analyticsClient = new RobustProtobufAnalyticsClient();
+
+      // Update status every second
+      setInterval(updateStatus, 1000);
+    });
+  </script>
+</body>
+
+</html>

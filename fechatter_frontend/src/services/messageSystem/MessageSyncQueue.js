@@ -66,7 +66,6 @@ class QueueItem {
   canRetry() {
     return !this.aborted && this.retryCount < this.maxRetries;
   }
-}
 
 /**
  * Message Sync Queue Manager
@@ -127,16 +126,14 @@ export class MessageSyncQueue {
       window.addEventListener('online', () => {
         this.isOnline.value = true;
         this.resume();
-        console.log('🌐 Network online: Resuming message queue processing');
+        // console.log('🌐 Network online: Resuming message queue processing');
       });
 
       window.addEventListener('offline', () => {
         this.isOnline.value = false;
         this.pause();
-        console.log('🌐 Network offline: Pausing message queue processing');
+        // console.log('🌐 Network offline: Pausing message queue processing');
       });
-    }
-  }
 
   /**
    * Add message to send queue
@@ -162,7 +159,7 @@ export class MessageSyncQueue {
     this.stats.totalQueued++;
     this.stats.currentQueueSize = this.queue.size;
 
-    console.log(`📤 Queued message for sending: ${message.metadata.clientId}`);
+    // console.log(`📤 Queued message for sending: ${message.metadata.clientId}`);
 
     // Trigger immediate processing if online
     if (this.isOnline.value && !this.isPaused.value) {
@@ -189,7 +186,7 @@ export class MessageSyncQueue {
     this.stats.totalRetried++;
     this.stats.currentQueueSize = this.queue.size;
 
-    console.log(`🔄 Queued message for retry: ${message.metadata.clientId} (attempt ${queueItem.retryCount + 1})`);
+    // console.log(`🔄 Queued message for retry: ${message.metadata.clientId} (attempt ${queueItem.retryCount + 1})`);
 
     return queueItem.id;
   }
@@ -210,7 +207,6 @@ export class MessageSyncQueue {
     if (index > -1) {
       queue.splice(index, 1);
     }
-  }
 
   /**
    * Get next items to process
@@ -248,8 +244,6 @@ export class MessageSyncQueue {
           queue.push(queueId);
           break; // Stop processing this priority level
         }
-      }
-    }
 
     return batch;
   }
@@ -267,7 +261,7 @@ export class MessageSyncQueue {
       return;
     }
 
-    console.log(`⚡ Processing batch of ${batch.length} messages`);
+    // console.log(`⚡ Processing batch of ${batch.length} messages`);
 
     // Process all items in batch concurrently
     const promises = batch.map(queueItem => this.processQueueItem(queueItem));
@@ -320,7 +314,6 @@ export class MessageSyncQueue {
       this.queue.delete(queueItem.id);
       this.stats.currentQueueSize = this.queue.size;
     }
-  }
 
   /**
    * Send message to server
@@ -358,7 +351,7 @@ export class MessageSyncQueue {
    * Handle processing success
    */
   async handleProcessingSuccess(queueItem, result) {
-    console.log(`✅ Successfully processed: ${queueItem.message.metadata.clientId}`);
+    // console.log(`✅ Successfully processed: ${queueItem.message.metadata.clientId}`);
 
     // Remove from queue - item is already removed in processQueueItem finally block
     // No additional state updates needed here as they're handled in sendMessage, etc.
@@ -368,7 +361,7 @@ export class MessageSyncQueue {
    * Handle processing error
    */
   async handleProcessingError(queueItem, error) {
-    console.error(`❌ Error processing queue item:`, error);
+    // console.error(`❌ Error processing queue item:`, error);
 
     const errorInfo = {
       message: error.message,
@@ -393,7 +386,7 @@ export class MessageSyncQueue {
       // Re-queue for retry
       this.addToPriorityQueue(queueItem);
 
-      console.log(`🔄 Will retry: ${queueItem.message.metadata.clientId} (attempt ${queueItem.retryCount})`);
+      // console.log(`🔄 Will retry: ${queueItem.message.metadata.clientId} (attempt ${queueItem.retryCount})`);
     } else {
       // Permanent failure
       messageStateManager.updateMessageState(
@@ -402,9 +395,8 @@ export class MessageSyncQueue {
         { errorInfo }
       );
 
-      console.log(`💀 Permanently failed: ${queueItem.message.metadata.clientId}`);
+      // console.log(`💀 Permanently failed: ${queueItem.message.metadata.clientId}`);
     }
-  }
 
   /**
    * Check if error is retryable
@@ -458,7 +450,7 @@ export class MessageSyncQueue {
       try {
         await this.processNextBatch();
       } catch (error) {
-        console.error('Error in processing loop:', error);
+        // console.error('Error in processing loop:', error);
       }
 
       // Schedule next iteration
@@ -466,7 +458,7 @@ export class MessageSyncQueue {
     };
 
     processLoop();
-    console.log('🚀 Message queue processing started');
+    // console.log('🚀 Message queue processing started');
   }
 
   /**
@@ -474,7 +466,7 @@ export class MessageSyncQueue {
    */
   stopProcessing() {
     this.isProcessing.value = false;
-    console.log('⏹️ Message queue processing stopped');
+    // console.log('⏹️ Message queue processing stopped');
   }
 
   /**
@@ -482,7 +474,7 @@ export class MessageSyncQueue {
    */
   pause() {
     this.isPaused.value = true;
-    console.log('⏸️ Message queue processing paused');
+    // console.log('⏸️ Message queue processing paused');
   }
 
   /**
@@ -490,7 +482,7 @@ export class MessageSyncQueue {
    */
   resume() {
     this.isPaused.value = false;
-    console.log('▶️ Message queue processing resumed');
+    // console.log('▶️ Message queue processing resumed');
   }
 
   /**
@@ -509,7 +501,7 @@ export class MessageSyncQueue {
     Object.values(this.priorityQueues).forEach(queue => queue.length = 0);
 
     this.stats.currentQueueSize = 0;
-    console.log('🧹 Message queue cleared');
+    // console.log('🧹 Message queue cleared');
   }
 
   /**
@@ -544,14 +536,12 @@ export class MessageSyncQueue {
         this.removeFromPriorityQueue(queueItem);
         cleaned++;
       }
-    }
 
     this.stats.currentQueueSize = this.queue.size;
 
     if (cleaned > 0) {
-      console.log(`🧹 Cleaned up ${cleaned} old queue items`);
+      // console.log(`🧹 Cleaned up ${cleaned} old queue items`);
     }
-  }
 
   /**
    * Start cleanup timer
@@ -575,7 +565,6 @@ export class MessageSyncQueue {
   updateConfig(newConfig) {
     Object.assign(this.config, newConfig);
   }
-}
 
 // Create global instance
 export const messageSyncQueue = new MessageSyncQueue();

@@ -28,7 +28,7 @@ class SSEConnectionManager {
     // Watch auth state changes
     this.setupAuthWatcher();
 
-    console.log('✅ SSE Connection Manager initialized');
+    // console.log('✅ SSE Connection Manager initialized');
   }
 
   /**
@@ -41,12 +41,12 @@ class SSEConnectionManager {
 
       // Navigating to auth page - disconnect SSE
       if (isAuthRoute && !wasAuthRoute) {
-        console.log('🔌 [SSE Manager] Navigating to auth page, disconnecting SSE');
+        // console.log('🔌 [SSE Manager] Navigating to auth page, disconnecting SSE');
         this.disconnectSSE();
       }
       // Navigating from auth page to app - connect SSE if authenticated
       else if (!isAuthRoute && wasAuthRoute && this.authStore.isAuthenticated) {
-        console.log('🔌 [SSE Manager] Leaving auth page, connecting SSE');
+        // console.log('🔌 [SSE Manager] Leaving auth page, connecting SSE');
         this.connectSSE();
       }
 
@@ -67,11 +67,11 @@ class SSEConnectionManager {
 
         if (isAuthenticated && !wasAuthenticated && !isAuthRoute) {
           // User logged in and not on auth page
-          console.log('🔌 [SSE Manager] User authenticated, connecting SSE');
-          this.connectSSE();
+          // console.log('🔌 [SSE Manager] User authenticated, connecting SSE');
+          this.connectSSE().catch(console.error);
         } else if (!isAuthenticated && wasAuthenticated) {
           // User logged out
-          console.log('🔌 [SSE Manager] User logged out, disconnecting SSE');
+          // console.log('🔌 [SSE Manager] User logged out, disconnecting SSE');
           this.disconnectSSE();
         }
       }
@@ -81,16 +81,30 @@ class SSEConnectionManager {
   /**
    * Connect SSE service
    */
-  connectSSE() {
+  async connectSSE() {
     try {
       if (window.realtimeCommunicationService) {
-        const token = this.authStore.token;
+        // CRITICAL: Ensure we have a valid token before connecting
+        await this.authStore.ensureAuthStateConsistency();
+
+        // Get token from multiple sources
+        const token = this.authStore.token ||
+          window.tokenManager?.getAccessToken() ||
+          this.authStore.getAccessToken?.();
+
         if (token) {
+          // console.log('🔌 [SSE Manager] Connecting with token:', token.substring(0, 20) + '...');
           window.realtimeCommunicationService.connect(token);
+        } else {
+          if (import.meta.env.DEV) {
+            console.warn('🔌 [SSE Manager] No token available for SSE connection');
+          }
         }
       }
     } catch (error) {
-      console.error('Failed to connect SSE:', error);
+      if (import.meta.env.DEV) {
+        console.error('Failed to connect SSE:', error);
+      }
     }
   }
 
@@ -103,7 +117,9 @@ class SSEConnectionManager {
         window.realtimeCommunicationService.disconnect();
       }
     } catch (error) {
-      console.error('Failed to disconnect SSE:', error);
+      if (import.meta.env.DEV) {
+        console.error('Failed to disconnect SSE:', error);
+      }
     }
   }
 
@@ -111,8 +127,18 @@ class SSEConnectionManager {
    * Check if current route is auth route
    */
   isOnAuthRoute() {
-    const currentPath = this.router.currentRoute.value.path;
-    return this.authRoutes.includes(currentPath);
+    try {
+      if (!this.router || !this.router.currentRoute) {
+        // console.warn('[SSE Manager] Router not initialized, defaulting to false');
+        return false;
+      }
+
+      const currentPath = this.router.currentRoute.value.path;
+      return this.authRoutes.includes(currentPath);
+    } catch (error) {
+      // console.warn('[SSE Manager] Error checking auth route:', error.message);
+      return false;
+    }
   }
 }
 

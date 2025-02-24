@@ -13,6 +13,27 @@ class PerformanceMonitor {
       fair: 1000,       // < 1s
       poor: 3000        // < 3s
     };
+    this.initialized = false;
+  }
+
+  /**
+   * Initialize the performance monitor
+   */
+  initialize() {
+    if (this.initialized) return;
+
+    this.initialized = true;
+
+    if (this.enabled) {
+      console.log('📊 Performance Monitor initialized');
+
+      // Start tracking app initialization
+      this.startOperation('app-initialization', {
+        type: 'system',
+        userAgent: navigator.userAgent,
+        timestamp: Date.now()
+      });
+    }
   }
 
   /**
@@ -198,7 +219,9 @@ class PerformanceMonitor {
    */
   clearReports() {
     localStorage.removeItem('perf_reports');
-    console.log('✅ [PERF] Performance reports cleared');
+    if (import.meta.env.DEV) {
+      console.log('✅ [PERF] Performance reports cleared');
+    }
   }
 }
 
@@ -213,7 +236,9 @@ if (process.env.NODE_ENV === 'development') {
   window.performanceMonitor = performanceMonitor;
   window.perfAnalytics = () => {
     const analytics = performanceMonitor.getAnalytics();
-    console.log('📊 Performance Analytics:', analytics);
+    if (import.meta.env.DEV) {
+      console.log('📊 Performance Analytics:', analytics);
+    }
     return analytics;
   };
 

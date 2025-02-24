@@ -16,10 +16,10 @@ class ReadReceiptsService {
       const data = response.data?.data || response.data;
       return Array.isArray(data) ? data : [];
     } catch (error) {
-      console.error('Failed to fetch detailed receipts:', error);
+      if (import.meta.env.DEV) {
+        console.error('Failed to fetch detailed receipts:', error);
       return [];
     }
-  }
 
   /**
    * 获取消息的基础已读回执
@@ -32,10 +32,10 @@ class ReadReceiptsService {
       const data = response.data?.data || response.data;
       return Array.isArray(data) ? data : [];
     } catch (error) {
-      console.error('Failed to fetch basic receipts:', error);
+      if (import.meta.env.DEV) {
+        console.error('Failed to fetch basic receipts:', error);
       return [];
     }
-  }
 
   /**
    * 标记消息为已读（增强版）
@@ -48,10 +48,10 @@ class ReadReceiptsService {
       await api.post(`/chat/${chatId}/messages/${messageId}/read/enhanced`);
       return true;
     } catch (error) {
-      console.error('Failed to mark message as read (enhanced):', error);
+      if (import.meta.env.DEV) {
+        console.error('Failed to mark message as read (enhanced):', error);
       return false;
     }
-  }
 
   /**
    * 批量标记消息为已读
@@ -66,10 +66,10 @@ class ReadReceiptsService {
       });
       return true;
     } catch (error) {
-      console.error('Failed to mark messages as read:', error);
+      if (import.meta.env.DEV) {
+        console.error('Failed to mark messages as read:', error);
       return false;
     }
-  }
 
   /**
    * 格式化已读回执显示文本
@@ -119,7 +119,6 @@ class ReadReceiptsService {
         count: 0
       };
     }
-  }
 
   /**
    * 生成已读回执的详细信息
@@ -199,7 +198,6 @@ class ReadReceiptsService {
     if (typeof callback === 'function') {
       callback(messageId, receipt);
     }
-  }
 
   /**
    * 格式化时间显示
@@ -225,7 +223,5 @@ class ReadReceiptsService {
     } else {
       return date.toLocaleDateString();
     }
-  }
-}
 
 export default new ReadReceiptsService();

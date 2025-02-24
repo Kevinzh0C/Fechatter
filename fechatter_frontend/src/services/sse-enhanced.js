@@ -1,8 +1,13 @@
 /**
- * Enhanced Real-time Communication Service (SSE-based)
- * Optimized for performance and Pingora proxy compatibility
+ * Enhanced SSE Service - Production Grade Real-time Communication
+ * Built with Rust backend compatibility and Vue 3 reactivity
  */
 
+// 🚨 IMPORTANT: This service is temporarily disabled to prevent double message handling
+// Only minimalSSE should be active to fix message duplication issues
+const DISABLE_ENHANCED_SSE = true;
+
+import { ref, computed } from 'vue';
 import { useChatStore } from '@/stores/chat';
 import { useAuthStore } from '@/stores/auth';
 import { errorHandler } from '@/utils/errorHandler';
@@ -146,7 +151,6 @@ class EnhancedRealtimeCommunicationService {
       window.addEventListener('blur', this.boundHandlers.handleWindowBlur);
       window.addEventListener('beforeunload', this.boundHandlers.handleBeforeUnload);
     }
-  }
 
   /**
    * 🚀 Enhanced: 智能错误分类
@@ -155,13 +159,10 @@ class EnhancedRealtimeCommunicationService {
     // HTTP状态码检测
     if (response?.status === 404) {
       return 'PROXY_ERROR'; // 可能是Pingora路由问题
-    }
     if (response?.status === 502 || response?.status === 503) {
       return 'PROXY_ERROR';
-    }
     if (response?.status === 401 || response?.status === 403) {
       return 'AUTH_ERROR';
-    }
     if (response?.status >= 500) {
       return 'SERVER_ERROR';
     }
@@ -170,11 +171,9 @@ class EnhancedRealtimeCommunicationService {
     const message = error.message?.toLowerCase() || '';
     if (message.includes('network') || message.includes('connection')) {
       return 'NETWORK_ERROR';
-    }
     if (message.includes('stream closed') || message.includes('premature') ||
       message.includes('event stream')) {
       return 'PROXY_ERROR'; // Pingora相关
-    }
     if (message.includes('unauthorized') || message.includes('forbidden')) {
       return 'AUTH_ERROR';
     }
@@ -183,7 +182,6 @@ class EnhancedRealtimeCommunicationService {
     if (error.target && error.target.readyState === EventSource.CLOSED) {
       if (this.connectionAttempts > 3) {
         return 'PROXY_ERROR'; // 多次连接失败，可能是代理问题
-      }
       return 'NETWORK_ERROR';
     }
 
@@ -211,7 +209,9 @@ class EnhancedRealtimeCommunicationService {
     const connectionStability = connectionDuration > 60000 ? 1.0 :
       connectionDuration / 60000; // 连接稳定性因子
 
-    console.log(`📊 [SSE] Quality assessment: latency=${avgLatency.toFixed(0)}ms, errors=${recentErrors.length}, stability=${connectionStability.toFixed(2)}`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 [SSE] Quality assessment: latency=${avgLatency.toFixed(0)}ms, errors=${recentErrors.length}, stability=${connectionStability.toFixed(2)}`);
+    }
 
     if (avgLatency < 100 && errorRate < 0.1 && connectionStability > 0.8) {
       this.connectionQuality = 'EXCELLENT';
@@ -222,13 +222,14 @@ class EnhancedRealtimeCommunicationService {
     } else {
       this.connectionQuality = 'POOR';
     }
-  }
 
   /**
    * 🚀 Enhanced: Pingora兼容性检测和端点选择
    */
   async detectProxyAndSelectEndpoint() {
-    console.log('🔍 [SSE] Detecting proxy type and testing endpoints...');
+    if (import.meta.env.DEV) {
+      console.log('🔍 [SSE] Detecting proxy type and testing endpoints...');
+    }
 
     for (let i = 0; i < this.sseEndpointFallbacks.length; i++) {
       const endpoint = this.sseEndpointFallbacks[i];
@@ -253,7 +254,9 @@ class EnhancedRealtimeCommunicationService {
 
         if (server.includes('pingora') || via.includes('pingora')) {
           this.proxyType = 'pingora';
-          console.log('🔍 [SSE] Detected Pingora proxy');
+          if (import.meta.env.DEV) {
+            console.log('🔍 [SSE] Detected Pingora proxy');
+          }
         } else if (server.includes('nginx')) {
           this.proxyType = 'nginx';
         } else if (server.includes('cloudflare')) {
@@ -262,20 +265,24 @@ class EnhancedRealtimeCommunicationService {
 
         // 检查端点可用性
         if (response.ok || response.status === 401) {
-          console.log(`✅ [SSE] Found working endpoint: ${endpoint} (${latency}ms)`);
+          if (import.meta.env.DEV) {
+            console.log(`✅ [SSE] Found working endpoint: ${endpoint} (${latency}ms)`);
           this.fallbackIndex = i;
           return endpoint;
         }
 
-        console.log(`⚠️ [SSE] Endpoint ${endpoint} returned ${response.status}`);
+        if (import.meta.env.DEV) {
+          console.log(`⚠️ [SSE] Endpoint ${endpoint} returned ${response.status}`);
+        }
       } catch (error) {
-        console.log(`❌ [SSE] Endpoint ${endpoint} failed:`, error.message);
+        if (import.meta.env.DEV) {
+          console.log(`❌ [SSE] Endpoint ${endpoint} failed:`, error.message);
         continue;
       }
-    }
 
     // 如果所有SSE端点都失败，考虑WebSocket降级
-    console.warn('🔄 [SSE] All SSE endpoints failed, considering WebSocket fallback');
+    if (import.meta.env.DEV) {
+      console.warn('🔄 [SSE] All SSE endpoints failed, considering WebSocket fallback');
     return this.enableWebSocketFallback();
   }
 
@@ -283,7 +290,9 @@ class EnhancedRealtimeCommunicationService {
    * 🚀 Enhanced: WebSocket降级方案
    */
   enableWebSocketFallback() {
-    console.log('🔄 [SSE] WebSocket fallback not implemented yet');
+    if (import.meta.env.DEV) {
+      console.log('🔄 [SSE] WebSocket fallback not implemented yet');
+    }
     // TODO: 实现WebSocket作为SSE的降级方案
     return null;
   }
@@ -292,14 +301,10 @@ class EnhancedRealtimeCommunicationService {
    * Enhanced connection method with endpoint detection
    */
   async connect(token) {
-    // 检查是否已永久失败
-    if (this.retryControl.permanentFailure) {
-      console.error('🔌 SSE Enhanced: Connection permanently failed, refusing to connect');
-      this.emit('permanently_failed', {
-        totalAttempts: this.retryControl.totalAttempts,
-        consecutiveFailures: this.retryControl.consecutiveFailures
-      });
-      return;
+    if (DISABLE_ENHANCED_SSE) {
+      if (import.meta.env.DEV) {
+        console.log('🚨 Enhanced SSE service is disabled to prevent message duplication');
+      return Promise.resolve();
     }
 
     if (this.isConnected || this.connectionState === 'connecting') {
@@ -314,7 +319,8 @@ class EnhancedRealtimeCommunicationService {
 
       let config = getConfig();
       if (!config) {
-        console.log('🔧 SSE: Configuration not loaded yet, initializing...');
+        if (import.meta.env.DEV) {
+          console.log('🔧 SSE: Configuration not loaded yet, initializing...');
         await initializeConfig();
         config = getConfig();
       }
@@ -326,7 +332,8 @@ class EnhancedRealtimeCommunicationService {
         (config?.app?.environment === 'development' && apiConfig.disable_sse !== false);
 
       if (shouldDisableSSE) {
-        console.log('🔧 [SSE] SSE连接已在开发模式下禁用，使用模拟模式');
+        if (import.meta.env.DEV) {
+          console.log('🔧 [SSE] SSE连接已在开发模式下禁用，使用模拟模式');
         this.isConnected = true;
         this.connectionState = 'connected';
         this.emit('connected');
@@ -335,9 +342,12 @@ class EnhancedRealtimeCommunicationService {
         return;
       }
 
-      console.log('🔌 [SSE] SSE连接已启用，正在建立连接...');
+      if (import.meta.env.DEV) {
+        console.log('🔌 [SSE] SSE连接已启用，正在建立连接...');
+      }
     } catch (configError) {
-      console.error('🔧 [SSE] 配置加载失败，默认禁用SSE:', configError);
+      if (import.meta.env.DEV) {
+        console.error('🔧 [SSE] 配置加载失败，默认禁用SSE:', configError);
       this.isConnected = true;
       this.connectionState = 'connected';
       this.emit('connected');
@@ -355,7 +365,8 @@ class EnhancedRealtimeCommunicationService {
 
       let config = getConfig();
       if (!config) {
-        console.log('🔧 SSE: Configuration not loaded yet, initializing...');
+        if (import.meta.env.DEV) {
+          console.log('🔧 SSE: Configuration not loaded yet, initializing...');
         await initializeConfig();
         config = getConfig();
       }
@@ -369,7 +380,6 @@ class EnhancedRealtimeCommunicationService {
         const detectedEndpoint = await this.detectProxyAndSelectEndpoint();
         if (!detectedEndpoint) {
           throw new Error('No working SSE endpoint found');
-        }
         sseUrl = `${apiConfig.gateway_url || 'http://127.0.0.1:8080'}${detectedEndpoint}`;
       } else {
         // 使用之前检测到的端点
@@ -385,7 +395,9 @@ class EnhancedRealtimeCommunicationService {
       // Build complete SSE URL with proper token encoding
       const fullSseUrl = `${sseUrl}?access_token=${encodeURIComponent(token)}`;
 
-      console.log(`🔌 SSE: Connecting to ${sseUrl} (attempt ${this.connectionAttempts})`);
+      if (import.meta.env.DEV) {
+        console.log(`🔌 SSE: Connecting to ${sseUrl} (attempt ${this.connectionAttempts})`);
+      }
 
       this.eventSource = new EventSource(fullSseUrl);
 
@@ -397,7 +409,9 @@ class EnhancedRealtimeCommunicationService {
       this.setupEventListeners();
 
     } catch (error) {
-      console.error('🔌 SSE: Connection setup failed:', error);
+      if (import.meta.env.DEV) {
+        console.error('🔌 SSE: Connection setup failed:', error);
+      }
 
       const errorType = this.classifyError(error);
       this.lastErrorType = errorType;
@@ -407,7 +421,6 @@ class EnhancedRealtimeCommunicationService {
       this.connectionState = 'disconnected';
       this.scheduleIntelligentReconnect(errorType, error);
     }
-  }
 
   /**
    * Set up SSE event listeners
@@ -471,7 +484,6 @@ class EnhancedRealtimeCommunicationService {
         this.errorHandler.handleMessageError(error, 'UserLeftChat');
       }
     });
-  }
 
   /**
    * Handle connection open
@@ -485,14 +497,17 @@ class EnhancedRealtimeCommunicationService {
 
     // 重置重试控制
     this.retryControl.consecutiveFailures = 0;
-    console.log(`✅ [SSE Enhanced] Connected successfully (Total attempts: ${this.retryControl.totalAttempts})`);
+    if (import.meta.env.DEV) {
+      console.log(`✅ [SSE Enhanced] Connected successfully (Total attempts: ${this.retryControl.totalAttempts})`);
+    }
 
     // 记录连接成功的延迟
     if (this.connectionStartTime) {
       const connectionLatency = Date.now() - this.connectionStartTime;
       this.latencyHistory.push(connectionLatency);
-      console.log(`✅ [SSE] Connected successfully in ${connectionLatency}ms`);
-    }
+      if (import.meta.env.DEV) {
+        console.log(`✅ [SSE] Connected successfully in ${connectionLatency}ms`);
+      }
 
     // 重置长期重连策略
     this.resetLongTermReconnect();
@@ -522,7 +537,6 @@ class EnhancedRealtimeCommunicationService {
     } catch (error) {
       this.errorHandler.handleMessageError(error, 'GenericMessage');
     }
-  }
 
   /**
    * Handle chat message
@@ -571,7 +585,6 @@ class EnhancedRealtimeCommunicationService {
     }).catch(err => {
       this.errorHandler.handleGeneralError(err, 'Import API module for read receipt');
     });
-  }
 
   /**
    * Handle typing status
@@ -584,7 +597,6 @@ class EnhancedRealtimeCommunicationService {
       userName: typing.user_name,
       timestamp: Date.now()
     });
-  }
 
   /**
    * Handle user presence
@@ -621,7 +633,9 @@ class EnhancedRealtimeCommunicationService {
     this.errorHistory.push(Date.now());
     this.retryControl.errorTypeHistory.push(errorType);
 
-    console.error(`🔌 SSE Enhanced: Connection error (Attempt ${this.retryControl.totalAttempts}/${this.retryControl.maxTotalAttempts}, ` +
+    if (import.meta.env.DEV) {
+      console.error(`🔌 SSE Enhanced: Connection error (Attempt ${this.retryControl.totalAttempts}/${this.retryControl.maxTotalAttempts}, ` +
+    }
       `Consecutive failures: ${this.retryControl.consecutiveFailures}/${this.retryControl.maxConsecutiveFailures})`,
       { type: errorType, error });
 
@@ -629,7 +643,9 @@ class EnhancedRealtimeCommunicationService {
     if (this.retryControl.totalAttempts >= this.retryControl.maxTotalAttempts ||
       this.retryControl.consecutiveFailures >= this.retryControl.maxConsecutiveFailures) {
       this.retryControl.permanentFailure = true;
-      console.error('🔌 SSE Enhanced: Maximum retry attempts reached, connection permanently failed');
+      if (import.meta.env.DEV) {
+        console.error('🔌 SSE Enhanced: Maximum retry attempts reached, connection permanently failed');
+      }
 
       // 立即关闭EventSource以防止自动重连
       if (this.eventSource) {
@@ -649,8 +665,9 @@ class EnhancedRealtimeCommunicationService {
           context: 'SSE Enhanced Service'
         });
       } catch (importError) {
-        console.warn('Failed to import enhanced error handler for permanent failure');
-      }
+        if (import.meta.env.DEV) {
+          console.warn('Failed to import enhanced error handler for permanent failure');
+        }
 
       this.isConnected = false;
       this.connectionState = 'permanently_failed';
@@ -667,8 +684,9 @@ class EnhancedRealtimeCommunicationService {
     const wasLogged = this.errorHandler.handleConnectionError(error);
 
     if (wasLogged) {
-      console.log(`🔌 [SSE] Error classified as: ${errorType}`);
-    }
+      if (import.meta.env.DEV) {
+        console.log(`🔌 [SSE] Error classified as: ${errorType}`);
+      }
 
     this.isConnected = false;
     this.connectionState = 'disconnected';
@@ -689,13 +707,15 @@ class EnhancedRealtimeCommunicationService {
   scheduleIntelligentReconnect(errorType, error) {
     // 检查是否已永久失败
     if (this.retryControl.permanentFailure) {
-      console.warn('🔌 SSE Enhanced: Skipping reconnect due to permanent failure');
+      if (import.meta.env.DEV) {
+        console.warn('🔌 SSE Enhanced: Skipping reconnect due to permanent failure');
       return;
     }
 
     // 检查网络状态 - 如果离线则暂停重连
     if (!this.networkStatus.isOnline) {
-      console.log('🔌 [SSE] Network offline, pausing reconnection');
+      if (import.meta.env.DEV) {
+        console.log('🔌 [SSE] Network offline, pausing reconnection');
       return;
     }
 
@@ -716,11 +736,14 @@ class EnhancedRealtimeCommunicationService {
     // 应用连接质量调整
     const adjustedDelay = Math.floor(baseDelay * qualityMultiplier);
 
-    console.log(`🔄 [SSE] Smart reconnect scheduled: ${errorType}, quality: ${this.connectionQuality}, delay: ${Math.round(adjustedDelay / 1000)}s (attempt ${this.reconnectAttempts + 1}/${this.currentStrategy.maxAttempts})`);
+    if (import.meta.env.DEV) {
+      console.log(`🔄 [SSE] Smart reconnect scheduled: ${errorType}, quality: ${this.connectionQuality}, delay: ${Math.round(adjustedDelay / 1000)}s (attempt ${this.reconnectAttempts + 1}/${this.currentStrategy.maxAttempts})`);
+    }
 
     // 检查是否超过最大重试次数
     if (this.reconnectAttempts >= this.currentStrategy.maxAttempts) {
-      console.warn('🔌 [SSE] Max reconnection attempts reached, switching to long-term strategy');
+      if (import.meta.env.DEV) {
+        console.warn('🔌 [SSE] Max reconnection attempts reached, switching to long-term strategy');
       this.enableLongTermReconnect();
       return;
     }
@@ -731,7 +754,8 @@ class EnhancedRealtimeCommunicationService {
     setTimeout(() => {
       // 在执行重连时再次检查网络状态
       if (!this.networkStatus.isOnline) {
-        console.log('🔌 [SSE] Network went offline during reconnect delay');
+        if (import.meta.env.DEV) {
+          console.log('🔌 [SSE] Network went offline during reconnect delay');
         return;
       }
 
@@ -770,7 +794,9 @@ class EnhancedRealtimeCommunicationService {
     this.longTermReconnect.attempts++;
     const intervalMs = this.longTermReconnect.intervalMinutes * 60 * 1000;
 
-    console.log(`🕐 [SSE] Long-term reconnect scheduled in ${this.longTermReconnect.intervalMinutes} minutes (attempt ${this.longTermReconnect.attempts})`);
+    if (import.meta.env.DEV) {
+      console.log(`🕐 [SSE] Long-term reconnect scheduled in ${this.longTermReconnect.intervalMinutes} minutes (attempt ${this.longTermReconnect.attempts})`);
+    }
 
     this.longTermReconnect.timeout = setTimeout(() => {
       if (!this.isConnected && this.longTermReconnect.enabled) {
@@ -789,8 +815,6 @@ class EnhancedRealtimeCommunicationService {
             this.increaseLongTermInterval();
             this.scheduleLongTermReconnect();
           });
-        }
-      }
     }, intervalMs);
   }
 
@@ -807,7 +831,6 @@ class EnhancedRealtimeCommunicationService {
     } else if (currentInterval < 60) {
       this.longTermReconnect.intervalMinutes = 60;
     }
-  }
 
   /**
    * 重置长期重连策略
@@ -845,13 +868,17 @@ class EnhancedRealtimeCommunicationService {
         }
       });
 
-      console.log(`✅ Presence updated to: ${status}`);
+      if (import.meta.env.DEV) {
+        console.log(`✅ Presence updated to: ${status}`);
+      }
     } catch (error) {
       // Don't use errorHandler here to avoid circular dependency
-      console.warn('🔧 Failed to send presence update:', error.message);
+      if (import.meta.env.DEV) {
+        console.warn('🔧 Failed to send presence update:', error.message);
+      }
 
       // For development/testing, emit a fake presence event
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.DEV) {
         const authStore = useAuthStore();
         if (authStore.user) {
           this.emit('user_presence', {
@@ -860,10 +887,6 @@ class EnhancedRealtimeCommunicationService {
             timestamp: new Date().toISOString(),
             last_seen: new Date().toISOString()
           });
-        }
-      }
-    }
-  }
 
   /**
    * Update unread count
@@ -887,8 +910,6 @@ class EnhancedRealtimeCommunicationService {
         unreadCount: 0,
         action: 'reset'
       });
-    }
-  }
 
   /**
    * Disconnect
@@ -909,8 +930,9 @@ class EnhancedRealtimeCommunicationService {
     };
     this.reconnectAttempts = 0;
     this.reconnectDelay = 1000;
-    console.log('🔌 SSE Enhanced: Retry control reset');
-  }
+    if (import.meta.env.DEV) {
+      console.log('🔌 SSE Enhanced: Retry control reset');
+    }
 
   disconnect() {
     // Send offline status before disconnecting
@@ -944,7 +966,6 @@ class EnhancedRealtimeCommunicationService {
       window.removeEventListener('blur', this.boundHandlers.handleWindowBlur);
       window.removeEventListener('beforeunload', this.boundHandlers.handleBeforeUnload);
     }
-  }
 
   /**
    * Add event listener
@@ -952,7 +973,6 @@ class EnhancedRealtimeCommunicationService {
   on(event, callback) {
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, new Set());
-    }
     this.eventListeners.get(event).add(callback);
   }
 
@@ -963,7 +983,6 @@ class EnhancedRealtimeCommunicationService {
     if (this.eventListeners.has(event)) {
       this.eventListeners.get(event).delete(callback);
     }
-  }
 
   /**
    * Emit event
@@ -977,8 +996,6 @@ class EnhancedRealtimeCommunicationService {
           this.errorHandler.handleGeneralError(error, `Event callback for ${event}`);
         }
       });
-    }
-  }
 
   /**
    * 网络状态处理：网络恢复时
@@ -989,7 +1006,8 @@ class EnhancedRealtimeCommunicationService {
 
     if (this.networkStatus.offlineStartTime) {
       const offlineDuration = Date.now() - this.networkStatus.offlineStartTime;
-      console.log(`🌐 [SSE] Network back online after ${Math.round(offlineDuration / 1000)}s`);
+      if (import.meta.env.DEV) {
+        console.log(`🌐 [SSE] Network back online after ${Math.round(offlineDuration / 1000)}s`);
       this.networkStatus.offlineStartTime = null;
     }
 
@@ -998,7 +1016,6 @@ class EnhancedRealtimeCommunicationService {
       const errorType = this.lastErrorType || 'NETWORK_ERROR';
       this.scheduleIntelligentReconnect(errorType, new Error('Network restored'));
     }
-  }
 
   /**
    * 网络状态处理：网络断开时
@@ -1006,7 +1023,9 @@ class EnhancedRealtimeCommunicationService {
   handleNetworkOffline() {
     this.networkStatus.isOnline = false;
     this.networkStatus.offlineStartTime = Date.now();
-    console.log('🌐 [SSE] Network went offline');
+    if (import.meta.env.DEV) {
+      console.log('🌐 [SSE] Network went offline');
+    }
 
     // 停止心跳检测
     this.stopHeartbeat();
@@ -1016,7 +1035,6 @@ class EnhancedRealtimeCommunicationService {
       clearTimeout(this.longTermReconnect.timeout);
       this.longTermReconnect.timeout = null;
     }
-  }
 
   /**
    * 启动心跳检测 - 优化版本
@@ -1037,10 +1055,13 @@ class EnhancedRealtimeCommunicationService {
       const timeSinceLastActivity = Date.now() - (this.lastActivityTime || 0);
       if (timeSinceLastActivity > this.heartbeat.intervalMs * 1.5) {
         this.heartbeat.missedBeats++;
-        console.warn(`💔 [SSE] Heartbeat missed (${this.heartbeat.missedBeats}/${this.heartbeat.maxMissedBeats}), last activity: ${Math.round(timeSinceLastActivity / 1000)}s ago`);
+        if (import.meta.env.DEV) {
+          console.warn(`💔 [SSE] Heartbeat missed (${this.heartbeat.missedBeats}/${this.heartbeat.maxMissedBeats}), last activity: ${Math.round(timeSinceLastActivity / 1000)}s ago`);
+        }
 
         if (this.heartbeat.missedBeats >= this.heartbeat.maxMissedBeats) {
-          console.error('💔 [SSE] Too many missed heartbeats, reconnecting...');
+          if (import.meta.env.DEV) {
+            console.error('💔 [SSE] Too many missed heartbeats, reconnecting...');
           this.handleError(new Error('Heartbeat timeout'));
         }
       } else {
@@ -1056,7 +1077,6 @@ class EnhancedRealtimeCommunicationService {
     if (this.heartbeat.interval) {
       clearInterval(this.heartbeat.interval);
       this.heartbeat.interval = null;
-    }
     this.heartbeat.missedBeats = 0;
   }
 
@@ -1078,12 +1098,11 @@ class EnhancedRealtimeCommunicationService {
     if (!document.hidden) {
       // 页面重新可见时，检查连接状态
       if (!this.isConnected && this.networkStatus.isOnline) {
-        console.log('👁️ [SSE] Page visible again, checking connection...');
+        if (import.meta.env.DEV) {
+          console.log('👁️ [SSE] Page visible again, checking connection...');
         const errorType = this.lastErrorType || 'NETWORK_ERROR';
         this.scheduleIntelligentReconnect(errorType, new Error('Page visibility changed'));
       }
-    }
-  }
 
   /**
    * 处理窗口获得焦点
@@ -1124,10 +1143,9 @@ class EnhancedRealtimeCommunicationService {
         // 尝试使用beacon API发送离线状态
         navigator.sendBeacon('/api/realtime/presence', data);
       } catch (error) {
-        console.warn('Failed to send offline status via beacon:', error);
-      }
-    }
-  }
+        if (import.meta.env.DEV) {
+          console.warn('Failed to send offline status via beacon:', error);
+        }
 
   /**
    * 🚀 Enhanced: Get connection state with quality metrics
@@ -1183,18 +1201,21 @@ class EnhancedRealtimeCommunicationService {
    * 🔧 模拟心跳 - 用于开发模式下SSE禁用时
    */
   startMockHeartbeat() {
-    console.log('🔧 [SSE] 启动模拟心跳 (开发模式)');
+    if (import.meta.env.DEV) {
+      console.log('🔧 [SSE] 启动模拟心跳 (开发模式)');
+    }
 
     // 模拟定期更新活动时间
     setInterval(() => {
       this.lastActivityTime = Date.now();
-      console.log('💓 [SSE] 模拟心跳 - 连接正常');
+      if (import.meta.env.DEV) {
+        console.log('💓 [SSE] 模拟心跳 - 连接正常');
+      }
     }, 10000); // 每10秒更新一次
 
     // 启动正常的心跳检测（但由于活动时间会被更新，不会触发重连）
     this.startHeartbeat();
   }
-}
 
 // Singleton instance
 const enhancedRealtimeCommunicationService = new EnhancedRealtimeCommunicationService();

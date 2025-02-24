@@ -32,7 +32,8 @@ export function createAuthGuard(router) {
     const isAuthenticated = authStore.isLoggedIn;
     
     // 记录导航
-    console.log(`🔒 Auth Guard: ${from.path} → ${to.path}`, {
+    if (import.meta.env.DEV) {
+      console.log(`🔒 Auth Guard: ${from.path} → ${to.path}`, {
       isPublicRoute,
       isAuthenticated,
       requiresAuth: requiresAuth(to)
@@ -52,7 +53,8 @@ export function createAuthGuard(router) {
     
     // 检查会话超时
     if (isAuthenticated && authStore.checkSessionTimeout()) {
-      console.log('⏰ Session timeout detected');
+      if (import.meta.env.DEV) {
+        console.log('⏰ Session timeout detected');
       await authStore.logout();
       return next('/login');
     }
@@ -75,7 +77,6 @@ export function createAuthGuard(router) {
     const defaultTitle = 'Fechatter';
     document.title = to.meta.title ? `${to.meta.title} - ${defaultTitle}` : defaultTitle;
   });
-}
 
 /**
  * 路由元数据助手

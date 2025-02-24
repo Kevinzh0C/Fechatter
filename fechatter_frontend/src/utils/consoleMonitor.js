@@ -79,8 +79,9 @@ class ConsoleMonitor {
     console.debug = this.createWrapper('debug', this.originalMethods.debug);
 
     this.isActive = true;
-    console.log('📊 Console Monitor started');
-  }
+    if (import.meta.env.DEV) {
+      console.log('📊 Console Monitor started');
+    }
 
   /**
    * Create wrapper for console method
@@ -103,7 +104,6 @@ class ConsoleMonitor {
           entry.suppressed = true;
           this.categories.suppressedErrors++;
         }
-      }
 
       // Update categories
       this.categories[type + 's']++;
@@ -150,7 +150,6 @@ class ConsoleMonitor {
         if (filter.pattern && !log.args.some(arg => String(arg).includes(filter.pattern))) return false;
         return true;
       });
-    }
 
     return logs;
   }
@@ -188,7 +187,6 @@ class ConsoleMonitor {
         // Ignore listener errors
       }
     });
-  }
 
   /**
    * Generate report
@@ -199,14 +197,21 @@ class ConsoleMonitor {
     const suppressedErrors = this.getRecentLogs(10, { suppressed: true });
 
     console.group('📊 Console Monitor Report');
-    console.log('Statistics:', stats);
-    console.log('\nRecent Errors:');
+    if (import.meta.env.DEV) {
+      console.log('Statistics:', stats);
+    if (import.meta.env.DEV) {
+      console.log('\nRecent Errors:');
     recentErrors.forEach((log, i) => {
-      console.log(`  ${i + 1}. [${log.timestamp}] ${log.suppressed ? '🔇' : '❌'}`, log.args[0]);
+      if (import.meta.env.DEV) {
+        console.log(`  ${i + 1}. [${log.timestamp}] ${log.suppressed ? '🔇' : '❌'}`, log.args[0]);
+      }
     });
-    console.log('\nSuppressed Errors:');
+    if (import.meta.env.DEV) {
+      console.log('\nSuppressed Errors:');
     suppressedErrors.forEach((log, i) => {
-      console.log(`  ${i + 1}. [${log.timestamp}]`, log.args[0]);
+      if (import.meta.env.DEV) {
+        console.log(`  ${i + 1}. [${log.timestamp}]`, log.args[0]);
+      }
     });
     console.groupEnd();
   }
@@ -219,8 +224,6 @@ class ConsoleMonitor {
     Object.keys(this.categories).forEach(key => {
       this.categories[key] = 0;
     });
-  }
-}
 
 // Create singleton instance
 const consoleMonitor = new ConsoleMonitor();
@@ -230,7 +233,9 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   // Wait a bit to ensure other systems are initialized
   setTimeout(() => {
     consoleMonitor.start();
-    console.log('💡 Console Monitor available: window.consoleMonitor');
+    if (import.meta.env.DEV) {
+      console.log('💡 Console Monitor available: window.consoleMonitor');
+    }
   }, 100);
 }
 

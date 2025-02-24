@@ -160,7 +160,7 @@ import { useWorkspaceStore } from '@/stores/workspace';
 import errorMonitor from '@/utils/errorMonitor';
 import healthCheck from '@/utils/healthCheck';
 import api from '@/services/api';
-import realtimeCommunicationService from '@/services/sse';
+import minimalSSE from '@/services/sse-minimal';
 
 // Visibility
 const isVisible = ref(false);
@@ -200,7 +200,6 @@ async function runHealthCheck() {
       if (result.summary.error) {
         console.warn('Health check warning:', result.summary.error);
       }
-    }
   } catch (error) {
     console.error('Health check failed:', error);
 
@@ -214,7 +213,6 @@ async function runHealthCheck() {
       timestamp: new Date().toISOString()
     }];
   }
-}
 
 function updateErrorStats() {
   try {
@@ -226,14 +224,12 @@ function updateErrorStats() {
     errorStats.value = { total: 0, critical: 0, warnings: 0 };
     recentErrors.value = [];
   }
-}
 
 function viewErrors() {
   showErrors.value = !showErrors.value;
   if (showErrors.value) {
     updateErrorStats();
   }
-}
 
 function clearErrors() {
   errorMonitor.clearErrors();
@@ -248,7 +244,6 @@ async function testApi() {
   } catch (error) {
     alert(`API Test Failed!\nError: ${error.message}`);
   }
-}
 
 function diagnoseApi() {
   if (window.diagnoseApi) {
@@ -256,7 +251,6 @@ function diagnoseApi() {
   } else {
     console.error('API diagnostic tools not loaded');
   }
-}
 
 function exportReport() {
   const report = {
@@ -292,7 +286,6 @@ async function refreshStores() {
   } catch (error) {
     alert(`Failed to refresh stores: ${error.message}`);
   }
-}
 
 function formatTime(timestamp) {
   const date = new Date(timestamp);
@@ -304,7 +297,6 @@ function handleKeydown(event) {
   if (event.key === 'Escape' && isVisible.value) {
     isVisible.value = false;
   }
-}
 
 // Auto-update
 let updateInterval;
@@ -331,13 +323,12 @@ onMounted(() => {
 onUnmounted(() => {
   if (updateInterval) {
     clearInterval(updateInterval);
-  }
   document.removeEventListener('keydown', handleKeydown);
 
   // Clean up SSE debug listeners
-  realtimeCommunicationService.off('connected');
-  realtimeCommunicationService.off('disconnected');
-  realtimeCommunicationService.off('message');
+  minimalSSE.off('connected');
+  minimalSSE.off('disconnected');
+  minimalSSE.off('message');
 });
 
 // Watch for visibility changes
@@ -358,7 +349,6 @@ async function testSSEConnection() {
       message,
       type
     });
-  }
 
   try {
     addLog('🔧 Starting SSE connection test...', 'info');
@@ -370,18 +360,18 @@ async function testSSEConnection() {
     }
 
     // Check current SSE status
-    const currentStatus = realtimeCommunicationService.getConnectionState();
+    const currentStatus = minimalSSE.getConnectionState();
     addLog(`📊 Current SSE state: ${currentStatus.connectionState}`, 'info');
 
     // If already connected, test by sending presence update
     if (currentStatus.isConnected) {
       addLog('✅ SSE already connected, testing with presence update...', 'success');
-      await realtimeCommunicationService.sendPresenceUpdate('online');
+      await minimalSSE.sendPresenceUpdate('online');
       addLog('✅ Presence update sent successfully', 'success');
     } else {
       // Try to connect
       addLog('🔌 Attempting SSE connection...', 'info');
-      await realtimeCommunicationService.connect(authStore.token);
+      await minimalSSE.connect(authStore.token);
       addLog('✅ SSE connection initiated', 'success');
     }
 
@@ -394,7 +384,6 @@ async function testSSEConnection() {
   } finally {
     testingSSE.value = false;
   }
-}
 
 async function reconnectSSE() {
   try {
@@ -405,14 +394,14 @@ async function reconnectSSE() {
     });
 
     // Disconnect first
-    realtimeCommunicationService.disconnect();
+    minimalSSE.disconnect();
 
     // Wait a moment
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Reconnect
     if (authStore.token) {
-      await realtimeCommunicationService.connect(authStore.token);
+      await minimalSSE.connect(authStore.token);
       sseTestResults.value.push({
         timestamp: new Date(),
         message: '✅ SSE reconnected successfully',
@@ -424,7 +413,6 @@ async function reconnectSSE() {
         message: '❌ No auth token for reconnection',
         type: 'error'
       });
-    }
 
     updateSSEStatus();
   } catch (error) {
@@ -435,11 +423,10 @@ async function reconnectSSE() {
     });
     console.error('SSE reconnection error:', error);
   }
-}
 
 function disconnectSSE() {
   try {
-    realtimeCommunicationService.disconnect();
+    minimalSSE.disconnect();
     sseTestResults.value.push({
       timestamp: new Date(),
       message: '🔌 SSE disconnected',
@@ -455,10 +442,9 @@ function disconnectSSE() {
     });
     console.error('SSE disconnect error:', error);
   }
-}
 
 function updateSSEStatus() {
-  const status = realtimeCommunicationService.getConnectionState();
+  const status = minimalSSE.getConnectionState();
   sseStatus.value = {
     isConnected: status.isConnected || false,
     connectionState: status.connectionState || 'unknown',
@@ -469,7 +455,7 @@ function updateSSEStatus() {
 
 // Add SSE event listeners for debugging
 function setupSSEDebugListeners() {
-  realtimeCommunicationService.on('connected', () => {
+  minimalSSE.on('connected', () => {
     sseTestResults.value.push({
       timestamp: new Date(),
       message: '🔗 SSE Connected (event)',
@@ -478,7 +464,7 @@ function setupSSEDebugListeners() {
     updateSSEStatus();
   });
 
-  realtimeCommunicationService.on('disconnected', () => {
+  minimalSSE.on('disconnected', () => {
     sseTestResults.value.push({
       timestamp: new Date(),
       message: '🔌 SSE Disconnected (event)',
@@ -487,14 +473,13 @@ function setupSSEDebugListeners() {
     updateSSEStatus();
   });
 
-  realtimeCommunicationService.on('message', (data) => {
+  minimalSSE.on('message', (data) => {
     sseTestResults.value.push({
       timestamp: new Date(),
       message: `📨 SSE Message: ${JSON.stringify(data).substring(0, 100)}...`,
       type: 'info'
     });
   });
-}
 </script>
 
 <style scoped>
@@ -853,7 +838,6 @@ function setupSSEDebugListeners() {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-}
 
 /* Connection Status */
 .connection-status {

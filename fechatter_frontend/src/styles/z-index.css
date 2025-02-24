@@ -1,0 +1,35 @@
+/**
+ * Z-Index Management System
+ * Following industry standard layering hierarchy
+ */
+
+:root {
+  /* Base Layer (1-99): Static content, basic UI elements */
+  --z-base: 1;
+  --z-layout: 10;
+  --z-content: 20;
+
+  /* Interactive Layer (100-999): Hover states, dropdowns, tooltips */
+  --z-toolbar: 100;
+  --z-dropdown-low: 200;
+  --z-popover: 300;
+
+  /* Overlay Layer (1000-8999): Floating panels, menus */
+  --z-dropdown: 1000;
+  --z-dropdown-high: 1500;
+  --z-context-menu: 3000;
+  --z-translation-panel: 5000;
+  /* Higher priority for translation to ensure no overlap */
+  --z-floating-panel: 4000;
+
+  /* Modal Layer (9000-9999): Modals, overlays, image viewers */
+  --z-modal-backdrop: 9000;
+  --z-modal: 9500;
+  --z-image-viewer: 9800;
+  --z-tooltip: 9900;
+
+  /* System Layer (10000+): Notifications, debug tools */
+  --z-notification: 10000;
+  --z-debug-panel: 10500;
+  --z-system-overlay: 11000;
+}

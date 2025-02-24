@@ -177,11 +177,11 @@ export interface Chat {
   invite_code?: string;
   settings?: Record<string, any>; // 数据库中是 jsonb 类型
   chat_members: number[]; // 数据库中是 bigint[] 类型
-  
+
   // 兼容字段（为了向后兼容，前端组件可能仍在使用）
   name?: string; // 映射到 chat_name
   chat_type?: 'direct' | 'group' | 'channel'; // 映射到 type
-  
+
   // 关联数据（JOIN查询时包含）
   last_message?: ChatMessage;
   unread_count?: number;
@@ -212,10 +212,9 @@ export interface ChatMember {
 
 export interface CreateChatRequest {
   name: string;
-  chat_type: 'direct' | 'group' | 'channel';
-  is_public: boolean;
-  description?: string;
-  member_ids?: number[];
+  chat_type: 'Single' | 'Group' | 'PrivateChannel' | 'PublicChannel'; // Match server ChatType enum
+  members?: number[]; // Optional members list (matches server 'members' field)
+  description?: string; // Optional description field
 }
 
 export interface UpdateChatRequest {
@@ -232,41 +231,33 @@ export interface AddChatMembersRequest {
 // 消息相关类型
 // ========================================
 export interface ChatMessage {
-  id: number;
+  id: number | string; // Allow string for temp IDs
+  temp_id?: string;
   chat_id: number;
   sender_id: number;
-  content?: string;
-  files: string[]; // 数据库中是 text[] 类型
+  sender?: User;
+  content: string;
+  files: UploadedFile[];
+  mentions: User[];
   created_at: string;
   updated_at: string;
-  idempotency_key?: string;
-  status: 'sent' | 'delivered' | 'read' | 'failed';
-  delivered_at?: string;
-  read_at?: string;
-  reply_to?: number; // 数据库中字段名是 reply_to，不是 reply_to_id
-  thread_id?: number;
-  mentions: number[]; // 数据库中是 bigint[] 类型
   priority: 'low' | 'normal' | 'high' | 'urgent';
   is_important: boolean;
-  scheduled_for?: string;
   is_scheduled: boolean;
-  is_edited: boolean;
-  edit_count: number;
-  read_by_users: number[]; // 数据库中是 bigint[] 类型
-  sequence_number: number;
-  
-  // 关联数据（JOIN查询时包含）
-  sender?: {
-    id: number;
-    fullname: string;
-    email: string;
-    avatar_url?: string;
-    status: string;
-    title?: string;
-    department?: string;
-  };
-  reactions?: MessageReaction[];
-  reply_to_message?: ChatMessage; // 被回复的消息
+  scheduled_at?: string;
+  message_type: 'text' | 'file' | 'system';
+  reply_to?: ChatMessage;
+  reactions?: any[]; // Replace with a strong type later
+  status?: 'sending' | 'sent' | 'failed' | 'delivered' | 'read';
+}
+
+export interface UploadedFile {
+  id: number | string; // Allow string for temp IDs
+  filename: string;
+  url: string;
+  mime_type: string;
+  size: number;
+  created_at: string;
 }
 
 export interface MessageFile {
@@ -283,7 +274,7 @@ export interface MessageReaction {
   message_id: number;
   emoji: string;
   created_at: string;
-  
+
   // 聚合数据（从数据库查询聚合得出）
   count?: number;
   users?: number[];
@@ -292,7 +283,7 @@ export interface MessageReaction {
 
 export interface SendMessageRequest {
   content?: string;
-  files?: File[] | string[]; // 可以是文件对象或文件路径
+  files?: (File | string | number)[]; // 允许文件对象、路径或ID
   reply_to?: number; // 数据库字段名是 reply_to
   mentions?: number[];
   idempotency_key?: string;
@@ -443,6 +434,7 @@ export interface PaginationParams {
   page?: number;
   limit?: number;
   offset?: number;
+  before?: number; // For cursor-based pagination
 }
 
 export interface PaginatedResponse<T> {
@@ -454,6 +446,7 @@ export interface PaginatedResponse<T> {
     total_pages: number;
     has_next: boolean;
     has_prev: boolean;
+    has_more?: boolean; // For cursor-based pagination
   };
 }
 
@@ -519,18 +512,23 @@ export interface ApiErrorResponse {
 }
 
 // ========================================
+// Model Interfaces
+// ========================================
+
+export interface User {
+  id: number;
+  fullname: string;
+  email: string;
+  avatar_url?: string;
+  status: string;
+  title?: string;
+  department?: string;
+  last_seen_at?: string;
+}
+
+// ========================================
 // 导出所有类型
 // ========================================
 export type {
-  // 向后兼容的旧类型名称
-  _signin_Request as SigninRequestLegacy,
-  _signin_Response as SigninResponseLegacy,
-  _signup_Request as SignupRequestLegacy,
-  _signup_Response as SignupResponseLegacy,
-  _chat_GET_Response as ChatListResponseLegacy,
-  _chat_POST_Request as CreateChatRequestLegacy,
-  _chat_POST_Response as CreateChatResponseLegacy,
-  _chat_id_messages_GET_Response as MessageListResponseLegacy,
-  _chat_id_messages_POST_Request as SendMessageRequestLegacy,
-  _chat_id_messages_POST_Response as SendMessageResponseLegacy,
+  // 保留一个空的导出以避免语法错误
 };

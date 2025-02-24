@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>🔍 消息内容调试工具</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+
+    .panel {
+      background: #f9f9f9;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+    }
+
+    .error {
+      color: #d63384;
+    }
+
+    .success {
+      color: #198754;
+    }
+
+    .warning {
+      color: #fd7e14;
+    }
+
+    button {
+      padding: 8px 16px;
+      margin: 5px;
+      cursor: pointer;
+    }
+
+    .code {
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 3px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>🔍 消息内容调试工具</h1>
+
+  <div class="panel">
+    <button onclick="checkMessages()">检查消息元素</button>
+    <button onclick="checkCSS()">检查CSS样式</button>
+    <button onclick="fixCSS()">应用CSS修复</button>
+  </div>
+
+  <div id="output"></div>
+
+  <script>
+    function log(message, type = 'info') {
+      const output = document.getElementById('output');
+      const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+      output.innerHTML += `<div class="panel ${className}">${message}</div>`;
+    }
+
+    function checkMessages() {
+      log('🔍 开始检查消息元素...');
+
+      const messageItems = document.querySelectorAll('[data-message-id]');
+      log(`找到 ${messageItems.length} 个消息元素`);
+
+      if (messageItems.length === 0) {
+        log('❌ 未找到任何消息元素！', 'error');
+
+        // 检查其他可能的选择器
+        const selectors = ['.message-item', '.message-wrapper', '.simple-message-list', '.messages-wrapper'];
+        selectors.forEach(selector => {
+          const count = document.querySelectorAll(selector).length;
+          log(`${selector}: ${count} 个`);
+        });
+        return;
+      }
+
+      // 检查前几个消息
+      for (let i = 0; i < Math.min(3, messageItems.length); i++) {
+        const item = messageItems[i];
+        const messageId = item.getAttribute('data-message-id');
+
+        log(`<div class="code">
+消息 ${messageId}:
+- 类名: ${item.className}
+- 显示: ${getComputedStyle(item).display}
+- 可见性: ${getComputedStyle(item).visibility}
+- 透明度: ${getComputedStyle(item).opacity}
+</div>`);
+
+        const textElement = item.querySelector('.message-text');
+        if (textElement) {
+          const content = textElement.textContent || textElement.innerHTML;
+          log(`<div class="code">
+文本内容: "${content.substring(0, 100)}..."
+文本显示: ${getComputedStyle(textElement).display}
+文本颜色: ${getComputedStyle(textElement).color}
+</div>`, 'success');
+        } else {
+          log(`❌ 消息 ${messageId} 没有 .message-text 元素`, 'error');
+        }
+      }
+    }
+
+    function checkCSS() {
+      log('🎨 检查CSS样式...');
+
+      const selectors = [
+        '.simple-message-list',
+        '.messages-wrapper',
+        '.message-item',
+        '.message-text'
+      ];
+
+      selectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        if (elements.length > 0) {
+          const el = elements[0];
+          const styles = getComputedStyle(el);
+
+          const issues = [];
+          if (styles.display === 'none') issues.push('display: none');
+          if (styles.visibility === 'hidden') issues.push('visibility: hidden');
+          if (parseFloat(styles.opacity) < 0.1) issues.push('透明度过低');
+          if (styles.height === '0px') issues.push('高度为0');
+
+          if (issues.length > 0) {
+            log(`⚠️ ${selector}: ${issues.join(', ')}`, 'warning');
+          } else {
+            log(`✅ ${selector}: 样式正常`, 'success');
+          }
+        } else {
+          log(`❌ 未找到 ${selector}`, 'error');
+        }
+      });
+    }
+
+    function fixCSS() {
+      log('🔧 应用CSS修复...');
+
+      const style = document.createElement('style');
+      style.textContent = `
+                .messages-wrapper {
+                    min-height: 100% !important;
+                    max-width: 900px !important;
+                    margin: 0 auto !important;
+                    padding: 0 2rem !important;
+                }
+                .message-item {
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    background: #ffffff !important;
+                    border: 1px solid #e5e7eb !important;
+                    margin-bottom: 16px !important;
+                    padding: 12px 16px !important;
+                    border-radius: 8px !important;
+                }
+                .message-text {
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    color: #374151 !important;
+                    line-height: 1.5 !important;
+                    word-wrap: break-word !important;
+                }
+                .message-content {
+                    margin-left: 40px !important;
+                }
+            `;
+      document.head.appendChild(style);
+
+      log('✅ CSS修复已应用！请检查消息是否显示', 'success');
+
+      // 重新检查
+      setTimeout(() => {
+        checkMessages();
+      }, 500);
+    }
+
+    // 自动运行检查
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        log('🚀 开始自动诊断...');
+        checkMessages();
+        checkCSS();
+      }, 1000);
+    });
+  </script>
+</body>
+
+</html>

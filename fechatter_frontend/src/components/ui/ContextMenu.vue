@@ -83,8 +83,7 @@ const menuStyle = computed(() => {
 
   return {
     left: `${left}px`,
-    top: `${top}px`,
-    zIndex: 9999
+    top: `${top}px`
   }
 })
 
@@ -138,7 +137,7 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 9998;
+  z-index: var(--z-context-menu, 3000);
   /* Transparent overlay to capture clicks */
 }
 
@@ -153,7 +152,9 @@ onUnmounted(() => {
   max-width: 250px;
   outline: none;
   font-size: 14px;
-  z-index: 9999;
+  z-index: var(--z-context-menu, 3000);
+  /* Ensure proper stacking context */
+  isolation: isolate;
 }
 
 .context-menu-divider {

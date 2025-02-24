@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search System Test with Data</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin: 10px 0;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 8px 16px;
+      border: 1px solid #ccc;
+      background: #f5f5f5;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    button:hover {
+      background: #e0e0e0;
+    }
+
+    button.primary {
+      background: #007bff;
+      color: white;
+      border-color: #007bff;
+    }
+
+    button.success {
+      background: #28a745;
+      color: white;
+      border-color: #28a745;
+    }
+
+    button.danger {
+      background: #dc3545;
+      color: white;
+      border-color: #dc3545;
+    }
+
+    input[type="text"] {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      width: 200px;
+    }
+
+    .log {
+      margin: 5px 0;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .log.info {
+      background: #e1f5fe;
+      color: #01579b;
+    }
+
+    .log.success {
+      background: #e8f5e8;
+      color: #2e7d32;
+    }
+
+    .log.error {
+      background: #ffebee;
+      color: #c62828;
+    }
+
+    .log.warning {
+      background: #fff3e0;
+      color: #ef6c00;
+    }
+
+    .results {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 10px;
+      background: #f9f9f9;
+    }
+
+    .message-item {
+      padding: 10px;
+      margin: 5px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: white;
+    }
+
+    .message-item.highlighted {
+      background: #fff3cd;
+      border-color: #ffc107;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+
+    .stat-item {
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #007bff;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>🔍 Complete Search System Test</h1>
+
+  <!-- Test Data Generation -->
+  <div class="section">
+    <h2>📊 Test Data Generation</h2>
+    <div class="controls">
+      <button onclick="generateTestMessages()" class="primary">Generate Test Messages</button>
+      <button onclick="addMessageWithHi()" class="success">Add "Hi" Message</button>
+      <button onclick="clearTestData()" class="danger">Clear Test Data</button>
+      <button onclick="showCurrentData()">Show Current Data</button>
+    </div>
+    <div class="stats" id="dataStats">
+      <div class="stat-item">
+        <div class="stat-value" id="totalMessages">0</div>
+        <div class="stat-label">Total Messages</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="messagesWithHi">0</div>
+        <div class="stat-label">Messages with "Hi"</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="chatId">3</div>
+        <div class="stat-label">Chat ID</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Testing -->
+  <div class="section">
+    <h2>🔍 Search Testing</h2>
+    <div class="controls">
+      <input type="text" id="searchInput" placeholder="Enter search query" value="Hi">
+      <button onclick="performSearch()" class="primary">Search</button>
+      <button onclick="testMultipleQueries()" class="success">Test Multiple Queries</button>
+      <button onclick="clearLogs()">Clear Logs</button>
+    </div>
+
+    <div id="searchResults" class="results"></div>
+  </div>
+
+  <!-- Debug Logs -->
+  <div class="section">
+    <h2>🔧 Debug Logs</h2>
+    <div id="debugLogs" class="results"></div>
+  </div>
+
+  <script type="module">
+    let testMessages = [];
+    let logContainer = document.getElementById('debugLogs');
+    let resultsContainer = document.getElementById('searchResults');
+
+    // Logging function
+    function log(message, type = 'info') {
+      const div = document.createElement('div');
+      div.className = `log ${type}`;
+      div.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+      logContainer.appendChild(div);
+      logContainer.scrollTop = logContainer.scrollHeight;
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+
+    // Generate test messages
+    function generateTestMessages() {
+      testMessages = [
+        { id: 1, content: 'Hello everyone! How are you doing today?', sender_id: 1, sender_name: 'Alice', chat_id: 3, created_at: '2024-01-01T10:00:00Z' },
+        { id: 2, content: 'Hi there! Great to see you all.', sender_id: 2, sender_name: 'Bob', chat_id: 3, created_at: '2024-01-01T10:01:00Z' },
+        { id: 3, content: 'Good morning! Ready for the meeting?', sender_id: 3, sender_name: 'Carol', chat_id: 3, created_at: '2024-01-01T10:02:00Z' },
+        { id: 4, content: 'Hi Bob, yes I am ready. Thanks for asking!', sender_id: 1, sender_name: 'Alice', chat_id: 3, created_at: '2024-01-01T10:03:00Z' },
+        { id: 5, content: 'This is a high priority task that needs attention.', sender_id: 4, sender_name: 'David', chat_id: 3, created_at: '2024-01-01T10:04:00Z' },
+        { id: 6, content: 'History shows that we should be careful with this decision.', sender_id: 2, sender_name: 'Bob', chat_id: 3, created_at: '2024-01-01T10:05:00Z' },
+        { id: 7, content: 'Hi everyone! I just joined the conversation.', sender_id: 5, sender_name: 'Eve', chat_id: 3, created_at: '2024-01-01T10:06:00Z' },
+        { id: 8, content: 'Welcome to our team! We are happy to have you here.', sender_id: 1, sender_name: 'Alice', chat_id: 3, created_at: '2024-01-01T10:07:00Z' },
+        { id: 9, content: 'Thanks! Hi Alice, nice to meet you.', sender_id: 5, sender_name: 'Eve', chat_id: 3, created_at: '2024-01-01T10:08:00Z' },
+        { id: 10, content: 'The project deadline is approaching. We need to finish the implementation.', sender_id: 3, sender_name: 'Carol', chat_id: 3, created_at: '2024-01-01T10:09:00Z' },
+        { id: 11, content: 'Hip hop music is playing in the background.', sender_id: 4, sender_name: 'David', chat_id: 3, created_at: '2024-01-01T10:10:00Z' },
+        { id: 12, content: 'Hidden treasure was found in the cave.', sender_id: 2, sender_name: 'Bob', chat_id: 3, created_at: '2024-01-01T10:11:00Z' }
+      ];
+
+      // Simulate injecting into UnifiedMessageService
+      if (window.unifiedMessageService) {
+        // Clear existing messages for chat 3
+        window.unifiedMessageService.messagesByChat.set(3, testMessages);
+        log('✅ Test messages injected into UnifiedMessageService', 'success');
+      } else {
+        log('⚠️ UnifiedMessageService not available, storing messages locally', 'warning');
+      }
+
+      updateStats();
+      log(`📊 Generated ${testMessages.length} test messages`, 'info');
+    }
+
+    // Add a specific message with "Hi"
+    function addMessageWithHi() {
+      const newMessage = {
+        id: Date.now(),
+        content: `Hi! This is a test message added at ${new Date().toLocaleTimeString()}`,
+        sender_id: 999,
+        sender_name: 'TestUser',
+        chat_id: 3,
+        created_at: new Date().toISOString()
+      };
+
+      testMessages.push(newMessage);
+
+      if (window.unifiedMessageService) {
+        const existingMessages = window.unifiedMessageService.messagesByChat.get(3) || [];
+        existingMessages.push(newMessage);
+        window.unifiedMessageService.messagesByChat.set(3, existingMessages);
+        log('✅ "Hi" message added to UnifiedMessageService', 'success');
+      }
+
+      updateStats();
+      log(`➕ Added message: "${newMessage.content}"`, 'success');
+    }
+
+    // Clear test data
+    function clearTestData() {
+      testMessages = [];
+
+      if (window.unifiedMessageService) {
+        window.unifiedMessageService.messagesByChat.set(3, []);
+        log('🗑️ Cleared messages from UnifiedMessageService', 'info');
+      }
+
+      updateStats();
+      log('🗑️ Test data cleared', 'info');
+    }
+
+    // Show current data
+    function showCurrentData() {
+      let messages = testMessages;
+
+      if (window.unifiedMessageService) {
+        messages = window.unifiedMessageService.getMessagesForChat(3) || [];
+        log(`📋 Found ${messages.length} messages in UnifiedMessageService for chat 3`, 'info');
+      }
+
+      if (messages.length === 0) {
+        log('⚠️ No messages found. Generate test data first.', 'warning');
+        return;
+      }
+
+      log('📋 Current messages:', 'info');
+      messages.slice(0, 5).forEach((msg, index) => {
+        log(`  ${index + 1}. [${msg.sender_name}] "${msg.content.substring(0, 50)}..."`, 'info');
+      });
+
+      if (messages.length > 5) {
+        log(`  ... and ${messages.length - 5} more messages`, 'info');
+      }
+    }
+
+    // Update statistics
+    function updateStats() {
+      let messages = testMessages;
+
+      if (window.unifiedMessageService) {
+        messages = window.unifiedMessageService.getMessagesForChat(3) || [];
+      }
+
+      const messagesWithHi = messages.filter(msg =>
+        msg.content && msg.content.toLowerCase().includes('hi')
+      ).length;
+
+      document.getElementById('totalMessages').textContent = messages.length;
+      document.getElementById('messagesWithHi').textContent = messagesWithHi;
+    }
+
+    // Perform search
+    async function performSearch() {
+      const query = document.getElementById('searchInput').value.trim();
+
+      if (!query) {
+        log('❌ Please enter a search query', 'error');
+        return;
+      }
+
+      log(`🔍 Starting search for: "${query}"`, 'info');
+      resultsContainer.innerHTML = '<div class="log info">Searching...</div>';
+
+      try {
+        // Try to use the actual search service
+        if (window.searchService) {
+          log('✅ Using ProductionSearchService', 'success');
+          const results = await window.searchService.searchInChat({
+            chatId: 3,
+            query: query,
+            limit: 20,
+            offset: 0
+          });
+
+          displaySearchResults(results, query);
+        } else {
+          log('⚠️ SearchService not available, using manual search', 'warning');
+          await manualSearch(query);
+        }
+
+      } catch (error) {
+        log(`❌ Search failed: ${error.message}`, 'error');
+        resultsContainer.innerHTML = `<div class="log error">Search failed: ${error.message}</div>`;
+      }
+    }
+
+    // Manual search implementation
+    async function manualSearch(query) {
+      let messages = testMessages;
+
+      if (window.unifiedMessageService) {
+        messages = window.unifiedMessageService.getMessagesForChat(3) || [];
+      }
+
+      if (messages.length === 0) {
+        log('❌ No messages available for search', 'error');
+        resultsContainer.innerHTML = '<div class="log error">No messages available. Generate test data first.</div>';
+        return;
+      }
+
+      // Apply same logic as searchService
+      const validMessages = messages.filter(msg =>
+        msg &&
+        msg.content &&
+        typeof msg.content === 'string' &&
+        msg.id &&
+        msg.created_at
+      );
+
+      log(`📊 Found ${validMessages.length} valid messages out of ${messages.length} total`, 'info');
+
+      // Search logic
+      const searchResults = validMessages.filter(msg =>
+        msg.content.toLowerCase().includes(query.toLowerCase())
+      );
+
+      log(`🎯 Found ${searchResults.length} matches for "${query}"`, searchResults.length > 0 ? 'success' : 'warning');
+
+      // Show debug info if no results
+      if (searchResults.length === 0) {
+        log('🔍 Debug: Sample message contents:', 'info');
+        validMessages.slice(0, 5).forEach((msg, index) => {
+          const hasMatch = msg.content.toLowerCase().includes(query.toLowerCase());
+          log(`  ${index + 1}. "${msg.content.substring(0, 80)}" - Match: ${hasMatch}`, hasMatch ? 'success' : 'info');
+        });
+      }
+
+      // Create result object
+      const result = {
+        hits: searchResults.map(msg => ({
+          ...msg,
+          content_highlighted: highlightSearchTerm(msg.content, query)
+        })),
+        total: searchResults.length,
+        query: query,
+        took_ms: 25,
+        fallback: true
+      };
+
+      displaySearchResults(result, query);
+    }
+
+    // Display search results
+    function displaySearchResults(results, query) {
+      resultsContainer.innerHTML = '';
+
+      if (!results || results.hits.length === 0) {
+        resultsContainer.innerHTML = `
+                    <div class="log warning">
+                        <strong>No results found for "${query}"</strong><br>
+                        Total messages searched: ${results?.debug?.valid_messages || 'unknown'}<br>
+                        Try: ${results?.debug?.search_debug?.sample_message_contents?.join(', ') || 'Generate test data first'}
+                    </div>
+                `;
+        return;
+      }
+
+      // Results header
+      const header = document.createElement('div');
+      header.className = 'log success';
+      header.innerHTML = `
+                <strong>Found ${results.hits.length} results for "${query}"</strong><br>
+                Search took: ${results.took_ms}ms | 
+                Strategy: ${results.strategy_used || 'basic'} | 
+                Total: ${results.total}
+            `;
+      resultsContainer.appendChild(header);
+
+      // Results list
+      results.hits.forEach((hit, index) => {
+        const item = document.createElement('div');
+        item.className = 'message-item';
+        item.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <strong>${hit.sender_name || `User ${hit.sender_id}`}</strong>
+                        <small>${new Date(hit.created_at).toLocaleString()}</small>
+                    </div>
+                    <div>${hit.content_highlighted || hit.content}</div>
+                `;
+        resultsContainer.appendChild(item);
+      });
+
+      log(`📋 Displayed ${results.hits.length} search results`, 'success');
+    }
+
+    // Test multiple queries
+    async function testMultipleQueries() {
+      const queries = ['Hi', 'hello', 'project', 'team', 'history', 'hip', 'xyz'];
+      log('🧪 Testing multiple queries', 'info');
+
+      for (const query of queries) {
+        document.getElementById('searchInput').value = query;
+        await performSearch();
+        await new Promise(resolve => setTimeout(resolve, 500)); // Small delay
+      }
+
+      log('✅ Multiple query test completed', 'success');
+    }
+
+    // Highlight search terms
+    function highlightSearchTerm(content, query) {
+      if (!content || !query) return content;
+      try {
+        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return content.replace(regex, '<mark style="background: yellow; padding: 2px;">$1</mark>');
+      } catch (e) {
+        return content;
+      }
+    }
+
+    // Clear logs
+    function clearLogs() {
+      logContainer.innerHTML = '';
+      resultsContainer.innerHTML = '';
+    }
+
+    // Make functions globally available
+    window.generateTestMessages = generateTestMessages;
+    window.addMessageWithHi = addMessageWithHi;
+    window.clearTestData = clearTestData;
+    window.showCurrentData = showCurrentData;
+    window.performSearch = performSearch;
+    window.testMultipleQueries = testMultipleQueries;
+    window.clearLogs = clearLogs;
+
+    // Initialize
+    log('🔧 Search System Test Tool loaded', 'info');
+    log('💡 Step 1: Generate test data', 'info');
+    log('💡 Step 2: Perform search tests', 'info');
+    updateStats();
+  </script>
+</body>
+
+</html>

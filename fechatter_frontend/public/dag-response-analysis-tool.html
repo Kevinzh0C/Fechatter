@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DAG Response Analysis Tool</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+    }
+
+    .container {
+      background: white;
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: #2d3748;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #718096;
+      margin-bottom: 30px;
+      font-style: italic;
+    }
+
+    .error-chain {
+      background: #fed7d7;
+      border: 2px solid #fc8181;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .error-step {
+      display: flex;
+      align-items: center;
+      margin: 10px 0;
+      padding: 12px;
+      background: white;
+      border-radius: 8px;
+      border-left: 4px solid #e53e3e;
+    }
+
+    .step-number {
+      background: #e53e3e;
+      color: white;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin-right: 15px;
+      flex-shrink: 0;
+    }
+
+    .step-content {
+      flex: 1;
+    }
+
+    .step-title {
+      font-weight: bold;
+      color: #742a2a;
+      margin-bottom: 5px;
+    }
+
+    .step-details {
+      color: #4a5568;
+      font-size: 14px;
+    }
+
+    .analysis-section {
+      background: #f8fafc;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+      border-left: 4px solid #3182ce;
+    }
+
+    .test-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .test-card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      border: 1px solid #e2e8f0;
+      transition: all 0.3s ease;
+    }
+
+    .test-card:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .test-card h4 {
+      margin-top: 0;
+      color: #2d3748;
+      display: flex;
+      align-items: center;
+    }
+
+    .test-card h4::before {
+      font-size: 20px;
+      margin-right: 10px;
+    }
+
+    .request-test h4::before {
+      content: "📡";
+    }
+
+    .response-test h4::before {
+      content: "📥";
+    }
+
+    .parse-test h4::before {
+      content: "🔬";
+    }
+
+    .format-test h4::before {
+      content: "📋";
+    }
+
+    .button {
+      background: linear-gradient(135deg, #3182ce 0%, #2b6cb0 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin: 5px;
+      width: 100%;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .button.secondary {
+      background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
+    }
+
+    .results {
+      margin-top: 15px;
+      padding: 15px;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      max-height: 400px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    .info {
+      background: #ebf8ff;
+      color: #2a4365;
+      border: 1px solid #90cdf4;
+    }
+
+    .success {
+      background: #f0fff4;
+      color: #22543d;
+      border: 1px solid #9ae6b4;
+    }
+
+    .error {
+      background: #fed7d7;
+      color: #742a2a;
+      border: 1px solid #fc8181;
+    }
+
+    .warning {
+      background: #fffaf0;
+      color: #744210;
+      border: 1px solid #f6ad55;
+    }
+
+    .response-viewer {
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 15px 0;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .response-header {
+      font-weight: bold;
+      color: #2d3748;
+      margin-bottom: 10px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .json-viewer {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: #2d3748;
+      white-space: pre-wrap;
+    }
+
+    .fix-recommendations {
+      background: #f0fff4;
+      border: 2px solid #68d391;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .fix-item {
+      display: flex;
+      align-items: flex-start;
+      margin: 15px 0;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      border-left: 4px solid #38a169;
+    }
+
+    .fix-icon {
+      font-size: 24px;
+      margin-right: 15px;
+      flex-shrink: 0;
+    }
+
+    .fix-content {
+      flex: 1;
+    }
+
+    .fix-title {
+      font-weight: bold;
+      color: #2d3748;
+      margin-bottom: 8px;
+    }
+
+    .fix-description {
+      color: #4a5568;
+      margin-bottom: 10px;
+    }
+
+    .fix-code {
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #2d3748;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .status-success {
+      background: #38a169;
+    }
+
+    .status-error {
+      background: #e53e3e;
+    }
+
+    .status-warning {
+      background: #dd6b20;
+    }
+
+    .status-info {
+      background: #3182ce;
+    }
+
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      border: 1px solid #e2e8f0;
+      padding: 12px;
+      text-align: left;
+    }
+
+    .comparison-table th {
+      background: #f7fafc;
+      font-weight: bold;
+      color: #2d3748;
+    }
+
+    .file-drop-zone {
+      border: 2px dashed #cbd5e0;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      margin: 15px 0;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .file-drop-zone:hover {
+      border-color: #3182ce;
+      background: #f7fafc;
+    }
+
+    .file-drop-zone.dragover {
+      border-color: #3182ce;
+      background: #ebf8ff;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔬 DAG响应解析分析工具</h1>
+    <p class="subtitle">深度分析POST /files/single响应解析失败的根因</p>
+
+    <!-- 错误调用链重构 -->
+    <div class="error-chain">
+      <h3>❌ 确认的错误调用链</h3>
+      <div class="error-step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <div class="step-title">MessageInput.vue:931 → sendMessage()</div>
+          <div class="step-details">用户触发消息发送，包含文件上传</div>
+        </div>
+      </div>
+
+      <div class="error-step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <div class="step-title">fileUploadStore.js:426 → uploadAll()</div>
+          <div class="step-details">文件上传存储管理器，使用Promise.allSettled并发处理</div>
+        </div>
+      </div>
+
+      <div class="error-step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <div class="step-title">fileUploadStore.js:368 → ChatService.uploadFile()</div>
+          <div class="step-details">调用ChatService进行实际文件上传</div>
+        </div>
+      </div>
+
+      <div class="error-step">
+        <div class="step-number">4</div>
+        <div class="step-content">
+          <div class="step-title">ChatService.ts:722 → throw new Error("File upload failed")</div>
+          <div class="step-details">❌ 故障点：响应解析失败，抛出错误</div>
+        </div>
+      </div>
+
+      <div class="error-step">
+        <div class="step-number">5</div>
+        <div class="step-content">
+          <div class="step-title">最终错误：Network error. Please check your connection.</div>
+          <div class="step-details">handleError()将响应错误转换为网络错误</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 细粒度测试网格 -->
+    <div class="test-grid">
+      <div class="test-card request-test">
+        <h4>请求发送测试</h4>
+        <p>测试POST /files/single请求是否能正确发送</p>
+        <button class="button" onclick="testRequestSending()">🚀 测试请求发送</button>
+        <div id="request-results" class="results"></div>
+      </div>
+
+      <div class="test-card response-test">
+        <h4>响应接收测试</h4>
+        <p>测试服务器响应的完整性和格式</p>
+        <button class="button" onclick="testResponseReceiving()">📥 测试响应接收</button>
+        <div id="response-results" class="results"></div>
+      </div>
+
+      <div class="test-card parse-test">
+        <h4>响应解析测试</h4>
+        <p>测试response.data.success和response.data.data的解析</p>
+        <button class="button" onclick="testResponseParsing()">🔬 测试响应解析</button>
+        <div id="parse-results" class="results"></div>
+      </div>
+
+      <div class="test-card format-test">
+        <h4>数据格式比对</h4>
+        <p>比对前端期望格式与后端实际返回格式</p>
+        <button class="button" onclick="testFormatComparison()">📋 比对数据格式</button>
+        <div id="format-results" class="results"></div>
+      </div>
+    </div>
+
+    <!-- 实际文件上传测试 -->
+    <div class="analysis-section">
+      <h3>📁 实际文件上传测试</h3>
+      <div class="file-drop-zone" id="file-drop-zone" onclick="document.getElementById('file-input').click()">
+        <input type="file" id="file-input" style="display: none;" onchange="handleFileUpload(event)">
+        📎 点击选择文件或拖拽到此处
+        <br><small>将执行完整的上传流程并分析每个步骤</small>
+      </div>
+      <button class="button secondary" onclick="runFullUploadAnalysis()">🔍 执行完整上传分析</button>
+      <div id="upload-analysis-results" class="results info" style="display: none;"></div>
+    </div>
+
+    <!-- 响应查看器 -->
+    <div class="analysis-section" id="response-viewer-section" style="display: none;">
+      <h3>📊 响应数据查看器</h3>
+      <div class="response-viewer">
+        <div class="response-header">原始响应数据</div>
+        <div id="raw-response" class="json-viewer"></div>
+      </div>
+      <div class="response-viewer">
+        <div class="response-header">解析后数据结构</div>
+        <div id="parsed-response" class="json-viewer"></div>
+      </div>
+    </div>
+
+    <!-- 修复建议 -->
+    <div class="fix-recommendations" id="fix-recommendations" style="display: none;">
+      <h3>🛠️ 智能修复建议</h3>
+      <div id="fix-items"></div>
+    </div>
+  </div>
+
+  <script>
+    let selectedFile = null;
+    let lastResponse = null;
+
+    // 工具函数
+    function logMessage(containerId, message, type = 'info') {
+      const container = document.getElementById(containerId);
+      container.style.display = 'block';
+      container.className = `results ${type}`;
+      container.textContent += `[${new Date().toLocaleTimeString()}] ${message}\n`;
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function clearResults(containerId) {
+      const container = document.getElementById(containerId);
+      container.textContent = '';
+      container.style.display = 'none';
+    }
+
+    function showResponseViewer(response, parsedData) {
+      const section = document.getElementById('response-viewer-section');
+      const rawDiv = document.getElementById('raw-response');
+      const parsedDiv = document.getElementById('parsed-response');
+
+      section.style.display = 'block';
+      rawDiv.textContent = JSON.stringify(response, null, 2);
+      parsedDiv.textContent = JSON.stringify(parsedData, null, 2);
+    }
+
+    // 请求发送测试
+    async function testRequestSending() {
+      clearResults('request-results');
+      logMessage('request-results', '🚀 测试POST /files/single请求发送...', 'info');
+
+      try {
+        // 创建最小测试文件
+        const testFile = new File(['test'], 'test.txt', { type: 'text/plain' });
+        const formData = new FormData();
+        formData.append('file', testFile);
+
+        logMessage('request-results', '📊 请求配置:', 'info');
+        logMessage('request-results', `   方法: POST`, 'info');
+        logMessage('request-results', `   端点: /api/files/single`, 'info');
+        logMessage('request-results', `   内容: FormData with file`, 'info');
+        logMessage('request-results', `   文件: ${testFile.name} (${testFile.size} bytes)`, 'info');
+
+        const authToken = localStorage.getItem('auth_token');
+        const headers = {};
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`;
+          logMessage('request-results', `   认证: Bearer token present`, 'info');
+        } else {
+          logMessage('request-results', `   ⚠️ 认证: No auth token found`, 'warning');
+        }
+
+        logMessage('request-results', '\n🌐 发送请求...', 'info');
+
+        const startTime = Date.now();
+        const response = await fetch('/api/files/single', {
+          method: 'POST',
+          body: formData,
+          headers: headers
+        });
+        const responseTime = Date.now() - startTime;
+
+        logMessage('request-results', `✅ 请求发送成功`, 'success');
+        logMessage('request-results', `📊 响应时间: ${responseTime}ms`, 'success');
+        logMessage('request-results', `📊 状态码: ${response.status}`, response.ok ? 'success' : 'error');
+        logMessage('request-results', `📊 状态文本: ${response.statusText}`, response.ok ? 'success' : 'error');
+
+        // 检查响应头
+        logMessage('request-results', '\n📋 响应头信息:', 'info');
+        response.headers.forEach((value, key) => {
+          logMessage('request-results', `   ${key}: ${value}`, 'info');
+        });
+
+        lastResponse = response.clone();
+
+        if (response.ok) {
+          logMessage('request-results', '\n✅ 请求发送层面：正常', 'success');
+        } else {
+          logMessage('request-results', '\n❌ 请求发送层面：失败', 'error');
+        }
+
+      } catch (error) {
+        logMessage('request-results', `❌ 请求发送失败: ${error.message}`, 'error');
+        logMessage('request-results', `📊 错误类型: ${error.name}`, 'error');
+        logMessage('request-results', `📊 网络错误: ${!error.response}`, 'error');
+      }
+    }
+
+    // 响应接收测试
+    async function testResponseReceiving() {
+      clearResults('response-results');
+      logMessage('response-results', '📥 测试响应接收完整性...', 'info');
+
+      try {
+        const testFile = new File(['test'], 'test.txt', { type: 'text/plain' });
+        const formData = new FormData();
+        formData.append('file', testFile);
+
+        const authToken = localStorage.getItem('auth_token');
+        const headers = {};
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`;
+        }
+
+        const response = await fetch('/api/files/single', {
+          method: 'POST',
+          body: formData,
+          headers: headers
+        });
+
+        logMessage('response-results', `📊 响应状态: ${response.status} ${response.statusText}`, 'info');
+        logMessage('response-results', `📊 响应类型: ${response.headers.get('content-type')}`, 'info');
+        logMessage('response-results', `📊 响应大小: ${response.headers.get('content-length') || 'unknown'}`, 'info');
+
+        // 尝试读取响应体
+        logMessage('response-results', '\n📖 读取响应体...', 'info');
+
+        try {
+          const clonedResponse = response.clone();
+          const textContent = await clonedResponse.text();
+
+          logMessage('response-results', `✅ 响应体读取成功`, 'success');
+          logMessage('response-results', `📊 响应长度: ${textContent.length} 字符`, 'success');
+          logMessage('response-results', `📊 响应预览: ${textContent.substring(0, 200)}...`, 'info');
+
+          // 尝试JSON解析
+          try {
+            const jsonData = JSON.parse(textContent);
+            logMessage('response-results', `✅ JSON解析成功`, 'success');
+            logMessage('response-results', `📊 JSON结构: ${JSON.stringify(jsonData, null, 2)}`, 'success');
+
+            showResponseViewer(jsonData, jsonData);
+
+          } catch (jsonError) {
+            logMessage('response-results', `❌ JSON解析失败: ${jsonError.message}`, 'error');
+            logMessage('response-results', `📊 原始内容: ${textContent}`, 'error');
+          }
+
+        } catch (readError) {
+          logMessage('response-results', `❌ 响应体读取失败: ${readError.message}`, 'error');
+        }
+
+      } catch (error) {
+        logMessage('response-results', `❌ 响应接收测试失败: ${error.message}`, 'error');
+      }
+    }
+
+    // 响应解析测试
+    async function testResponseParsing() {
+      clearResults('parse-results');
+      logMessage('parse-results', '🔬 测试ChatService响应解析逻辑...', 'info');
+
+      try {
+        const testFile = new File(['test'], 'test.txt', { type: 'text/plain' });
+        const formData = new FormData();
+        formData.append('file', testFile);
+
+        const authToken = localStorage.getItem('auth_token');
+        const headers = {};
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`;
+        }
+
+        logMessage('parse-results', '📡 执行实际请求...', 'info');
+
+        // 模拟ChatService中的axios调用
+        const { default: api } = await import('../src/services/api.js');
+
+        try {
+          const response = await api.post('/files/single', formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+            timeout: 30000,
+          });
+
+          logMessage('parse-results', '✅ Axios请求成功', 'success');
+          logMessage('parse-results', `📊 Response对象结构:`, 'info');
+          logMessage('parse-results', `   status: ${response.status}`, 'info');
+          logMessage('parse-results', `   statusText: ${response.statusText}`, 'info');
+          logMessage('parse-results', `   data: ${JSON.stringify(response.data, null, 2)}`, 'info');
+
+          // 模拟ChatService的解析逻辑
+          logMessage('parse-results', '\n🔍 模拟ChatService解析逻辑...', 'info');
+
+          if (response.data.success && response.data.data) {
+            const uploadData = response.data.data;
+            logMessage('parse-results', '✅ 解析成功 - 数据结构正确', 'success');
+            logMessage('parse-results', `📊 上传数据: ${JSON.stringify(uploadData, null, 2)}`, 'success');
+
+            // 检查必需字段
+            const requiredFields = ['id', 'filename', 'url', 'mime_type', 'size', 'created_at'];
+            const missingFields = requiredFields.filter(field => !uploadData[field]);
+
+            if (missingFields.length > 0) {
+              logMessage('parse-results', `⚠️ 缺失字段: ${missingFields.join(', ')}`, 'warning');
+            } else {
+              logMessage('parse-results', '✅ 所有必需字段都存在', 'success');
+            }
+
+          } else {
+            logMessage('parse-results', '❌ 解析失败 - 响应结构不符合预期', 'error');
+            logMessage('parse-results', `📊 response.data.success: ${response.data.success}`, 'error');
+            logMessage('parse-results', `📊 response.data.data: ${JSON.stringify(response.data.data)}`, 'error');
+
+            if (response.data.error) {
+              logMessage('parse-results', `📊 error信息: ${JSON.stringify(response.data.error)}`, 'error');
+            }
+          }
+
+        } catch (axiosError) {
+          logMessage('parse-results', `❌ Axios请求失败: ${axiosError.message}`, 'error');
+          logMessage('parse-results', `📊 错误状态: ${axiosError.response?.status}`, 'error');
+          logMessage('parse-results', `📊 错误数据: ${JSON.stringify(axiosError.response?.data)}`, 'error');
+        }
+
+      } catch (error) {
+        logMessage('parse-results', `❌ 响应解析测试失败: ${error.message}`, 'error');
+      }
+    }
+
+    // 数据格式比对
+    async function testFormatComparison() {
+      clearResults('format-results');
+      logMessage('format-results', '📋 比对前端期望格式与后端返回格式...', 'info');
+
+      // 前端期望格式
+      const expectedFormat = {
+        success: true,
+        data: {
+          id: "number",
+          filename: "string",
+          url: "string",
+          mime_type: "string",
+          size: "number",
+          created_at: "string"
+        }
+      };
+
+      logMessage('format-results', '📊 前端期望格式:', 'info');
+      logMessage('format-results', JSON.stringify(expectedFormat, null, 2), 'info');
+
+      try {
+        const testFile = new File(['test'], 'test.txt', { type: 'text/plain' });
+        const formData = new FormData();
+        formData.append('file', testFile);
+
+        const authToken = localStorage.getItem('auth_token');
+        const headers = {};
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`;
+        }
+
+        const response = await fetch('/api/files/single', {
+          method: 'POST',
+          body: formData,
+          headers: headers
+        });
+
+        if (response.ok) {
+          const actualData = await response.json();
+
+          logMessage('format-results', '\n📊 后端实际返回格式:', 'info');
+          logMessage('format-results', JSON.stringify(actualData, null, 2), 'info');
+
+          // 格式比对
+          logMessage('format-results', '\n🔍 格式比对结果:', 'info');
+
+          // 检查顶层结构
+          const hasSuccess = 'success' in actualData;
+          const hasData = 'data' in actualData;
+
+          logMessage('format-results', `   success字段: ${hasSuccess ? '✅' : '❌'} ${actualData.success}`, hasSuccess ? 'success' : 'error');
+          logMessage('format-results', `   data字段: ${hasData ? '✅' : '❌'} ${typeof actualData.data}`, hasData ? 'success' : 'error');
+
+          if (hasData && actualData.data) {
+            const dataObj = actualData.data;
+            const expectedFields = Object.keys(expectedFormat.data);
+
+            logMessage('format-results', '\n📋 字段检查:', 'info');
+            expectedFields.forEach(field => {
+              const exists = field in dataObj;
+              const type = typeof dataObj[field];
+              const expectedType = expectedFormat.data[field];
+              const typeMatch = type === expectedType;
+
+              logMessage('format-results', `   ${field}: ${exists ? '✅' : '❌'} (${type} vs ${expectedType})`,
+                exists && typeMatch ? 'success' : 'error');
+            });
+          }
+
+          showResponseViewer(actualData, expectedFormat);
+
+        } else {
+          logMessage('format-results', `❌ 请求失败: ${response.status}`, 'error');
+          const errorText = await response.text();
+          logMessage('format-results', `📊 错误内容: ${errorText}`, 'error');
+        }
+
+      } catch (error) {
+        logMessage('format-results', `❌ 格式比对失败: ${error.message}`, 'error');
+      }
+    }
+
+    // 文件上传处理
+    function setupFileDropZone() {
+      const dropZone = document.getElementById('file-drop-zone');
+
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+      });
+
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+      });
+
+      dropZone.addEventListener('drop', function (e) {
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          selectedFile = files[0];
+          handleFileUpload({ target: { files: [files[0]] } });
+        }
+      }, false);
+    }
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        selectedFile = file;
+        clearResults('upload-analysis-results');
+        logMessage('upload-analysis-results', `📁 已选择文件: ${file.name} (${file.size} bytes)`, 'info');
+        logMessage('upload-analysis-results', '💡 点击"执行完整上传分析"开始详细分析', 'info');
+      }
+    }
+
+    // 完整上传分析
+    async function runFullUploadAnalysis() {
+      if (!selectedFile) {
+        alert('请先选择一个文件');
+        return;
+      }
+
+      clearResults('upload-analysis-results');
+      logMessage('upload-analysis-results', '🔍 开始完整上传分析流程...', 'info');
+
+      try {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        const authToken = localStorage.getItem('auth_token');
+        const headers = {};
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`;
+        }
+
+        logMessage('upload-analysis-results', '\n1️⃣ 准备阶段', 'info');
+        logMessage('upload-analysis-results', `   文件: ${selectedFile.name}`, 'info');
+        logMessage('upload-analysis-results', `   大小: ${selectedFile.size} bytes`, 'info');
+        logMessage('upload-analysis-results', `   类型: ${selectedFile.type}`, 'info');
+        logMessage('upload-analysis-results', `   认证: ${authToken ? '已配置' : '未配置'}`, authToken ? 'success' : 'warning');
+
+        logMessage('upload-analysis-results', '\n2️⃣ 发送请求', 'info');
+        const startTime = Date.now();
+
+        try {
+          const response = await fetch('/api/files/single', {
+            method: 'POST',
+            body: formData,
+            headers: headers
+          });
+
+          const responseTime = Date.now() - startTime;
+          logMessage('upload-analysis-results', `   响应时间: ${responseTime}ms`, 'success');
+          logMessage('upload-analysis-results', `   状态码: ${response.status}`, 'info');
+
+          logMessage('upload-analysis-results', '\n3️⃣ 解析响应', 'info');
+
+          if (response.ok) {
+            try {
+              const responseData = await response.json();
+
+              logMessage('upload-analysis-results', '   ✅ JSON解析成功', 'success');
+              logMessage('upload-analysis-results', `   响应结构: ${JSON.stringify(responseData, null, 2)}`, 'info');
+
+              // 模拟ChatService逻辑
+              logMessage('upload-analysis-results', '\n4️⃣ ChatService逻辑模拟', 'info');
+
+              if (responseData.success && responseData.data) {
+                const uploadData = responseData.data;
+                logMessage('upload-analysis-results', '   ✅ ChatService解析成功', 'success');
+
+                // 转换为前端格式
+                const result = {
+                  id: uploadData.id,
+                  filename: uploadData.filename,
+                  url: uploadData.url,
+                  mime_type: uploadData.mime_type,
+                  size: uploadData.size,
+                  created_at: uploadData.created_at
+                };
+
+                logMessage('upload-analysis-results', `   转换结果: ${JSON.stringify(result, null, 2)}`, 'success');
+                logMessage('upload-analysis-results', '\n🎉 完整流程成功！', 'success');
+
+              } else {
+                logMessage('upload-analysis-results', '   ❌ ChatService解析失败', 'error');
+                logMessage('upload-analysis-results', `   原因: response.data.success=${responseData.success}, response.data.data=${!!responseData.data}`, 'error');
+
+                generateFixRecommendations('parse_error', responseData);
+              }
+
+            } catch (jsonError) {
+              logMessage('upload-analysis-results', `   ❌ JSON解析失败: ${jsonError.message}`, 'error');
+              const text = await response.text();
+              logMessage('upload-analysis-results', `   原始响应: ${text}`, 'error');
+
+              generateFixRecommendations('json_error', { error: jsonError, response: text });
+            }
+
+          } else {
+            logMessage('upload-analysis-results', `   ❌ HTTP错误: ${response.status} ${response.statusText}`, 'error');
+            const errorText = await response.text();
+            logMessage('upload-analysis-results', `   错误内容: ${errorText}`, 'error');
+
+            generateFixRecommendations('http_error', { status: response.status, error: errorText });
+          }
+
+        } catch (networkError) {
+          logMessage('upload-analysis-results', `❌ 网络错误: ${networkError.message}`, 'error');
+          generateFixRecommendations('network_error', networkError);
+        }
+
+      } catch (error) {
+        logMessage('upload-analysis-results', `❌ 分析失败: ${error.message}`, 'error');
+      }
+    }
+
+    // 生成修复建议
+    function generateFixRecommendations(errorType, errorData) {
+      const fixRecommendations = document.getElementById('fix-recommendations');
+      const fixItems = document.getElementById('fix-items');
+
+      fixItems.innerHTML = '';
+
+      const fixes = [];
+
+      switch (errorType) {
+        case 'parse_error':
+          fixes.push({
+            icon: '🔧',
+            title: '修复响应解析逻辑',
+            description: '后端响应格式与前端期望不符，需要调整解析逻辑',
+            code: `// 检查实际响应格式并调整
+if (response.data && response.data.success !== undefined) {
+    // 已有正确格式
+    if (response.data.success && response.data.data) {
+        return response.data.data;
+    }
+} else {
+    // 可能是直接返回数据，需要包装
+    if (response.data && response.data.url) {
+        return response.data; // 直接返回数据
+    }
+}`
+          });
+          break;
+
+        case 'json_error':
+          fixes.push({
+            icon: '📝',
+            title: '修复JSON格式问题',
+            description: '服务器返回的不是有效的JSON格式',
+            code: `// 增强JSON解析错误处理
+try {
+    const data = await response.json();
+    return data;
+} catch (jsonError) {
+    console.error('JSON解析失败:', jsonError);
+    const text = await response.text();
+    console.error('原始响应:', text);
+    throw new Error('服务器返回格式错误: ' + text);
+}`
+          });
+          break;
+
+        case 'http_error':
+          fixes.push({
+            icon: '🌐',
+            title: '检查服务器配置',
+            description: 'HTTP状态码错误，需要检查服务器端点配置',
+            code: `// 检查Gateway路由配置
+// 确保以下路由存在:
+- path: "/api/files/single"
+  methods: ["POST"]
+  upstream: "fechatter-server"
+  
+// 检查后端服务状态
+curl -X POST http://45.77.178.85:6688/api/files/single \\
+     -H "Authorization: Bearer YOUR_TOKEN" \\
+     -F "file=@test.txt"`
+          });
+          break;
+
+        case 'network_error':
+          fixes.push({
+            icon: '🔌',
+            title: '网络连接问题',
+            description: '无法连接到服务器，检查网络和服务状态',
+            code: `// 检查服务器状态
+curl -I http://45.77.178.85:8080/health
+curl -I http://45.77.178.85:6688/health
+
+// 检查Vite代理配置
+proxy: {
+  '/api': {
+    target: 'http://45.77.178.85:8080',
+    changeOrigin: true,
+    secure: false,
+  }
+}`
+          });
+          break;
+      }
+
+      fixes.forEach(fix => {
+        const fixItem = document.createElement('div');
+        fixItem.className = 'fix-item';
+        fixItem.innerHTML = `
+                    <div class="fix-icon">${fix.icon}</div>
+                    <div class="fix-content">
+                        <div class="fix-title">${fix.title}</div>
+                        <div class="fix-description">${fix.description}</div>
+                        <div class="fix-code">${fix.code}</div>
+                    </div>
+                `;
+        fixItems.appendChild(fixItem);
+      });
+
+      fixRecommendations.style.display = 'block';
+    }
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', function () {
+      setupFileDropZone();
+
+      logMessage('upload-analysis-results', '🎯 DAG响应解析分析工具已就绪', 'info');
+      logMessage('upload-analysis-results', '💡 建议依次运行各项测试来定位问题', 'info');
+    });
+  </script>
+</body>
+
+</html>

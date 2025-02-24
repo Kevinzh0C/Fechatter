@@ -16,12 +16,27 @@
     <!-- Chevron Down Icon -->
     <path v-if="name === 'chevron-down'" d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z" />
 
+    <!-- Chevron Up Icon -->
+    <path v-if="name === 'chevron-up'" d="M7.41,15.41L12,10.83l4.59,4.58L18,14l-6-6-6,6z" />
+
     <!-- Refresh Icon -->
     <path v-if="name === 'refresh'"
       d="M17.65,6.35C16.2,4.9 14.21,4 12,4C7.58,4 4.01,7.58 4.01,12C4.01,16.42 7.58,20 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18C8.69,18 6,15.31 6,12C6,8.69 8.69,6 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" />
 
+    <!-- Search Icon -->
+    <path v-if="name === 'search'"
+      d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5z" />
+
+    <!-- Search Outline Icon -->
+    <path v-else-if="name === 'search-outline'" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+
     <!-- Plus Icon -->
     <path v-if="name === 'plus'" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" />
+
+    <!-- Ellipsis Horizontal Icon -->
+    <path v-if="name === 'ellipsis-horizontal'"
+      d="M6 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
 
     <!-- User Icon -->
     <path v-if="name === 'user'"
@@ -50,6 +65,49 @@
     <path v-if="name === 'log-out'"
       d="M16,17V14H9V10H16V7L21,12L16,17M14,2A2,2 0 0,1 16,4V6H14V4H5V20H14V18H16V20A2,2 0 0,1 14,22H5A2,2 0 0,1 3,20V4A2,2 0 0,1 5,2H14Z" />
 
+    <!-- File Icons -->
+    <path v-else-if="name === 'file'" d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z M13 2v7h7" />
+
+    <path v-else-if="name === 'file-pdf'" fill="currentColor"
+      d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M10 9h4 M10 13h4 M10 17h2" />
+
+    <path v-else-if="name === 'file-word'" fill="currentColor"
+      d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M11 12l1 4 1-4 M8 12v4" />
+
+    <path v-else-if="name === 'file-excel'" fill="currentColor"
+      d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 12l4 4m0-4l-4 4" />
+
+    <path v-else-if="name === 'file-code'"
+      d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M10 13l-2 2 2 2m4 0l2-2-2-2" />
+
+    <path v-else-if="name === 'file-archive'"
+      d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M10 12v4m4-4v4" />
+
+    <path v-else-if="name === 'file-video'"
+      d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M10 13l4 2-4 2v-4z" />
+
+    <path v-else-if="name === 'file-audio'"
+      d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M9 13v3m3-4v5m3-3v1" />
+
+    <!-- Image broken icon -->
+    <g v-else-if="name === 'image-broken'">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2" />
+      <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" stroke-width="2" />
+      <path d="M9 10l3 3 4-4" fill="none" stroke="currentColor" stroke-width="2" />
+    </g>
+
+    <!-- Expand icon -->
+    <path v-else-if="name === 'expand'" fill="none" stroke="currentColor" stroke-width="2"
+      d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+
+    <!-- Download icon -->
+    <path v-else-if="name === 'download'" fill="none" stroke="currentColor" stroke-width="2"
+      d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+
+    <!-- Language icon -->
+    <path v-else-if="name === 'language'" fill="none" stroke="currentColor" stroke-width="2"
+      d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+
     <!-- Fallback: Question Mark for unknown icons -->
     <path v-if="!knownIcons.includes(name)"
       d="M11,18H13V16H11V18M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,6A4,4 0 0,0 8,10H10A2,2 0 0,1 12,8A2,2 0 0,1 14,10C14,12 11,11.75 11,15H13C13,12.75 16,12.5 16,10A4,4 0 0,0 12,6Z" />
@@ -77,8 +135,10 @@ const props = defineProps({
 
 // Known icon names
 const knownIcons = [
-  'hash', 'lock', 'megaphone', 'chevron-down', 'refresh', 'plus',
-  'user', 'bell-off', 'arrow-right', 'edit', 'eye', 'users', 'log-out'
+  'hash', 'lock', 'megaphone', 'chevron-down', 'chevron-up', 'refresh', 'search', 'search-outline', 'plus',
+  'ellipsis-horizontal', 'user', 'bell-off', 'arrow-right', 'edit', 'eye', 'users', 'log-out',
+  'file', 'file-pdf', 'file-word', 'file-excel', 'file-ppt', 'file-code', 'file-archive',
+  'file-video', 'file-audio', 'image-broken', 'expand', 'download', 'language'
 ]
 
 // Computed

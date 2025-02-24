@@ -6,31 +6,45 @@
 import { readingPositionManager } from './readingPositionManager';
 
 export function testReadingPositionManager() {
-  console.log('🧪 Testing Reading Position Manager');
-  console.log('=====================================');
+  if (import.meta.env.DEV) {
+    console.log('🧪 Testing Reading Position Manager');
+  if (import.meta.env.DEV) {
+    console.log('=====================================');
+  }
   
   const testChatId = 123;
   
   // Test 1: Check initial state
-  console.log('\n📊 Test 1: Initial State');
+  if (import.meta.env.DEV) {
+    console.log('\n📊 Test 1: Initial State');
   const isVisited = readingPositionManager.isChannelVisitedInSession(testChatId);
-  console.log('- Channel visited in session:', isVisited);
+  if (import.meta.env.DEV) {
+    console.log('- Channel visited in session:', isVisited);
+  }
   
   const strategy = readingPositionManager.getLoadingStrategy(testChatId);
-  console.log('- Loading strategy:', strategy);
+  if (import.meta.env.DEV) {
+    console.log('- Loading strategy:', strategy);
+  }
   
   // Test 2: Mark as visited
-  console.log('\n📊 Test 2: Mark as Visited');
+  if (import.meta.env.DEV) {
+    console.log('\n📊 Test 2: Mark as Visited');
   readingPositionManager.markChannelAsVisited(testChatId);
   
   const isVisitedAfter = readingPositionManager.isChannelVisitedInSession(testChatId);
-  console.log('- Channel visited after marking:', isVisitedAfter);
+  if (import.meta.env.DEV) {
+    console.log('- Channel visited after marking:', isVisitedAfter);
+  }
   
   const strategyAfter = readingPositionManager.getLoadingStrategy(testChatId);
-  console.log('- Loading strategy after visit:', strategyAfter);
+  if (import.meta.env.DEV) {
+    console.log('- Loading strategy after visit:', strategyAfter);
+  }
   
   // Test 3: Save reading position
-  console.log('\n📊 Test 3: Save Reading Position');
+  if (import.meta.env.DEV) {
+    console.log('\n📊 Test 3: Save Reading Position');
   const testPosition = {
     messageId: 456,
     scrollOffset: 100,
@@ -40,34 +54,50 @@ export function testReadingPositionManager() {
   readingPositionManager.saveReadingPosition(testChatId, testPosition);
   
   const savedPosition = readingPositionManager.getReadingPosition(testChatId);
-  console.log('- Saved position:', savedPosition);
+  if (import.meta.env.DEV) {
+    console.log('- Saved position:', savedPosition);
+  }
   
   // Test 4: Strategy with saved position
-  console.log('\n📊 Test 4: Strategy with Saved Position');
+  if (import.meta.env.DEV) {
+    console.log('\n📊 Test 4: Strategy with Saved Position');
   const strategyWithPosition = readingPositionManager.getLoadingStrategy(testChatId);
-  console.log('- Strategy with saved position:', strategyWithPosition);
+  if (import.meta.env.DEV) {
+    console.log('- Strategy with saved position:', strategyWithPosition);
+  }
   
   // Test 5: Debug info
-  console.log('\n📊 Test 5: Debug Information');
+  if (import.meta.env.DEV) {
+    console.log('\n📊 Test 5: Debug Information');
   const debugInfo = readingPositionManager.getDebugInfo();
-  console.log('- Debug info:', debugInfo);
+  if (import.meta.env.DEV) {
+    console.log('- Debug info:', debugInfo);
+  }
   
-  console.log('\n✅ Reading Position Manager test completed');
+  if (import.meta.env.DEV) {
+    console.log('\n✅ Reading Position Manager test completed');
   return debugInfo;
 }
 
 export function simulateChannelNavigation() {
-  console.log('🧪 Simulating Channel Navigation');
-  console.log('=================================');
+  if (import.meta.env.DEV) {
+    console.log('🧪 Simulating Channel Navigation');
+  if (import.meta.env.DEV) {
+    console.log('=================================');
+  }
   
   const channels = [101, 102, 103, 104, 105];
   
   channels.forEach((channelId, index) => {
-    console.log(`\n🔄 Navigating to channel ${channelId}`);
+    if (import.meta.env.DEV) {
+      console.log(`\n🔄 Navigating to channel ${channelId}`);
+    }
     
     // Get strategy before visit
     const beforeStrategy = readingPositionManager.getLoadingStrategy(channelId);
-    console.log('- Strategy before visit:', beforeStrategy.type, '-', beforeStrategy.reason);
+    if (import.meta.env.DEV) {
+      console.log('- Strategy before visit:', beforeStrategy.type, '-', beforeStrategy.reason);
+    }
     
     // Mark as visited
     readingPositionManager.markChannelAsVisited(channelId);
@@ -81,24 +111,35 @@ export function simulateChannelNavigation() {
       };
       
       readingPositionManager.saveReadingPosition(channelId, position);
-      console.log('- Saved position for message:', position.messageId);
-    }
+      if (import.meta.env.DEV) {
+        console.log('- Saved position for message:', position.messageId);
+      }
     
     // Get strategy after visit
     const afterStrategy = readingPositionManager.getLoadingStrategy(channelId);
-    console.log('- Strategy after visit:', afterStrategy.type, '-', afterStrategy.reason);
+    if (import.meta.env.DEV) {
+      console.log('- Strategy after visit:', afterStrategy.type, '-', afterStrategy.reason);
+    }
   });
   
-  console.log('\n📊 Final State:');
-  console.log('- Session channels:', [...readingPositionManager.sessionChannels]);
-  console.log('- Reading positions:', Object.keys(readingPositionManager.getReadingPositions()));
+  if (import.meta.env.DEV) {
+    console.log('\n📊 Final State:');
+  if (import.meta.env.DEV) {
+    console.log('- Session channels:', [...readingPositionManager.sessionChannels]);
+  if (import.meta.env.DEV) {
+    console.log('- Reading positions:', Object.keys(readingPositionManager.getReadingPositions()));
+  }
   
-  console.log('\n✅ Channel navigation simulation completed');
-}
+  if (import.meta.env.DEV) {
+    console.log('\n✅ Channel navigation simulation completed');
+  }
 
 export function testScrollPositionSaving() {
-  console.log('🧪 Testing Scroll Position Saving');
-  console.log('==================================');
+  if (import.meta.env.DEV) {
+    console.log('🧪 Testing Scroll Position Saving');
+  if (import.meta.env.DEV) {
+    console.log('==================================');
+  }
   
   // Mock DOM elements for testing
   const mockMessages = [
@@ -109,7 +150,9 @@ export function testScrollPositionSaving() {
     { id: 5, content: 'Message 5' }
   ];
   
-  console.log('📝 Mock messages created:', mockMessages.length);
+  if (import.meta.env.DEV) {
+    console.log('📝 Mock messages created:', mockMessages.length);
+  }
   
   // Simulate saving positions for different messages
   mockMessages.forEach(message => {
@@ -120,18 +163,26 @@ export function testScrollPositionSaving() {
     };
     
     readingPositionManager.saveReadingPosition(999, position);
-    console.log(`- Saved position for message ${message.id}`);
+    if (import.meta.env.DEV) {
+      console.log(`- Saved position for message ${message.id}`);
+    }
   });
   
   const finalPosition = readingPositionManager.getReadingPosition(999);
-  console.log('📍 Final saved position:', finalPosition);
+  if (import.meta.env.DEV) {
+    console.log('📍 Final saved position:', finalPosition);
+  }
   
-  console.log('\n✅ Scroll position saving test completed');
-}
+  if (import.meta.env.DEV) {
+    console.log('\n✅ Scroll position saving test completed');
+  }
 
 export function clearTestData() {
-  console.log('🧹 Clearing Test Data');
-  console.log('=====================');
+  if (import.meta.env.DEV) {
+    console.log('🧹 Clearing Test Data');
+  if (import.meta.env.DEV) {
+    console.log('=====================');
+  }
   
   // Clear session data
   sessionStorage.removeItem('fechatter_session_channels');
@@ -142,8 +193,9 @@ export function clearTestData() {
   // Clear visit history
   localStorage.removeItem('fechatter_channel_visits');
   
-  console.log('✅ Test data cleared');
-}
+  if (import.meta.env.DEV) {
+    console.log('✅ Test data cleared');
+  }
 
 // Export for global access in development
 if (typeof window !== 'undefined' && import.meta.env.DEV) {
@@ -152,9 +204,15 @@ if (typeof window !== 'undefined' && import.meta.env.DEV) {
   window.testScrollPositionSaving = testScrollPositionSaving;
   window.clearReadingPositionTestData = clearTestData;
   
-  console.log('🧪 Reading position test functions available:');
-  console.log('   - window.testReadingPosition()');
-  console.log('   - window.simulateChannelNav()');
-  console.log('   - window.testScrollPositionSaving()');
-  console.log('   - window.clearReadingPositionTestData()');
+  if (import.meta.env.DEV) {
+    console.log('🧪 Reading position test functions available:');
+  if (import.meta.env.DEV) {
+    console.log('   - window.testReadingPosition()');
+  if (import.meta.env.DEV) {
+    console.log('   - window.simulateChannelNav()');
+  if (import.meta.env.DEV) {
+    console.log('   - window.testScrollPositionSaving()');
+  if (import.meta.env.DEV) {
+    console.log('   - window.clearReadingPositionTestData()');
+  }
 }

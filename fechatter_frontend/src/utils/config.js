@@ -173,12 +173,20 @@ export const initializeConfig = () => {
 
   if (config.dev.debug) {
     console.group('🔧 Fechatter Configuration');
-    console.log('Environment:', config.app.environment);
-    console.log('API Base URL:', config.baseURL);
-    console.log('Features:', config.features);
+    if (import.meta.env.DEV) {
+      console.log('Environment:', config.app.environment);
+    }
+    if (import.meta.env.DEV) {
+      console.log('API Base URL:', config.baseURL);
+    }
+    if (import.meta.env.DEV) {
+      console.log('Features:', config.features);
+    }
 
     if (!validation.isValid) {
-      console.warn('Missing environment variables:', validation.missing);
+      if (import.meta.env.DEV) {
+        console.warn('Missing environment variables:', validation.missing);
+      }
     }
 
     console.groupEnd();

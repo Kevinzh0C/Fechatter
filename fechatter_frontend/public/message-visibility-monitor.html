@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>🔍 消息可见性实时监控</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f5f7fa;
+    }
+
+    .monitor-panel {
+      background: white;
+      padding: 20px;
+      margin: 15px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 400px;
+      max-height: 80vh;
+      overflow-y: auto;
+      z-index: 10000;
+    }
+
+    .status-good {
+      color: #10b981;
+      font-weight: bold;
+    }
+
+    .status-error {
+      color: #ef4444;
+      font-weight: bold;
+    }
+
+    .status-warning {
+      color: #f59e0b;
+      font-weight: bold;
+    }
+
+    .log-entry {
+      padding: 5px;
+      margin: 2px 0;
+      border-left: 3px solid #e5e7eb;
+      font-size: 12px;
+      font-family: monospace;
+    }
+
+    .timestamp {
+      color: #6b7280;
+    }
+
+    button {
+      background: #6366f1;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      margin: 2px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="monitor-panel">
+    <h3>🔍 消息可见性监控器</h3>
+    <p>监控消息显示状态变化</p>
+
+    <div>
+      <button onclick="startMonitoring()">🚀 开始监控</button>
+      <button onclick="stopMonitoring()">⏹️ 停止监控</button>
+      <button onclick="clearLog()">🧹 清空日志</button>
+      <button onclick="forceReveal()">🔧 强制显示</button>
+    </div>
+
+    <div style="margin: 10px 0;">
+      <label>监控间隔: <select id="interval">
+          <option value="500">500ms</option>
+          <option value="1000" selected>1s</option>
+          <option value="2000">2s</option>
+        </select></label>
+    </div>
+
+    <div id="status" style="padding: 10px; background: #f8f9fa; border-radius: 4px; margin: 10px 0;">
+      状态: 未开始
+    </div>
+
+    <div id="log" style="max-height: 400px; overflow-y: auto; background: #f8f9fa; padding: 10px; border-radius: 4px;">
+      <div class="log-entry">监控日志将显示在这里...</div>
+    </div>
+  </div>
+
+  <script>
+    let monitoringInterval = null;
+    let previousState = {};
+    let logCount = 0;
+
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const timestamp = new Date().toLocaleTimeString();
+      const className = type === 'success' ? 'status-good' : type === 'error' ? 'status-error' : type === 'warning' ? 'status-warning' : '';
+
+      logCount++;
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="${className}">${message}</span>`;
+
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+
+      // Keep only last 50 entries
+      if (logCount > 50) {
+        logDiv.removeChild(logDiv.firstChild);
+      }
+    }
+
+    function updateStatus(text, type = 'info') {
+      const statusDiv = document.getElementById('status');
+      const className = type === 'success' ? 'status-good' : type === 'error' ? 'status-error' : type === 'warning' ? 'status-warning' : '';
+      statusDiv.innerHTML = `<span class="${className}">状态: ${text}</span>`;
+    }
+
+    function checkMessageVisibility() {
+      const messageItems = document.querySelectorAll('[data-message-id]');
+      const textElements = document.querySelectorAll('.message-text');
+
+      const currentState = {
+        messageCount: messageItems.length,
+        textCount: textElements.length,
+        visibleMessages: 0,
+        visibleTexts: 0,
+        cssIssues: []
+      };
+
+      // 检查每个消息的可见性
+      messageItems.forEach((item, index) => {
+        const rect = item.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          currentState.visibleMessages++;
+        }
+
+        // 检查CSS属性
+        const styles = getComputedStyle(item);
+        if (styles.display === 'none') currentState.cssIssues.push(`Message ${index}: display none`);
+        if (styles.visibility === 'hidden') currentState.cssIssues.push(`Message ${index}: visibility hidden`);
+        if (parseFloat(styles.opacity) < 0.1) currentState.cssIssues.push(`Message ${index}: opacity low`);
+      });
+
+      // 检查文本元素
+      textElements.forEach((text, index) => {
+        const rect = text.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          currentState.visibleTexts++;
+        }
+
+        const styles = getComputedStyle(text);
+        if (styles.display === 'none') currentState.cssIssues.push(`Text ${index}: display none`);
+        if (styles.color === 'rgba(0, 0, 0, 0)' || styles.color === 'transparent') {
+          currentState.cssIssues.push(`Text ${index}: transparent color`);
+        }
+      });
+
+      // 检测变化
+      if (JSON.stringify(previousState) !== JSON.stringify(currentState)) {
+        // 状态发生变化
+        if (currentState.messageCount !== previousState.messageCount) {
+          log(`📊 消息数量变化: ${previousState.messageCount || 0} → ${currentState.messageCount}`, 'info');
+        }
+
+        if (currentState.visibleMessages !== previousState.visibleMessages) {
+          const type = currentState.visibleMessages > (previousState.visibleMessages || 0) ? 'success' : 'error';
+          log(`👁️ 可见消息变化: ${previousState.visibleMessages || 0} → ${currentState.visibleMessages}`, type);
+        }
+
+        if (currentState.visibleTexts !== previousState.visibleTexts) {
+          const type = currentState.visibleTexts > (previousState.visibleTexts || 0) ? 'success' : 'error';
+          log(`📝 可见文本变化: ${previousState.visibleTexts || 0} → ${currentState.visibleTexts}`, type);
+        }
+
+        if (currentState.cssIssues.length > 0) {
+          currentState.cssIssues.forEach(issue => {
+            log(`⚠️ CSS问题: ${issue}`, 'warning');
+          });
+        }
+
+        previousState = { ...currentState };
+      }
+
+      // 更新状态显示
+      const successRate = currentState.messageCount > 0 ?
+        Math.round((currentState.visibleMessages / currentState.messageCount) * 100) : 0;
+
+      const statusType = successRate >= 80 ? 'success' : successRate >= 50 ? 'warning' : 'error';
+      updateStatus(`${currentState.visibleMessages}/${currentState.messageCount} 消息可见 (${successRate}%)`, statusType);
+    }
+
+    function startMonitoring() {
+      if (monitoringInterval) return;
+
+      const interval = parseInt(document.getElementById('interval').value);
+      log('🚀 开始监控消息可见性...', 'info');
+
+      // 立即检查一次
+      checkMessageVisibility();
+
+      // 设置定期检查
+      monitoringInterval = setInterval(checkMessageVisibility, interval);
+      updateStatus('监控中...', 'success');
+    }
+
+    function stopMonitoring() {
+      if (!monitoringInterval) return;
+
+      clearInterval(monitoringInterval);
+      monitoringInterval = null;
+      log('⏹️ 监控已停止', 'warning');
+      updateStatus('已停止', 'warning');
+    }
+
+    function clearLog() {
+      document.getElementById('log').innerHTML = '<div class="log-entry">日志已清空</div>';
+      logCount = 0;
+    }
+
+    function forceReveal() {
+      log('🔧 应用强制显示CSS...', 'info');
+
+      const style = document.createElement('style');
+      style.id = 'force-reveal-style';
+      style.textContent = `
+                [data-message-id] {
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    background: #ffffff !important;
+                    border: 2px solid #ef4444 !important;
+                    min-height: 80px !important;
+                    margin: 10px 0 !important;
+                    padding: 15px !important;
+                }
+                [data-message-id] .message-text {
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    color: #000000 !important;
+                    background: rgba(255, 255, 0, 0.3) !important;
+                    font-size: 16px !important;
+                    font-weight: bold !important;
+                    min-height: 2em !important;
+                    line-height: 1.4 !important;
+                }
+            `;
+
+      // 移除之前的强制样式
+      const existingStyle = document.getElementById('force-reveal-style');
+      if (existingStyle) existingStyle.remove();
+
+      document.head.appendChild(style);
+      log('✅ 强制显示CSS已应用 (红色边框 + 黄色背景)', 'success');
+
+      // 立即检查效果
+      setTimeout(() => {
+        checkMessageVisibility();
+      }, 100);
+    }
+
+    // 自动开始监控
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        log('🎯 页面加载完成，自动开始监控...', 'info');
+        startMonitoring();
+      }, 2000);
+    });
+
+    // 监听页面变化
+    const observer = new MutationObserver(() => {
+      if (monitoringInterval) {
+        checkMessageVisibility();
+      }
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class']
+    });
+  </script>
+</body>
+
+</html>

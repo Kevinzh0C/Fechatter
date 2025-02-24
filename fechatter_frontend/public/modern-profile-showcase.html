@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎨 Modern User Profile Design Showcase</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+
+    .showcase-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      margin: 0 0 8px 0;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .comparison-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      margin-bottom: 32px;
+    }
+
+    .comparison-card {
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 12px;
+      padding: 20px;
+      border: 2px solid transparent;
+      transition: all 0.3s ease;
+    }
+
+    .comparison-card.old {
+      border-color: #ef4444;
+    }
+
+    .comparison-card.new {
+      border-color: #10b981;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .status-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      color: white;
+    }
+
+    .status-icon.old {
+      background: #ef4444;
+    }
+
+    .status-icon.new {
+      background: #10b981;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .profile-preview {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      overflow: hidden;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    .old-profile {
+      background: white;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .old-profile h3 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      font-size: 16px;
+    }
+
+    .old-profile .close-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    .old-profile .avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      margin-bottom: 12px;
+      background: #ccc;
+    }
+
+    .old-profile .dm-btn {
+      background: #5865f2;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 16px;
+    }
+
+    .new-profile-container {
+      background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+      border-radius: 24px;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .test-button {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin: 8px;
+    }
+
+    @media (max-width: 768px) {
+      .comparison-section {
+        grid-template-columns: 1fr;
+      }
+      
+      .showcase-container {
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="showcase-container">
+    <div class="header">
+      <h1>🎨 Modern User Profile Design</h1>
+      <p>从简单组件到现代化设计的完整升级</p>
+    </div>
+
+    <div class="comparison-section">
+      <!-- 旧设计 -->
+      <div class="comparison-card old">
+        <div class="card-header">
+          <div class="status-icon old">-</div>
+          <h3 class="card-title">原始设计</h3>
+        </div>
+        
+        <div class="profile-preview">
+          <div class="old-profile">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+              <h3 style="margin: 0; font-size: 16px;">User Profile</h3>
+              <button class="close-btn">×</button>
+            </div>
+            <div style="text-align: center;">
+              <div class="avatar"></div>
+              <h4 style="margin: 8px 0 4px 0; font-size: 16px;">Employee 6</h4>
+              <p style="margin: 0; color: #666; font-size: 14px;">employee6@test.com</p>
+              <button class="dm-btn">Send Message</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 16px;">
+          <h4 style="color: #ef4444; margin-bottom: 8px;">问题:</h4>
+          <ul style="font-size: 14px; color: #6b7280;">
+            <li>设计过于简单，缺乏视觉吸引力</li>
+            <li>没有使用现代图标库</li>
+            <li>信息展示有限</li>
+            <li>交互体验基础</li>
+            <li>没有状态指示器</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 新设计 -->
+      <div class="comparison-card new">
+        <div class="card-header">
+          <div class="status-icon new">✓</div>
+          <h3 class="card-title">现代化设计</h3>
+        </div>
+        
+        <div style="text-align: center; color: #10b981; font-size: 18px; padding: 40px;">
+          ✅ 现代化Profile设计已完成！<br>
+          <span style="font-size: 14px; color: #6b7280;">使用Heroicons图标库和现代设计原则</span>
+        </div>
+
+        <div style="margin-top: 16px;">
+          <h4 style="color: #10b981; margin-bottom: 8px;">改进:</h4>
+          <ul style="font-size: 14px; color: #6b7280;">
+            <li>✨ 使用 Heroicons 现代图标库</li>
+            <li>🎨 渐变背景和阴影效果</li>
+            <li>🟢 在线状态指示器</li>
+            <li>📊 结构化信息展示</li>
+            <li>⚡ 响应式动画和交互</li>
+            <li>🔘 双按钮操作设计</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 32px;">
+      <button class="test-button" onclick="window.location.href=\"/chat/6\"">🚀 在聊天中测试</button>
+      <button class="test-button" onclick="alert(\"✅ 现代化设计已应用到 UserProfileModal.vue\")">👀 查看更新</button>
+    </div>
+
+    <div style="text-align: center; color: #6b7280; font-size: 14px; margin-top: 24px;">
+      <p>🎨 现代化 User Profile 设计已完成！</p>
+      <p>使用 Heroicons 图标库和现代设计原则打造的全新用户体验</p>
+      <p><strong>文件:</strong> fechatter_frontend/src/components/user/UserProfileModal.vue</p>
+    </div>
+  </div>
+</body>
+</html>

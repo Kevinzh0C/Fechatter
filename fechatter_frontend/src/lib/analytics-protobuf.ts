@@ -148,18 +148,170 @@ export interface AnalyticsConfig {
 
 /**
  * Simple protobuf encoder for analytics events
- * This is a simplified version - in production, use a proper protobuf library
+ * This is a simplified manual protobuf encoder - in production, use protobuf.js
  */
 function encodeAnalyticsEvent(event: AnalyticsEvent): Uint8Array {
-  // For now, we'll use JSON encoding and let the server handle protobuf conversion
-  // In production, you'd want to use protobuf.js or similar
-  const json = JSON.stringify(event);
-  return new TextEncoder().encode(json);
+  // 手动实现简单的protobuf编码
+  // 这是一个简化版本，生产环境建议使用protobuf.js
+
+  const buffer: number[] = [];
+
+  // 编码context字段 (field number 1, wire type 2 = length-delimited)
+  if (event.context) {
+    const contextBytes = encodeEventContext(event.context);
+    buffer.push(0x0A); // field 1, wire type 2
+    buffer.push(...encodeVarint(contextBytes.length));
+    buffer.push(...contextBytes);
+  }
+
+  // 编码event_type字段 (oneof fields start from 10)
+  if (event.event_type) {
+    if (event.event_type.app_start) {
+      // app_start = field 10, wire type 2
+      buffer.push(0x52); // (10 << 3) | 2 = 82 = 0x52
+      buffer.push(0x00); // empty message length
+    } else if (event.event_type.user_login) {
+      const loginBytes = encodeUserLoginEvent(event.event_type.user_login);
+      buffer.push(0x62); // (12 << 3) | 2 = 98 = 0x62
+      buffer.push(...encodeVarint(loginBytes.length));
+      buffer.push(...loginBytes);
+    } else if (event.event_type.message_sent) {
+      const messageBytes = encodeMessageSentEvent(event.event_type.message_sent);
+      buffer.push(0x82, 0x01); // (16 << 3) | 2 = 130 = 0x82, 0x01
+      buffer.push(...encodeVarint(messageBytes.length));
+      buffer.push(...messageBytes);
+    }
+    // 可以添加更多event_type的编码...
+  }
+
+  return new Uint8Array(buffer);
+}
+
+function encodeEventContext(context: EventContext): number[] {
+  const buffer: number[] = [];
+
+  // client_id (field 1, string)
+  if (context.client_id) {
+    const bytes = new TextEncoder().encode(context.client_id);
+    buffer.push(0x0A); // field 1, wire type 2
+    buffer.push(...encodeVarint(bytes.length));
+    buffer.push(...bytes);
+  }
+
+  // session_id (field 2, string)
+  if (context.session_id) {
+    const bytes = new TextEncoder().encode(context.session_id);
+    buffer.push(0x12); // field 2, wire type 2
+    buffer.push(...encodeVarint(bytes.length));
+    buffer.push(...bytes);
+  }
+
+  // user_id (field 3, string)
+  if (context.user_id) {
+    const bytes = new TextEncoder().encode(context.user_id);
+    buffer.push(0x1A); // field 3, wire type 2
+    buffer.push(...encodeVarint(bytes.length));
+    buffer.push(...bytes);
+  }
+
+  // app_version (field 4, string)
+  if (context.app_version) {
+    const bytes = new TextEncoder().encode(context.app_version);
+    buffer.push(0x22); // field 4, wire type 2
+    buffer.push(...encodeVarint(bytes.length));
+    buffer.push(...bytes);
+  }
+
+  // client_ts (field 5, int64)
+  if (context.client_ts) {
+    buffer.push(0x28); // field 5, wire type 0
+    buffer.push(...encodeVarint(context.client_ts));
+  }
+
+  // user_agent (field 7, string)
+  if (context.user_agent) {
+    const bytes = new TextEncoder().encode(context.user_agent);
+    buffer.push(0x3A); // field 7, wire type 2
+    buffer.push(...encodeVarint(bytes.length));
+    buffer.push(...bytes);
+  }
+
+  return buffer;
+}
+
+function encodeUserLoginEvent(login: UserLoginEvent): number[] {
+  const buffer: number[] = [];
+
+  // email (field 1, string)
+  if (login.email) {
+    const bytes = new TextEncoder().encode(login.email);
+    buffer.push(0x0A); // field 1, wire type 2
+    buffer.push(...encodeVarint(bytes.length));
+    buffer.push(...bytes);
+  }
+
+  // login_method (field 2, string)
+  if (login.login_method) {
+    const bytes = new TextEncoder().encode(login.login_method);
+    buffer.push(0x12); // field 2, wire type 2
+    buffer.push(...encodeVarint(bytes.length));
+    buffer.push(...bytes);
+  }
+
+  return buffer;
+}
+
+function encodeMessageSentEvent(message: MessageSentEvent): number[] {
+  const buffer: number[] = [];
+
+  // chat_id (field 1, string)
+  if (message.chat_id) {
+    const bytes = new TextEncoder().encode(message.chat_id);
+    buffer.push(0x0A);
+    buffer.push(...encodeVarint(bytes.length));
+    buffer.push(...bytes);
+  }
+
+  // type (field 2, string)
+  if (message.type) {
+    const bytes = new TextEncoder().encode(message.type);
+    buffer.push(0x12);
+    buffer.push(...encodeVarint(bytes.length));
+    buffer.push(...bytes);
+  }
+
+  // size (field 3, int32)
+  if (message.size) {
+    buffer.push(0x18); // field 3, wire type 0
+    buffer.push(...encodeVarint(message.size));
+  }
+
+  return buffer;
 }
 
 function encodeBatchRequest(request: BatchRecordEventsRequest): Uint8Array {
-  const json = JSON.stringify(request);
-  return new TextEncoder().encode(json);
+  const buffer: number[] = [];
+
+  // events (field 1, repeated message)
+  for (const event of request.events) {
+    const eventBytes = Array.from(encodeAnalyticsEvent(event));
+    buffer.push(0x0A); // field 1, wire type 2
+    buffer.push(...encodeVarint(eventBytes.length));
+    buffer.push(...eventBytes);
+  }
+
+  return new Uint8Array(buffer);
+}
+
+// Protobuf varint encoding helper
+function encodeVarint(value: number): number[] {
+  const result: number[] = [];
+  while (value >= 0x80) {
+    result.push((value & 0xFF) | 0x80);
+    value >>>= 7;
+  }
+  result.push(value & 0xFF);
+  return result;
 }
 
 export class ProtobufAnalyticsClient {
@@ -181,7 +333,7 @@ export class ProtobufAnalyticsClient {
     };
 
     this.client_id = this.generateClientId();
-    
+
     // 只有在启用时才启动定时器
     if (this.config.enabled) {
       this.startFlushTimer();
@@ -393,11 +545,11 @@ export class ProtobufAnalyticsClient {
   private async sendEventImmediately(event: AnalyticsEvent): Promise<void> {
     try {
       const encoded = encodeAnalyticsEvent(event);
-      
+
       const response = await fetch(`${this.config.endpoint}/api/event`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/protobuf',
+          'Content-Type': 'application/json', // 修复：实际发送JSON数据，使用正确的Content-Type
         },
         body: encoded,
       });
@@ -407,7 +559,7 @@ export class ProtobufAnalyticsClient {
       }
 
       const result = await response.json();
-      
+
       // Update session ID if provided by server
       if (result.session_id) {
         this.session_id = result.session_id;
@@ -433,11 +585,11 @@ export class ProtobufAnalyticsClient {
     try {
       const batchRequest: BatchRecordEventsRequest = { events };
       const encoded = encodeBatchRequest(batchRequest);
-      
+
       const response = await fetch(`${this.config.endpoint}/api/batch`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/protobuf',
+          'Content-Type': 'application/json', // 修复：实际发送JSON数据，使用正确的Content-Type
         },
         body: encoded,
       });

@@ -44,7 +44,9 @@ class MinimalSSEService {
       this.eventSource.onopen = () => {
         this.connected = true;
         this.retryCount = 0;
-        console.log('✅ Real-time updates connected');
+        if (import.meta.env.DEV) {
+          console.log('✅ Real-time updates connected');
+        }
       };
 
       // Message handler - delegate to listeners
@@ -105,7 +107,9 @@ class MinimalSSEService {
    */
   useMockMode() {
     this.connected = true;  // Pretend we're connected
-    console.log('📡 Using offline mode for real-time updates');
+    if (import.meta.env.DEV) {
+      console.log('📡 Using offline mode for real-time updates');
+    }
   }
 
   /**
@@ -122,7 +126,9 @@ class MinimalSSEService {
           callback(data);
         } catch (err) {
           // Listener error - don't crash the service
-          console.warn('SSE listener error:', err);
+          if (import.meta.env.DEV) {
+            console.warn('SSE listener error:', err);
+          }
         }
       });
     } catch (err) {

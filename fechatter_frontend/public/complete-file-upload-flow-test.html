@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔗 Complete File Upload Flow Test - Fechatter</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    .flow-diagram {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin: 30px 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      overflow-x: auto;
+      flex-wrap: wrap;
+    }
+
+    .flow-step {
+      min-width: 150px;
+      padding: 15px;
+      text-align: center;
+      background: white;
+      border: 2px solid #dee2e6;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .flow-step.active {
+      border-color: #007bff;
+      background: #e7f1ff;
+    }
+
+    .flow-step.success {
+      border-color: #28a745;
+      background: #d4edda;
+    }
+
+    .flow-step.error {
+      border-color: #dc3545;
+      background: #f8d7da;
+    }
+
+    .flow-arrow {
+      font-size: 24px;
+      color: #6c757d;
+    }
+
+    .test-section {
+      margin: 30px 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 2px solid #dee2e6;
+    }
+
+    .test-section.success {
+      border-color: #28a745;
+      background: #d4edda;
+    }
+
+    .test-section.error {
+      border-color: #dc3545;
+      background: #f8d7da;
+    }
+
+    .test-controls {
+      display: flex;
+      gap: 10px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    button:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+
+    .file-input-area {
+      border: 2px dashed #007bff;
+      border-radius: 8px;
+      padding: 30px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin: 20px 0;
+    }
+
+    .file-input-area:hover {
+      background: #f0f8ff;
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    .message-preview {
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 15px 0;
+      background: white;
+    }
+
+    .message-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .sender-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #6366f1;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+    }
+
+    .sender-name {
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .message-time {
+      font-size: 12px;
+      color: #6b7280;
+      margin-left: auto;
+    }
+
+    .message-content {
+      margin-left: 40px;
+    }
+
+    .message-files {
+      margin-top: 10px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      margin: 5px 0;
+    }
+
+    .file-thumbnail {
+      width: 40px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+
+    .file-icon {
+      width: 40px;
+      height: 40px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .file-info {
+      flex: 1;
+    }
+
+    .file-name {
+      font-weight: 500;
+      color: #374151;
+    }
+
+    .file-size {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .download-btn {
+      background: #6366f1;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 5px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .log-box {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 14px;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 20px;
+    }
+
+    .log-entry {
+      margin-bottom: 5px;
+      padding: 3px 0;
+    }
+
+    .log-success {
+      color: #4caf50;
+    }
+
+    .log-error {
+      color: #f44336;
+    }
+
+    .log-warning {
+      color: #ff9800;
+    }
+
+    .log-info {
+      color: #2196f3;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+
+    .status-pending {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .status-uploading {
+      background: #cce5ff;
+      color: #004085;
+    }
+
+    .status-success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e9ecef;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #007bff;
+      transition: width 0.3s ease;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: 10px;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      font-family: inherit;
+      resize: vertical;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔗 Complete File Upload Flow Test</h1>
+    <p class="subtitle">Test the complete file upload → message send → SSE broadcast → display pipeline</p>
+
+    <!-- Flow Diagram -->
+    <div class="flow-diagram">
+      <div class="flow-step" id="step-1">
+        <strong>1. File Selection</strong>
+        <div>Choose files</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" id="step-2">
+        <strong>2. File Upload</strong>
+        <div>POST /api/files/single</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" id="step-3">
+        <strong>3. Message Send</strong>
+        <div>POST /api/chat/messages</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" id="step-4">
+        <strong>4. SSE Broadcast</strong>
+        <div>Real-time delivery</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" id="step-5">
+        <strong>5. Display</strong>
+        <div>Thumbnail & Download</div>
+      </div>
+    </div>
+
+    <!-- Test Controls -->
+    <div class="test-section">
+      <h2>📤 Test File Upload & Send</h2>
+
+      <!-- File Selection -->
+      <div class="file-input-area" onclick="selectFile()">
+        <p>📁 Click to select files for testing</p>
+        <p style="font-size: 14px; color: #6c757d;">Support: Images, Documents, Videos</p>
+      </div>
+      <input type="file" id="fileInput" multiple accept="image/*,application/pdf,.doc,.docx,.txt">
+
+      <!-- Message Input -->
+      <textarea id="messageInput" placeholder="Type your message here (optional)..."></textarea>
+
+      <!-- Test Controls -->
+      <div class="test-controls">
+        <button onclick="testCompleteFlow()">🚀 Test Complete Flow</button>
+        <button onclick="testUploadOnly()">📤 Test Upload Only</button>
+        <button onclick="testSendOnly()" disabled id="sendOnlyBtn">💬 Test Send Only</button>
+        <button onclick="clearTest()">🧹 Clear Test</button>
+      </div>
+
+      <!-- Progress -->
+      <div id="uploadProgress" style="display: none;">
+        <div>Uploading files... <span id="progressText">0%</span></div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Selected Files Display -->
+      <div id="selectedFiles"></div>
+    </div>
+
+    <!-- Message Preview -->
+    <div class="test-section" id="messagePreview" style="display: none;">
+      <h2>📝 Message Preview (How it will appear)</h2>
+      <div class="message-preview" id="previewContent">
+        <!-- Will be populated by JavaScript -->
+      </div>
+    </div>
+
+    <!-- Sent Message Display -->
+    <div class="test-section" id="sentMessage" style="display: none;">
+      <h2>✅ Sent Message (SSE Response)</h2>
+      <div id="sentMessageContent">
+        <!-- Will be populated by JavaScript -->
+      </div>
+    </div>
+
+    <!-- Test Results -->
+    <div class="test-section" id="testResults">
+      <h2>📊 Test Results</h2>
+      <div id="testSummary">Ready to test...</div>
+    </div>
+
+    <!-- Debug Log -->
+    <div class="log-box" id="logBox"></div>
+  </div>
+
+  <script>
+    let selectedFiles = [];
+    let uploadedFileUrls = [];
+    let testChatId = 1; // Default test chat
+
+    function log(message, type = 'info') {
+      const logBox = document.getElementById('logBox');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logBox.appendChild(entry);
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function updateStep(stepId, status) {
+      const step = document.getElementById(stepId);
+      step.className = `flow-step ${status}`;
+    }
+
+    function resetSteps() {
+      for (let i = 1; i <= 5; i++) {
+        updateStep(`step-${i}`, '');
+      }
+    }
+
+    function selectFile() {
+      document.getElementById('fileInput').click();
+    }
+
+    document.getElementById('fileInput').addEventListener('change', function (e) {
+      selectedFiles = Array.from(e.target.files);
+      displaySelectedFiles();
+      updateStep('step-1', 'success');
+      log(`Selected ${selectedFiles.length} file(s)`);
+
+      // Enable send only button if files are selected
+      if (selectedFiles.length > 0) {
+        document.getElementById('sendOnlyBtn').disabled = false;
+      }
+    });
+
+    function displaySelectedFiles() {
+      const container = document.getElementById('selectedFiles');
+
+      if (selectedFiles.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = `
+        <h3>Selected Files (${selectedFiles.length})</h3>
+        ${selectedFiles.map((file, index) => `
+          <div class="file-item">
+            ${file.type.startsWith('image/') ?
+          `<img src="${URL.createObjectURL(file)}" alt="${file.name}" class="file-thumbnail">` :
+          `<div class="file-icon">📄</div>`
+        }
+            <div class="file-info">
+              <div class="file-name">${file.name}</div>
+              <div class="file-size">${formatFileSize(file.size)}</div>
+            </div>
+            <span class="status-badge status-pending">Pending</span>
+          </div>
+        `).join('')}
+      `;
+    }
+
+    function formatFileSize(bytes) {
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    async function testCompleteFlow() {
+      if (selectedFiles.length === 0) {
+        log('❌ Please select files first', 'error');
+        return;
+      }
+
+      resetSteps();
+      log('🚀 Starting complete flow test...', 'info');
+
+      try {
+        // Step 1: Already done (file selection)
+        updateStep('step-1', 'success');
+
+        // Step 2: Upload files
+        updateStep('step-2', 'active');
+        log('📤 Step 2: Uploading files...', 'info');
+        await uploadFiles();
+        updateStep('step-2', 'success');
+
+        // Step 3: Send message
+        updateStep('step-3', 'active');
+        log('💬 Step 3: Sending message...', 'info');
+        await sendMessage();
+        updateStep('step-3', 'success');
+
+        // Step 4: Simulate SSE broadcast
+        updateStep('step-4', 'active');
+        log('📡 Step 4: Simulating SSE broadcast...', 'info');
+        await simulateSSEBroadcast();
+        updateStep('step-4', 'success');
+
+        // Step 5: Display message
+        updateStep('step-5', 'active');
+        log('🎨 Step 5: Displaying message...', 'info');
+        displaySentMessage();
+        updateStep('step-5', 'success');
+
+        log('✅ Complete flow test successful!', 'success');
+        updateTestSummary('success', 'All steps completed successfully');
+
+      } catch (error) {
+        log(`❌ Flow test failed: ${error.message}`, 'error');
+        updateTestSummary('error', error.message);
+      }
+    }
+
+    async function uploadFiles() {
+      document.getElementById('uploadProgress').style.display = 'block';
+      uploadedFileUrls = [];
+
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+
+        try {
+          log(`Uploading ${file.name}...`);
+
+          const formData = new FormData();
+          formData.append('file', file);
+
+          const response = await fetch('/api/files/single', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${getAuthToken()}`
+            },
+            body: formData
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const fileUrl = data.file_url || data.url;
+            uploadedFileUrls.push(fileUrl);
+
+            log(`✅ Uploaded: ${file.name} → ${fileUrl}`, 'success');
+
+            // Update file status
+            updateFileStatus(i, 'success', 'Uploaded');
+          } else {
+            throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+          }
+
+          // Update progress
+          const progress = ((i + 1) / selectedFiles.length) * 100;
+          document.getElementById('progressFill').style.width = progress + '%';
+          document.getElementById('progressText').textContent = Math.round(progress) + '%';
+
+        } catch (error) {
+          log(`❌ Upload failed for ${file.name}: ${error.message}`, 'error');
+          updateFileStatus(i, 'error', 'Failed');
+          throw error;
+        }
+      }
+
+      document.getElementById('uploadProgress').style.display = 'none';
+      log(`✅ All ${uploadedFileUrls.length} files uploaded successfully`, 'success');
+    }
+
+    async function sendMessage() {
+      const messageContent = document.getElementById('messageInput').value.trim();
+      const finalContent = messageContent || '📎 File attachment';
+
+      const messageData = {
+        content: finalContent,
+        files: uploadedFileUrls,
+        idempotency_key: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9)
+      };
+
+      log(`Sending message with ${uploadedFileUrls.length} files...`);
+
+      const response = await fetch(`/api/chat/${testChatId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(messageData)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Send failed: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      log(`✅ Message sent successfully: ID ${result.data?.id || 'unknown'}`, 'success');
+
+      // Show message preview
+      showMessagePreview(messageData);
+
+      return result;
+    }
+
+    function showMessagePreview(messageData) {
+      const preview = document.getElementById('messagePreview');
+      const content = document.getElementById('previewContent');
+
+      content.innerHTML = `
+        <div class="message-header">
+          <div class="sender-avatar">TU</div>
+          <span class="sender-name">Test User</span>
+          <span class="message-time">${new Date().toLocaleTimeString()}</span>
+        </div>
+        <div class="message-content">
+          <div>${messageData.content}</div>
+          ${messageData.files.length > 0 ? `
+            <div class="message-files">
+              ${messageData.files.map(fileUrl => {
+        const filename = fileUrl.split('/').pop();
+        const isImage = filename.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+
+        return `
+                  <div class="file-item">
+                    ${isImage ?
+            `<img src="${fileUrl}" alt="${filename}" class="file-thumbnail">` :
+            `<div class="file-icon">📄</div>`
+          }
+                    <div class="file-info">
+                      <div class="file-name">${filename}</div>
+                      <div class="file-size">Click to download</div>
+                    </div>
+                    <button class="download-btn" onclick="downloadFile('${fileUrl}', '${filename}')">📥</button>
+                  </div>
+                `;
+      }).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      preview.style.display = 'block';
+    }
+
+    async function simulateSSEBroadcast() {
+      // Simulate SSE delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      log('📡 SSE broadcast simulated (real implementation would use WebSocket/EventSource)', 'info');
+    }
+
+    function displaySentMessage() {
+      const sentMsg = document.getElementById('sentMessage');
+      const content = document.getElementById('sentMessageContent');
+
+      content.innerHTML = `
+        <div class="message-preview">
+          <div class="message-header">
+            <div class="sender-avatar">TU</div>
+            <span class="sender-name">Test User</span>
+            <span class="message-time">${new Date().toLocaleTimeString()}</span>
+            <span class="status-badge status-success">Delivered via SSE</span>
+          </div>
+          <div class="message-content">
+            <div>${document.getElementById('messageInput').value || '📎 File attachment'}</div>
+            <div class="message-files">
+              ${uploadedFileUrls.map(fileUrl => {
+        const filename = fileUrl.split('/').pop();
+        const isImage = filename.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+
+        return `
+                  <div class="file-item">
+                    ${isImage ?
+            `<img src="${fileUrl}" alt="${filename}" class="file-thumbnail" onclick="previewImage('${fileUrl}', '${filename}')">` :
+            `<div class="file-icon">📄</div>`
+          }
+                    <div class="file-info">
+                      <div class="file-name">${filename}</div>
+                      <div class="file-size">Auto-loaded for display</div>
+                    </div>
+                    <button class="download-btn" onclick="downloadFile('${fileUrl}', '${filename}')">📥 Download</button>
+                  </div>
+                `;
+      }).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+
+      sentMsg.style.display = 'block';
+    }
+
+    function updateFileStatus(index, status, message) {
+      const fileItems = document.querySelectorAll('.file-item');
+      if (fileItems[index]) {
+        const badge = fileItems[index].querySelector('.status-badge');
+        badge.className = `status-badge status-${status}`;
+        badge.textContent = message;
+      }
+    }
+
+    function updateTestSummary(status, message) {
+      const summary = document.getElementById('testSummary');
+      const testResults = document.getElementById('testResults');
+
+      summary.innerHTML = `
+        <span class="status-badge status-${status}">${status.toUpperCase()}</span>
+        ${message}
+      `;
+
+      testResults.className = `test-section ${status}`;
+    }
+
+    async function testUploadOnly() {
+      if (selectedFiles.length === 0) {
+        log('❌ Please select files first', 'error');
+        return;
+      }
+
+      try {
+        updateStep('step-2', 'active');
+        await uploadFiles();
+        updateStep('step-2', 'success');
+        log('✅ Upload test completed', 'success');
+
+        // Enable send only button
+        document.getElementById('sendOnlyBtn').disabled = false;
+      } catch (error) {
+        updateStep('step-2', 'error');
+        log(`❌ Upload test failed: ${error.message}`, 'error');
+      }
+    }
+
+    async function testSendOnly() {
+      if (uploadedFileUrls.length === 0) {
+        log('❌ No uploaded files to send. Upload files first.', 'error');
+        return;
+      }
+
+      try {
+        updateStep('step-3', 'active');
+        await sendMessage();
+        updateStep('step-3', 'success');
+        log('✅ Send test completed', 'success');
+      } catch (error) {
+        updateStep('step-3', 'error');
+        log(`❌ Send test failed: ${error.message}`, 'error');
+      }
+    }
+
+    function clearTest() {
+      selectedFiles = [];
+      uploadedFileUrls = [];
+      document.getElementById('fileInput').value = '';
+      document.getElementById('messageInput').value = '';
+      document.getElementById('selectedFiles').innerHTML = '';
+      document.getElementById('messagePreview').style.display = 'none';
+      document.getElementById('sentMessage').style.display = 'none';
+      document.getElementById('uploadProgress').style.display = 'none';
+      document.getElementById('sendOnlyBtn').disabled = true;
+
+      resetSteps();
+      updateTestSummary('', 'Ready to test...');
+
+      log('🧹 Test cleared', 'info');
+    }
+
+    function getAuthToken() {
+      return localStorage.getItem('auth_token') ||
+        JSON.parse(localStorage.getItem('auth') || '{}')?.tokens?.accessToken ||
+        'test-token';
+    }
+
+    function downloadFile(url, filename) {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      log(`📥 Downloaded: ${filename}`, 'info');
+    }
+
+    function previewImage(url, filename) {
+      window.open(url, '_blank');
+      log(`🖼️ Previewed: ${filename}`, 'info');
+    }
+
+    // Auto-load
+    window.addEventListener('load', () => {
+      log('🔧 Complete File Upload Flow Test loaded', 'info');
+      log('Select files and click "Test Complete Flow" to begin', 'info');
+    });
+  </script>
+</body>
+
+</html>

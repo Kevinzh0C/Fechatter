@@ -27,12 +27,17 @@ export function getPresenceConfig() {
 }
 
 export function enableAutoAway() {
-  console.warn('⚠️ Auto-away is currently disabled by design');
-  console.log('To enable, uncomment code in:');
-  console.log('- src/services/sse.js → handleVisibilityChange()');
-  console.log('- src/services/sse.js → handleWindowBlur()');
-  console.log('- src/services/sse-enhanced.js → same methods');
-}
+  if (import.meta.env.DEV) {
+    console.warn('⚠️ Auto-away is currently disabled by design');
+  if (import.meta.env.DEV) {
+    console.log('To enable, uncomment code in:');
+  if (import.meta.env.DEV) {
+    console.log('- src/services/sse.js → handleVisibilityChange()');
+  if (import.meta.env.DEV) {
+    console.log('- src/services/sse.js → handleWindowBlur()');
+  if (import.meta.env.DEV) {
+    console.log('- src/services/sse-enhanced.js → same methods');
+  }
 
 // Expose for debugging
 if (typeof window !== 'undefined' && import.meta.env.DEV) {
@@ -41,9 +46,12 @@ if (typeof window !== 'undefined' && import.meta.env.DEV) {
     enableAutoAway
   };
 
-  console.log('👁️ Presence optimization active');
-  console.log('Auto-away is DISABLED - users stay online');
-  console.log('Use window.presenceConfig for settings');
-}
+  if (import.meta.env.DEV) {
+    console.log('👁️ Presence optimization active');
+  if (import.meta.env.DEV) {
+    console.log('Auto-away is DISABLED - users stay online');
+  if (import.meta.env.DEV) {
+    console.log('Use window.presenceConfig for settings');
+  }
 
 export default { getPresenceConfig, enableAutoAway }; 

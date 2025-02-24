@@ -58,7 +58,9 @@
 
 html {
   overflow: hidden;
+  /* ✅ 控制页面级别溢出 */
   height: 100vh;
+  /* ✅ 固定HTML高度 */
 }
 
 body {
@@ -72,7 +74,9 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
+  /* ✅ 控制body溢出 */
   height: 100vh;
+  /* ✅ 固定body高度 */
 }
 
 /* Scrollbar Styling */

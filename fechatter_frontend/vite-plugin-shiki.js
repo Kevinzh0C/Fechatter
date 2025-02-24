@@ -1,5 +1,5 @@
 // Vite plugin for build-time Shiki syntax highlighting
-import { createHighlighter } from 'shiki';
+import { getHighlighter } from 'shiki';
 import { parseCodeBlockMeta, resolveLanguage } from './src/plugins/shiki.js';
 
 // Cache for build process
@@ -10,31 +10,24 @@ let shikiHighlighter = null;
 const buildLanguages = [
   'javascript',
   'typescript',
-  'jsx',
-  'tsx',
   'vue',
   'html',
   'css',
-  'scss',
   'json',
-  'yaml',
-  'markdown',
   'bash',
   'python',
   'rust',
   'go',
-  'java',
-  'cpp',
   'sql',
-  'xml',
-  'plaintext'
+  'yaml',
+  'markdown'
 ];
 
 // Initialize Shiki highlighter for build
 async function initializeHighlighter() {
   if (!shikiHighlighter) {
-    shikiHighlighter = await createHighlighter({
-      themes: ['vitesse-light', 'one-dark-pro'],
+    shikiHighlighter = await getHighlighter({
+      theme: 'one-dark-pro',
       langs: buildLanguages
     });
   }
@@ -73,8 +66,7 @@ async function processMarkdown(content, id, options = {}) {
     try {
       // Generate highlighted HTML
       const html = highlighter.codeToHtml(code, {
-        lang: resolveLanguage(lang),
-        theme: themeKey
+        lang: resolveLanguage(lang)
       });
 
       // Post-process HTML
@@ -142,19 +134,19 @@ function postProcessHtml(html, options) {
     const processedLines = lines.map((line, index) => {
       const lineNum = startLine + index;
       const isHighlighted = highlightLines.includes(lineNum);
-      
+
       let lineHtml = '<span class="line">';
-      
+
       if (lineNumbers) {
         lineHtml += `<span class="line-number" data-line="${lineNum}">${lineNum}</span>`;
       }
-      
+
       lineHtml += `<span class="line-content${isHighlighted ? ' highlighted' : ''}">${line}</span>`;
       lineHtml += '</span>';
-      
+
       return lineHtml;
     });
-    
+
     code.innerHTML = processedLines.join('\n');
   }
 
@@ -213,10 +205,10 @@ export default function viteShikiPlugin(options = {}) {
         const templateMatch = code.match(/<template[^>]*>([\s\S]*?)<\/template>/);
         if (templateMatch) {
           const template = templateMatch[1];
-          
+
           // Process markdown in template (look for v-html with markdown)
           const processedTemplate = await processVueTemplate(template, id, { theme, lineNumbers, cache });
-          
+
           if (processedTemplate !== template) {
             transformed = code.replace(templateMatch[0], `<template>${processedTemplate}</template>`);
             hasChanges = true;
@@ -228,7 +220,7 @@ export default function viteShikiPlugin(options = {}) {
         if (scriptMatch) {
           const script = scriptMatch[1];
           const processedScript = await processScriptMarkdown(script, id, { theme, lineNumbers, cache });
-          
+
           if (processedScript !== script) {
             transformed = transformed.replace(scriptMatch[0], `<script${scriptMatch[0].match(/<script([^>]*)>/)[1]}>${processedScript}</script>`);
             hasChanges = true;
@@ -245,7 +237,7 @@ export default function viteShikiPlugin(options = {}) {
     // Generate styles for SSR/SSG
     generateBundle() {
       const styles = generateStaticStyles(theme);
-      
+
       this.emitFile({
         type: 'asset',
         fileName: 'shiki-styles.css',
@@ -269,7 +261,7 @@ async function processVueTemplate(template, id, options) {
 
   while ((match = vHtmlRegex.exec(template)) !== null) {
     const expression = match[1];
-    
+
     // Skip if it's a complex expression or not a markdown variable
     if (expression.includes('(') || expression.includes('[') || !expression.includes('markdown')) {
       continue;
@@ -293,11 +285,11 @@ async function processScriptMarkdown(script, id, options) {
 
   while ((match = markdownRegex.exec(script)) !== null) {
     const markdown = match[1];
-    
+
     // Check if it contains code blocks
     if (markdown.includes('```')) {
       const highlighted = await processMarkdown(markdown, `${id}:script:${match.index}`, options);
-      
+
       replacements.push({
         start: match.index,
         end: match.index + match[0].length,
@@ -318,7 +310,7 @@ async function processScriptMarkdown(script, id, options) {
 // Generate static CSS
 function generateStaticStyles(theme) {
   const isDark = theme === 'dark';
-  
+
   return `
 /* Shiki Syntax Highlighting Styles */
 .code-block-wrapper {

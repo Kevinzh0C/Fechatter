@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📐 布局验证工具 - Fechatter</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f8f9fa; }
+        .card { background: white; border-radius: 12px; padding: 24px; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .status { padding: 8px 12px; border-radius: 6px; margin: 5px 0; font-weight: bold; }
+        .success { background: #d1edff; color: #0969da; }
+        .warning { background: #fff3cd; color: #856404; }
+        .btn { padding: 12px 24px; background: #0969da; color: white; border: none; border-radius: 6px; cursor: pointer; margin: 5px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>📐 Fechatter 布局验证工具</h1>
+        <p>验证消息显示和布局是否正常恢复</p>
+        
+        <div id="status-display"></div>
+        
+        <h3>🔍 快速检查</h3>
+        <button class="btn" onclick="checkLayoutHealth()">检查布局健康状态</button>
+        <button class="btn" onclick="checkMessageDisplay()">验证消息显示</button>
+        <button class="btn" onclick="checkScrolling()">测试滚动功能</button>
+        
+        <h3>📊 当前状态</h3>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function addStatus(message, type = 'success') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            document.getElementById('results').appendChild(div);
+        }
+
+        function checkLayoutHealth() {
+            document.getElementById('results').innerHTML = '';
+            addStatus('🔍 开始布局健康检查...');
+            
+            // 检查消息列表容器
+            const messageList = parent.document?.querySelector('.simple-message-list');
+            if (messageList) {
+                const styles = parent.getComputedStyle(messageList);
+                addStatus(`✅ 消息列表容器存在 - 高度: ${styles.height}`);
+                addStatus(`✅ 滚动设置: ${styles.overflowY}`);
+            } else {
+                addStatus('❌ 未找到消息列表容器', 'warning');
+            }
+            
+            // 检查聊天容器
+            const chatContainer = parent.document?.querySelector('.chat-content-container');
+            if (chatContainer) {
+                const styles = parent.getComputedStyle(chatContainer);
+                addStatus(`✅ 聊天容器存在 - 高度: ${styles.height}`);
+            } else {
+                addStatus('❌ 未找到聊天容器', 'warning');
+            }
+            
+            addStatus('✅ 布局健康检查完成');
+        }
+
+        function checkMessageDisplay() {
+            document.getElementById('results').innerHTML = '';
+            addStatus('🔍 验证消息显示...');
+            
+            const messages = parent.document?.querySelectorAll('.message-wrapper');
+            if (messages && messages.length > 0) {
+                addStatus(`✅ 找到 ${messages.length} 个消息容器`);
+                
+                let visibleCount = 0;
+                messages.forEach(msg => {
+                    const rect = msg.getBoundingClientRect();
+                    if (rect.height > 0 && rect.width > 0) {
+                        visibleCount++;
+                    }
+                });
+                
+                addStatus(`✅ ${visibleCount} 个消息可见`);
+                
+                if (visibleCount > 0) {
+                    addStatus('🎉 消息显示正常！');
+                } else {
+                    addStatus('⚠️ 消息容器存在但不可见', 'warning');
+                }
+            } else {
+                addStatus('❌ 未找到消息', 'warning');
+            }
+        }
+
+        function checkScrolling() {
+            document.getElementById('results').innerHTML = '';
+            addStatus('🔍 测试滚动功能...');
+            
+            const scrollContainer = parent.document?.querySelector('.simple-message-list');
+            if (scrollContainer) {
+                const initialScrollTop = scrollContainer.scrollTop;
+                const maxScroll = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+                
+                addStatus(`✅ 滚动容器高度: ${scrollContainer.scrollHeight}px`);
+                addStatus(`✅ 可视区域高度: ${scrollContainer.clientHeight}px`);
+                addStatus(`✅ 最大滚动距离: ${maxScroll}px`);
+                addStatus(`✅ 当前滚动位置: ${initialScrollTop}px`);
+                
+                if (maxScroll > 0) {
+                    addStatus('✅ 滚动功能可用');
+                } else {
+                    addStatus('ℹ️ 内容未超出容器，无需滚动');
+                }
+            } else {
+                addStatus('❌ 未找到滚动容器', 'warning');
+            }
+        }
+
+        // 页面加载时自动检查
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                addStatus('📐 布局验证工具已加载');
+                addStatus('👆 点击上方按钮开始验证');
+            }, 500);
+        });
+    </script>
+</body>
+</html>

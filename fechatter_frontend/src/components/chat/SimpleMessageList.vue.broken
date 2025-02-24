@@ -1,0 +1,1069 @@
+<template>
+  <div class="simple-message-list" 
+       ref="scrollContainer" 
+       @scroll="handleScroll"
+       :class="{
+         'subtle-loading': subtleFeedback.loadingState === 'loading' && silentLoadingMode,
+         'scrollbar-pulse': subtleFeedback.showScrollbarPulse && silentLoadingMode
+       }">
+    
+    <!-- 🎯 NEW: Subtle Top Gradient for Silent Mode Loading -->
+    <Transition name="gradient-fade">
+      <div v-if="subtleFeedback.showTopGradient && silentLoadingMode" class="top-loading-gradient"></div>
+    </Transition>
+    
+    <!-- 🔇 Auto Load More Indicator - 只在用户滚动时显示 -->
+    <Transition name="load-indicator" mode="out-in">
+      <div v-if="showLoadingIndicator" class="auto-load-indicator">
+        <div class="load-indicator-content">
+          <div class="loading-spinner"></div>
+          <span class="loading-text">Loading earlier messages...</span>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Traditional Loading Indicator for initial load -->
+    <div v-if="loading && messages.length === 0" class="loading-indicator">
+      <div class="loading-text">Loading messages...</div>
+    </div>
+
+    <!-- 消息列表 -->
+    <div class="messages-wrapper">
+      <!-- 🔧 DEBUG: Show message count for debugging -->
+      <div v-if="showDebugInfo" class="debug-info">
+        Messages: {{ messages?.length || 0 }} | Chat: {{ chatId }}
+      </div>
+      
+      <div v-for="message in messages" :key="message.id" :data-message-id="message.id" class="message-wrapper"
+        :ref="el => registerMessageElement(message.id, el)">
+        <MessageItem :message="message" :current-user-id="currentUserId" :chat-id="chatId"
+          @user-profile-opened="$emit('user-profile-opened', $event)" @dm-created="$emit('dm-created', $event)" />
+      </div>
+      
+      <!-- 🔧 DEBUG: Show if no messages -->
+      <div v-if="(!messages || messages.length === 0) && !loading" class="no-messages-debug">
+        <p>No messages found for chat {{ chatId }}</p>
+        <p>Loading: {{ loading }}</p>
+        <p>Has more: {{ hasMoreMessages }}</p>
+      </div>
+    </div>
+
+    <!-- 🎯 Enhanced debug info -->
+    <div v-if="showDebugInfo" class="scroll-debug">
+      <small>
+        ScrollTop: {{ scrollContainer?.scrollTop || 0 }} | 
+        Height: {{ scrollContainer?.scrollHeight || 0 }} |
+        Initial: {{ initialLoadState.isInitialLoad ? 'YES' : 'NO' }} |
+        Auto-load: {{ canAutoLoad ? 'ON' : 'OFF' }} |
+        Loading: {{ showLoadingIndicator ? 'ON' : 'OFF' }}
+      </small>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, nextTick, onMounted, watch, onUnmounted, computed } from 'vue';
+import MessageItem from './MessageItem.vue';
+// Access messageDisplayGuarantee from global scope (initialized in main.js)
+import { productionLogManager } from '@/utils/productionLogManager.js';
+import { readingPositionManager } from '@/utils/readingPositionManager.js';
+
+const props = defineProps({
+  messages: {
+    type: Array,
+    default: () => []
+  },
+  currentUserId: {
+    type: Number,
+    required: true
+  },
+  loading: {
+    type: Boolean,
+    default: false
+  },
+  chatId: {
+    type: [Number, String],
+    default: null
+  },
+  hasMoreMessages: {
+    type: Boolean,
+    default: false
+  },
+  showDebugInfo: {
+    type: Boolean,
+    default: false
+  }
+});
+
+const emit = defineEmits(['user-profile-opened', 'dm-created', 'load-more-messages']);
+
+const scrollContainer = ref(null);
+
+// 🎯 核心状态管理
+const showLoadingIndicator = ref(false);
+const isAutoLoading = ref(false);
+const lastAutoLoadTrigger = ref(0);
+const autoLoadCooldown = 1000; // 1秒冷却
+const topThreshold = 50; // 50px触发阈值
+
+// 🎯 消息元素跟踪
+const displayedMessageElements = ref(new Map());
+
+const visibilityRetryMap = ref(new Map());
+
+// 🎯 加载更多状态
+const loadMoreState = ref({
+  isLoadingMore: false,
+  previousScrollHeight: 0,
+  previousScrollTop: 0,
+  anchorMessageId: null
+});
+
+// 🎯 关键状态：区分初始加载和用户交互
+const initialLoadState = ref({
+  isInitialLoad: true,
+  hasScrolledToBottom: false,
+  chatId: null
+});
+
+// 📖 Reading Position Management States
+const readingPositionState = ref({
+  isFirstVisit: true,
+  hasAppliedStrategy: false,
+  savedPosition: null,
+  currentStrategy: null
+});
+
+// 🎯 计算属性：是否可以自动加载
+const canAutoLoad = computed(() => {
+  return props.hasMoreMessages && 
+         !props.loading && 
+         !isAutoLoading.value &&
+         !loadMoreState.value.isLoadingMore;
+});
+
+// 🔧 DEBUG: Development environment check
+const isDev = import.meta.env.DEV;
+
+// 🎯 关键函数：检查是否应该触发自动加载
+function checkAutoLoadTrigger() {
+  if (!canAutoLoad.value || !scrollContainer.value) {
+    return false;
+  }
+
+  // 🎯 核心逻辑：初始加载期间完全禁用自动加载
+  if (initialLoadState.value.isInitialLoad) {
+    return false;
+  }
+
+  const { scrollTop, scrollHeight, clientHeight } = scrollContainer.value;
+  const isNearTop = scrollTop <= topThreshold;
+  const hasScrollableContent = scrollHeight > clientHeight;
+  const cooldownPassed = Date.now() - lastAutoLoadTrigger.value > autoLoadCooldown;
+
+  const shouldTrigger = isNearTop && hasScrollableContent && cooldownPassed;
+  
+  if (shouldTrigger && isDev) {
+    console.log('🚀 [Auto-Load] 用户滚动触发自动加载:', {
+      scrollTop,
+      hasMoreMessages: props.hasMoreMessages,
+      cooldownPassed
+    });
+  }
+
+  return shouldTrigger;
+}
+
+// 🎯 滚动事件处理
+function handleScroll() {
+  if (!scrollContainer.value) return;
+
+  // 只有非初始加载状态才检查自动加载
+  if (checkAutoLoadTrigger()) {
+    triggerAutoLoad();
+  }
+
+  // Save reading position (throttled)
+  handleScrollForPositionSaving();
+}
+
+// 🎯 触发自动加载（用户滚动时）
+function triggerAutoLoad() {
+  lastAutoLoadTrigger.value = Date.now();
+  isAutoLoading.value = true;
+  
+  // 🎯 关键：用户滚动时显示加载提示
+  showLoadingIndicator.value = true;
+  
+  // 保存滚动位置
+  const container = scrollContainer.value;
+  loadMoreState.value = {
+    isLoadingMore: true,
+    previousScrollHeight: container.scrollHeight,
+    previousScrollTop: container.scrollTop,
+    anchorMessageId: getAnchorMessageId()
+  };
+
+  console.log('🚀 [Auto-Load] 用户滚动触发历史消息加载 for chat:', props.chatId);
+  
+  // 发射加载更多事件
+  emit('load-more-messages');
+  
+  // 3秒后自动隐藏指示器
+  setTimeout(() => {
+    if (isAutoLoading.value) {
+      hideLoadingIndicator();
+    }
+  }, 3000);
+}
+
+// 🎯 隐藏加载指示器
+function hideLoadingIndicator() {
+  showLoadingIndicator.value = false;
+}
+
+// 🎯 获取锚点消息ID
+function getAnchorMessageId() {
+  const container = scrollContainer.value;
+  if (!container) return null;
+
+  const messageElements = container.querySelectorAll('[data-message-id]');
+  const containerRect = container.getBoundingClientRect();
+
+  for (const messageEl of messageElements) {
+    const messageRect = messageEl.getBoundingClientRect();
+    if (messageRect.bottom > containerRect.top + 50) {
+      return messageEl.getAttribute('data-message-id');
+    }
+  }
+  return null;
+}
+
+// 🎯 滚动到底部
+function scrollToBottom(smooth = false, force = false) {
+  nextTick(() => {
+    if (scrollContainer.value) {
+      const container = scrollContainer.value;
+      const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+      
+      if (smooth && !force) {
+        container.scrollTo({
+          top: maxScrollTop,
+          behavior: 'smooth'
+        });
+      } else {
+        container.scrollTop = maxScrollTop;
+        
+        // 双重确认
+        setTimeout(() => {
+          container.scrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+        }, 10);
+      }
+
+      console.log('📜 [SimpleMessageList] Scrolled to bottom:', {
+        scrollTop: container.scrollTop,
+        scrollHeight: container.scrollHeight,
+        clientHeight: container.clientHeight,
+        maxScrollTop,
+        isAtBottom: Math.abs(container.scrollTop - maxScrollTop) < 5,
+        force,
+        smooth
+      });
+    }
+  });
+}
+
+// 🎯 恢复滚动位置
+function restoreScrollPosition() {
+  const container = scrollContainer.value;
+  if (!container || !loadMoreState.value.isLoadingMore) return;
+
+  nextTick(() => {
+    const newScrollHeight = container.scrollHeight;
+    const heightDifference = newScrollHeight - loadMoreState.value.previousScrollHeight;
+
+    if (heightDifference > 0) {
+      if (loadMoreState.value.anchorMessageId) {
+        const anchorElement = container.querySelector(`[data-message-id="${loadMoreState.value.anchorMessageId}"]`);
+        if (anchorElement) {
+          const elementTop = anchorElement.offsetTop;
+          const targetScrollTop = elementTop - 100;
+          container.scrollTop = Math.max(0, targetScrollTop);
+          console.log(`✅ [Auto-Load] Position restored to message ${loadMoreState.value.anchorMessageId}`);
+          finishAutoLoad();
+          return;
+        }
+      }
+
+      const newScrollTop = loadMoreState.value.previousScrollTop + heightDifference;
+      container.scrollTop = newScrollTop;
+      console.log('✅ [Auto-Load] Restored scroll by height difference:', {
+        heightDifference,
+        previousScrollTop: loadMoreState.value.previousScrollTop,
+        newScrollTop: container.scrollTop,
+        autoTriggered: isAutoLoading.value
+      });
+      finishAutoLoad();
+    }
+  });
+}
+
+// 🎯 完成自动加载
+function finishAutoLoad() {
+  isAutoLoading.value = false;
+  loadMoreState.value.isLoadingMore = false;
+  
+  // 🎯 隐藏加载指示器
+  setTimeout(() => {
+    hideLoadingIndicator();
+  }, 500);
+}
+
+// 🎯 注册消息元素
+function registerMessageElement(messageId, element) {
+  if (element) {
+    displayedMessageElements.value.set(messageId, element);
+    
+    // Set up intersection observer for this message
+    setupMessageVisibilityTracking(messageId, element);
+  }
+}
+
+// 🛡️ Keep existing message display tracking functions
+function setupMessageVisibilityTracking(messageId, element) {
+  if (!window.messageDisplayGuarantee || !element) return;
+
+  try {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+          window.messageDisplayGuarantee.markMessageDisplayed(messageId, null, props.chatId);
+          observer.disconnect();
+        }
+      });
+    }, {
+      threshold: [0.5],
+      rootMargin: '0px'
+    });
+
+    observer.observe(element);
+    
+    visibilityRetryMap.value.set(messageId, {
+      observer,
+      retryCount: 0,
+      maxRetries: 3
+    });
+  } catch (error) {
+    console.warn('🛡️ [MessageTracking] IntersectionObserver setup failed:', error);
+  }
+}
+
+function checkMessageVisibility() {
+  if (!scrollContainer.value) return;
+
+  const visibleMessages = [];
+  displayedMessageElements.value.forEach((element, messageId) => {
+    if (!element || !element.getBoundingClientRect) return;
+
+    const rect = element.getBoundingClientRect();
+    const containerRect = scrollContainer.value.getBoundingClientRect();
+
+    if (rect.top >= containerRect.top && rect.bottom <= containerRect.bottom) {
+      visibleMessages.push(messageId);
+      if (window.messageDisplayGuarantee) {
+        window.messageDisplayGuarantee.markMessageDisplayed(messageId, element, props.chatId);
+      }
+    }
+  });
+
+  productionLogManager.debug('MessageVisibility', `${visibleMessages.length} messages visible`, {
+    chatId: props.chatId,
+    visibleMessages
+  });
+}
+
+function handleForceRefresh() {
+  productionLogManager.info('SimpleMessageList', 'Force refresh triggered');
+  setTimeout(() => {
+    checkMessageVisibility();
+  }, 100);
+}
+
+function handleForceScrollCheck() {
+  checkMessageVisibility();
+}
+
+// 🎯 简化滚动策略：总是滚动到底部，确保用户看到最新消息
+async function applyReadingPositionStrategy() {
+  if (!props.chatId || readingPositionState.value.hasAppliedStrategy) return;
+
+  try {
+    console.log(`🎯 [SimpleMessageList] 强制滚动到底部 for chat ${props.chatId}`);
+    
+    // 🎯 关键修复：无论什么情况，都直接滚动到底部
+    // 这确保用户进入频道时总能看到最新消息
+    scrollToBottom(false, true);
+    
+    // 标记为已访问
+    if (readingPositionManager && readingPositionManager.markChannelAsVisited) {
+      readingPositionManager.markChannelAsVisited(props.chatId);
+    }
+
+    readingPositionState.value.hasAppliedStrategy = true;
+    console.log('🎯 [SimpleMessageList] 滚动到底部完成');
+
+  } catch (error) {
+    console.error('📖 [ReadingPosition] Error applying strategy:', error);
+    // Fallback to bottom
+    scrollToBottom(false, true);
+  }
+}
+
+// 📖 READING POSITION: Restore to saved message position
+async function restoreToSavedPosition(strategy) {
+  if (!strategy.scrollToMessage || !props.messages) {
+    scrollToBottom(false, true);
+    return;
+  }
+
+  await nextTick();
+
+  // Find the target message in current messages
+  const targetMessage = props.messages.find(m => m.id === strategy.scrollToMessage);
+  
+  if (targetMessage) {
+    // Look for the message element in DOM
+    const messageElement = document.querySelector(`[data-message-id="${strategy.scrollToMessage}"]`);
+    
+    if (messageElement && scrollContainer.value) {
+      // Calculate scroll position to center the message
+      const containerRect = scrollContainer.value.getBoundingClientRect();
+      const messageRect = messageElement.getBoundingClientRect();
+      const targetScrollTop = messageElement.offsetTop - (containerRect.height / 2) + (messageRect.height / 2);
+      
+      scrollContainer.value.scrollTop = Math.max(0, targetScrollTop);
+      
+      console.log('📖 [ScrollStrategy] Restored to saved message:', {
+        messageId: strategy.scrollToMessage,
+        scrollTop: scrollContainer.value.scrollTop
+      });
+    } else {
+      console.warn('📖 [ScrollStrategy] Target message element not found, scrolling to bottom');
+      scrollToBottom(false, true);
+    }
+  } else {
+    console.warn('📖 [ScrollStrategy] Target message not in current view, scrolling to bottom');
+    scrollToBottom(false, true);
+  }
+}
+
+// 📖 READING POSITION: Save current scroll position
+function saveCurrentReadingPosition() {
+  if (!props.chatId || !scrollContainer.value || readingPositionState.value.isFirstVisit) return;
+
+  try {
+    const messageElements = scrollContainer.value.querySelectorAll('[data-message-id]');
+    if (messageElements.length === 0) return;
+
+    // Find the message closest to the center of viewport
+    const containerRect = scrollContainer.value.getBoundingClientRect();
+    const viewportCenter = containerRect.top + containerRect.height / 2;
+    let closestMessage = null;
+    let closestDistance = Infinity;
+
+    messageElements.forEach(element => {
+      const rect = element.getBoundingClientRect();
+      const elementCenter = rect.top + rect.height / 2;
+      const distance = Math.abs(elementCenter - viewportCenter);
+
+      if (distance < closestDistance && rect.top < containerRect.bottom && rect.bottom > containerRect.top) {
+        closestDistance = distance;
+        closestMessage = element;
+      }
+    });
+
+    if (closestMessage) {
+      const messageId = parseInt(closestMessage.getAttribute('data-message-id'));
+      const scrollOffset = closestMessage.getBoundingClientRect().top - containerRect.top;
+
+      const position = {
+        messageId,
+        scrollOffset,
+        totalMessages: props.messages?.length || 0,
+        timestamp: Date.now()
+      };
+
+      readingPositionManager.saveReadingPosition(props.chatId, position);
+      readingPositionState.value.savedPosition = position;
+
+      console.log('📖 [ReadingPosition] Saved position for chat', props.chatId, 'at message', messageId);
+    }
+  } catch (error) {
+    console.error('📖 [ReadingPosition] Error saving position:', error);
+  }
+}
+
+// 📖 READING POSITION: Throttled scroll listener
+let savePositionTimer = null;
+function handleScrollForPositionSaving() {
+  if (savePositionTimer) {
+    clearTimeout(savePositionTimer);
+  }
+
+  // Save position after user stops scrolling for 1 second
+  savePositionTimer = setTimeout(() => {
+    saveCurrentReadingPosition();
+  }, 1000);
+}
+
+// 🎯 监听消息变化
+watch(() => props.messages, (newMessages, oldMessages) => {
+  const newLength = newMessages?.length || 0;
+  const oldLength = oldMessages?.length || 0;
+
+  if (newLength === 0) return;
+
+  // 🎯 精准实现：初始加载完全静默
+  if (initialLoadState.value.isInitialLoad && newLength > 0) {
+    productionLogManager.info('SimpleMessageList', '🎯 初始加载完成 - 静默滚动到底部');
+    
+    nextTick(() => {
+      scrollToBottom(false, true); // 强制滚动到底部
+      console.log('🎯 [SimpleMessageList] 初始进入频道，静默显示最新消息');
+      
+      // 🎯 2秒后启用用户滚动功能
+      setTimeout(() => {
+        initialLoadState.value.isInitialLoad = false;
+        initialLoadState.value.hasScrolledToBottom = true;
+        console.log('🎯 [SimpleMessageList] 初始加载完成，用户滚动功能已启用');
+      }, 2000);
+    });
+    
+    return;
+  }
+
+  // 🎯 用户滚动加载更多的情况
+  if (newLength > oldLength && loadMoreState.value.isLoadingMore) {
+    console.log('📥 [SimpleMessageList] 历史消息加载完成，恢复滚动位置');
+    restoreScrollPosition();
+    return;
+  }
+
+  // 🎯 新消息到达，如果在底部则滚动到底部
+  if (newLength > oldLength && !initialLoadState.value.isInitialLoad) {
+    nextTick(() => {
+      const container = scrollContainer.value;
+      if (container) {
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        const isAtBottom = scrollTop >= scrollHeight - clientHeight - 100;
+        
+        if (isAtBottom) {
+          scrollToBottom(true, false); // 平滑滚动
+        }
+      }
+    });
+  }
+
+  // Check visibility after message changes
+  nextTick(() => {
+    setTimeout(() => {
+      checkMessageVisibility();
+    }, 200);
+  });
+}, { immediate: true });
+
+// 🎯 监听聊天ID变化（频道切换）
+watch(() => props.chatId, (newChatId, oldChatId) => {
+  if (newChatId !== oldChatId && newChatId) {
+    console.log('🔄 [SimpleMessageList] Chat changed:', { from: oldChatId, to: newChatId });
+
+    // 🎯 重置为初始状态
+    initialLoadState.value = {
+      isInitialLoad: true,
+      hasScrolledToBottom: false,
+      chatId: newChatId
+    };
+
+    // 📖 Reset reading position state for new chat
+    readingPositionState.value = {
+      isFirstVisit: true,
+      hasAppliedStrategy: false,
+      savedPosition: null,
+      currentStrategy: null
+    };
+
+    // 重置其他状态
+    isAutoLoading.value = false;
+    loadMoreState.value.isLoadingMore = false;
+    hideLoadingIndicator();
+    displayedMessageElements.value.clear();
+    visibilityRetryMap.value.clear();
+
+    // 🎯 频道切换时也采用静默模式
+    nextTick(() => {
+      scrollToBottom(false, true);
+      console.log('🎯 [SimpleMessageList] 频道切换完成，静默滚动到底部');
+      lastAutoLoadTrigger.value = Date.now();
+    });
+  }
+});
+
+// 🎯 组件挂载
+onMounted(() => {
+  productionLogManager.info('SimpleMessageList', `Component mounted for chat ${props.chatId}`, {
+    messageCount: props.messages?.length || 0,
+    hasMessages: props.messages && props.messages.length > 0
+  });
+
+  // Initialize state for current chat
+  initialLoadState.value = {
+    isInitialLoad: true,
+    hasScrolledToBottom: false,
+    chatId: props.chatId
+  };
+
+  // 🔧 DEBUG: Global debugging functions for development
+  if (isDev) {
+    window.checkScrollState = checkScrollState;
+    window.testAutoLoadTrigger = testAutoLoadTrigger;
+    window.forceAutoLoad = forceAutoLoad;
+    window.getAutoLoadStatus = getAutoLoadStatus;
+    
+    // 🔧 EMERGENCY DEBUG: Message rendering diagnostics
+    window.debugMessageRendering = () => {
+      console.log('🔧 [DEBUG] Message Rendering Diagnostics:', {
+        chatId: props.chatId,
+        messagesLength: props.messages?.length || 0,
+        loading: props.loading,
+        hasMoreMessages: props.hasMoreMessages,
+        messages: props.messages,
+        scrollContainer: scrollContainer.value,
+        containerHeight: scrollContainer.value?.scrollHeight || 0,
+        messageElements: displayedMessageElements.value.size
+      });
+    };
+    
+    window.forceShowDebugInfo = () => {
+      console.log('🔧 Enabling debug info display');
+      // We'll need to make showDebugInfo reactive
+    };
+  }
+
+  // Setup event listeners for guarantee system
+  window.addEventListener('fechatter:force-message-refresh', handleForceRefresh);
+  window.addEventListener('fechatter:force-scroll-check', handleForceScrollCheck);
+  
+  // 🔧 CRITICAL FIX: Listen for auto-load completion from UnifiedMessageService
+  const handleAutoLoadComplete = (event) => {
+    const { chatId: eventChatId, reason } = event.detail;
+    if (eventChatId === parseInt(props.chatId) && isAutoLoading.value) {
+      console.log(`📡 [Auto-Load] Received completion event for chat ${eventChatId}, reason: ${reason}`);
+      finishAutoLoad();
+    }
+  };
+  window.addEventListener('fechatter:auto-load-complete', handleAutoLoadComplete);
+
+  // If there are already messages (e.g., from cache), apply reading position strategy
+  if (props.messages && props.messages.length > 0) {
+    console.log('📜 [SimpleMessageList] Found existing messages on mount - applying reading position strategy');
+    nextTick(() => {
+      applyReadingPositionStrategy();
+      initialLoadState.value.isInitialLoad = false;
+      initialLoadState.value.hasScrolledToBottom = true;
+
+      // Check visibility after initial scroll
+      setTimeout(() => {
+        checkMessageVisibility();
+      }, 300);
+    });
+  }
+});
+
+// 🎯 组件卸载
+onUnmounted(() => {
+  // 📖 Save final reading position before unmounting
+  if (props.chatId && !readingPositionState.value.isFirstVisit) {
+    saveCurrentReadingPosition();
+  }
+
+  // Clear position save timer
+  if (savePositionTimer) {
+    clearTimeout(savePositionTimer);
+    savePositionTimer = null;
+  }
+
+  // Cleanup event listeners
+  window.removeEventListener('fechatter:force-message-refresh', handleForceRefresh);
+  window.removeEventListener('fechatter:force-scroll-check', handleForceScrollCheck);
+  window.removeEventListener('fechatter:auto-load-complete', handleAutoLoadComplete);
+
+  // Clear message elements map and observers
+  visibilityRetryMap.value.forEach(({ observer }) => {
+    if (observer) {
+      observer.disconnect();
+    }
+  });
+  
+  displayedMessageElements.value.clear();
+  visibilityRetryMap.value.clear();
+});
+
+// Expose methods for external use
+const forceInitialScroll = () => {
+  console.log('🎯 [SimpleMessageList] Force initial scroll requested');
+  scrollToBottom(false, true);
+  initialLoadState.value.isInitialLoad = false;
+  initialLoadState.value.hasScrolledToBottom = true;
+};
+
+const isAtBottom = () => {
+  const container = scrollContainer.value;
+  if (!container) return false;
+
+  return container.scrollTop + container.clientHeight >= container.scrollHeight - 50;
+};
+
+// 🔇 SILENT MODE: Global debug controls for silent loading
+if (typeof window !== 'undefined') {
+  window.toggleSilentLoading = () => {
+    silentLoadingMode.value = !silentLoadingMode.value;
+    console.log(`🔇 [Silent Mode] ${silentLoadingMode.value ? 'ENABLED' : 'DISABLED'} - Auto-load indicators will ${silentLoadingMode.value ? 'NOT' : ''} show`);
+    return silentLoadingMode.value;
+  };
+  
+  window.getSilentLoadingStatus = () => {
+    console.log(`🔇 [Silent Mode] Current status: ${silentLoadingMode.value ? 'ENABLED' : 'DISABLED'}`);
+    return silentLoadingMode.value;
+  };
+  
+  window.enableSilentLoading = () => {
+    silentLoadingMode.value = true;
+    console.log('🔇 [Silent Mode] ENABLED - Subtle feedback with minimal visual impact');
+    return true;
+  };
+  
+  window.disableSilentLoading = () => {
+    silentLoadingMode.value = false;
+    console.log('🔇 [Silent Mode] DISABLED - Full auto-load indicators will show');
+    return false;
+  };
+  
+  window.getSubtleFeedbackState = () => {
+    console.log('🎯 [Subtle Feedback] Current state:', subtleFeedback.value);
+    return subtleFeedback.value;
+  };
+}
+
+defineExpose({
+  scrollToBottom,
+  forceInitialScroll,
+  isAtBottom,
+  // 🔥 NEW: Auto-load controls
+  triggerAutoLoad,
+  canAutoLoad: () => canAutoLoad.value,
+  // 📖 NEW: Reading position controls
+  applyReadingPositionStrategy,
+  saveCurrentReadingPosition,
+  // 🔇 NEW: Silent mode controls
+  toggleSilentLoading: () => toggleSilentLoading(),
+  setSilentLoading: (enabled) => silentLoadingMode.value = enabled,
+  isSilentModeEnabled: () => silentLoadingMode.value,
+  // State getters for debugging
+  getInitialLoadState: () => initialLoadState.value,
+  getLoadMoreState: () => loadMoreState.value,
+  getAutoLoadState: () => ({
+    isAutoLoading: isAutoLoading.value,
+    indicatorVisible: showLoadingIndicator.value,
+    lastTrigger: lastAutoLoadTrigger.value,
+    silentMode: silentLoadingMode.value,
+    subtleFeedback: subtleFeedback.value
+  }),
+  getReadingPositionState: () => readingPositionState.value
+});
+</script>
+
+<style scoped>
+.simple-message-list {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  background: #fdfcfa;
+  position: relative;
+  /* Optimize scrolling performance */
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+}
+
+/* 🔥 NEW: Auto Load Indicator Styling - Centered and Elegant */
+.auto-load-indicator {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  min-width: 220px;
+}
+
+.load-indicator-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+  width: 100%;
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #6366f1;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  color: #333;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 🔥 NEW: Smooth transition for load indicator */
+.load-indicator-enter-active,
+.load-indicator-leave-active {
+  transition: all 0.3s ease;
+}
+
+.load-indicator-enter-from {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-20px);
+}
+
+.load-indicator-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-20px);
+}
+
+.loading-indicator {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+}
+
+.messages-wrapper {
+  width: 100%;
+  /* Standard layout: center with max width */
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  /* Ensure adequate reading space */
+  min-height: 100vh;
+}
+
+.message-wrapper {
+  margin-bottom: 8px;
+  /* Subtle hover effect without animation jitter */
+  transition: background-color 0.15s ease;
+  border-radius: 8px;
+  padding: 4px 0;
+}
+
+/* Optimized hover effect for better reading experience */
+.message-wrapper:hover {
+  /* Subtle background change with optimal reading contrast */
+  background-color: rgba(124, 58, 237, 0.02);
+  /* Remove any transform effects that cause jitter */
+  transform: none;
+}
+
+/* 🔥 NEW: Debug info styling */
+.scroll-debug {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+  z-index: 1000;
+}
+
+.debug-info {
+  background: rgba(255, 255, 0, 0.2);
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #ffa500;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.no-messages-debug {
+  background: rgba(255, 0, 0, 0.1);
+  padding: 20px;
+  margin: 20px 0;
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  text-align: center;
+  color: #666;
+}
+
+/* Stable scrollbar styling */
+.simple-message-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.simple-message-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.simple-message-list::-webkit-scrollbar-thumb {
+  background: rgba(124, 58, 237, 0.2);
+  border-radius: 3px;
+}
+
+.simple-message-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 58, 237, 0.35);
+}
+
+/* 🎯 NEW: Subtle feedback styling for silent mode */
+.top-loading-gradient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, 
+    rgba(99, 102, 241, 0.3) 0%, 
+    rgba(99, 102, 241, 0.7) 50%, 
+    rgba(99, 102, 241, 0.3) 100%);
+  z-index: 50;
+  border-radius: 0 0 2px 2px;
+}
+
+/* Scrollbar pulse animation for loading feedback */
+.scrollbar-pulse::-webkit-scrollbar-thumb {
+  animation: scrollbar-pulse 2s ease-in-out infinite;
+  background: rgba(124, 58, 237, 0.4) !important;
+}
+
+@keyframes scrollbar-pulse {
+  0%, 100% { 
+    background: rgba(124, 58, 237, 0.2) !important;
+    box-shadow: 0 0 0 rgba(124, 58, 237, 0.2);
+  }
+  50% { 
+    background: rgba(124, 58, 237, 0.6) !important;
+    box-shadow: 0 0 8px rgba(124, 58, 237, 0.3);
+  }
+}
+
+/* Subtle container state for loading */
+.subtle-loading {
+  /* Very subtle background pulse */
+  animation: subtle-bg-pulse 4s ease-in-out infinite;
+}
+
+@keyframes subtle-bg-pulse {
+  0%, 100% { background-color: #fdfcfa; }
+  50% { background-color: rgba(99, 102, 241, 0.01); }
+}
+
+/* Gradient fade transition */
+.gradient-fade-enter-active,
+.gradient-fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.gradient-fade-enter-from,
+.gradient-fade-leave-to {
+  opacity: 0;
+}
+
+/* 🔥 NEW: Responsive design for mobile */
+@media (max-width: 768px) {
+  .auto-load-indicator {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    transform: none;
+    min-width: auto;
+  }
+  
+  .messages-wrapper {
+    margin: 0 auto;
+    padding: 0 1rem;
+    max-width: 100%;
+  }
+  
+  .top-loading-gradient {
+    height: 3px;
+  }
+}
+
+/* 🔥 NEW: Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .auto-load-indicator {
+    background: rgba(26, 26, 26, 0.95);
+    border-color: #404040;
+  }
+  
+  .loading-text {
+    color: #e0e0e0;
+  }
+}
+
+/* 🔥 NEW: Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner {
+    animation: none;
+  }
+  
+  .load-indicator-enter-active,
+  .load-indicator-leave-active {
+    transition: none;
+  }
+  
+  .message-wrapper {
+    transition: none;
+  }
+  
+  .simple-message-list {
+    scroll-behavior: auto;
+  }
+  
+  /* 🎯 ACCESSIBILITY: Disable subtle animations */
+  .scrollbar-pulse::-webkit-scrollbar-thumb {
+    animation: none !important;
+  }
+  
+  .subtle-loading {
+    animation: none !important;
+  }
+  
+  .gradient-fade-enter-active,
+  .gradient-fade-leave-active {
+    transition: none;
+  }
+}
+
+/* High contrast accessibility */
+@media (prefers-contrast: high) {
+  .message-wrapper:hover {
+    background-color: rgba(124, 58, 237, 0.05);
+  }
+}
+</style>

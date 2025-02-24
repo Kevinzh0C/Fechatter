@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Upload DAG Fix Verification</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+    }
+
+    .container {
+      background: white;
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: #4a5568;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #718096;
+      margin-bottom: 30px;
+      font-style: italic;
+    }
+
+    .dag-flow {
+      background: #f7fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: center;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .flow-step.success {
+      background: #f0fff4;
+      border-left: 4px solid #38a169;
+    }
+
+    .flow-step.error {
+      background: #fed7d7;
+      border-left: 4px solid #e53e3e;
+    }
+
+    .flow-step.warning {
+      background: #fffaf0;
+      border-left: 4px solid #dd6b20;
+    }
+
+    .flow-step.info {
+      background: #ebf8ff;
+      border-left: 4px solid #3182ce;
+    }
+
+    .flow-icon {
+      font-size: 20px;
+      margin-right: 15px;
+      min-width: 30px;
+    }
+
+    .flow-content {
+      flex: 1;
+    }
+
+    .flow-title {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .flow-details {
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    .test-section {
+      background: #f8fafc;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+      border: 1px solid #e2e8f0;
+    }
+
+    .test-section h3 {
+      color: #2d3748;
+      margin-top: 0;
+      display: flex;
+      align-items: center;
+    }
+
+    .test-section h3::before {
+      content: "🧪";
+      margin-right: 10px;
+      font-size: 20px;
+    }
+
+    .button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin: 5px;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .button:disabled {
+      background: #a0aec0;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .results {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .success {
+      background: #f0fff4;
+      color: #22543d;
+      border: 1px solid #9ae6b4;
+    }
+
+    .error {
+      background: #fed7d7;
+      color: #742a2a;
+      border: 1px solid #fc8181;
+    }
+
+    .warning {
+      background: #fffaf0;
+      color: #744210;
+      border: 1px solid #f6ad55;
+    }
+
+    .info {
+      background: #ebf8ff;
+      color: #2a4365;
+      border: 1px solid #90cdf4;
+    }
+
+    .file-input {
+      margin: 10px 0;
+      padding: 10px;
+      border: 2px dashed #cbd5e0;
+      border-radius: 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .file-input:hover {
+      border-color: #667eea;
+      background: #f7fafc;
+    }
+
+    .file-input.dragover {
+      border-color: #667eea;
+      background: #ebf8ff;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 20px;
+      background: #e2e8f0;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #48bb78, #38a169);
+      width: 0%;
+      transition: width 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .metric {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      border: 1px solid #e2e8f0;
+    }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #3182ce;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      color: #718096;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔧 File Upload DAG Fix Verification</h1>
+    <p class="subtitle">Testing the complete file upload pipeline after critical network health check fix</p>
+
+    <!-- DAG Flow Visualization -->
+    <div class="dag-flow">
+      <h3>📊 File Upload DAG Flow (Fixed)</h3>
+      <div class="flow-step info" id="step-1">
+        <div class="flow-icon">📁</div>
+        <div class="flow-content">
+          <div class="flow-title">Step 1: User File Selection</div>
+          <div class="flow-details">User selects file via input or drag-drop</div>
+        </div>
+      </div>
+      <div class="flow-step info" id="step-2">
+        <div class="flow-icon">🔍</div>
+        <div class="flow-content">
+          <div class="flow-title">Step 2: File Validation</div>
+          <div class="flow-details">Check file size, type, and upload constraints</div>
+        </div>
+      </div>
+      <div class="flow-step info" id="step-3">
+        <div class="flow-icon">❤️</div>
+        <div class="flow-content">
+          <div class="flow-title">Step 3: Network Health Check (FIXED)</div>
+          <div class="flow-details">GET /health (direct fetch, no /api prefix)</div>
+        </div>
+      </div>
+      <div class="flow-step info" id="step-4">
+        <div class="flow-icon">📤</div>
+        <div class="flow-content">
+          <div class="flow-title">Step 4: File Upload</div>
+          <div class="flow-details">POST /api/files/single with retry mechanism</div>
+        </div>
+      </div>
+      <div class="flow-step info" id="step-5">
+        <div class="flow-icon">✅</div>
+        <div class="flow-content">
+          <div class="flow-title">Step 5: Upload Complete</div>
+          <div class="flow-details">File URL received, ready for message send</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Test Sections -->
+    <div class="test-section">
+      <h3>Network Health Check Verification</h3>
+      <p>Test the fixed health check endpoint (/health instead of /api/health)</p>
+      <button class="button" onclick="testHealthCheck()">🔍 Test Health Check</button>
+      <button class="button" onclick="compareHealthEndpoints()">⚖️ Compare Old vs New</button>
+      <div id="health-results" class="results info" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>File Upload Pipeline Test</h3>
+      <p>Test the complete file upload flow with the DAG fix</p>
+
+      <div class="file-input" id="file-drop-zone" onclick="document.getElementById('file-input').click()">
+        <input type="file" id="file-input" style="display: none;" onchange="handleFileSelect(event)">
+        📎 Click to select file or drag & drop here
+        <br><small>Max 2MB, common formats supported</small>
+      </div>
+
+      <div class="progress-bar" id="upload-progress" style="display: none;">
+        <div class="progress-fill" id="progress-fill">0%</div>
+      </div>
+
+      <div id="upload-results" class="results info" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>DAG Diagnostic Dashboard</h3>
+      <p>Real-time monitoring of all DAG steps</p>
+      <button class="button" onclick="runFullDiagnostic()">🔬 Run Full DAG Diagnostic</button>
+      <button class="button" onclick="simulateNetworkIssue()">🌐 Simulate Network Issue</button>
+      <div id="diagnostic-results" class="results info" style="display: none;"></div>
+    </div>
+
+    <!-- Metrics Dashboard -->
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-value" id="health-checks">0</div>
+        <div class="metric-label">Health Checks</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="upload-attempts">0</div>
+        <div class="metric-label">Upload Attempts</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="success-rate">100%</div>
+        <div class="metric-label">Success Rate</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="avg-latency">0ms</div>
+        <div class="metric-label">Avg Latency</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global state
+    let metrics = {
+      healthChecks: 0,
+      uploadAttempts: 0,
+      successfulUploads: 0,
+      latencies: []
+    };
+
+    let selectedFile = null;
+
+    // Utility functions
+    function logMessage(containerId, message, type = 'info') {
+      const container = document.getElementById(containerId);
+      container.style.display = 'block';
+      container.className = `results ${type}`;
+      container.textContent += `[${new Date().toLocaleTimeString()}] ${message}\n`;
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function clearResults(containerId) {
+      const container = document.getElementById(containerId);
+      container.textContent = '';
+      container.style.display = 'none';
+    }
+
+    function updateFlowStep(stepId, status, details = '') {
+      const step = document.getElementById(stepId);
+      step.className = `flow-step ${status}`;
+      if (details) {
+        const detailsEl = step.querySelector('.flow-details');
+        detailsEl.textContent = details;
+      }
+    }
+
+    function updateMetrics() {
+      document.getElementById('health-checks').textContent = metrics.healthChecks;
+      document.getElementById('upload-attempts').textContent = metrics.uploadAttempts;
+
+      const successRate = metrics.uploadAttempts > 0
+        ? Math.round((metrics.successfulUploads / metrics.uploadAttempts) * 100)
+        : 100;
+      document.getElementById('success-rate').textContent = `${successRate}%`;
+
+      const avgLatency = metrics.latencies.length > 0
+        ? Math.round(metrics.latencies.reduce((a, b) => a + b, 0) / metrics.latencies.length)
+        : 0;
+      document.getElementById('avg-latency').textContent = `${avgLatency}ms`;
+    }
+
+    // Test Functions
+    async function testHealthCheck() {
+      clearResults('health-results');
+      logMessage('health-results', '🔍 Testing fixed health check endpoint...', 'info');
+      updateFlowStep('step-3', 'info', 'Testing network health check...');
+
+      const startTime = Date.now();
+      metrics.healthChecks++;
+
+      try {
+        // Test the FIXED endpoint (direct /health)
+        const response = await fetch('/health', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const latency = Date.now() - startTime;
+        metrics.latencies.push(latency);
+
+        if (response.ok) {
+          logMessage('health-results', `✅ Health check SUCCESSFUL`, 'success');
+          logMessage('health-results', `   Status: ${response.status}`, 'success');
+          logMessage('health-results', `   Latency: ${latency}ms`, 'success');
+          updateFlowStep('step-3', 'success', `Health check passed (${latency}ms)`);
+
+          try {
+            const data = await response.json();
+            logMessage('health-results', `   Response: ${JSON.stringify(data, null, 2)}`, 'success');
+          } catch (e) {
+            logMessage('health-results', `   Response: Text/HTML (${response.statusText})`, 'success');
+          }
+        } else {
+          logMessage('health-results', `❌ Health check FAILED: ${response.status}`, 'error');
+          updateFlowStep('step-3', 'error', `Health check failed (${response.status})`);
+        }
+
+      } catch (error) {
+        logMessage('health-results', `❌ Health check ERROR: ${error.message}`, 'error');
+        updateFlowStep('step-3', 'error', `Network error: ${error.message}`);
+      }
+
+      updateMetrics();
+    }
+
+    async function compareHealthEndpoints() {
+      clearResults('health-results');
+      logMessage('health-results', '⚖️ Comparing old vs new health check endpoints...', 'info');
+
+      // Test OLD endpoint (/api/health) - should fail
+      logMessage('health-results', '\n🔴 Testing OLD endpoint: /api/health', 'warning');
+      try {
+        const oldResponse = await fetch('/api/health', { method: 'GET' });
+        logMessage('health-results', `   OLD: Status ${oldResponse.status} - ${oldResponse.ok ? 'SUCCESS' : 'FAILED'}`,
+          oldResponse.ok ? 'success' : 'error');
+      } catch (error) {
+        logMessage('health-results', `   OLD: ERROR - ${error.message}`, 'error');
+      }
+
+      // Test NEW endpoint (/health) - should succeed  
+      logMessage('health-results', '\n🟢 Testing NEW endpoint: /health', 'info');
+      try {
+        const newResponse = await fetch('/health', { method: 'GET' });
+        logMessage('health-results', `   NEW: Status ${newResponse.status} - ${newResponse.ok ? 'SUCCESS' : 'FAILED'}`,
+          newResponse.ok ? 'success' : 'error');
+      } catch (error) {
+        logMessage('health-results', `   NEW: ERROR - ${error.message}`, 'error');
+      }
+
+      logMessage('health-results', '\n✅ Comparison complete - NEW endpoint should work!', 'success');
+    }
+
+    // File handling
+    function setupFileDropZone() {
+      const dropZone = document.getElementById('file-drop-zone');
+
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+      });
+
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+      });
+
+      dropZone.addEventListener('drop', function (e) {
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          handleFile(files[0]);
+        }
+      }, false);
+    }
+
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (file) {
+        handleFile(file);
+      }
+    }
+
+    function handleFile(file) {
+      selectedFile = file;
+      clearResults('upload-results');
+
+      logMessage('upload-results', `📁 File selected: ${file.name}`, 'info');
+      logMessage('upload-results', `   Size: ${(file.size / 1024 / 1024).toFixed(2)}MB`, 'info');
+      logMessage('upload-results', `   Type: ${file.type || 'unknown'}`, 'info');
+
+      updateFlowStep('step-1', 'success', `File selected: ${file.name}`);
+
+      // Auto-start validation and upload
+      setTimeout(() => {
+        validateAndUploadFile(file);
+      }, 1000);
+    }
+
+    async function validateAndUploadFile(file) {
+      updateFlowStep('step-2', 'info', 'Validating file...');
+
+      // File validation
+      const maxSize = 2 * 1024 * 1024; // 2MB
+      if (file.size > maxSize) {
+        logMessage('upload-results', `❌ File too large: ${(file.size / 1024 / 1024).toFixed(2)}MB > 2MB`, 'error');
+        updateFlowStep('step-2', 'error', 'File size exceeds 2MB limit');
+        return;
+      }
+
+      logMessage('upload-results', '✅ File validation passed', 'success');
+      updateFlowStep('step-2', 'success', 'File validation passed');
+
+      // Network health check (using the FIXED method)
+      updateFlowStep('step-3', 'info', 'Checking network health...');
+      logMessage('upload-results', '🔍 Running network health check...', 'info');
+
+      try {
+        const healthResponse = await fetch('/health', { method: 'GET' });
+        if (healthResponse.ok) {
+          logMessage('upload-results', '✅ Network health check passed', 'success');
+          updateFlowStep('step-3', 'success', 'Network healthy');
+
+          // Proceed with upload
+          await performFileUpload(file);
+        } else {
+          logMessage('upload-results', '❌ Network health check failed', 'error');
+          updateFlowStep('step-3', 'error', 'Network health check failed');
+        }
+      } catch (error) {
+        logMessage('upload-results', `❌ Network health error: ${error.message}`, 'error');
+        updateFlowStep('step-3', 'error', 'Network error');
+      }
+    }
+
+    async function performFileUpload(file) {
+      updateFlowStep('step-4', 'info', 'Uploading file...');
+      logMessage('upload-results', '📤 Starting file upload...', 'info');
+
+      metrics.uploadAttempts++;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const progressBar = document.getElementById('upload-progress');
+      const progressFill = document.getElementById('progress-fill');
+      progressBar.style.display = 'block';
+
+      try {
+        const response = await fetch('/api/files/single', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (response.ok) {
+          progressFill.style.width = '100%';
+          progressFill.textContent = '100%';
+
+          metrics.successfulUploads++;
+          logMessage('upload-results', '✅ File upload completed successfully!', 'success');
+          updateFlowStep('step-4', 'success', 'Upload completed');
+          updateFlowStep('step-5', 'success', 'Ready for message send');
+
+          try {
+            const data = await response.json();
+            logMessage('upload-results', `   Upload URL: ${data.data?.url || 'N/A'}`, 'success');
+          } catch (e) {
+            logMessage('upload-results', '   Upload completed (response parsing failed)', 'warning');
+          }
+        } else {
+          logMessage('upload-results', `❌ Upload failed: ${response.status}`, 'error');
+          updateFlowStep('step-4', 'error', `Upload failed (${response.status})`);
+        }
+
+      } catch (error) {
+        logMessage('upload-results', `❌ Upload error: ${error.message}`, 'error');
+        updateFlowStep('step-4', 'error', `Upload error: ${error.message}`);
+      } finally {
+        setTimeout(() => {
+          progressBar.style.display = 'none';
+          progressFill.style.width = '0%';
+          progressFill.textContent = '0%';
+        }, 2000);
+      }
+
+      updateMetrics();
+    }
+
+    async function runFullDiagnostic() {
+      clearResults('diagnostic-results');
+      logMessage('diagnostic-results', '🔬 Running full DAG diagnostic...', 'info');
+
+      // Reset all flow steps
+      ['step-1', 'step-2', 'step-3', 'step-4', 'step-5'].forEach(stepId => {
+        updateFlowStep(stepId, 'info', 'Ready for testing');
+      });
+
+      // Test each component
+      logMessage('diagnostic-results', '\n1. Testing Vite proxy configuration...', 'info');
+      try {
+        const proxyTest = await fetch('/health', { method: 'HEAD' });
+        logMessage('diagnostic-results', `   Proxy test: ${proxyTest.ok ? 'PASS' : 'FAIL'}`,
+          proxyTest.ok ? 'success' : 'error');
+      } catch (e) {
+        logMessage('diagnostic-results', `   Proxy test: ERROR - ${e.message}`, 'error');
+      }
+
+      logMessage('diagnostic-results', '\n2. Testing API endpoints...', 'info');
+      const endpoints = ['/health', '/api/health', '/api/files/single'];
+      for (const endpoint of endpoints) {
+        try {
+          const test = await fetch(endpoint, { method: 'HEAD' });
+          logMessage('diagnostic-results', `   ${endpoint}: ${test.status}`,
+            test.ok || test.status === 401 ? 'success' : 'error');
+        } catch (e) {
+          logMessage('diagnostic-results', `   ${endpoint}: ERROR`, 'error');
+        }
+      }
+
+      logMessage('diagnostic-results', '\n3. Testing network health function...', 'info');
+      await testHealthCheck();
+
+      logMessage('diagnostic-results', '\n✅ Full diagnostic complete!', 'success');
+    }
+
+    async function simulateNetworkIssue() {
+      clearResults('diagnostic-results');
+      logMessage('diagnostic-results', '🌐 Simulating network issue...', 'warning');
+
+      // This would test the retry mechanism by making requests to a non-existent endpoint
+      logMessage('diagnostic-results', 'Testing retry mechanism with invalid endpoint...', 'info');
+
+      try {
+        await fetch('/api/nonexistent', { method: 'GET' });
+      } catch (error) {
+        logMessage('diagnostic-results', `Expected error caught: ${error.message}`, 'warning');
+      }
+
+      logMessage('diagnostic-results', '\nIn real scenario, ChatService would retry 3 times with exponential backoff', 'info');
+      logMessage('diagnostic-results', 'Then show user-friendly error message', 'info');
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function () {
+      setupFileDropZone();
+      updateMetrics();
+
+      // Auto-run health check on load
+      setTimeout(testHealthCheck, 1000);
+    });
+  </script>
+</body>
+
+</html>

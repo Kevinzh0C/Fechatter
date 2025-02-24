@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Protobuf Analytics Test</title>
+  <style>
+    body {
+      font-family: monospace;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .panel {
+      background: #f5f5f5;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+    }
+
+    .btn {
+      padding: 10px 15px;
+      margin: 5px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: #0056b3;
+    }
+
+    .logs {
+      background: #1a1a1a;
+      color: #fff;
+      padding: 10px;
+      height: 200px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+
+    .status {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .status-item {
+      padding: 5px;
+      background: white;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>🔬 Protobuf Analytics Test</h1>
+
+  <div class="panel">
+    <h3>📊 Status</h3>
+    <div class="status" id="status">
+      <div class="status-item">Loading...</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>🧪 Test Events</h3>
+    <button class="btn" onclick="testAppStart()">🚀 App Start</button>
+    <button class="btn" onclick="testUserLogin()">👤 User Login</button>
+    <button class="btn" onclick="testMessage()">💬 Message</button>
+    <button class="btn" onclick="testError()">⚠️ Error</button>
+    <button class="btn" onclick="flushEvents()">🔄 Flush</button>
+  </div>
+
+  <div class="panel">
+    <h3>📝 Logs</h3>
+    <div class="logs" id="logs"></div>
+    <button class="btn" onclick="clearLogs()">Clear</button>
+  </div>
+
+  <script type="module">
+    let logs = []
+    let client = null
+    let stats = { total: 0, success: 0, failed: 0, protobuf: 0, json: 0 }
+
+    function log(msg, type = 'info') {
+      const time = new Date().toLocaleTimeString()
+      logs.unshift(`[${time}] ${msg}`)
+      if (logs.length > 100) logs = logs.slice(0, 100)
+      document.getElementById('logs').innerHTML = logs.join('\n')
+    }
+
+    function updateStatus() {
+      const status = client ? client.getStatus() : { protobufAvailable: false, pendingEvents: 0, clientId: 'loading' }
+      document.getElementById('status').innerHTML = `
+                <div class="status-item">Protobuf: ${status.protobufAvailable ? '✅' : '❌'}</div>
+                <div class="status-item">Pending: ${status.pendingEvents}</div>
+                <div class="status-item">Total: ${stats.total}</div>
+                <div class="status-item">Success: ${stats.success}</div>
+                <div class="status-item">Failed: ${stats.failed}</div>
+                <div class="status-item">Protobuf: ${stats.protobuf}</div>
+                <div class="status-item">JSON: ${stats.json}</div>
+                <div class="status-item">Client: ${status.clientId.substring(0, 20)}...</div>
+            `
+    }
+
+    // Simple protobuf client
+    class SimpleAnalyticsClient {
+      constructor() {
+        this.batch = []
+        this.clientId = 'client_' + Date.now()
+        this.protobufAvailable = false
+        this.init()
+      }
+
+      async init() {
+        try {
+          // Try to use protobuf.js from CDN
+          const protobufModule = await import('https://cdn.skypack.dev/protobufjs@7.4.0')
+
+          // Fix: Access the default export correctly
+          const protobuf = protobufModule.default || protobufModule
+
+          // Simple protobuf schema
+          const schema = `
+                        syntax = "proto3";
+                        package test;
+                        message Event {
+                            string type = 1;
+                            string data = 2;
+                            int64 timestamp = 3;
+                        }
+                    `
+
+          this.root = protobuf.parse(schema).root
+          this.Event = this.root.lookupType('test.Event')
+
+          // Test encoding
+          const test = this.Event.create({ type: 'test', data: 'hello', timestamp: Date.now() })
+          const encoded = this.Event.encode(test).finish()
+
+          if (encoded.length > 0) {
+            this.protobufAvailable = true
+            log('✅ Protobuf available')
+          }
+        } catch (error) {
+          log('⚠️ Protobuf failed: ' + error.message)
+          this.protobufAvailable = false
+        }
+
+        updateStatus()
+      }
+
+      async sendEvent(type, data) {
+        try {
+          const event = { type, data, timestamp: Date.now() }
+          let body, contentType
+
+          if (this.protobufAvailable) {
+            try {
+              const message = this.Event.create(event)
+              body = this.Event.encode(message).finish()
+              contentType = 'application/protobuf'
+              stats.protobuf++
+            } catch (error) {
+              log('Protobuf encoding failed, using JSON')
+              body = JSON.stringify({ context: { client_id: this.clientId }, event_type: { [type]: data } })
+              contentType = 'application/json'
+              stats.json++
+            }
+          } else {
+            body = JSON.stringify({ context: { client_id: this.clientId }, event_type: { [type]: data } })
+            contentType = 'application/json'
+            stats.json++
+          }
+
+          const response = await fetch('http://127.0.0.1:6690/api/event', {
+            method: 'POST',
+            headers: { 'Content-Type': contentType },
+            body: typeof body === 'string' ? body : body
+          })
+
+          stats.total++
+
+          if (response.ok) {
+            stats.success++
+            log(`✅ ${type} sent (${contentType})`)
+          } else {
+            stats.failed++
+            log(`❌ ${type} failed: ${response.status}`)
+          }
+        } catch (error) {
+          stats.total++
+          stats.failed++
+          log(`❌ ${type} error: ${error.message}`)
+        }
+
+        updateStatus()
+      }
+
+      getStatus() {
+        return {
+          protobufAvailable: this.protobufAvailable,
+          pendingEvents: this.batch.length,
+          clientId: this.clientId
+        }
+      }
+    }
+
+    // Test functions
+    window.testAppStart = () => client.sendEvent('app_start', {})
+    window.testUserLogin = () => client.sendEvent('user_login', { email: 'test@example.com' })
+    window.testMessage = () => client.sendEvent('message_sent', { chat_id: 'test', content: 'Hello!' })
+    window.testError = () => client.sendEvent('error_occurred', { error: 'Test error' })
+    window.flushEvents = () => log('Flush called (not implemented in simple version)')
+    window.clearLogs = () => { logs = []; document.getElementById('logs').innerHTML = '' }
+
+    // Initialize
+    client = new SimpleAnalyticsClient()
+    setInterval(updateStatus, 1000)
+    log('Analytics client initialized')
+  </script>
+</body>
+
+</html>

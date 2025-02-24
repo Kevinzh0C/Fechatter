@@ -64,14 +64,12 @@ async function checkServerHealth() {
   } finally {
     checking.value = false;
   }
-}
 
 // 显示重连成功通知
 function showReconnectedNotification() {
   showReconnected.value = true;
   if (reconnectedTimeout) {
     clearTimeout(reconnectedTimeout);
-  }
   reconnectedTimeout = setTimeout(() => {
     showReconnected.value = false;
   }, 3000);
@@ -86,13 +84,11 @@ function handleNetworkChange(online) {
     // 网络恢复，检查服务器健康状态
     if (wasOffline) {
       showReconnectedNotification();
-    }
     checkServerHealth();
   } else {
     // 网络断开
     serverHealthy.value = false;
   }
-}
 
 onMounted(() => {
   // 订阅网络状态变化
@@ -106,10 +102,8 @@ onMounted(() => {
 onUnmounted(() => {
   if (unsubscribeNetworkStatus) {
     unsubscribeNetworkStatus();
-  }
   if (healthCheckInterval) {
     clearInterval(healthCheckInterval);
-  }
   if (reconnectedTimeout) {
     clearTimeout(reconnectedTimeout);
   }

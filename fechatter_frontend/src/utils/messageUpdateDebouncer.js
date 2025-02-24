@@ -26,7 +26,9 @@ export class MessageUpdateDebouncer {
     const now = Date.now();
     const lastUpdate = this.lastUpdateTime.get(chatId) || 0;
     
-    console.log(`🔄 [Debouncer] Update scheduled from ${source} for chat ${chatId}`);
+    if (import.meta.env.DEV) {
+      console.log(`🔄 [Debouncer] Update scheduled from ${source} for chat ${chatId}`);
+    }
     
     // Clear existing timer
     if (this.updateTimers.has(chatId)) {
@@ -70,7 +72,9 @@ export class MessageUpdateDebouncer {
       return;
     }
     
-    console.log(`✅ [Debouncer] Executing update from ${update.source} for chat ${chatId}`);
+    if (import.meta.env.DEV) {
+      console.log(`✅ [Debouncer] Executing update from ${update.source} for chat ${chatId}`);
+    }
     
     // Execute the update
     callback(update.messages);
@@ -92,7 +96,6 @@ export class MessageUpdateDebouncer {
     if (this.updateTimers.has(chatId)) {
       clearTimeout(this.updateTimers.get(chatId));
       this.updateTimers.delete(chatId);
-    }
     this.pendingUpdates.delete(chatId);
     this.updateCallbacks.delete(chatId);
   }
@@ -107,7 +110,6 @@ export class MessageUpdateDebouncer {
     this.updateCallbacks.clear();
     this.lastUpdateTime.clear();
   }
-}
 
 // Create singleton instance
 export const messageUpdateDebouncer = new MessageUpdateDebouncer();

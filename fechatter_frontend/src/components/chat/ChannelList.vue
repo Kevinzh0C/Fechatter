@@ -14,12 +14,8 @@
 
     <!-- 📋 频道列表 (Channels) -->
     <div v-else-if="listType === 'channels' && sortedChannels.length > 0" class="channels-container">
-      <div v-for="channel in sortedChannels" 
-           :key="`channel-${channel.id}`" 
-           @click="navigateToChat(channel.id)"
-           class="channel-card" 
-           :class="{ 'active': isActiveChat(channel.id) }" 
-           :title="channel.name">
+      <div v-for="channel in sortedChannels" :key="`channel-${channel.id}`" @click="navigateToChat(channel.id)"
+        class="channel-card" :class="{ 'active': isActiveChat(channel.id) }" :title="channel.name">
         <!-- 频道图标 -->
         <div class="channel-icon-container">
           <div class="channel-icon" :class="{ 'private': isPrivateChannel(channel) }">
@@ -69,12 +65,8 @@
 
     <!-- 💬 直接消息列表 (DMs) -->
     <div v-else-if="listType === 'dms' && sortedDMs.length > 0" class="dms-container">
-      <div v-for="dm in sortedDMs" 
-           :key="`dm-${dm.id}`" 
-           @click="navigateToChat(dm.id)"
-           class="dm-card" 
-           :class="{ 'active': isActiveChat(dm.id) }" 
-           :title="getDMDisplayName(dm)">
+      <div v-for="dm in sortedDMs" :key="`dm-${dm.id}`" @click="navigateToChat(dm.id)" class="dm-card"
+        :class="{ 'active': isActiveChat(dm.id) }" :title="getDMDisplayName(dm)">
         <!-- 用户头像 -->
         <div class="dm-avatar-container">
           <div class="dm-avatar">
@@ -413,11 +405,11 @@ onMounted(() => {
       window.removeEventListener('fechatter:chats-updated', handleChatsUpdated);
     });
   }
-});
 
-// 暴露刷新方法供父组件使用
-defineExpose({
-  refresh: fetchChats
+  // 暴露刷新方法供父组件使用
+  defineExpose({
+    refresh: fetchChats
+  });
 });
 </script>
 

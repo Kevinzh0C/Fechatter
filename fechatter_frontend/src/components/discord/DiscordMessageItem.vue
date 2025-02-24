@@ -1,297 +1,302 @@
 <template>
-  <div 
-    class="discord-message discord-fade-in"
-    :class="{ 
-      'is-own': isOwnMessage,
-      'is-sending': message.status === 'sending',
-      'is-failed': message.status === 'failed',
-      'is-highlighted': isHighlighted,
-      'is-compact': isCompact
-    }"
-    @mouseenter="showToolbar = true"
-    @mouseleave="showToolbar = false"
-    :data-message-id="message.id || message.temp_id"
-    role="article"
-    :aria-label="`Message from ${senderName}, sent at ${formattedTime}`"
-    :aria-describedby="`message-content-${message.id || message.temp_id}`"
-    tabindex="0"
-  >
-    <!-- 🎯 三槽布局：Avatar + Meta + Content -->
-    <div class="message-layout">
-      <!-- 头像槽 -->
-      <div class="message-avatar-slot">
-        <DiscordAvatar
-          :src="message.sender?.avatar_url"
-          :name="senderName"
-          :user-id="message.sender?.id"
-          :status="getUserStatus(message.sender?.id)"
-          :show-status="showUserStatus"
-          :clickable="!isOwnMessage"
-          size="medium"
-          @click="handleAvatarClick"
-          :aria-label="`${senderName}'s avatar`"
-          role="button"
-          :tabindex="!isOwnMessage ? 0 : -1"
-        />
+  <div class="group relative flex items-start px-4 py-2 transition-all duration-200 hover:bg-gray-50/50 rounded-lg mx-2"
+    :class="messageClasses" :data-message-id="message.id || message.temp_id" @contextmenu="handleRightClick"
+    @click.right="handleRightClick" @mouseenter="handleShowFloatingToolbar" @mouseleave="handleHideFloatingToolbar"
+    ref="messageElement">
+    <!-- Debug Data Panel (Development Only) -->
+    <div v-if="showDebugData && isDevelopment"
+      class="absolute top-0 right-0 z-40 bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs shadow-lg max-w-md"
+      style="transform: translateY(-100%);">
+      <div class="font-bold text-yellow-800 mb-2">🔍 数据传输断点诊断</div>
+      <div class="space-y-1 text-yellow-700">
+        <div><strong>Message ID:</strong> {{ message.id || message.temp_id }}</div>
+        <div><strong>Sender ID:</strong> {{ message.sender_id }}</div>
+        <div><strong>Raw sender_name:</strong> {{ message.sender_name || 'null' }}</div>
+        <div><strong>Raw sender.fullname:</strong> {{ message.sender?.fullname || 'null' }}</div>
+        <div><strong>Raw sender.username:</strong> {{ message.sender?.username || 'null' }}</div>
+        <div><strong>Computed senderName:</strong> {{ senderName }}</div>
+        <div><strong>Avatar URL:</strong> {{ senderAvatar || 'null' }}</div>
+        <div class="mt-2 pt-2 border-t border-yellow-300">
+          <strong>Raw Message Object:</strong>
+          <pre
+            class="text-xs mt-1 p-1 bg-yellow-100 rounded overflow-auto max-h-20">{{ JSON.stringify(message, null, 2) }}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Avatar -->
+    <div class="relative mr-4 mt-1 flex-shrink-0">
+      <button type="button"
+        class="flex h-10 w-10 items-center justify-center rounded-full text-white font-semibold text-sm shadow-lg ring-2 ring-white transition-all duration-200 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        :style="{ background: avatarGradient }" @click="handleAvatarClick" @dblclick="toggleDebugData">
+        <img v-if="senderAvatar" :src="senderAvatar" :alt="senderName" class="h-full w-full rounded-full object-cover"
+          @error="onAvatarError" />
+        <span v-else class="text-white font-bold text-sm select-none">
+          {{ senderInitials }}
+        </span>
+      </button>
+
+      <!-- Debug Indicator -->
+      <div v-if="isDevelopment"
+        class="absolute -top-1 -right-1 bg-yellow-400 text-yellow-800 rounded-full w-4 h-4 flex items-center justify-center text-xs font-bold cursor-help"
+        :title="`调试模式 - 用户名源: ${userNameSource}`">
+        🔍
       </div>
 
-      <!-- 消息内容槽 -->
-      <div class="message-content-slot">
-        <!-- Meta信息：用户名 + 时间戳 + 状态 -->
-        <div class="message-meta">
-          <span 
-            class="sender-name"
-            :style="{ color: getUserColor(message.sender) }"
-            @click="handleSenderClick"
-          >
-            {{ senderName }}
-          </span>
-          
-          <span class="message-timestamp">
-            {{ formattedTime }}
-          </span>
-          
-          <!-- 消息状态指示器 -->
-          <div v-if="isOwnMessage && message.status" class="message-status">
-            <div 
-              v-if="message.status === 'sending'"
-              class="status-sending"
-              title="Sending..."
-            >
-              <div class="spinner"></div>
-            </div>
-            <div 
-              v-else-if="message.status === 'failed'"
-              class="status-failed"
-              title="Failed to send"
-            >
-              <ExclamationTriangleIcon class="w-4 h-4" />
-            </div>
-            <div 
-              v-else-if="message.status === 'sent'"
-              class="status-sent"
-              title="Sent"
-            >
-              <CheckIcon class="w-4 h-4" />
-            </div>
-          </div>
+      <!-- Online Status Indicator -->
+      <div v-if="senderOnlineStatus === 'online'"
+        class="absolute -bottom-0.5 -right-0.5 bg-green-400 rounded-full w-3 h-3 border-2 border-white">
+      </div>
+    </div>
 
-          <!-- 编辑标识 -->
-          <span v-if="message.edited_at" class="edited-indicator" title="Edited">
-            (edited)
-          </span>
+    <!-- Message Content -->
+    <div class="min-w-0 flex-1">
+      <!-- Message Header -->
+      <div class="flex items-baseline space-x-2 mb-1">
+        <button type="button"
+          class="font-semibold text-gray-900 hover:text-blue-600 transition-colors duration-150 focus:outline-none focus:text-blue-600 text-base leading-5"
+          @click="handleUsernameClick" :title="`原始数据: ${JSON.stringify({
+            sender_name: message.sender_name,
+            fullname: message.sender?.fullname,
+            username: message.sender?.username
+          })}`">
+          {{ senderName }}
+          <span v-if="isDevelopment && userNameSource" class="text-xs text-gray-500 ml-1">({{ userNameSource }})</span>
+        </button>
+
+        <time
+          class="text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 font-medium"
+          :datetime="message.created_at" :title="fullTimestamp">
+          {{ formatTimestamp(message.created_at) }}
+        </time>
+
+        <span v-if="isEdited" class="text-xs text-gray-400 italic" title="This message has been edited">
+          (edited)
+        </span>
+
+        <!-- Message Status -->
+        <div v-if="isCurrentUserMessage" class="flex items-center ml-auto">
+          <CheckIcon v-if="message.status === 'sent'" class="h-4 w-4 text-green-500" title="Sent" />
+          <ClockIcon v-else-if="message.status === 'sending'" class="h-4 w-4 text-gray-400 animate-spin"
+            title="Sending..." />
+          <ExclamationTriangleIcon v-else-if="message.status === 'failed'" class="h-4 w-4 text-red-500"
+            title="Failed to send" />
         </div>
+      </div>
 
-        <!-- 消息内容 -->
-        <div class="message-body">
-          <!-- 回复引用 -->
-          <div v-if="message.reply_to" class="message-reply" @click="scrollToMessage(message.reply_to.id)">
-            <div class="reply-line"></div>
-            <div class="reply-content">
-              <DiscordAvatar
-                :src="message.reply_to.sender?.avatar_url"
-                :name="message.reply_to.sender?.fullname || 'Unknown'"
-                :user-id="message.reply_to.sender?.id"
-                size="small"
-              />
-              <span class="reply-author">{{ message.reply_to.sender?.fullname || 'Unknown' }}</span>
-              <span class="reply-text">{{ truncateReply(message.reply_to.content) }}</span>
-            </div>
-          </div>
+      <!-- Reply Reference -->
+      <div v-if="message.reply_to"
+        class="mb-2 flex items-center space-x-2 rounded-lg bg-gray-50 p-2 text-sm cursor-pointer hover:bg-gray-100 transition-colors duration-150"
+        @click="scrollToReplyMessage">
+        <ArrowUturnLeftIcon class="h-4 w-4 text-gray-400" />
+        <img v-if="replyToAvatar" :src="replyToAvatar" :alt="replyToUsername" class="h-4 w-4 rounded-full" />
+        <span class="font-medium text-gray-700">{{ replyToUsername }}</span>
+        <span class="text-gray-500 truncate">{{ truncatedReplyContent }}</span>
+      </div>
 
-          <!-- 主要文本内容 -->
-          <div 
-            v-if="message.content" 
-            class="message-text"
-            :id="`message-content-${message.id || message.temp_id}`"
-            role="region"
-            :aria-label="`Message content from ${senderName}`"
-          >
-            <DiscordMarkdown
-              :content="message.content"
-              @link-click="handleLinkClick"
-              @mention-click="handleMentionClick"
-              @channel-click="handleChannelClick"
-            />
-          </div>
+      <!-- Message Body -->
+      <div class="space-y-2">
+        <!-- Text Content -->
+        <div v-if="message.content"
+          class="prose prose-sm max-w-none text-gray-900 prose-p:mb-2 prose-p:leading-relaxed prose-code:bg-gray-100 prose-code:rounded prose-code:px-1 prose-code:py-0.5 prose-pre:bg-gray-100 prose-pre:rounded-lg prose-pre:p-3 prose-pre:overflow-x-auto prose-headings:text-gray-900 prose-strong:text-gray-900"
+          v-html="renderedContent"></div>
 
-          <!-- 文件附件 -->
-          <div v-if="message.files && message.files.length > 0" class="message-attachments">
-            <div 
-              v-for="(file, index) in message.files" 
-              :key="file.id || index" 
-              class="attachment-item"
-            >
-              <!-- 图片附件 -->
-              <div 
-                v-if="isImageFile(file)" 
-                class="image-attachment"
-                @click="openImageViewer(index)"
-              >
-                <img 
-                  :src="getFileUrl(file)"
-                  :alt="file.filename || 'Image'"
-                  class="attachment-image"
-                  loading="lazy"
-                />
-                <div class="image-overlay">
-                  <ArrowsPointingOutIcon class="w-5 h-5" />
+        <!-- File Attachments -->
+        <div v-if="message.files && message.files.length > 0" class="space-y-2">
+          <div v-for="file in message.files" :key="file.id || file.url"
+            class="rounded-lg border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:shadow-md">
+            <!-- Image Attachment -->
+            <div v-if="isImageFile(file)" class="relative">
+              <div v-if="!imageLoaded[file.id]" class="flex h-48 items-center justify-center bg-gray-100 rounded-lg">
+                <div class="animate-pulse">
+                  <PhotoIcon class="h-12 w-12 text-gray-400" />
                 </div>
               </div>
-              
-              <!-- 一般文件附件 -->
-              <a 
-                v-else 
-                :href="getFileUrl(file)"
-                :download="getFileName(file)"
-                class="file-attachment"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div class="file-icon">
-                  <DocumentIcon class="w-5 h-5" />
-                </div>
-                <div class="file-details">
-                  <div class="file-name">{{ getFileName(file) }}</div>
-                  <div class="file-size">{{ getFileSize(file) }}</div>
-                </div>
-                <ArrowDownTrayIcon class="download-icon w-4 h-4" />
-              </a>
+              <img v-show="imageLoaded[file.id]" :src="file.url || file.file_url" :alt="file.filename || file.file_name"
+                class="max-h-80 w-full rounded-lg object-cover cursor-pointer transition-transform duration-200"
+                @load="handleImageLoad(file.id)" @click="openImagePreview(file)" @error="handleImageError(file.id)" />
+              <div class="absolute bottom-2 left-2 rounded bg-black/70 px-2 py-1 text-xs text-white backdrop-blur-sm">
+                {{ file.filename || file.file_name }}
+              </div>
+            </div>
+
+            <!-- Other File Types -->
+            <div v-else class="flex items-center space-x-3 p-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
+                <DocumentIcon class="h-6 w-6 text-blue-600" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-gray-900 truncate">
+                  {{ file.filename || file.file_name }}
+                </p>
+                <p class="text-sm text-gray-500">
+                  {{ formatFileSize(file.size || file.file_size) }}
+                </p>
+              </div>
+              <button type="button"
+                class="flex items-center justify-center h-8 w-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                @click="downloadFile(file)" title="Download file">
+                <ArrowDownTrayIcon class="h-4 w-4" />
+              </button>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
 
-          <!-- 错误重试 -->
-          <div v-if="message.status === 'failed' && isOwnMessage" class="message-error">
-            <span class="error-text">Failed to send message</span>
-            <button @click="retryMessage" class="retry-button">
-              <ArrowPathIcon class="w-4 h-4" />
-              Retry
+    <!-- Floating Message Toolbar - 完善版本 -->
+    <FloatingMessageToolbar :message="message" :is-visible="showFloatingToolbar" :can-edit="canEdit"
+      :can-delete="canDelete" @reply="handleReplyToMessage" @translate="handleTranslateMessage" @edit="startEdit"
+      @delete="deleteMessage" @more-options="handleRightClick" @hide="handleToolbarHide"
+      @keep-visible="keepFloatingToolbar" />
+
+    <!-- Context Menu - 悬浮菜单，不影响消息布局 -->
+    <Teleport to="body">
+      <Menu v-if="showContextMenu" as="div" class="fixed z-[9999] context-menu" :style="contextMenuStyle">
+        <MenuButton class="sr-only">Options</MenuButton>
+        <transition enter-active-class="transition duration-150 ease-out"
+          enter-from-class="transform scale-95 opacity-0" enter-to-class="transform scale-100 opacity-100"
+          leave-active-class="transition duration-100 ease-in" leave-from-class="transform scale-100 opacity-100"
+          leave-to-class="transform scale-95 opacity-0">
+          <MenuItems
+            class="origin-top-left rounded-lg bg-white py-2 shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none min-w-48 border border-gray-200 backdrop-blur-sm transform-gpu"
+            style="transform-origin: top left;">
+            <MenuItem v-if="canEdit" v-slot="{ active }">
+            <button type="button"
+              class="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
+              @click="startEdit">
+              <PencilIcon class="mr-3 h-4 w-4" />
+              Edit message
             </button>
+            </MenuItem>
+
+            <MenuItem v-if="canDelete" v-slot="{ active }">
+            <button type="button"
+              class="flex w-full items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50 transition-colors duration-150"
+              @click="deleteMessage">
+              <TrashIcon class="mr-3 h-4 w-4" />
+              Delete message
+            </button>
+            </MenuItem>
+
+            <MenuItem v-slot="{ active }">
+            <button type="button"
+              class="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
+              @click="handleReplyToMessage">
+              <ArrowUturnLeftIcon class="mr-3 h-4 w-4" />
+              Reply
+            </button>
+            </MenuItem>
+
+            <MenuItem v-slot="{ active }">
+            <button type="button"
+              class="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
+              @click="translateMessage">
+              <LanguageIcon class="mr-3 h-4 w-4" />
+              Translate
+            </button>
+            </MenuItem>
+
+            <MenuItem v-slot="{ active }">
+            <button type="button"
+              class="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
+              @click="copyMessage">
+              <ClipboardDocumentIcon class="mr-3 h-4 w-4" />
+              Copy message
+            </button>
+            </MenuItem>
+
+            <!-- Debug Menu Item -->
+            <MenuItem v-if="isDevelopment" v-slot="{ active }">
+            <button type="button"
+              class="flex w-full items-center px-4 py-2 text-sm text-yellow-700 hover:bg-yellow-50 transition-colors duration-150"
+              @click="logMessageData">
+              <svg class="mr-3 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Debug Data
+            </button>
+            </MenuItem>
+          </MenuItems>
+        </transition>
+      </Menu>
+    </Teleport>
+
+    <!-- Image Preview Modal -->
+    <TransitionRoot appear :show="showImagePreview" as="template">
+      <Dialog as="div" class="relative z-50" @close="closeImagePreview">
+        <TransitionChild as="template" enter="duration-300 ease-out" enter-from="opacity-0" enter-to="opacity-100"
+          leave="duration-200 ease-in" leave-from="opacity-100" leave-to="opacity-0">
+          <div class="fixed inset-0 bg-black/75 backdrop-blur-sm" />
+        </TransitionChild>
+
+        <div class="fixed inset-0 overflow-y-auto">
+          <div class="flex min-h-full items-center justify-center p-4 text-center">
+            <TransitionChild as="template" enter="duration-300 ease-out" enter-from="opacity-0 scale-95"
+              enter-to="opacity-100 scale-100" leave="duration-200 ease-in" leave-from="opacity-100 scale-100"
+              leave-to="opacity-0 scale-95">
+              <DialogPanel
+                class="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                <div class="flex items-center justify-between mb-4">
+                  <DialogTitle as="h3" class="text-lg font-medium leading-6 text-gray-900">
+                    {{ previewImageAlt }}
+                  </DialogTitle>
+                  <button type="button"
+                    class="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    @click="closeImagePreview">
+                    <XMarkIcon class="h-6 w-6" />
+                  </button>
+                </div>
+
+                <div class="aspect-w-16 aspect-h-9">
+                  <img :src="previewImageSrc" :alt="previewImageAlt"
+                    class="max-h-[70vh] w-full object-contain rounded-lg" />
+                </div>
+              </DialogPanel>
+            </TransitionChild>
           </div>
-
-          <!-- 反应表情 -->
-          <div v-if="message.reactions && message.reactions.length > 0" class="message-reactions">
-            <div 
-              v-for="reaction in message.reactions" 
-              :key="reaction.emoji"
-              class="reaction-item"
-              :class="{ 'is-reacted': reaction.hasReacted }"
-              @click="toggleReaction(reaction.emoji)"
-            >
-              <span class="reaction-emoji">{{ reaction.emoji }}</span>
-              <span class="reaction-count">{{ reaction.count }}</span>
-            </div>
-          </div>
         </div>
-      </div>
-    </div>
-
-    <!-- 🎯 Discord风格工具栏 -->
-    <Transition name="toolbar">
-      <div 
-        v-if="showToolbar" 
-        class="message-toolbar"
-        role="toolbar"
-        :aria-label="`Message actions for ${senderName}'s message`"
-      >
-        <div class="toolbar-actions">
-          <button 
-            class="toolbar-btn" 
-            title="Add reaction" 
-            @click="showEmojiPicker = true"
-            aria-label="Add reaction to this message"
-            role="button"
-          >
-            <FaceSmileIcon class="w-4 h-4" aria-hidden="true" />
-          </button>
-          <button 
-            class="toolbar-btn" 
-            title="Reply" 
-            @click="handleReply"
-            aria-label="Reply to this message"
-            role="button"
-          >
-            <ArrowUturnLeftIcon class="w-4 h-4" aria-hidden="true" />
-          </button>
-          <button 
-            class="toolbar-btn" 
-            title="Copy message link" 
-            @click="copyMessageLink"
-            aria-label="Copy link to this message"
-            role="button"
-          >
-            <LinkIcon class="w-4 h-4" aria-hidden="true" />
-          </button>
-          <button 
-            class="toolbar-btn" 
-            title="More actions" 
-            @click="showContextMenu"
-            aria-label="More message actions"
-            role="button"
-            aria-haspopup="menu"
-          >
-            <EllipsisHorizontalIcon class="w-4 h-4" aria-hidden="true" />
-          </button>
-        </div>
-      </div>
-    </Transition>
-
-    <!-- Emoji选择器 -->
-    <div 
-      v-if="showEmojiPicker" 
-      class="emoji-picker-overlay" 
-      @click="showEmojiPicker = false"
-      role="dialog"
-      aria-label="Choose an emoji reaction"
-      aria-modal="true"
-    >
-      <div class="emoji-picker" @click.stop>
-        <div class="emoji-grid" role="grid" aria-label="Emoji reactions">
-          <button 
-            v-for="emoji in commonEmojis" 
-            :key="emoji"
-            class="emoji-btn"
-            @click="addReaction(emoji)"
-            :aria-label="`React with ${emoji}`"
-            role="gridcell"
-          >
-            <span aria-hidden="true">{{ emoji }}</span>
-          </button>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Image Viewer -->
-    <ImageViewer
-      v-if="imageFiles.length > 0"
-      ref="imageViewerRef"
-      :images="imageFiles"
-      :initial-index="0"
-    />
+      </Dialog>
+    </TransitionRoot>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue';
-import { 
-  ExclamationTriangleIcon, 
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import { useChatStore } from '@/stores/chat'
+import { useVirtualList } from '@vueuse/core'
+import {
+  Menu,
+  MenuButton,
+  MenuItems,
+  MenuItem,
+  Dialog,
+  DialogPanel,
+  DialogTitle,
+  TransitionRoot,
+  TransitionChild,
+} from '@headlessui/vue'
+import {
   CheckIcon,
-  FaceSmileIcon,
+  ClockIcon,
+  ExclamationTriangleIcon,
   ArrowUturnLeftIcon,
-  LinkIcon,
-  EllipsisHorizontalIcon,
+  PhotoIcon,
   DocumentIcon,
   ArrowDownTrayIcon,
-  ArrowsPointingOutIcon,
-  ArrowPathIcon
-} from '@heroicons/vue/24/outline';
+  PencilIcon,
+  TrashIcon,
+  LanguageIcon,
+  ClipboardDocumentIcon,
+  XMarkIcon,
+} from '@heroicons/vue/24/outline'
+import { formatTimestamp, formatFileSize } from '@/utils/formatters'
+import { renderMarkdown } from '@/utils/markdown'
+import { highlightCodeAsync } from '@/utils/codeHighlight'
+import FloatingMessageToolbar from '@/components/chat/FloatingMessageToolbar.vue'
 
-import DiscordAvatar from './DiscordAvatar.vue';
-import DiscordMarkdown from './DiscordMarkdown.vue';
-import ImageViewer from '@/components/common/ImageViewer.vue';
-import { useChatStore } from '@/stores/chat';
-import { getUserColor } from '@/utils/userAvatarHelper';
-
+// Props
 const props = defineProps({
   message: {
     type: Object,
@@ -306,795 +311,702 @@ const props = defineProps({
     type: [Number, String],
     default: null
   },
-  isHighlighted: {
+  isGrouped: {
     type: Boolean,
     default: false
   },
-  isCompact: {
+  isConsecutive: {
     type: Boolean,
     default: false
   },
-  showUserStatus: {
+  previousMessage: {
+    type: Object,
+    default: null
+  },
+  showDebugData: {
     type: Boolean,
-    default: true
+    default: false
+  },
+  isDevelopment: {
+    type: Boolean,
+    default: false
+  },
+  userNameSource: {
+    type: String,
+    default: null
   }
-});
+})
 
+// Emits
 const emit = defineEmits([
-  'user-profile-opened', 
-  'dm-created', 
-  'reply', 
-  'scroll-to-message',
-  'context-menu'
-]);
+  'user-profile-opened',
+  'dm-created',
+  'reply-to',
+  'edit-message',
+  'delete-message',
+  'scroll-to-message'
+])
 
-const chatStore = useChatStore();
+// Stores
+const authStore = useAuthStore()
+const chatStore = useChatStore()
 
-// 响应式状态
-const showToolbar = ref(false);
-const showEmojiPicker = ref(false);
-const imageViewerRef = ref(null);
+// Reactive data
+const imageLoaded = ref({})
+const showContextMenu = ref(false)
+const contextMenuPosition = ref({ x: 0, y: 0 })
+const showActions = ref(false)
+const showImagePreview = ref(false)
+const previewImageSrc = ref('')
+const previewImageAlt = ref('')
+const avatarError = ref(false)
+const showDebugData = ref(false)
+const messageElement = ref(null)
+const showFloatingToolbar = ref(false)
+const floatingToolbar = ref(null)
+const toolbarHovered = ref(false)
 
-// 计算属性
-const isOwnMessage = computed(() => props.message.sender?.id === props.currentUserId);
+// ✨ Enhanced Code Highlighting State
+const highlightedContent = ref('')
+const isHighlightingCode = ref(false)
+const highlightError = ref(null)
 
+// Development mode detection
+const isDevelopment = computed(() => {
+  return import.meta.env.DEV || import.meta.env.MODE === 'development'
+})
+
+// Modern professional color palette
+const AVATAR_COLORS = [
+  ['#3B82F6', '#8B5CF6'], // Blue to Purple  
+  ['#10B981', '#06B6D4'], // Green to Teal
+  ['#8B5CF6', '#EC4899'], // Purple to Pink
+  ['#EF4444', '#F97316'], // Red to Orange
+  ['#F59E0B', '#EAB308'], // Orange to Yellow
+  ['#06B6D4', '#0EA5E9'], // Teal to Sky
+  ['#EC4899', '#F43F5E'], // Pink to Rose
+  ['#6366F1', '#3B82F6'], // Indigo to Blue
+]
+
+// Computed properties
+const isCurrentUserMessage = computed(() => {
+  return props.message.sender_id === props.currentUserId ||
+    props.message.sender_id === authStore.user?.id
+})
+
+const messageClasses = computed(() => ({
+  'bg-blue-50/30': isCurrentUserMessage.value,
+  'border-l-2 border-blue-400': isCurrentUserMessage.value,
+}))
+
+// Enhanced username detection with source tracking
 const senderName = computed(() => {
-  return props.message.sender?.fullname || 
-         props.message.sender?.username || 
-         'Unknown User';
-});
+  let name = 'Unknown User'
+  let source = 'fallback'
 
-// 计算图片文件列表
-const imageFiles = computed(() => {
-  if (!props.message.files || !Array.isArray(props.message.files)) return [];
-  
-  return props.message.files
-    .filter(file => isImageFile(file))
-    .map(file => {
-      // 转换为ImageViewer期望的格式
-      if (typeof file === 'string') {
-        return {
-          url: getFileUrl(file),
-          filename: getFileName(file)
-        };
-      }
-      return {
-        url: getFileUrl(file),
-        filename: file.filename || getFileName(file),
-        size: file.size
-      };
-    });
-});
+  if (props.message.sender?.fullname) {
+    name = props.message.sender.fullname
+    source = 'sender.fullname'
+  } else if (props.message.sender_name) {
+    name = props.message.sender_name
+    source = 'sender_name'
+  } else if (props.message.sender?.username) {
+    name = props.message.sender.username
+    source = 'sender.username'
+  } else if (props.message.sender?.name) {
+    name = props.message.sender.name
+    source = 'sender.name'
+  }
 
-const formattedTime = computed(() => {
-  if (!props.message.created_at) return '';
-  
-  const date = new Date(props.message.created_at);
-  const now = new Date();
-  const diffInHours = (now - date) / (1000 * 60 * 60);
-  
-  if (diffInHours < 24) {
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false 
-    });
-  } else if (diffInHours < 24 * 7) {
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short',
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false 
-    });
+  // Log data transmission analysis in development
+  if (isDevelopment.value) {
+    console.log(`🔍 [${props.message.id}] Username源追踪:`, {
+      source,
+      value: name,
+      rawData: {
+        'sender.fullname': props.message.sender?.fullname,
+        'sender_name': props.message.sender_name,
+        'sender.username': props.message.sender?.username,
+        'sender.name': props.message.sender?.name,
+      },
+      fullMessage: props.message
+    })
+  }
+
+  return name
+})
+
+// Track username source for debugging
+const userNameSource = computed(() => {
+  if (!isDevelopment.value) return null
+
+  if (props.message.sender?.fullname) return 'fullname'
+  if (props.message.sender_name) return 'sender_name'
+  if (props.message.sender?.username) return 'username'
+  if (props.message.sender?.name) return 'name'
+  return 'unknown'
+})
+
+const senderInitials = computed(() => {
+  const name = senderName.value
+  if (name === 'Unknown User') return 'U'
+
+  const words = name.trim().split(/\s+/)
+  if (words.length >= 2) {
+    return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase()
+  }
+  return name.substring(0, 2).toUpperCase()
+})
+
+const senderAvatar = computed(() => {
+  if (avatarError.value) return null
+  return props.message.sender?.avatar_url ||
+    props.message.sender_avatar
+})
+
+const avatarGradient = computed(() => {
+  const userId = props.message.sender_id || senderName.value
+  const hash = String(userId).split('').reduce((a, b) => {
+    a = ((a << 5) - a) + b.charCodeAt(0)
+    return a & a
+  }, 0)
+  const index = Math.abs(hash) % AVATAR_COLORS.length
+  const colors = AVATAR_COLORS[index]
+  return `linear-gradient(135deg, ${colors[0]}, ${colors[1]})`
+})
+
+const senderOnlineStatus = computed(() => {
+  // TODO: Implement real online status
+  return props.message.sender?.is_online ? 'online' : 'offline'
+})
+
+const fullTimestamp = computed(() => {
+  if (!props.message.created_at) return 'Invalid date'
+
+  const date = new Date(props.message.created_at)
+  const now = new Date()
+  const diffInMinutes = Math.floor((now - date) / (1000 * 60))
+
+  // 基础时间格式：精确到分钟
+  const dateString = date.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'short'
+  })
+
+  const timeString = date.toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
+
+  // 相对时间信息
+  let relativeTime = ''
+  if (diffInMinutes < 1) {
+    relativeTime = '刚刚'
+  } else if (diffInMinutes < 60) {
+    relativeTime = `${diffInMinutes}分钟前`
+  } else if (diffInMinutes < 1440) {
+    const hours = Math.floor(diffInMinutes / 60)
+    const remainingMinutes = diffInMinutes % 60
+    relativeTime = remainingMinutes > 0
+      ? `${hours}小时${remainingMinutes}分钟前`
+      : `${hours}小时前`
   } else {
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false 
-    });
+    const days = Math.floor(diffInMinutes / 1440)
+    relativeTime = `${days}天前`
   }
-});
 
-const getUserStatus = (userId) => {
-  // 这里可以从在线用户状态获取
-  return 'online'; // 默认在线
-};
+  return `${dateString} ${timeString} (${relativeTime})`
+})
 
-// 常用表情
-const commonEmojis = ['👍', '❤️', '😂', '😮', '😢', '😡', '👎', '🎉'];
+const isEdited = computed(() => {
+  return props.message.updated_at &&
+    props.message.updated_at !== props.message.created_at
+})
 
-// 事件处理方法
+const canEdit = computed(() => {
+  return isCurrentUserMessage.value &&
+    props.message.status !== 'failed'
+})
+
+const canDelete = computed(() => {
+  return isCurrentUserMessage.value
+})
+
+const renderedContent = computed(() => {
+  if (!props.message.content) return ''
+
+  // 🎯 Use cached highlighted content if available
+  if (highlightedContent.value) {
+    return highlightedContent.value
+  }
+
+  // Fallback to basic markdown rendering
+  return renderMarkdown(props.message.content)
+})
+
+const contextMenuStyle = computed(() => ({
+  left: `${contextMenuPosition.value.x}px`,
+  top: `${contextMenuPosition.value.y}px`,
+}))
+
+// Reply-related computed properties
+const replyToMessage = computed(() => {
+  if (!props.message.reply_to) return null
+  return chatStore.getMessageById(props.message.reply_to)
+})
+
+const replyToUsername = computed(() => {
+  if (!replyToMessage.value) return ''
+  return replyToMessage.value.sender?.fullname ||
+    replyToMessage.value.sender_name ||
+    'Unknown User'
+})
+
+const replyToAvatar = computed(() => {
+  if (!replyToMessage.value) return null
+  return replyToMessage.value.sender?.avatar_url ||
+    replyToMessage.value.sender_avatar ||
+    null
+})
+
+const truncatedReplyContent = computed(() => {
+  if (!replyToMessage.value?.content) return 'Click to see message'
+  const content = replyToMessage.value.content
+  return content.length > 50 ? content.substring(0, 50) + '...' : content
+})
+
+// Methods
+const onAvatarError = () => {
+  avatarError.value = true
+}
+
 const handleAvatarClick = () => {
-  if (!isOwnMessage.value) {
-    emit('user-profile-opened', props.message.sender);
+  if (props.message.sender) {
+    emit('user-profile-opened', props.message.sender)
   }
-};
+}
 
-const handleSenderClick = () => {
-  if (!isOwnMessage.value) {
-    emit('user-profile-opened', props.message.sender);
-  }
-};
+const handleUsernameClick = () => {
+  handleAvatarClick()
+}
 
-const handleReply = () => {
-  emit('reply', props.message);
-};
+// Floating toolbar methods - 简化版本
+const handleShowFloatingToolbar = () => {
+  showFloatingToolbar.value = true
+}
 
-const handleLinkClick = (url) => {
-  window.open(url, '_blank', 'noopener,noreferrer');
-};
-
-const handleMentionClick = (userId) => {
-  // 处理@用户点击
-  console.log('Mention clicked:', userId);
-};
-
-const handleChannelClick = (channelId) => {
-  // 处理#频道点击
-  console.log('Channel clicked:', channelId);
-};
-
-const copyMessageLink = async () => {
-  try {
-    const url = `${window.location.origin}${window.location.pathname}?message=${props.message.id}`;
-    await navigator.clipboard.writeText(url);
-    // 可以显示一个提示
-  } catch (error) {
-    console.error('Failed to copy message link:', error);
-  }
-};
-
-const showContextMenu = (event) => {
-  emit('context-menu', {
-    message: props.message,
-    event
-  });
-};
-
-const scrollToMessage = (messageId) => {
-  emit('scroll-to-message', messageId);
-};
-
-const toggleReaction = (emoji) => {
-  // 切换反应表情
-  console.log('Toggle reaction:', emoji);
-};
-
-const addReaction = (emoji) => {
-  showEmojiPicker.value = false;
-  toggleReaction(emoji);
-};
-
-const retryMessage = () => {
-  chatStore.retrySendMessage(props.message);
-};
-
-// 文件处理
-const isImageFile = (file) => {
-  if (!file) return false;
-  
-  // 如果file是字符串URL，检查扩展名
-  if (typeof file === 'string') {
-    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
-    const extension = file.split('.').pop()?.toLowerCase();
-    return imageExtensions.includes(extension);
-  }
-  
-  // 如果是对象，检查mime_type或filename
-  const imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
-  const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
-  
-  return imageMimeTypes.includes(file.mime_type?.toLowerCase()) ||
-         imageExtensions.includes(file.filename?.split('.').pop()?.toLowerCase());
-};
-
-const getFileUrl = (file) => {
-  // 如果file已经是完整的URL字符串，直接返回
-  if (typeof file === 'string') {
-    // 如果是相对路径，添加正确的基础URL
-    if (file.startsWith('/')) {
-      // 文件URL格式: /files/{workspace_id}/{path}
-      // 需要通过API访问: /api/files/{workspace_id}/{path}
-      if (file.startsWith('/files/')) {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-        // 将 /files/ 替换为 /api/files/
-        return `${baseUrl}/api${file}`;
-      }
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-      return `${baseUrl}${file}`;
+const handleHideFloatingToolbar = () => {
+  // 延迟隐藏，给用户时间移动到工具栏上
+  setTimeout(() => {
+    if (!toolbarHovered.value) {
+      showFloatingToolbar.value = false
     }
-    return file;
-  }
-  
-  // 如果是对象，尝试获取URL
-  if (file.url) {
-    // 递归处理URL
-    return getFileUrl(file.url);
-  }
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-  return `${baseUrl}/api/files/${file.id || file.filename}`;
-};
+  }, 150)
+}
 
-const getFileName = (file) => {
-  // 如果是字符串URL，从路径中提取文件名
-  if (typeof file === 'string') {
-    const parts = file.split('/');
-    return parts[parts.length - 1] || 'Unnamed file';
-  }
-  // 如果是对象，返回filename属性
-  return file.filename || 'Unnamed file';
-};
+const keepFloatingToolbar = () => {
+  toolbarHovered.value = true
+}
 
-const getFileSize = (file) => {
-  // 如果是字符串URL，无法获取大小
-  if (typeof file === 'string') {
-    return '';
-  }
-  // 如果是对象且有size属性
-  if (file.size) {
-    return formatFileSize(file.size);
-  }
-  return '';
-};
+const handleToolbarHide = () => {
+  toolbarHovered.value = false
+  showFloatingToolbar.value = false
+}
 
-const formatFileSize = (bytes) => {
-  if (!bytes) return 'Unknown size';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-};
+const handleRightClick = (event) => {
+  event.preventDefault()
+  event.stopPropagation()
 
-const truncateReply = (text) => {
-  if (!text) return '';
-  return text.length > 50 ? text.substring(0, 50) + '...' : text;
-};
+  console.log('🔍 右键菜单调试信息:', {
+    clientX: event.clientX,
+    clientY: event.clientY,
+    pageX: event.pageX,
+    pageY: event.pageY,
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight,
+    scrollX: window.scrollX,
+    scrollY: window.scrollY
+  })
 
-const openImageViewer = (index) => {
-  // 打开图片查看器
-  if (imageViewerRef.value) {
-    imageViewerRef.value.open(index);
+  // 获取菜单预估尺寸
+  const menuWidth = 200
+  const menuHeight = 280 // 增加高度以适应更多菜单项
+
+  // 获取视口尺寸
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+
+  // 计算基础位置 - 使用鼠标点击位置
+  let x = event.clientX
+  let y = event.clientY
+
+  // 智能水平定位：优先显示在右侧，空间不足时显示在左侧
+  if (x + menuWidth > viewportWidth - 20) {
+    x = Math.max(20, x - menuWidth) // 显示在鼠标左侧
+  } else {
+    x = x + 5 // 显示在鼠标右侧，稍微偏移避免遮挡
   }
-};
+
+  // 智能垂直定位：优先显示在下方，空间不足时显示在上方
+  if (y + menuHeight > viewportHeight - 20) {
+    y = Math.max(20, y - menuHeight) // 显示在鼠标上方
+  } else {
+    y = y + 5 // 显示在鼠标下方，稍微偏移
+  }
+
+  // 最终边界检查
+  x = Math.max(20, Math.min(x, viewportWidth - menuWidth - 20))
+  y = Math.max(20, Math.min(y, viewportHeight - menuHeight - 20))
+
+  console.log('📍 菜单最终位置:', { x, y })
+
+  contextMenuPosition.value = { x, y }
+  showContextMenu.value = true
+
+  // 添加一个小延迟来确保菜单正确显示
+  setTimeout(() => {
+    const menuElement = document.querySelector('.context-menu')
+    if (menuElement) {
+      console.log('✅ 菜单元素状态:', {
+        position: getComputedStyle(menuElement).position,
+        left: getComputedStyle(menuElement).left,
+        top: getComputedStyle(menuElement).top,
+        zIndex: getComputedStyle(menuElement).zIndex,
+        display: getComputedStyle(menuElement).display
+      })
+    }
+  }, 50)
+}
+
+const closeContextMenu = () => {
+  showContextMenu.value = false
+}
+
+// 处理点击外部关闭菜单
+const handleClickOutside = (event) => {
+  if (showContextMenu.value) {
+    // 检查点击是否在菜单内部
+    const menuElement = document.querySelector('.context-menu')
+    if (menuElement && !menuElement.contains(event.target)) {
+      closeContextMenu()
+    }
+  }
+}
+
+// 处理ESC键关闭菜单
+const handleEscapeKey = (event) => {
+  if (event.key === 'Escape' && showContextMenu.value) {
+    closeContextMenu()
+  }
+}
+
+const handleImageLoad = (fileId) => {
+  imageLoaded.value[fileId] = true
+}
+
+const handleImageError = (fileId) => {
+  imageLoaded.value[fileId] = false
+}
+
+const openImagePreview = (file) => {
+  previewImageSrc.value = file.url || file.file_url
+  previewImageAlt.value = file.filename || file.file_name
+  showImagePreview.value = true
+}
+
+const closeImagePreview = () => {
+  showImagePreview.value = false
+}
+
+const isImageFile = (file) => {
+  const filename = file.filename || file.file_name || ''
+  const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']
+  return imageExts.some(ext => filename.toLowerCase().endsWith(ext))
+}
+
+const downloadFile = (file) => {
+  const url = file.url || file.file_url
+  const filename = file.filename || file.file_name
+
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+}
+
+const scrollToReplyMessage = () => {
+  if (props.message.reply_to) {
+    emit('scroll-to-message', props.message.reply_to)
+  }
+}
+
+const startEdit = () => {
+  emit('edit-message', props.message)
+  closeContextMenu()
+}
+
+const deleteMessage = () => {
+  emit('delete-message', props.message)
+  closeContextMenu()
+}
+
+const handleReplyToMessage = (replyData) => {
+  // 🔄 Reply with Mention Integration
+  const enhancedReplyData = {
+    messageId: props.message.id,
+    senderId: props.message.sender_id,
+    senderName: props.message.sender?.fullname || props.message.sender_name || 'Unknown User',
+    content: props.message.content,
+    originalMessage: props.message,
+    replyType: 'mention', // 标识这是一个mention回复
+    timestamp: new Date().toISOString()
+  }
+
+  console.log('🔄 Enhanced Reply with mention integration:', enhancedReplyData)
+
+  // Emit to parent for input field integration
+  emit('reply-to', enhancedReplyData)
+
+  // 触发输入栏focus并设置mention
+  setTimeout(() => {
+    const messageInput = document.querySelector('textarea[placeholder*="message"], input[placeholder*="message"]')
+    if (messageInput) {
+      const mentionText = `@${enhancedReplyData.senderName} `
+      messageInput.value = mentionText
+      messageInput.focus()
+      // 设置光标位置到末尾
+      messageInput.setSelectionRange(mentionText.length, mentionText.length)
+      console.log('✅ Message input focused with mention:', mentionText)
+    }
+  }, 100)
+
+  closeContextMenu()
+}
+
+const handleTranslateMessage = async (translateData) => {
+  // 🌐 Translation Panel Integration - FIXED: Use proper Vue state management
+  const translationRequest = {
+    messageId: props.message.id,
+    content: props.message.content,
+    senderName: props.message.sender?.fullname || props.message.sender_name || 'Unknown User',
+    originalMessage: props.message,
+    timestamp: new Date().toISOString()
+  }
+
+  console.log('🌐 Translation request:', translationRequest)
+
+  // 🔧 FIXED: Use messageUIStore state management with optimal positioning
+  try {
+    // Import messageUIStore
+    const { useMessageUIStore } = await import('@/stores/messageUI')
+    const messageUIStore = useMessageUIStore()
+
+    // 🎯 优化：让Chat.vue的getOptimalTranslationPanelPosition处理位置计算
+    // 移除position参数，使用最优定位算法
+    messageUIStore.openTranslationPanel(props.message.id, {
+      showAdvanced: false,
+      preserveFormatting: true,
+      showConfidence: true
+    })
+
+    console.log('✅ Translation panel opened via state management with optimal positioning')
+  } catch (error) {
+    console.error('🚨 Failed to open translation panel:', error)
+
+    // Fallback to temporary dialog
+    showTranslationDialog(translationRequest)
+  }
+
+  closeContextMenu()
+}
+
+// 临时翻译对话框（如果没有翻译面板时使用）
+const showTranslationDialog = (request) => {
+  // 创建简单的翻译提示
+  const dialog = document.createElement('div')
+  dialog.className = 'fixed top-4 right-4 bg-white rounded-lg shadow-lg border p-4 z-50 max-w-sm'
+  dialog.innerHTML = `
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="font-semibold text-gray-900">🌐 Translation</h3>
+      <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <p class="text-sm text-gray-600 mb-2">Original: "${request.content.substring(0, 100)}${request.content.length > 100 ? '...' : ''}"</p>
+    <p class="text-sm text-blue-600">Translation feature will be integrated with bot service...</p>
+  `
+  document.body.appendChild(dialog)
+
+  // 3秒后自动移除
+  setTimeout(() => {
+    if (dialog.parentElement) {
+      dialog.remove()
+    }
+  }, 3000)
+}
+
+const translateMessage = () => {
+  // 🔄 Redirect to enhanced translate method
+  handleTranslateMessage()
+}
+
+const copyMessage = () => {
+  if (props.message.content) {
+    navigator.clipboard.writeText(props.message.content)
+  }
+  closeContextMenu()
+}
+
+// Debug methods
+const toggleDebugData = () => {
+  showDebugData.value = !showDebugData.value
+  if (showDebugData.value) {
+    logMessageData()
+  }
+}
+
+const logMessageData = () => {
+  console.group(`🔍 数据传输断点分析 - Message ${props.message.id}`)
+
+  console.log('📋 原始消息对象:', props.message)
+
+  console.log('👤 用户名数据源分析:', {
+    'sender.fullname': props.message.sender?.fullname || '❌ null',
+    'sender_name': props.message.sender_name || '❌ null',
+    'sender.username': props.message.sender?.username || '❌ null',
+    'sender.name': props.message.sender?.name || '❌ null',
+    '最终显示': senderName.value,
+    '数据源': userNameSource.value
+  })
+
+  console.log('🎨 头像数据源分析:', {
+    'sender.avatar_url': props.message.sender?.avatar_url || '❌ null',
+    'sender_avatar': props.message.sender_avatar || '❌ null',
+    '最终显示': senderAvatar.value || '❌ 使用fallback',
+    'fallback初始字母': senderInitials.value
+  })
+
+  console.log('🔗 数据传输链路检查:', {
+    '消息ID': props.message.id || props.message.temp_id,
+    '发送者ID': props.message.sender_id,
+    '是否有sender对象': !!props.message.sender,
+    'sender对象内容': props.message.sender || '❌ null',
+    '创建时间': props.message.created_at,
+    '消息内容': props.message.content
+  })
+
+  // Check for potential data loss points
+  const dataLossIndicators = []
+  if (!props.message.sender && !props.message.sender_name) {
+    dataLossIndicators.push('❌ 缺少所有用户名数据源')
+  }
+  if (!props.message.sender?.fullname && !props.message.sender_name) {
+    dataLossIndicators.push('⚠️ 只有fallback用户名数据')
+  }
+  if (!props.message.sender?.avatar_url && !props.message.sender_avatar) {
+    dataLossIndicators.push('⚠️ 缺少头像数据，使用生成头像')
+  }
+
+  if (dataLossIndicators.length > 0) {
+    console.warn('🚨 发现数据传输断点:', dataLossIndicators)
+  } else {
+    console.log('✅ 数据传输完整')
+  }
+
+  console.groupEnd()
+  closeContextMenu()
+}
+
+// ✨ Enhanced Code Highlighting Methods
+const highlightCodeInContent = async () => {
+  if (!props.message.content || isHighlightingCode.value) return
+
+  try {
+    isHighlightingCode.value = true
+    highlightError.value = null
+
+    // First render basic markdown
+    let content = renderMarkdown(props.message.content)
+
+    // Check if content contains code blocks
+    const hasCodeBlocks = /```[\s\S]*?```/g.test(props.message.content)
+
+    if (hasCodeBlocks) {
+      // Apply async code highlighting
+      const { highlightMarkdownCode } = await import('@/utils/codeHighlight')
+
+      content = await highlightMarkdownCode(props.message.content, {
+        theme: 'dark', // TODO: Get from theme store
+        lineNumbers: true,
+        cache: true
+      })
+    }
+
+    highlightedContent.value = content
+
+    if (import.meta.env.DEV) {
+      console.log(`✨ [${props.message.id}] Code highlighting completed`)
+    }
+  } catch (error) {
+    highlightError.value = error
+    console.error('💥 Code highlighting failed:', error)
+
+    // Fallback to basic markdown
+    highlightedContent.value = renderMarkdown(props.message.content)
+  } finally {
+    isHighlightingCode.value = false
+  }
+}
+
+// Lifecycle
+onMounted(async () => {
+  // 🔧 CRITICAL FIX: Mark message as displayed for MessageDisplayGuarantee
+  const messageId = props.message.id || props.message.temp_id
+  if (messageId && window.messageDisplayGuarantee) {
+    // Get the actual DOM element
+    const messageElement = document.querySelector(`[data-message-id="${messageId}"]`)
+    window.messageDisplayGuarantee.markMessageDisplayed(messageId, messageElement, props.chatId)
+
+    if (isDevelopment.value) {
+      console.log(`✅ [DiscordMessageItem] Marked message ${messageId} as displayed`)
+    }
+  }
+
+  // ✨ Initialize Code Highlighting
+  await highlightCodeInContent()
+
+  // 监听点击外部关闭菜单
+  document.addEventListener('click', closeContextMenu)
+
+  // 监听ESC键关闭菜单
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && showContextMenu.value) {
+      closeContextMenu()
+    }
+  })
+
+  // Show actions on hover
+  const element = document.querySelector(`[data-message-id="${props.message.id || props.message.temp_id}"]`)
+  if (element) {
+    element.addEventListener('mouseenter', () => { showActions.value = true })
+    element.addEventListener('mouseleave', () => { showActions.value = false })
+  }
+
+  // Auto-analyze data in development on mount
+  if (isDevelopment.value && (!props.message.sender?.fullname && !props.message.sender_name)) {
+    console.warn(`🚨 [${props.message.id}] 检测到数据传输断点 - 缺少用户名数据`)
+    setTimeout(() => logMessageData(), 100)
+  }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeContextMenu)
+  document.removeEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && showContextMenu.value) {
+      closeContextMenu()
+    }
+  })
+})
 </script>
-
-<style scoped>
-/* 🎨 Discord消息容器 */
-.discord-message {
-  /* 🔒 关键：固定最小高度确保视觉锚点稳定 */
-  min-height: 44px;
-  padding: 2px 16px 2px 72px;
-  position: relative;
-  transition: background-color 0.06s ease;
-  /* 🔒 使用contain防止布局偏移 */
-  contain: layout style;
-  /* 🔒 确保消息间距一致 */
-  margin-bottom: 0;
-  border-bottom: 1px solid transparent;
-}
-
-.discord-message:hover {
-  background-color: var(--bg-message-hover);
-}
-
-.discord-message.is-highlighted {
-  background-color: rgba(88, 101, 242, 0.1);
-  border-left: 4px solid var(--discord-primary);
-  padding-left: 68px;
-}
-
-.discord-message.is-sending {
-  opacity: 0.7;
-}
-
-.discord-message.is-failed {
-  background-color: rgba(237, 66, 69, 0.1);
-}
-
-/* 🎯 三槽布局 */
-.message-layout {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  /* 🔒 固定布局，防止内容变化导致偏移 */
-  min-height: 40px;
-}
-
-/* 🎯 头像槽 */
-.message-avatar-slot {
-  position: absolute;
-  left: 16px;
-  top: 2px;
-  /* 🔒 固定尺寸，防止头像大小变化 */
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-}
-
-/* 🎯 内容槽 */
-.message-content-slot {
-  flex: 1;
-  min-width: 0;
-  /* 🔒 确保内容不会影响整体布局 */
-  margin-left: 0;
-}
-
-/* 🎯 Meta信息 */
-.message-meta {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 2px;
-  /* 🔒 固定行高 */
-  line-height: 1.375;
-  min-height: 18px;
-}
-
-.sender-name {
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  color: var(--text-primary);
-  transition: text-decoration 0.1s ease;
-}
-
-.sender-name:hover {
-  text-decoration: underline;
-}
-
-.message-timestamp {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  font-weight: 400;
-  margin-left: 4px;
-}
-
-.message-timestamp:hover {
-  color: var(--text-secondary);
-}
-
-.edited-indicator {
-  font-size: 0.625rem;
-  color: var(--text-muted);
-  font-weight: 400;
-}
-
-/* 🎯 状态指示器 */
-.message-status {
-  display: flex;
-  align-items: center;
-  margin-left: 4px;
-}
-
-.status-sending .spinner {
-  width: 12px;
-  height: 12px;
-  border: 2px solid var(--bg-tertiary);
-  border-top: 2px solid var(--discord-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-.status-failed {
-  color: var(--text-danger);
-}
-
-.status-sent {
-  color: var(--text-positive);
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* 🎯 消息主体 */
-.message-body {
-  /* 🔒 固定行高确保稳定性 */
-  line-height: 1.375;
-  /* 🔒 防止内容溢出影响布局 */
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-/* 🎯 回复引用 */
-.message-reply {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-  padding: 4px 8px;
-  background: var(--bg-secondary);
-  border-radius: 3px;
-  cursor: pointer;
-  transition: background-color 0.1s ease;
-  position: relative;
-}
-
-.message-reply:hover {
-  background: var(--bg-accent);
-}
-
-.reply-line {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--text-muted);
-  border-radius: 1px;
-}
-
-.reply-content {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: 12px;
-}
-
-.reply-author {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.reply-text {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 🎯 消息文本 */
-.message-text {
-  font-size: 1rem;
-  color: var(--text-primary);
-  /* 🔒 固定行高确保布局稳定 */
-  line-height: 1.375;
-  margin: 0;
-}
-
-/* 🎯 附件样式 */
-.message-attachments {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.image-attachment {
-  position: relative;
-  display: inline-block;
-  cursor: pointer;
-  border-radius: 8px;
-  overflow: hidden;
-  max-width: 400px;
-  max-height: 300px;
-  border: 1px solid var(--border-primary);
-  transition: border-color 0.1s ease;
-}
-
-.image-attachment:hover {
-  border-color: var(--border-focus);
-}
-
-.attachment-image {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: 300px;
-  object-fit: cover;
-}
-
-.image-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.1s ease;
-  color: white;
-}
-
-.image-attachment:hover .image-overlay {
-  opacity: 1;
-}
-
-.file-attachment {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
-  border-radius: 8px;
-  padding: 12px 16px;
-  text-decoration: none;
-  color: inherit;
-  transition: all 0.1s ease;
-  max-width: 400px;
-}
-
-.file-attachment:hover {
-  background: var(--bg-accent);
-  border-color: var(--border-focus);
-  text-decoration: none;
-  color: inherit;
-}
-
-.file-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: var(--discord-primary);
-  border-radius: 6px;
-  color: white;
-  flex-shrink: 0;
-}
-
-.file-details {
-  flex: 1;
-  min-width: 0;
-}
-
-.file-name {
-  font-weight: 500;
-  color: var(--text-primary);
-  font-size: 0.875rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.file-size {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin-top: 2px;
-}
-
-.download-icon {
-  flex-shrink: 0;
-  color: var(--text-muted);
-  transition: color 0.1s ease;
-}
-
-.file-attachment:hover .download-icon {
-  color: var(--text-secondary);
-}
-
-/* 🎯 错误状态 */
-.message-error {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-  padding: 6px 8px;
-  background: rgba(237, 66, 69, 0.1);
-  border-radius: 4px;
-}
-
-.error-text {
-  font-size: 0.75rem;
-  color: var(--text-danger);
-}
-
-.retry-button {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--text-danger);
-  color: white;
-  border: none;
-  border-radius: 3px;
-  padding: 4px 8px;
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: opacity 0.1s ease;
-}
-
-.retry-button:hover {
-  opacity: 0.8;
-}
-
-/* 🎯 反应表情 */
-.message-reactions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
-}
-
-.reaction-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
-  border-radius: 12px;
-  padding: 2px 6px;
-  cursor: pointer;
-  transition: all 0.1s ease;
-  font-size: 0.75rem;
-}
-
-.reaction-item:hover {
-  background: var(--bg-accent);
-}
-
-.reaction-item.is-reacted {
-  background: rgba(88, 101, 242, 0.15);
-  border-color: var(--discord-primary);
-  color: var(--discord-primary);
-}
-
-.reaction-emoji {
-  font-size: 0.875rem;
-}
-
-.reaction-count {
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-/* 🎯 工具栏 */
-.message-toolbar {
-  position: absolute;
-  top: -12px;
-  right: 16px;
-  background: var(--bg-floating);
-  border: 1px solid var(--border-primary);
-  border-radius: 8px;
-  padding: 4px;
-  box-shadow: var(--shadow-medium);
-  z-index: 10;
-}
-
-.toolbar-actions {
-  display: flex;
-  gap: 2px;
-}
-
-.toolbar-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  color: var(--interactive-normal);
-  cursor: pointer;
-  transition: all 0.1s ease;
-  /* 遵循触摸目标最小尺寸 */
-  min-width: 44px;
-  min-height: 44px;
-  padding: 4px;
-  touch-action: manipulation;
-}
-
-.toolbar-btn:hover {
-  background: var(--bg-secondary);
-  color: var(--interactive-hover);
-}
-
-/* 🎯 工具栏动画 */
-.toolbar-enter-active,
-.toolbar-leave-active {
-  transition: all 0.1s ease;
-}
-
-.toolbar-enter-from,
-.toolbar-leave-to {
-  opacity: 0;
-  transform: translateY(4px) scale(0.95);
-}
-
-/* 🎯 表情选择器 */
-.emoji-picker-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.emoji-picker {
-  background: var(--bg-floating);
-  border: 1px solid var(--border-primary);
-  border-radius: 8px;
-  padding: 12px;
-  box-shadow: var(--shadow-high);
-  max-width: 200px;
-}
-
-.emoji-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-}
-
-.emoji-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  font-size: 1.125rem;
-  cursor: pointer;
-  transition: background-color 0.1s ease;
-  /* 遵循触摸目标最小尺寸 */
-  min-width: 44px;
-  min-height: 44px;
-  padding: 4px;
-  touch-action: manipulation;
-}
-
-.emoji-btn:hover {
-  background: var(--bg-secondary);
-}
-
-/* 🎯 紧凑模式 */
-.discord-message.is-compact {
-  padding: 1px 16px 1px 72px;
-  min-height: 22px;
-}
-
-.discord-message.is-compact .message-meta {
-  margin-bottom: 0;
-}
-
-.discord-message.is-compact .message-timestamp {
-  position: absolute;
-  left: 16px;
-  width: 40px;
-  text-align: center;
-  opacity: 0;
-  transition: opacity 0.1s ease;
-}
-
-.discord-message.is-compact:hover .message-timestamp {
-  opacity: 1;
-}
-
-/* 🎯 响应式 */
-@media (max-width: 768px) {
-  .discord-message {
-    padding: 8px 12px;
-  }
-  
-  .message-avatar-slot {
-    left: 12px;
-  }
-  
-  .message-toolbar {
-    right: 12px;
-  }
-  
-  .image-attachment,
-  .file-attachment {
-    max-width: 100%;
-  }
-}
-
-/* 🎯 无障碍支持 */
-@media (prefers-reduced-motion: reduce) {
-  .discord-message,
-  .toolbar-btn,
-  .reaction-item {
-    transition: none;
-  }
-}
-</style> 

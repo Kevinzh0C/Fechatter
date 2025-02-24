@@ -70,7 +70,8 @@ export const useSimpleMessageStore = defineStore('simpleMessages', {
 
         return normalized;
       } catch (error) {
-        console.error('Failed to load messages:', error);
+        if (import.meta.env.DEV) {
+          console.error('Failed to load messages:', error);
         throw error;
       } finally {
         this.loading = false;
@@ -120,7 +121,8 @@ export const useSimpleMessageStore = defineStore('simpleMessages', {
       } catch (error) {
         // Mark as failed
         tempMessage.status = 'failed';
-        console.error('Failed to send message:', error);
+        if (import.meta.env.DEV) {
+          console.error('Failed to send message:', error);
         throw error;
       }
     },
@@ -149,7 +151,6 @@ export const useSimpleMessageStore = defineStore('simpleMessages', {
           status: 'sent',
           files: message.files || []
         });
-      }
     },
 
     /**
@@ -185,7 +186,6 @@ export const useSimpleMessageStore = defineStore('simpleMessages', {
       // Resend as new message
       return this.sendMessage(chatId, content);
     }
-  }
 });
 
 /**

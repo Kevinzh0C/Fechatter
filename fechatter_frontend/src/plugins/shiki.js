@@ -1,5 +1,5 @@
 // Shiki configuration for build-time syntax highlighting
-import { createHighlighter } from 'shiki';
+import { getHighlighter } from 'shiki';
 
 // Cache for highlighters to avoid re-initialization
 const highlighterCache = new Map();
@@ -69,16 +69,16 @@ export async function createShikiHighlighter(options = {}) {
   } = options;
 
   const cacheKey = `${theme}-${langs.sort().join(',')}`;
-  
+
   // Return cached instance if available
   if (cache && highlighterCache.has(cacheKey)) {
     return highlighterCache.get(cacheKey);
   }
 
   try {
-    // Create highlighter with specified languages and themes
-    const highlighter = await createHighlighter({
-      themes: [themes.light, themes.dark],
+    // Create highlighter with specified languages and theme (v0.14.x API)
+    const highlighter = await getHighlighter({
+      theme: themes[theme],
       langs: langs.filter(lang => commonLanguages.includes(lang))
     });
 
@@ -94,15 +94,15 @@ export async function createShikiHighlighter(options = {}) {
   }
 }
 
-// Get or create a highlighter instance
-export async function getHighlighter(theme = 'dark') {
+// Get or create a highlighter instance  
+export async function getShikiHighlighterInstance(theme = 'dark') {
   return createShikiHighlighter({ theme });
 }
 
 // Resolve language from alias or file extension
 export function resolveLanguage(lang) {
   if (!lang) return 'plaintext';
-  
+
   const normalized = lang.toLowerCase().trim();
   return languageAliases[normalized] || normalized;
 }
@@ -160,7 +160,6 @@ function parseLineNumbers(str) {
       lines.push(parseInt(trimmed, 10));
     }
   }
-
   return [...new Set(lines)].sort((a, b) => a - b);
 }
 
@@ -194,13 +193,12 @@ export async function highlightCode(code, lang, options = {}) {
   }
 
   try {
-    const highlighter = await getHighlighter(theme);
+    const highlighter = await getShikiHighlighterInstance(theme);
     const resolvedLang = resolveLanguage(lang);
-    
-    // Get highlighted HTML
+
+    // Get highlighted HTML (v0.14.x API)
     const html = highlighter.codeToHtml(code, {
-      lang: resolvedLang,
-      theme: themes[theme]
+      lang: resolvedLang
     });
 
     // Post-process HTML to add features
@@ -237,7 +235,7 @@ function postProcessHighlightedCode(html, options) {
 
   // Create a safe parser for both browser and build environments
   let doc, pre, code;
-  
+
   if (typeof DOMParser !== 'undefined') {
     // Browser environment
     const parser = new DOMParser();
@@ -251,7 +249,7 @@ function postProcessHighlightedCode(html, options) {
 
   // Add language class
   pre.classList.add(`language-${lang}`);
-  
+
   // Add title if provided
   if (title) {
     const titleEl = doc.createElement('div');
@@ -266,20 +264,17 @@ function postProcessHighlightedCode(html, options) {
     const processedLines = lines.map((line, index) => {
       const lineNum = startLine + index;
       const isHighlighted = highlightLines.includes(lineNum);
-      
-      let lineHtml = '';
-      
-      // Add line number
+
+      let lineHtml = '<span class="line">';
       if (lineNumbers) {
         lineHtml += `<span class="line-number" data-line="${lineNum}">${lineNum}</span>`;
       }
-      
-      // Add line content with highlight class if needed
       lineHtml += `<span class="line-content${isHighlighted ? ' highlighted' : ''}">${line}</span>`;
-      
-      return `<span class="line">${lineHtml}</span>`;
+      lineHtml += '</span>';
+
+      return lineHtml;
     });
-    
+
     code.innerHTML = processedLines.join('\n');
   }
 
@@ -288,7 +283,7 @@ function postProcessHighlightedCode(html, options) {
   wrapper.className = 'code-block-wrapper';
   wrapper.setAttribute('data-lang', lang);
   if (title) wrapper.setAttribute('data-title', title);
-  
+
   // Move pre into wrapper
   pre.parentNode.insertBefore(wrapper, pre);
   wrapper.appendChild(pre);
@@ -299,45 +294,45 @@ function postProcessHighlightedCode(html, options) {
 // Post-process highlighted code string (for build environment)
 function postProcessHighlightedCodeString(html, options) {
   const { lineNumbers, highlightLines, title, startLine, lang } = options;
-  
+
   // Extract code content from pre/code tags
   const codeMatch = html.match(/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/);
   if (!codeMatch) return html;
-  
+
   const codeContent = codeMatch[1];
   const lines = codeContent.split('\n');
-  
+
   let processedCode = '';
   if (lineNumbers || highlightLines.length > 0) {
     processedCode = lines.map((line, index) => {
       const lineNum = startLine + index;
       const isHighlighted = highlightLines.includes(lineNum);
-      
+
       let lineHtml = '<span class="line">';
       if (lineNumbers) {
         lineHtml += `<span class="line-number" data-line="${lineNum}">${lineNum}</span>`;
       }
       lineHtml += `<span class="line-content${isHighlighted ? ' highlighted' : ''}">${line}</span>`;
       lineHtml += '</span>';
-      
+
       return lineHtml;
     }).join('\n');
   } else {
     processedCode = codeContent;
   }
-  
+
   // Build wrapper
   let result = `<div class="code-block-wrapper" data-lang="${lang}"`;
   if (title) result += ` data-title="${escapeHtmlString(title)}"`;
   result += '>';
-  
+
   if (title) {
     result += `<div class="code-title">${escapeHtmlString(title)}</div>`;
   }
-  
+
   result += `<pre class="shiki language-${lang}"><code>${processedCode}</code></pre>`;
   result += '</div>';
-  
+
   return result;
 }
 

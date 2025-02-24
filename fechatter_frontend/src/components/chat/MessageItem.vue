@@ -1,22 +1,14 @@
 <template>
-  <DiscordMessageItem
-    :message="message"
-    :current-user-id="currentUserId"
-    :chat-id="chatId"
-    :is-highlighted="isHighlighted"
-    :is-compact="isCompact"
-    :show-user-status="showUserStatus"
-    @user-profile-opened="handleUserProfileOpened"
-    @dm-created="handleDMCreated"
-    @reply="handleReply"
-    @scroll-to-message="handleScrollToMessage"
-    @context-menu="handleContextMenu"
-  />
+  <!-- 🧹 CLEARED: MessageItem display completely removed -->
+  <div class="message-item-placeholder" :data-message-id="message.id">
+    <div class="cleared-notice">
+      MessageItem display cleared - awaiting new Discord MessageItem implementation
+    </div>
+  </div>
 </template>
 
 <script setup>
-import DiscordMessageItem from '../discord/DiscordMessageItem.vue';
-
+// 🧹 MINIMAL: Only essential props preserved
 const props = defineProps({
   message: {
     type: Object,
@@ -24,57 +16,35 @@ const props = defineProps({
   },
   currentUserId: {
     type: Number,
-    required: false,
-    default: 0
+    default: null
   },
   chatId: {
     type: [Number, String],
     default: null
-  },
-  isHighlighted: {
-    type: Boolean,
-    default: false
-  },
-  isCompact: {
-    type: Boolean,
-    default: false
-  },
-  showUserStatus: {
-    type: Boolean,
-    default: true
   }
 });
 
-const emit = defineEmits([
-  'user-profile-opened', 
-  'dm-created', 
-  'reply',
-  'scroll-to-message',
-  'context-menu'
-]);
+// 🧹 CLEARED: All display logic removed
+const emit = defineEmits(['user-profile-opened', 'dm-created']);
 
-// 事件转发
-const handleUserProfileOpened = (user) => {
-  emit('user-profile-opened', user);
-};
-
-const handleDMCreated = (dm) => {
-  emit('dm-created', dm);
-};
-
-const handleReply = (message) => {
-  emit('reply', message);
-};
-
-const handleScrollToMessage = (messageId) => {
-  emit('scroll-to-message', messageId);
-};
-
-const handleContextMenu = (data) => {
-  emit('context-menu', data);
-};
+// Console log for verification
+console.log(`🧹 [MessageItem] CLEARED - Message ${props.message.id} display removed`);
 </script>
 
 <style scoped>
-/* 这个组件现在只是一个包装器，所有样式都在DiscordMessageItem中 */
-</style> 
+.message-item-placeholder {
+  padding: 12px 16px;
+  margin: 8px 0;
+  background: var(--bg-tertiary, #2b2d31);
+  border: 2px dashed var(--border-primary, #3e4146);
+  border-radius: 8px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.cleared-notice {
+  color: var(--text-muted, #949ba4);
+  font-style: italic;
+  font-size: 14px;
+}
+</style>

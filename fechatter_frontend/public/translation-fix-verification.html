@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔧 Translation Fix Verification</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #007AFF, #00C6FF);
+      color: white;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 2rem;
+    }
+
+    .header p {
+      margin: 8px 0 0 0;
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 24px;
+    }
+
+    .test-section {
+      margin-bottom: 32px;
+      padding: 20px;
+      border: 2px solid #f0f0f0;
+      border-radius: 12px;
+    }
+
+    .test-section h3 {
+      margin: 0 0 16px 0;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .test-controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .test-input {
+      flex: 1;
+      min-width: 200px;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .test-button {
+      padding: 12px 20px;
+      background: #007AFF;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .test-button:hover {
+      background: #0056CC;
+      transform: translateY(-1px);
+    }
+
+    .test-button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .test-button.secondary {
+      background: #6c757d;
+    }
+
+    .test-button.secondary:hover {
+      background: #545b62;
+    }
+
+    .language-buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .lang-btn {
+      padding: 10px 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s ease;
+    }
+
+    .lang-btn:hover {
+      border-color: #007AFF;
+      background: #f8f9ff;
+    }
+
+    .lang-btn.selected {
+      background: #007AFF;
+      border-color: #007AFF;
+      color: white;
+    }
+
+    .results {
+      margin-top: 16px;
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border-left: 4px solid #007AFF;
+    }
+
+    .results h4 {
+      margin: 0 0 12px 0;
+      color: #333;
+    }
+
+    .result-item {
+      margin-bottom: 8px;
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    .result-item strong {
+      color: #007AFF;
+      min-width: 120px;
+      display: inline-block;
+    }
+
+    .quota-display {
+      background: linear-gradient(135deg, #00C851, #00A085);
+      color: white;
+      padding: 16px;
+      border-radius: 8px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .quota-display h4 {
+      margin: 0 0 8px 0;
+    }
+
+    .quota-numbers {
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #007AFF;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .status {
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-weight: 500;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border-left: 4px solid #28a745;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border-left: 4px solid #dc3545;
+    }
+
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border-left: 4px solid #17a2b8;
+    }
+
+    .status.warning {
+      background: #fff3cd;
+      color: #856404;
+      border-left: 4px solid #ffc107;
+    }
+
+    .log-output {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    .clear-btn {
+      float: right;
+      background: #e53e3e;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔧 Translation Fix Verification</h1>
+      <p>Complete validation of translation API fixes and quota management</p>
+    </div>
+
+    <div class="content">
+      <!-- Quota Display -->
+      <div class="quota-display">
+        <h4>📊 Translation Quota Status</h4>
+        <div class="quota-numbers">
+          <span id="quota-remaining">20</span>/<span id="quota-limit">20</span> remaining today
+        </div>
+        <small>Used: <span id="quota-used">0</span> | Resets: <span id="quota-reset">Today</span></small>
+      </div>
+
+      <!-- Status Display -->
+      <div id="status-display"></div>
+
+      <!-- Test Section 1: Direct API Translation -->
+      <div class="test-section">
+        <h3>🚀 1. Direct API Translation Test</h3>
+        <div class="test-controls">
+          <input type="text" id="direct-message" class="test-input" placeholder="Enter message to translate..."
+            value="Test message validation fix">
+          <button id="direct-test-btn" class="test-button">Test Direct API</button>
+          <button id="clear-direct" class="test-button secondary">Clear</button>
+        </div>
+        <div class="language-buttons">
+          <button class="lang-btn" data-lang="zh" data-name="中文">🇨🇳 中文</button>
+          <button class="lang-btn" data-lang="ja" data-name="日本語">🇯🇵 日本語</button>
+          <button class="lang-btn" data-lang="ko" data-name="한국어">🇰🇷 한국어</button>
+          <button class="lang-btn" data-lang="es" data-name="Español">🇪🇸 Español</button>
+          <button class="lang-btn" data-lang="fr" data-name="Français">🇫🇷 Français</button>
+          <button class="lang-btn" data-lang="de" data-name="Deutsch">🇩🇪 Deutsch</button>
+          <button class="lang-btn" data-lang="ru" data-name="Русский">🇷🇺 Русский</button>
+        </div>
+        <div id="direct-results" class="results" style="display: none;">
+          <h4>📋 Direct API Results:</h4>
+          <div id="direct-result-content"></div>
+        </div>
+      </div>
+
+      <!-- Test Section 2: Frontend Integration Test -->
+      <div class="test-section">
+        <h3>🎯 2. Frontend Integration Test</h3>
+        <div class="test-controls">
+          <input type="text" id="frontend-message" class="test-input" placeholder="Message for frontend test..."
+            value="Frontend integration validation">
+          <input type="text" id="message-id" class="test-input" placeholder="Message ID..." value="test_167">
+          <button id="frontend-test-btn" class="test-button">Test Frontend</button>
+          <button id="clear-frontend" class="test-button secondary">Clear</button>
+        </div>
+        <div id="frontend-results" class="results" style="display: none;">
+          <h4>🔗 Frontend Integration Results:</h4>
+          <div id="frontend-result-content"></div>
+        </div>
+      </div>
+
+      <!-- Test Section 3: Quota Management Test -->
+      <div class="test-section">
+        <h3>📈 3. Quota Management Test</h3>
+        <div class="test-controls">
+          <button id="quota-test-btn" class="test-button">Test Quota System</button>
+          <button id="quota-reset-btn" class="test-button secondary">Reset Local Quota</button>
+          <button id="quota-stress-btn" class="test-button secondary">Stress Test (5 calls)</button>
+        </div>
+        <div id="quota-results" class="results" style="display: none;">
+          <h4>📊 Quota Test Results:</h4>
+          <div id="quota-result-content"></div>
+        </div>
+      </div>
+
+      <!-- Debug Log -->
+      <div class="test-section">
+        <h3>🐛 4. Debug Log <button class="clear-btn" onclick="clearLog()">Clear Log</button></h3>
+        <div id="debug-log" class="log-output"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Debug logging
+    let logBuffer = [];
+
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+      logBuffer.push(logEntry);
+
+      const logElement = document.getElementById('debug-log');
+      logElement.textContent = logBuffer.join('\n');
+      logElement.scrollTop = logElement.scrollHeight;
+
+      console.log(logEntry);
+    }
+
+    function clearLog() {
+      logBuffer = [];
+      document.getElementById('debug-log').textContent = '';
+    }
+
+    function showStatus(message, type = 'info') {
+      const statusDiv = document.getElementById('status-display');
+      statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+
+      if (type !== 'error') {
+        setTimeout(() => {
+          statusDiv.innerHTML = '';
+        }, 5000);
+      }
+    }
+
+    function updateQuotaDisplay(used = 0, remaining = 20, limit = 20) {
+      document.getElementById('quota-used').textContent = used;
+      document.getElementById('quota-remaining').textContent = remaining;
+      document.getElementById('quota-limit').textContent = limit;
+      document.getElementById('quota-reset').textContent = 'Today';
+    }
+
+    // Language selection handling
+    let selectedLanguage = 'zh';
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedLanguage = btn.dataset.lang;
+        log(`Selected language: ${btn.dataset.name} (${selectedLanguage})`);
+      });
+    });
+
+    // Set default selection
+    document.querySelector('[data-lang="zh"]').classList.add('selected');
+
+    // 1. Direct API Test
+    document.getElementById('direct-test-btn').addEventListener('click', async () => {
+      const message = document.getElementById('direct-message').value;
+      if (!message.trim()) {
+        showStatus('Please enter a message to translate', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('direct-test-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span>Testing...';
+
+      log(`Starting direct API test: "${message}" -> ${selectedLanguage}`);
+
+      try {
+        const response = await fetch('/api/bot/translate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message_id: 'direct_test_' + Date.now(),
+            target_language: selectedLanguage,
+            text: message
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        log(`Direct API success: ${JSON.stringify(result)}`);
+
+        // Display results
+        const resultsDiv = document.getElementById('direct-results');
+        const contentDiv = document.getElementById('direct-result-content');
+
+        contentDiv.innerHTML = `
+                    <div class="result-item"><strong>Original:</strong> ${message}</div>
+                    <div class="result-item"><strong>Translation:</strong> ${result.translation}</div>
+                    <div class="result-item"><strong>Source Lang:</strong> ${result.source_language}</div>
+                    <div class="result-item"><strong>Target Lang:</strong> ${result.target_language}</div>
+                    <div class="result-item"><strong>Confidence:</strong> ${result.confidence}</div>
+                    <div class="result-item"><strong>Provider:</strong> ${result.provider}</div>
+                    <div class="result-item"><strong>Processing Time:</strong> ${result.processing_time_ms}ms</div>
+                    <div class="result-item"><strong>Quota Used:</strong> ${result.quota_used}</div>
+                    <div class="result-item"><strong>Quota Remaining:</strong> ${result.quota_remaining}</div>
+                `;
+
+        resultsDiv.style.display = 'block';
+
+        // Update quota display
+        updateQuotaDisplay(result.quota_used, result.quota_remaining, result.quota_limit);
+
+        showStatus('✅ Direct API test successful!', 'success');
+
+      } catch (error) {
+        log(`Direct API error: ${error.message}`, 'error');
+        showStatus(`❌ Direct API test failed: ${error.message}`, 'error');
+
+        // Show error details
+        const resultsDiv = document.getElementById('direct-results');
+        const contentDiv = document.getElementById('direct-result-content');
+        contentDiv.innerHTML = `<div class="result-item" style="color: red;"><strong>Error:</strong> ${error.message}</div>`;
+        resultsDiv.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Test Direct API';
+      }
+    });
+
+    // 2. Frontend Integration Test
+    document.getElementById('frontend-test-btn').addEventListener('click', async () => {
+      const message = document.getElementById('frontend-message').value;
+      const messageId = document.getElementById('message-id').value;
+
+      if (!message.trim() || !messageId.trim()) {
+        showStatus('Please enter both message and message ID', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('frontend-test-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span>Testing Frontend...';
+
+      log(`Starting frontend integration test: ID=${messageId}, Message="${message}"`);
+
+      try {
+        // Simulate frontend behavior
+        if (typeof window !== 'undefined') {
+          window.currentTranslatingMessage = {
+            id: messageId,
+            content: message
+          };
+
+          window.testMessage = {
+            id: messageId,
+            content: message
+          };
+        }
+
+        // Make API call like frontend would
+        const response = await fetch('/api/bot/translate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message_id: messageId,
+            target_language: selectedLanguage,
+            text: message
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        log(`Frontend integration success: ${JSON.stringify(result)}`);
+
+        // Simulate frontend result processing
+        const processedResult = {
+          translation: result.translation,
+          sourceLanguage: result.source_language || 'auto-detected',
+          targetLanguage: selectedLanguage,
+          confidence: result.confidence || 0.95,
+          quotaRemaining: result.quota_remaining
+        };
+
+        // Display results
+        const resultsDiv = document.getElementById('frontend-results');
+        const contentDiv = document.getElementById('frontend-result-content');
+
+        contentDiv.innerHTML = `
+                    <div class="result-item"><strong>Message ID:</strong> ${messageId}</div>
+                    <div class="result-item"><strong>Original:</strong> ${message}</div>
+                    <div class="result-item"><strong>Translation:</strong> ${processedResult.translation}</div>
+                    <div class="result-item"><strong>Source Lang:</strong> ${processedResult.sourceLanguage}</div>
+                    <div class="result-item"><strong>Target Lang:</strong> ${processedResult.targetLanguage}</div>
+                    <div class="result-item"><strong>Confidence:</strong> ${processedResult.confidence}</div>
+                    <div class="result-item"><strong>Quota Remaining:</strong> ${processedResult.quotaRemaining}</div>
+                    <div class="result-item"><strong>Frontend Processing:</strong> ✅ Success</div>
+                `;
+
+        resultsDiv.style.display = 'block';
+
+        // Update quota display
+        updateQuotaDisplay(result.quota_used, result.quota_remaining, result.quota_limit);
+
+        showStatus('✅ Frontend integration test successful!', 'success');
+
+        // Cleanup
+        delete window.currentTranslatingMessage;
+        delete window.testMessage;
+
+      } catch (error) {
+        log(`Frontend integration error: ${error.message}`, 'error');
+        showStatus(`❌ Frontend integration test failed: ${error.message}`, 'error');
+
+        const resultsDiv = document.getElementById('frontend-results');
+        const contentDiv = document.getElementById('frontend-result-content');
+        contentDiv.innerHTML = `<div class="result-item" style="color: red;"><strong>Error:</strong> ${error.message}</div>`;
+        resultsDiv.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Test Frontend';
+      }
+    });
+
+    // 3. Quota Management Test
+    document.getElementById('quota-test-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('quota-test-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span>Testing Quota...';
+
+      log('Starting quota management test');
+
+      try {
+        // Test quota checking
+        const testMessage = 'Quota test message';
+
+        const response = await fetch('/api/bot/translate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message_id: 'quota_test_' + Date.now(),
+            target_language: 'zh',
+            text: testMessage
+          })
+        });
+
+        const result = await response.json();
+
+        // Display quota information
+        const resultsDiv = document.getElementById('quota-results');
+        const contentDiv = document.getElementById('quota-result-content');
+
+        contentDiv.innerHTML = `
+                    <div class="result-item"><strong>Quota Used:</strong> ${result.quota_used}</div>
+                    <div class="result-item"><strong>Quota Remaining:</strong> ${result.quota_remaining}</div>
+                    <div class="result-item"><strong>Quota Limit:</strong> ${result.quota_limit}</div>
+                    <div class="result-item"><strong>Reset Time:</strong> Daily</div>
+                    <div class="result-item"><strong>Translation:</strong> ${result.translation}</div>
+                    <div class="result-item"><strong>Quota System:</strong> ✅ Working</div>
+                `;
+
+        resultsDiv.style.display = 'block';
+
+        // Update quota display
+        updateQuotaDisplay(result.quota_used, result.quota_remaining, result.quota_limit);
+
+        log(`Quota test completed: Used=${result.quota_used}, Remaining=${result.quota_remaining}`);
+        showStatus('✅ Quota system test successful!', 'success');
+
+      } catch (error) {
+        log(`Quota test error: ${error.message}`, 'error');
+        showStatus(`❌ Quota test failed: ${error.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Test Quota System';
+      }
+    });
+
+    // Stress test
+    document.getElementById('quota-stress-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('quota-stress-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span>Running Stress Test...';
+
+      log('Starting quota stress test (5 concurrent calls)');
+      showStatus('🔥 Running stress test...', 'warning');
+
+      const promises = [];
+      for (let i = 0; i < 5; i++) {
+        promises.push(
+          fetch('/api/bot/translate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              message_id: `stress_test_${i}_${Date.now()}`,
+              target_language: 'zh',
+              text: `Stress test message ${i + 1}`
+            })
+          })
+        );
+      }
+
+      try {
+        const responses = await Promise.allSettled(promises);
+        let successCount = 0;
+        let errorCount = 0;
+        let lastQuota = null;
+
+        for (let i = 0; i < responses.length; i++) {
+          const response = responses[i];
+          if (response.status === 'fulfilled' && response.value.ok) {
+            const result = await response.value.json();
+            successCount++;
+            lastQuota = result;
+            log(`Stress test ${i + 1}: SUCCESS (${result.quota_remaining} remaining)`);
+          } else {
+            errorCount++;
+            const error = response.reason || response.value.statusText;
+            log(`Stress test ${i + 1}: ERROR - ${error}`, 'error');
+          }
+        }
+
+        // Update quota if we have data
+        if (lastQuota) {
+          updateQuotaDisplay(lastQuota.quota_used, lastQuota.quota_remaining, lastQuota.quota_limit);
+        }
+
+        log(`Stress test completed: ${successCount} success, ${errorCount} errors`);
+        showStatus(`🔥 Stress test completed: ${successCount} success, ${errorCount} errors`,
+          errorCount === 0 ? 'success' : 'warning');
+
+      } catch (error) {
+        log(`Stress test failed: ${error.message}`, 'error');
+        showStatus(`❌ Stress test failed: ${error.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Stress Test (5 calls)';
+      }
+    });
+
+    // Clear buttons
+    document.getElementById('clear-direct').addEventListener('click', () => {
+      document.getElementById('direct-results').style.display = 'none';
+      document.getElementById('direct-message').value = 'Test message validation fix';
+    });
+
+    document.getElementById('clear-frontend').addEventListener('click', () => {
+      document.getElementById('frontend-results').style.display = 'none';
+      document.getElementById('frontend-message').value = 'Frontend integration validation';
+      document.getElementById('message-id').value = 'test_167';
+    });
+
+    // Quota reset
+    document.getElementById('quota-reset-btn').addEventListener('click', () => {
+      localStorage.removeItem('bot_translation_quota');
+      localStorage.removeItem('bot_quota_reset_time');
+      updateQuotaDisplay(0, 20, 20);
+      log('Local quota cache cleared');
+      showStatus('🔄 Local quota cache reset', 'info');
+    });
+
+    // Initialize
+    log('Translation Fix Verification Tool initialized');
+    showStatus('🚀 Ready for testing! Select a language and run tests.', 'info');
+  </script>
+</body>
+
+</html>

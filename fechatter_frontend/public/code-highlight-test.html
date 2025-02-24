@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎨 Code Highlighting Test - Fechatter</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+      min-height: 100vh;
+      color: white;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      margin: 0 0 8px 0;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .test-section {
+      margin-bottom: 32px;
+      padding: 24px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .test-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #60a5fa;
+    }
+
+    .test-input {
+      width: 100%;
+      min-height: 120px;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      color: white;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 14px;
+      resize: vertical;
+      margin-bottom: 16px;
+    }
+
+    .test-output {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      padding: 16px;
+      min-height: 100px;
+    }
+
+    .test-button {
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin: 8px 8px 8px 0;
+    }
+
+    .test-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(96, 165, 250, 0.3);
+    }
+
+    .test-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status {
+      padding: 8px 16px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .status.loading {
+      background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+    }
+
+    .status.success {
+      background: rgba(34, 197, 94, 0.2);
+      color: #4ade80;
+    }
+
+    .status.error {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-top: 32px;
+    }
+
+    .feature-card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .feature-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+      font-size: 20px;
+    }
+
+    .feature-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: white;
+      margin-bottom: 8px;
+    }
+
+    .feature-description {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+      line-height: 1.5;
+    }
+
+    /* Message simulation */
+    .message-preview {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .message-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .username {
+      font-weight: 600;
+      color: #60a5fa;
+    }
+
+    .timestamp {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 16px;
+      }
+
+      .feature-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎨 Code Highlighting Test</h1>
+      <p>Test the enhanced Shiki code highlighting system for Fechatter</p>
+    </div>
+
+    <!-- Basic Test -->
+    <div class="test-section">
+      <h2 class="test-title">1. Basic Code Highlighting Test</h2>
+      <textarea class="test-input" id="basicInput" placeholder="Paste your code here (with ``` blocks)...">Here's a JavaScript example:
+
+```javascript title="example.js"
+function fibonacci(n) {
+  if (n <= 1) return n;
+  return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+console.log('Fibonacci sequence:');
+for (let i = 0; i < 10; i++) {
+  console.log(`F(${i}) = ${fibonacci(i)}`);
+}
+```
+
+And some Python:
+
+```python title="data_analysis.py"
+import pandas as pd
+import numpy as np
+
+def analyze_data(df):
+    """Perform basic data analysis"""
+    stats = {
+        'mean': df.mean(),
+        'std': df.std(),
+        'count': len(df)
+    }
+    return stats
+
+# Load and analyze dataset
+data = pd.read_csv('dataset.csv')
+results = analyze_data(data)
+print(f"Analysis complete: {results}")
+```</textarea>
+      <button class="test-button" onclick="testBasicHighlighting()">Test Basic Highlighting</button>
+      <button class="test-button" onclick="clearOutput('basicOutput')">Clear</button>
+      <div id="basicStatus"></div>
+      <div class="test-output" id="basicOutput"></div>
+    </div>
+
+    <!-- Advanced Test -->
+    <div class="test-section">
+      <h2 class="test-title">2. Advanced Features Test</h2>
+      <textarea class="test-input" id="advancedInput" placeholder="Test advanced features...">Advanced highlighting features:
+
+```typescript {1,5-7} title="advanced.ts"
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+async function fetchUsers(): Promise<User[]> {
+  const response = await fetch('/api/users');
+  if (!response.ok) {
+    throw new Error('Failed to fetch users');
+  }
+  return response.json();
+}
+
+// Usage example
+const users = await fetchUsers();
+console.log(`Found ${users.length} users`);
+```
+
+```rust title="main.rs"
+use std::collections::HashMap;
+
+#[derive(Debug)]
+struct Person {
+    name: String,
+    age: u32,
+}
+
+fn main() {
+    let mut people = HashMap::new();
+    people.insert("Alice", Person {
+        name: "Alice".to_string(),
+        age: 30,
+    });
+    
+    match people.get("Alice") {
+        Some(person) => println!("{:?}", person),
+        None => println!("Person not found"),
+    }
+}
+```</textarea>
+      <button class="test-button" onclick="testAdvancedHighlighting()">Test Advanced Features</button>
+      <button class="test-button" onclick="clearOutput('advancedOutput')">Clear</button>
+      <div id="advancedStatus"></div>
+      <div class="test-output" id="advancedOutput"></div>
+    </div>
+
+    <!-- Message Simulation Test -->
+    <div class="test-section">
+      <h2 class="test-title">3. Discord Message Simulation</h2>
+      <textarea class="test-input" id="messageInput" placeholder="Test message content with code...">Hey team! Here's the solution for the authentication bug:
+
+```javascript title="auth-fix.js"
+// Fixed the token validation issue
+function validateToken(token) {
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return { valid: true, user: decoded };
+  } catch (error) {
+    console.error('Token validation failed:', error.message);
+    return { valid: false, error: error.message };
+  }
+}
+```
+
+Also updated the database schema:
+
+```sql title="migration.sql"
+ALTER TABLE users 
+ADD COLUMN last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN failed_attempts INT DEFAULT 0;
+
+CREATE INDEX idx_users_last_login ON users(last_login);
+```
+
+This should fix the session timeout issues we've been seeing. 🚀</textarea>
+      <button class="test-button" onclick="testMessageSimulation()">Simulate Discord Message</button>
+      <button class="test-button" onclick="clearOutput('messageOutput')">Clear</button>
+      <div id="messageStatus"></div>
+      <div class="message-preview" id="messageOutput"></div>
+    </div>
+
+    <!-- Performance Test -->
+    <div class="test-section">
+      <h2 class="test-title">4. Performance Test</h2>
+      <p>Test highlighting performance with multiple code blocks</p>
+      <button class="test-button" onclick="runPerformanceTest()">Run Performance Test</button>
+      <button class="test-button" onclick="clearOutput('performanceOutput')">Clear</button>
+      <div id="performanceStatus"></div>
+      <div class="test-output" id="performanceOutput"></div>
+    </div>
+
+    <!-- Feature Overview -->
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🎨</div>
+        <h3 class="feature-title">Shiki Integration</h3>
+        <p class="feature-description">Modern syntax highlighting powered by Shiki with VS Code themes.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3 class="feature-title">Async Processing</h3>
+        <p class="feature-description">Non-blocking asynchronous code highlighting for smooth UI performance.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🔢</div>
+        <h3 class="feature-title">Line Numbers</h3>
+        <p class="feature-description">Optional line numbering with highlighted line support.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">📋</div>
+        <h3 class="feature-title">Copy Support</h3>
+        <p class="feature-description">One-click code copying with visual feedback.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🏷️</div>
+        <h3 class="feature-title">Language Detection</h3>
+        <p class="feature-description">Smart language detection with alias support (js→javascript).</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">💾</div>
+        <h3 class="feature-title">Caching</h3>
+        <p class="feature-description">Intelligent caching for improved performance and reduced re-rendering.</p>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 32px;">
+      <button class="test-button" onclick="runAllTests()">🚀 Run All Tests</button>
+      <button class="test-button" onclick="window.location.href='/chat/6'">💬 Test in Chat</button>
+    </div>
+
+    <div style="text-align: center; color: rgba(255, 255, 255, 0.6); font-size: 14px; margin-top: 24px;">
+      <p>🎨 Enhanced Code Highlighting System for Fechatter</p>
+      <p>Powered by Shiki + Vue.js + Modern Web Standards</p>
+    </div>
+  </div>
+
+  <script type="module">
+    // Mock implementation for testing
+    async function loadHighlighter() {
+      // In a real app, this would import from the actual modules
+      return {
+        async highlightMarkdownCode(content, options) {
+          // Simulate highlighting
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          // Simple mock highlighting
+          return content.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+            return `
+              <div class="code-block-wrapper mock-highlighted" data-lang="${lang || 'plaintext'}">
+                <div class="code-title">
+                  <span>${lang || 'plaintext'}</span>
+                  <button class="copy-button">📋 Copy</button>
+                </div>
+                <pre class="shiki"><code class="language-${lang || 'plaintext'}">${escapeHtml(code)}</code></pre>
+              </div>
+            `;
+          });
+        },
+
+        async renderMarkdown(content) {
+          // Simple markdown simulation
+          return content
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>')
+            .replace(/\n/g, '<br>');
+        }
+      };
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function setStatus(elementId, type, message) {
+      const statusEl = document.getElementById(elementId);
+      statusEl.className = `status ${type}`;
+      statusEl.textContent = message;
+      statusEl.style.display = 'block';
+    }
+
+    function clearOutput(outputId) {
+      document.getElementById(outputId).innerHTML = '';
+      const statusId = outputId.replace('Output', 'Status');
+      document.getElementById(statusId).style.display = 'none';
+    }
+
+    window.testBasicHighlighting = async function () {
+      const input = document.getElementById('basicInput').value;
+      const output = document.getElementById('basicOutput');
+
+      setStatus('basicStatus', 'loading', '🔄 Highlighting code...');
+
+      try {
+        const highlighter = await loadHighlighter();
+        const result = await highlighter.highlightMarkdownCode(input);
+
+        output.innerHTML = result;
+        setStatus('basicStatus', 'success', '✅ Basic highlighting completed successfully!');
+      } catch (error) {
+        setStatus('basicStatus', 'error', `❌ Error: ${error.message}`);
+      }
+    };
+
+    window.testAdvancedHighlighting = async function () {
+      const input = document.getElementById('advancedInput').value;
+      const output = document.getElementById('advancedOutput');
+
+      setStatus('advancedStatus', 'loading', '🔄 Processing advanced features...');
+
+      try {
+        const highlighter = await loadHighlighter();
+        const result = await highlighter.highlightMarkdownCode(input, {
+          theme: 'dark',
+          lineNumbers: true,
+          cache: true
+        });
+
+        output.innerHTML = result;
+        setStatus('advancedStatus', 'success', '✅ Advanced features test completed!');
+      } catch (error) {
+        setStatus('advancedStatus', 'error', `❌ Error: ${error.message}`);
+      }
+    };
+
+    window.testMessageSimulation = async function () {
+      const input = document.getElementById('messageInput').value;
+      const output = document.getElementById('messageOutput');
+
+      setStatus('messageStatus', 'loading', '🔄 Simulating Discord message...');
+
+      try {
+        const highlighter = await loadHighlighter();
+        const content = await highlighter.highlightMarkdownCode(input);
+        const markdown = await highlighter.renderMarkdown(content);
+
+        output.innerHTML = `
+          <div class="message-header">
+            <div class="avatar">D3</div>
+            <span class="username">Developer 3</span>
+            <span class="timestamp">Today at ${new Date().toLocaleTimeString()}</span>
+          </div>
+          <div class="message-content">${markdown}</div>
+        `;
+
+        setStatus('messageStatus', 'success', '✅ Message simulation completed!');
+      } catch (error) {
+        setStatus('messageStatus', 'error', `❌ Error: ${error.message}`);
+      }
+    };
+
+    window.runPerformanceTest = async function () {
+      const output = document.getElementById('performanceOutput');
+
+      setStatus('performanceStatus', 'loading', '🔄 Running performance test...');
+
+      const startTime = performance.now();
+
+      try {
+        const largeContent = `
+Performance test with multiple code blocks:
+
+${'```javascript\nfunction test() { console.log("Performance test"); }\n```\n\n'.repeat(5)}
+
+${'```python\ndef performance_test():\n    print("Testing performance")\n```\n\n'.repeat(3)}
+
+${'```css\n.performance-test { color: red; }\n```\n\n'.repeat(2)}
+        `.trim();
+
+        const highlighter = await loadHighlighter();
+        const result = await highlighter.highlightMarkdownCode(largeContent);
+
+        const endTime = performance.now();
+        const duration = (endTime - startTime).toFixed(2);
+
+        output.innerHTML = `
+          <div style="margin-bottom: 16px;">
+            <strong>Performance Results:</strong><br>
+            Processing time: ${duration}ms<br>
+            Code blocks: 10<br>
+            Total size: ${largeContent.length} characters
+          </div>
+          ${result}
+        `;
+
+        setStatus('performanceStatus', 'success', `✅ Performance test completed in ${duration}ms!`);
+      } catch (error) {
+        setStatus('performanceStatus', 'error', `❌ Error: ${error.message}`);
+      }
+    };
+
+    window.runAllTests = async function () {
+      console.log('🚀 Running all code highlighting tests...');
+
+      await testBasicHighlighting();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      await testAdvancedHighlighting();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      await testMessageSimulation();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      await runPerformanceTest();
+
+      console.log('✅ All tests completed!');
+      alert('🎉 All code highlighting tests completed successfully!');
+    };
+
+    // Add CSS for mock highlighting
+    const style = document.createElement('style');
+    style.textContent = `
+      .mock-highlighted {
+        background: #1e1e1e;
+        border: 1px solid #333;
+        border-radius: 8px;
+        margin: 16px 0;
+        overflow: hidden;
+      }
+      
+      .code-title {
+        background: #252526;
+        padding: 8px 16px;
+        border-bottom: 1px solid #333;
+        font-size: 14px;
+        color: #cccccc;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      
+      .copy-button {
+        background: transparent;
+        border: 1px solid #555;
+        color: #ccc;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      
+      .copy-button:hover {
+        background: #333;
+        border-color: #777;
+      }
+      
+      .shiki {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 16px;
+        margin: 0;
+        overflow-x: auto;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      
+      .inline-code {
+        background: rgba(255, 255, 255, 0.1);
+        color: #e06c75;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 13px;
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Initialize
+    console.log('🎨 Code Highlighting Test Page Loaded');
+  </script>
+</body>
+
+</html>

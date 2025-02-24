@@ -1,15 +1,9 @@
 <template>
-  <div 
-    v-if="visible"
-    ref="debugPanel"
-    class="draggable-debug-panel"
-    :style="{ 
-      top: position.y + 'px', 
-      left: position.x + 'px',
-      zIndex: zIndex 
-    }"
-    @mousedown="startDrag"
-  >
+  <div v-if="visible" ref="debugPanel" class="draggable-debug-panel" :style="{
+    top: position.y + 'px',
+    left: position.x + 'px',
+    zIndex: getActiveZIndex()
+  }" @mousedown="startDrag" @click.stop="preventEventBubbling">
     <!-- 🎯 拖拽手柄 -->
     <div class="drag-handle" @mousedown.stop="startDrag">
       <div class="drag-dots">
@@ -27,12 +21,8 @@
     <!-- 调试内容 -->
     <div class="debug-content">
       <div class="debug-tabs">
-        <button 
-          v-for="tab in tabs" 
-          :key="tab.id"
-          :class="['tab-btn', { active: activeTab === tab.id }]"
-          @click="activeTab = tab.id"
-        >
+        <button v-for="tab in tabs" :key="tab.id" :class="['tab-btn', { active: activeTab === tab.id }]"
+          @click="activeTab = tab.id">
           {{ tab.label }}
         </button>
       </div>
@@ -192,43 +182,58 @@ const layoutStats = reactive({
   lastCheck: Date.now()
 });
 
-// 拖拽功能
+// 🔧 新增：动态z-index管理和事件防穿透
+const getActiveZIndex = () => {
+  // 智能层级管理系统
+  const maxContextMenuZ = 9000; // 给消息菜单预留空间
+  const baseDebugZ = 15000; // Debug面板基础层级
+  const dragZ = 20000; // 拖拽时的层级
+  
+  return isDragging.value ? dragZ : baseDebugZ;
+};
+
+// 🔧 新增：阻止事件冒泡和穿透
+const preventEventBubbling = (e) => {
+  e.stopPropagation();
+  e.preventDefault();
+};
+
 const startDrag = (e) => {
   if (e.target.classList.contains('close-btn')) return;
-  
+
   isDragging.value = true;
-  zIndex.value = 10000;
-  
+  // 移除硬编码的zIndex，改用动态计算
+
   const rect = debugPanel.value.getBoundingClientRect();
   dragOffset.x = e.clientX - rect.left;
   dragOffset.y = e.clientY - rect.top;
-  
+
   document.addEventListener('mousemove', onDrag);
   document.addEventListener('mouseup', stopDrag);
-  
+
   // 防止文本选择
   e.preventDefault();
 };
 
 const onDrag = (e) => {
   if (!isDragging.value) return;
-  
+
   position.x = e.clientX - dragOffset.x;
   position.y = e.clientY - dragOffset.y;
-  
+
   // 限制在窗口范围内
   const rect = debugPanel.value.getBoundingClientRect();
   const maxX = window.innerWidth - rect.width;
   const maxY = window.innerHeight - rect.height;
-  
+
   position.x = Math.max(0, Math.min(position.x, maxX));
   position.y = Math.max(0, Math.min(position.y, maxY));
 };
 
 const stopDrag = () => {
   isDragging.value = false;
-  zIndex.value = 9999;
-  
+  // 移除硬编码的zIndex，改用动态计算
+
   document.removeEventListener('mousemove', onDrag);
   document.removeEventListener('mouseup', stopDrag);
 };
@@ -245,21 +250,21 @@ const measureLayoutStability = () => {
   // 简单的布局稳定性检测
   const startTime = performance.now();
   const messageList = document.querySelector('.message-list');
-  
+
   if (messageList) {
     const rect1 = messageList.getBoundingClientRect();
-    
+
     // 强制重排
     messageList.style.transform = 'translateZ(0)';
-    
+
     requestAnimationFrame(() => {
       const rect2 = messageList.getBoundingClientRect();
       const shifted = Math.abs(rect1.top - rect2.top) > 1 || Math.abs(rect1.left - rect2.left) > 1;
-      
+
       layoutStats.stable = !shifted;
       layoutStats.reflows++;
       layoutStats.lastCheck = Date.now();
-      
+
       messageList.style.transform = '';
     });
   }
@@ -278,16 +283,16 @@ let layoutTimer = null;
 
 onMounted(() => {
   // 性能监控定时器
-  performanceTimer = setInterval(updatePerformanceStats, 1000);
-  
+  performanceTimer = setInterval(updatePerformanceStats, 5000);
+
   // 布局检测定时器
-  layoutTimer = setInterval(measureLayoutStability, 5000);
+  layoutTimer = setInterval(measureLayoutStability, 10000);
 });
 
 onUnmounted(() => {
   if (performanceTimer) clearInterval(performanceTimer);
   if (layoutTimer) clearInterval(layoutTimer);
-  
+
   document.removeEventListener('mousemove', onDrag);
   document.removeEventListener('mouseup', stopDrag);
 });
@@ -499,10 +504,10 @@ onUnmounted(() => {
     min-width: 280px;
     max-width: calc(100vw - 40px);
   }
-  
+
   .tab-btn {
     font-size: 11px;
     padding: 8px 6px;
   }
 }
-</style> 
+</style>

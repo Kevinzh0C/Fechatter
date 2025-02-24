@@ -1,119 +1,130 @@
 <template>
   <div class="enhanced-file-preview">
-    <!-- Selected Files Preview -->
-    <div v-if="files.length > 0" class="files-container">
+    <!-- 🔧 CRITICAL: Add error boundary and conditional rendering -->
+    <div v-if="fileUploadStore && fileUploadStore.hasPendingFiles && fileUploadStore.hasPendingFiles()"
+      class="files-container">
       <div class="files-header">
-        <span class="files-count">{{ files.length }} file{{ files.length > 1 ? 's' : '' }} selected</span>
+        <span class="files-count">{{ fileUploadStore.pendingFiles?.length || 0 }} file{{
+          (fileUploadStore.pendingFiles?.length || 0) > 1 ? 's' : '' }} selected</span>
         <div class="files-actions">
-          <button @click="toggleViewMode" class="view-toggle" :title="viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'">
+          <button @click="toggleViewMode" class="view-toggle"
+            :title="viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'">
             <svg v-if="viewMode === 'grid'" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
+              <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z" />
             </svg>
             <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h-5v6zm6 0h5v-6h-5v6zm-6-7h5V5h-5v6zm6-6v6h5V5h-5z"/>
+              <path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h-5v6zm6 0h5v-6h-5v6zm-6-7h5V5h-5v6zm6-6v6h5V5h-5z" />
             </svg>
           </button>
-          <button @click="clearAllFiles" class="clear-all-btn" title="Clear all files">
+          <button @click="fileUploadStore.clearAll" class="clear-all-btn" title="Clear all files">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              <path
+                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
             </svg>
             Clear All
           </button>
         </div>
       </div>
-      
+
       <!-- Grid View -->
       <div v-if="viewMode === 'grid'" class="files-grid" :class="gridClasses">
-        <div v-for="(file, index) in files" :key="file.id || index" 
-             class="file-item-grid" 
-             :class="{ 'file-loading': file.loading, 'file-error': file.error }">
-          
+        <div v-for="file in (fileUploadStore.pendingFiles || [])" :key="file.id || file.name" class="file-item-grid"
+          :class="{ 'file-loading': file.progress > 0 && file.progress < 100, 'file-error': file.error }">
+
+          <!-- Activity Skeleton Overlay -->
+          <div v-if="file.status === 'compressing'" class="activity-skeleton-overlay">
+            <div class="loading-spinner"></div>
+            <span class="skeleton-text">Compressing...</span>
+          </div>
+
           <!-- Image Preview -->
           <div v-if="isImageFile(file)" class="image-preview-container">
-            <img 
-              v-if="file.preview" 
-              :src="file.preview" 
-              :alt="file.name"
-              class="image-preview"
-              @click="openImageViewer(file)"
-              @load="onImageLoad(file)"
-              @error="onImageError(file)"
-            />
+            <img v-if="file.preview" :src="file.preview" :alt="file.name" class="image-preview"
+              @click="openImageViewer(file)" @load="onImageLoad(file)" @error="onImageError(file)" />
             <div v-else class="image-placeholder">
               <div class="loading-spinner"></div>
             </div>
           </div>
-          
+
           <!-- File Icon for Non-Images -->
           <div v-else class="file-icon-container">
             <div class="file-icon" :class="getFileTypeClass(file)">
               <svg v-if="isVideoFile(file)" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/>
+                <path
+                  d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z" />
               </svg>
               <svg v-else-if="isAudioFile(file)" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
               </svg>
               <svg v-else-if="isDocumentFile(file)" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
               </svg>
               <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z"/>
+                <path d="M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z" />
               </svg>
             </div>
           </div>
-          
+
           <!-- File Info -->
           <div class="file-info">
             <div class="file-name" :title="file.name">{{ file.name }}</div>
             <div class="file-meta">
-              <span class="file-size">{{ formatFileSize(file.size) }}</span>
+              <span v-if="typeof file.size === 'number'" class="file-size">{{ formatFileSize(file.size) }}</span>
               <span v-if="file.type" class="file-type">{{ getFileExtension(file.name) }}</span>
+              <!-- Debug Info -->
+              <div v-if="file.hasOwnProperty('_debug_isImage')" class="debug-info">
+                <div>isImg: {{ file._debug_isImage }}</div>
+                <div>name: {{ file.name }}</div>
+                <div>type: {{ file.type || 'N/A' }}</div>
+              </div>
             </div>
           </div>
-          
+
           <!-- Progress Bar (for uploads) -->
-          <div v-if="file.loading && file.progress !== undefined" class="upload-progress">
+          <div v-if="file.progress > 0 && file.progress < 100" class="upload-progress">
             <div class="progress-bar">
               <div class="progress-fill" :style="{ width: file.progress + '%' }"></div>
             </div>
             <span class="progress-text">{{ file.progress }}%</span>
           </div>
-          
+
           <!-- Actions -->
           <div class="file-actions">
-            <button v-if="canPreview(file)" @click="previewFile(file)" class="action-btn" title="Preview">
+            <button v-if="canPreview(file)" @click="previewFileHandler(file)" class="action-btn" title="Preview">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"/>
+                <path
+                  d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z" />
               </svg>
             </button>
-            <button @click="removeFile(index)" class="action-btn remove-btn" title="Remove file">
+            <button @click="fileUploadStore.removeFile(file.id)" class="action-btn remove-btn" title="Remove file">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19,6.41L17.59,5 12,10.59 6.41,5 5,6.41 10.59,12 5,17.59 6.41,19 12,13.41 17.59,19 19,17.59 13.41,12Z"/>
+                <path
+                  d="M19,6.41L17.59,5 12,10.59 6.41,5 5,6.41 10.59,12 5,17.59 6.41,19 12,13.41 17.59,19 19,17.59 13.41,12Z" />
               </svg>
             </button>
           </div>
         </div>
       </div>
-      
+
       <!-- List View -->
       <div v-else class="files-list">
-        <div v-for="(file, index) in files" :key="file.id || index" 
-             class="file-item-list" 
-             :class="{ 'file-loading': file.loading, 'file-error': file.error }">
-          
+        <div v-for="file in (fileUploadStore.pendingFiles || [])" :key="file.id || file.name" class="file-item-list"
+          :class="{ 'file-loading': file.progress > 0 && file.progress < 100, 'file-error': file.error }">
+
           <!-- File Icon -->
           <div class="file-icon-small" :class="getFileTypeClass(file)">
             <svg v-if="isImageFile(file)" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M8.5,13.5L11,16.5L14.5,12L19,18H5M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19Z"/>
+              <path
+                d="M8.5,13.5L11,16.5L14.5,12L19,18H5M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19Z" />
             </svg>
             <svg v-else-if="isVideoFile(file)" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/>
+              <path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z" />
             </svg>
             <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z"/>
+              <path d="M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z" />
             </svg>
           </div>
-          
+
           <!-- File Details -->
           <div class="file-details">
             <div class="file-name" :title="file.name">{{ file.name }}</div>
@@ -123,31 +134,31 @@
               <span v-if="file.lastModified" class="file-date">{{ formatDate(file.lastModified) }}</span>
             </div>
           </div>
-          
+
           <!-- Progress (for uploads) -->
-          <div v-if="file.loading && file.progress !== undefined" class="file-progress">
+          <div v-if="file.progress > 0 && file.progress < 100" class="file-progress">
             <div class="progress-circle">
               <svg class="progress-ring" width="20" height="20">
-                <circle cx="10" cy="10" r="8" fill="none" stroke="#e5e7eb" stroke-width="2"/>
-                <circle cx="10" cy="10" r="8" fill="none" stroke="#3b82f6" stroke-width="2"
-                        :stroke-dasharray="50.26" 
-                        :stroke-dashoffset="50.26 - (file.progress / 100) * 50.26"
-                        transform="rotate(-90 10 10)"/>
+                <circle cx="10" cy="10" r="8" fill="none" stroke="#e5e7eb" stroke-width="2" />
+                <circle cx="10" cy="10" r="8" fill="none" stroke="#3b82f6" stroke-width="2" :stroke-dasharray="50.26"
+                  :stroke-dashoffset="50.26 - (file.progress / 100) * 50.26" transform="rotate(-90 10 10)" />
               </svg>
               <span class="progress-percent">{{ Math.round(file.progress) }}%</span>
             </div>
           </div>
-          
+
           <!-- Actions -->
           <div class="file-actions-list">
-            <button v-if="canPreview(file)" @click="previewFile(file)" class="action-btn" title="Preview">
+            <button v-if="canPreview(file)" @click="previewFileHandler(file)" class="action-btn" title="Preview">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"/>
+                <path
+                  d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z" />
               </svg>
             </button>
-            <button @click="removeFile(index)" class="action-btn remove-btn" title="Remove file">
+            <button @click="fileUploadStore.removeFile(file.id)" class="action-btn remove-btn" title="Remove file">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19,6.41L17.59,5 12,10.59 6.41,5 5,6.41 10.59,12 5,17.59 6.41,19 12,13.41 17.59,19 19,17.59 13.41,12Z"/>
+                <path
+                  d="M19,6.41L17.59,5 12,10.59 6.41,5 5,6.41 10.59,12 5,17.59 6.41,19 12,13.41 17.59,19 19,17.59 13.41,12Z" />
               </svg>
             </button>
           </div>
@@ -156,17 +167,13 @@
     </div>
 
     <!-- Enhanced Drag and Drop Zone -->
-    <div v-if="showDropZone" 
-         class="enhanced-drop-zone" 
-         :class="{ 'drop-zone-active': isDragOver }"
-         @dragover.prevent="handleDragOver"
-         @dragleave="handleDragLeave"
-         @drop.prevent="handleDrop">
-      
+    <div v-if="isDragOver" class="enhanced-drop-zone" :class="{ 'drop-zone-active': isDragOver }"
+      @dragover.prevent="handleDragOver" @dragleave.prevent="handleDragLeave" @drop.prevent="handleDrop">
+
       <div class="drop-zone-content">
         <div class="drop-icon">
           <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
           </svg>
         </div>
         <h3>Drop files here to upload</h3>
@@ -187,42 +194,37 @@
           <h3>{{ previewFile.name }}</h3>
           <button @click="closePreview" class="close-preview">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19,6.41L17.59,5 12,10.59 6.41,5 5,6.41 10.59,12 5,17.59 6.41,19 12,13.41 17.59,19 19,17.59 13.41,12Z"/>
+              <path
+                d="M19,6.41L17.59,5 12,10.59 6.41,5 5,6.41 10.59,12 5,17.59 6.41,19 12,13.41 17.59,19 19,17.59 13.41,12Z" />
             </svg>
           </button>
         </div>
-        
+
         <div class="preview-content">
           <!-- Image Preview -->
-          <img v-if="isImageFile(previewFile) && previewFile.preview" 
-               :src="previewFile.preview" 
-               :alt="previewFile.name"
-               class="preview-image">
-          
+          <img v-if="isImageFile(previewFile) && previewFile.preview" :src="previewFile.preview" :alt="previewFile.name"
+            class="preview-image">
+
           <!-- Video Preview -->
-          <video v-else-if="isVideoFile(previewFile) && previewFile.preview" 
-                 :src="previewFile.preview" 
-                 controls 
-                 class="preview-video">
+          <video v-else-if="isVideoFile(previewFile) && previewFile.preview" :src="previewFile.preview" controls
+            class="preview-video">
           </video>
-          
+
           <!-- Audio Preview -->
-          <audio v-else-if="isAudioFile(previewFile) && previewFile.preview" 
-                 :src="previewFile.preview" 
-                 controls 
-                 class="preview-audio">
+          <audio v-else-if="isAudioFile(previewFile) && previewFile.preview" :src="previewFile.preview" controls
+            class="preview-audio">
           </audio>
-          
+
           <!-- Text/Code Preview -->
           <div v-else-if="isTextFile(previewFile)" class="preview-text">
             <pre><code>{{ previewFile.textContent || 'Loading...' }}</code></pre>
           </div>
-          
+
           <!-- Generic File Info -->
           <div v-else class="preview-info">
             <div class="large-file-icon" :class="getFileTypeClass(previewFile)">
               <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z"/>
+                <path d="M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z" />
               </svg>
             </div>
             <h4>{{ previewFile.name }}</h4>
@@ -236,40 +238,23 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { useFileUploadStore } from '@/stores/fileUploadStore';
 
-const props = defineProps({
-  files: {
-    type: Array,
-    default: () => []
-  },
-  showDropZone: {
-    type: Boolean,
-    default: false
-  },
-  maxFiles: {
-    type: Number,
-    default: 10
-  },
-  maxFileSize: {
-    type: Number,
-    default: 50 * 1024 * 1024 // 50MB
-  }
-});
-
-const emit = defineEmits(['files-updated', 'file-removed', 'files-cleared', 'files-dropped']);
-
-// State
-const viewMode = ref('grid'); // 'grid' or 'list'
+const fileUploadStore = useFileUploadStore();
+const viewMode = ref('grid');
 const isDragOver = ref(false);
 const previewFile = ref(null);
 
 // Computed
-const gridClasses = computed(() => ({
-  'grid-cols-2': props.files.length <= 2,
-  'grid-cols-3': props.files.length > 2 && props.files.length <= 6,
-  'grid-cols-4': props.files.length > 6
-}));
+const gridClasses = computed(() => {
+  const count = fileUploadStore.pendingFiles?.length || 0;
+  return {
+    'grid-cols-2': count <= 2,
+    'grid-cols-3': count > 2 && count <= 6,
+    'grid-cols-4': count > 6
+  };
+});
 
 // File type detection
 const isImageFile = (file) => {
@@ -327,17 +312,9 @@ const toggleViewMode = () => {
   viewMode.value = viewMode.value === 'grid' ? 'list' : 'grid';
 };
 
-const removeFile = (index) => {
-  emit('file-removed', index);
-};
-
-const clearAllFiles = () => {
-  emit('files-cleared');
-};
-
 const previewFileHandler = (file) => {
   previewFile.value = file;
-  
+
   // Load text content for text files if not already loaded
   if (isTextFile(file) && !file.textContent) {
     const reader = new FileReader();
@@ -352,25 +329,10 @@ const closePreview = () => {
   previewFile.value = null;
 };
 
-// Drag and drop handlers
+// Drag and drop handlers are now managed globally via onMounted
 const handleDragOver = (event) => {
   event.preventDefault();
-  isDragOver.value = true;
-};
-
-const handleDragLeave = (event) => {
-  // Only set to false if we're leaving the drop zone entirely
-  if (!event.currentTarget.contains(event.relatedTarget)) {
-    isDragOver.value = false;
-  }
-};
-
-const handleDrop = (event) => {
-  event.preventDefault();
-  isDragOver.value = false;
-  
-  const droppedFiles = Array.from(event.dataTransfer.files);
-  emit('files-dropped', droppedFiles);
+  // This is still needed for the @dragover.prevent on the element itself
 };
 
 // Image loading handlers
@@ -383,12 +345,13 @@ const onImageError = (file) => {
 };
 
 const openImageViewer = (file) => {
-  // This could open a dedicated image viewer component
   previewFileHandler(file);
 };
 
-// Watch for file changes to generate previews
-watch(() => props.files, (newFiles) => {
+// Watcher remains the same
+watch(() => fileUploadStore.pendingFiles, (newFiles) => {
+  if (!newFiles || !Array.isArray(newFiles)) return;
+
   newFiles.forEach(file => {
     if (isImageFile(file) && !file.preview && !file.previewLoading) {
       file.previewLoading = true;
@@ -397,10 +360,46 @@ watch(() => props.files, (newFiles) => {
         file.preview = e.target.result;
         file.previewLoading = false;
       };
+      reader.onerror = () => {
+        file.previewLoading = false;
+        file.previewError = true;
+      };
       reader.readAsDataURL(file);
     }
   });
 }, { deep: true, immediate: true });
+
+onMounted(() => {
+  const dropZoneElement = document.body;
+
+  const handleDragEnter = (event) => {
+    event.preventDefault();
+    isDragOver.value = true;
+  };
+
+  const handleDragLeave = (event) => {
+    if (event.relatedTarget === null || event.relatedTarget === document.documentElement) {
+      isDragOver.value = false;
+    }
+  };
+
+  const handleDrop = (event) => {
+    event.preventDefault();
+    isDragOver.value = false;
+    const droppedFiles = Array.from(event.dataTransfer.files);
+    fileUploadStore.addFiles(droppedFiles);
+  };
+
+  dropZoneElement.addEventListener('dragenter', handleDragEnter);
+  dropZoneElement.addEventListener('dragleave', handleDragLeave);
+  dropZoneElement.addEventListener('drop', handleDrop);
+
+  onUnmounted(() => {
+    dropZoneElement.removeEventListener('dragenter', handleDragEnter);
+    dropZoneElement.removeEventListener('dragleave', handleDragLeave);
+    dropZoneElement.removeEventListener('drop', handleDrop);
+  });
+});
 </script>
 
 <style scoped>
@@ -469,39 +468,36 @@ watch(() => props.files, (newFiles) => {
 .files-grid {
   display: grid;
   gap: 12px;
+  /* Responsive grid layout */
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
 }
 
 .file-item-grid {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 12px;
   position: relative;
+  border-radius: 8px;
+  overflow: hidden;
   transition: all 0.2s;
+  aspect-ratio: 1 / 1;
+  /* Make it a square */
+  background: #f3f4f6;
+  /* Placeholder color */
 }
 
 .file-item-grid:hover {
-  border-color: #d1d5db;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.file-item-grid.file-loading {
-  opacity: 0.7;
-}
-
-.file-item-grid.file-error {
-  border-color: #fca5a5;
-  background: #fef2f2;
+.file-item-grid .file-info,
+.file-item-grid .upload-progress {
+  display: none;
+  /* Hide text info in grid view for a cleaner look */
 }
 
 /* Image Preview */
 .image-preview-container {
   width: 100%;
-  height: 80px;
-  border-radius: 6px;
-  overflow: hidden;
-  margin-bottom: 8px;
-  background: #f9fafb;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -511,128 +507,38 @@ watch(() => props.files, (newFiles) => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* This is key for uniform thumbnails */
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: transform 0.2s ease;
 }
 
 .image-preview:hover {
   transform: scale(1.05);
 }
 
-.image-placeholder {
+/* File Icon for Non-Images */
+.file-icon-container {
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.loading-spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #e5e7eb;
-  border-top: 2px solid #3b82f6;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* File Icon */
-.file-icon-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 80px;
-  margin-bottom: 8px;
 }
 
 .file-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-}
-
-.file-type-image { background: #3b82f6; }
-.file-type-video { background: #8b5cf6; }
-.file-type-audio { background: #06b6d4; }
-.file-type-document { background: #f59e0b; }
-.file-type-text { background: #10b981; }
-.file-type-generic { background: #6b7280; }
-
-/* File Info */
-.file-info {
-  text-align: center;
-}
-
-.file-name {
-  font-size: 12px;
-  font-weight: 500;
-  color: #374151;
-  margin-bottom: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.file-meta {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 10px;
-  color: #9ca3af;
-}
-
-.file-size, .file-type {
-  background: #f3f4f6;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-/* Progress */
-.upload-progress {
-  margin-top: 8px;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 4px;
-  background: #e5e7eb;
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: 4px;
-}
-
-.progress-fill {
-  height: 100%;
-  background: #3b82f6;
-  transition: width 0.3s ease;
-}
-
-.progress-text {
-  font-size: 10px;
-  color: #6b7280;
-  text-align: center;
-  display: block;
+  /* Styles for file type icons in grid view */
 }
 
 /* File Actions */
 .file-actions {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 6px;
+  right: 6px;
   display: flex;
   gap: 4px;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s ease-in-out;
+  z-index: 10;
 }
 
 .file-item-grid:hover .file-actions {
@@ -640,29 +546,32 @@ watch(() => props.files, (newFiles) => {
 }
 
 .action-btn {
-  width: 24px;
-  height: 24px;
-  background: rgba(0, 0, 0, 0.7);
+  width: 28px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 50%;
+  /* Make it circular */
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .action-btn:hover {
-  background: rgba(0, 0, 0, 0.9);
+  background: black;
+  transform: scale(1.1);
 }
 
 .remove-btn {
-  background: rgba(220, 38, 38, 0.8);
+  background: rgba(220, 38, 38, 0.7);
 }
 
 .remove-btn:hover {
-  background: rgba(220, 38, 38, 1);
+  background: #dc2626;
 }
 
 /* List View */
@@ -784,9 +693,21 @@ watch(() => props.files, (newFiles) => {
 }
 
 @keyframes bounce {
-  0%, 20%, 60%, 100% { transform: translateY(0); }
-  40% { transform: translateY(-10px); }
-  80% { transform: translateY(-5px); }
+
+  0%,
+  20%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+
+  40% {
+    transform: translateY(-10px);
+  }
+
+  80% {
+    transform: translateY(-5px);
+  }
 }
 
 .enhanced-drop-zone h3 {
@@ -991,5 +912,52 @@ watch(() => props.files, (newFiles) => {
   .preview-content {
     padding: 16px;
   }
+}
+
+.debug-info {
+  background-color: #fefce8;
+  color: #a16207;
+  padding: 4px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 9px;
+  line-height: 1.2;
+  text-align: left;
+  margin-top: 4px;
+  word-break: break-all;
+}
+
+/* Activity Skeleton for Compressing State */
+.activity-skeleton-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(243, 244, 246, 0.8);
+  /* gray-100 with opacity */
+  backdrop-filter: blur(2px);
+  z-index: 5;
+  color: #4b5563;
+  /* gray-600 */
+}
+
+.skeleton-text {
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Spinner for both skeleton and general loading */
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(107, 114, 128, 0.2);
+  /* gray-500 */
+  border-top-color: #3b82f6;
+  /* blue-500 */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 </style>

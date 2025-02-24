@@ -72,11 +72,14 @@ class RequestIsolationManager {
 
         // Check if error is due to extension interference
         if (this.isExtensionInterference(error)) {
-          console.warn(`[RequestIsolation] Extension interference detected (attempt ${retryCount + 1}/${maxRetries + 1})`);
+          if (import.meta.env.DEV) {
+            console.warn(`[RequestIsolation] Extension interference detected (attempt ${retryCount + 1}/${maxRetries + 1})`);
+          }
 
           // If we have a fallback function and max retries reached
           if (fallbackFn && retryCount === maxRetries) {
-            console.log('[RequestIsolation] Using fallback mechanism');
+            if (import.meta.env.DEV) {
+              console.log('[RequestIsolation] Using fallback mechanism');
             return await fallbackFn();
           }
 
@@ -96,7 +99,6 @@ class RequestIsolationManager {
         // Cleanup abort controller
         this.abortControllers.delete(requestId);
       }
-    }
 
     // All retries exhausted
     throw lastError;
@@ -119,7 +121,8 @@ class RequestIsolationManager {
   async queueRequest(key, requestFn) {
     // If request with same key is already in progress, wait for it
     if (this.requestQueue.has(key)) {
-      console.log(`[RequestIsolation] Request ${key} already in progress, waiting...`);
+      if (import.meta.env.DEV) {
+        console.log(`[RequestIsolation] Request ${key} already in progress, waiting...`);
       return await this.requestQueue.get(key);
     }
 
@@ -134,7 +137,6 @@ class RequestIsolationManager {
       // Remove from queue when done
       this.requestQueue.delete(key);
     }
-  }
 
   /**
    * Abort all active requests
@@ -160,7 +162,6 @@ class RequestIsolationManager {
   getActiveRequestCount() {
     return this.requestQueue.size;
   }
-}
 
 // Export singleton instance
 const requestIsolation = new RequestIsolationManager();

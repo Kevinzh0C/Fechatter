@@ -135,7 +135,8 @@ class ErrorTrackingManager {
    */
   updateError(errorId, updates) {
     if (!this.errorTable[errorId]) {
-      console.warn(`Unknown error ID: ${errorId}`);
+      if (import.meta.env.DEV) {
+        console.warn(`Unknown error ID: ${errorId}`);
       return false;
     }
 
@@ -148,7 +149,8 @@ class ErrorTrackingManager {
     // Log the update
     this.logUpdate(errorId, oldStatus, updates.status || oldStatus, updates);
 
-    console.log(`📊 [ErrorTracker] Updated ${errorId}: ${oldStatus} → ${updates.status || oldStatus}`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 [ErrorTracker] Updated ${errorId}: ${oldStatus} → ${updates.status || oldStatus}`);
     return true;
   }
 
@@ -162,7 +164,6 @@ class ErrorTrackingManager {
       lastOccurrence: null,
       ...fixDetails
     });
-  }
 
   /**
    * Mark error as regressed
@@ -173,7 +174,6 @@ class ErrorTrackingManager {
       lastOccurrence: new Date().toLocaleString('zh-CN'),
       ...details
     });
-  }
 
   /**
    * Log error occurrence
@@ -184,7 +184,6 @@ class ErrorTrackingManager {
       lastOccurrence: new Date().toLocaleString('zh-CN'),
       ...details
     });
-  }
 
   /**
    * Log update for history tracking
@@ -202,7 +201,6 @@ class ErrorTrackingManager {
     if (this.updateLog.length > 50) {
       this.updateLog = this.updateLog.slice(-50);
     }
-  }
 
   /**
    * Generate comprehensive status report
@@ -210,39 +208,58 @@ class ErrorTrackingManager {
   generateReport() {
     const stats = this.getStatistics();
 
-    console.log('📊 Error Tracking Report');
-    console.log('========================');
-    console.log(`📅 Session: ${new Date(this.sessionStartTime).toLocaleString('zh-CN')}`);
-    console.log(`📊 Total Errors: ${stats.total}`);
-    console.log(`✅ Fixed: ${stats.fixed}`);
-    console.log(`🔴 Active: ${stats.active}`);
-    console.log(`🔄 Regressed: ${stats.regressed}`);
-    console.log(`🟡 Partial: ${stats.partial}`);
-    console.log(`📈 Success Rate: ${stats.successRate}%`);
-    console.log('');
+    if (import.meta.env.DEV) {
+      console.log('📊 Error Tracking Report');
+    if (import.meta.env.DEV) {
+      console.log('========================');
+    if (import.meta.env.DEV) {
+      console.log(`📅 Session: ${new Date(this.sessionStartTime).toLocaleString('zh-CN')}`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 Total Errors: ${stats.total}`);
+    if (import.meta.env.DEV) {
+      console.log(`✅ Fixed: ${stats.fixed}`);
+    if (import.meta.env.DEV) {
+      console.log(`🔴 Active: ${stats.active}`);
+    if (import.meta.env.DEV) {
+      console.log(`🔄 Regressed: ${stats.regressed}`);
+    if (import.meta.env.DEV) {
+      console.log(`🟡 Partial: ${stats.partial}`);
+    if (import.meta.env.DEV) {
+      console.log(`📈 Success Rate: ${stats.successRate}%`);
+    if (import.meta.env.DEV) {
+      console.log('');
+    }
 
     // Show active/regressed errors
     const problematicErrors = Object.values(this.errorTable)
       .filter(e => ['ACTIVE', 'REGRESSED'].includes(e.status));
 
     if (problematicErrors.length > 0) {
-      console.log('🚨 Current Issues:');
+      if (import.meta.env.DEV) {
+        console.log('🚨 Current Issues:');
       problematicErrors.forEach(error => {
         const status = error.status === 'ACTIVE' ? '🔴' : '🔄';
-        console.log(`${status} [${error.id}] ${error.description}`);
-        console.log(`   Last seen: ${error.lastOccurrence}`);
-        console.log(`   Symptoms: ${error.symptoms}`);
+        if (import.meta.env.DEV) {
+          console.log(`${status} [${error.id}] ${error.description}`);
+        if (import.meta.env.DEV) {
+          console.log(`   Last seen: ${error.lastOccurrence}`);
+        if (import.meta.env.DEV) {
+          console.log(`   Symptoms: ${error.symptoms}`);
+        }
       });
-      console.log('');
-    }
+      if (import.meta.env.DEV) {
+        console.log('');
+      }
 
     // Show recent updates
     if (this.updateLog.length > 0) {
-      console.log('📝 Recent Updates:');
+      if (import.meta.env.DEV) {
+        console.log('📝 Recent Updates:');
       this.updateLog.slice(-5).forEach(update => {
-        console.log(`   ${update.timestamp.substring(11, 19)} [${update.errorId}] ${update.oldStatus} → ${update.newStatus}`);
+        if (import.meta.env.DEV) {
+          console.log(`   ${update.timestamp.substring(11, 19)} [${update.errorId}] ${update.oldStatus} → ${update.newStatus}`);
+        }
       });
-    }
 
     return {
       statistics: stats,
@@ -261,7 +278,6 @@ class ErrorTrackingManager {
         const priority = { '认证系统': 1, '路由系统': 2, '导航系统': 3 };
         return priority[a.type] - priority[b.type];
       });
-  }
 
   /**
    * Check for error patterns and suggest fixes
@@ -315,16 +331,16 @@ class ErrorTrackingManager {
               // Monitor navigation errors
               this.analyzeErrorPattern(entry.name, 'navigation');
             }
-          }
         });
         observer.observe({ entryTypes: ['navigation'] });
-      }
     } catch (err) {
-      console.warn('Performance observer not available:', err);
-    }
+      if (import.meta.env.DEV) {
+        console.warn('Performance observer not available:', err);
+      }
 
-    console.log('👁️ Console error monitoring activated (non-intrusive, preserves error sources)');
-  }
+    if (import.meta.env.DEV) {
+      console.log('👁️ Console error monitoring activated (non-intrusive, preserves error sources)');
+    }
 
   /**
    * Analyze error patterns without interfering with console output
@@ -332,21 +348,15 @@ class ErrorTrackingManager {
   analyzeErrorPattern(errorText, source) {
     if (errorText.includes('401') && errorText.includes('Unauthorized')) {
       this.logOccurrence('E005', { source: `${source} monitor` });
-    }
 
     if (errorText.includes('require is not defined')) {
       this.logOccurrence('E006', { source: `${source} monitor` });
-    }
 
     if (errorText.includes('redundant navigation')) {
       this.logOccurrence('E007', { source: `${source} monitor` });
-    }
 
     if (errorText.includes('Auth detection failed')) {
       this.logOccurrence('E008', { source: `${source} monitor` });
-    }
-  }
-}
 
 // Create and expose instance
 const errorTracker = new ErrorTrackingManager();
@@ -360,10 +370,14 @@ if (typeof window !== 'undefined') {
   // Auto-start monitoring
   errorTracker.monitorConsoleErrors();
 
-  console.log('📊 Error Tracking Manager loaded');
-  console.log('   - window.getErrorReport() - Get current status');
-  console.log('   - window.getCriticalErrors() - Get critical issues');
-  console.log('   - window.analyzeErrorPatterns() - Pattern analysis');
-}
+  if (import.meta.env.DEV) {
+    console.log('📊 Error Tracking Manager loaded');
+  if (import.meta.env.DEV) {
+    console.log('   - window.getErrorReport() - Get current status');
+  if (import.meta.env.DEV) {
+    console.log('   - window.getCriticalErrors() - Get critical issues');
+  if (import.meta.env.DEV) {
+    console.log('   - window.analyzeErrorPatterns() - Pattern analysis');
+  }
 
 export default errorTracker; 

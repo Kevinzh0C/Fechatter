@@ -1,10 +1,15 @@
+/**
+* User Profile Modal - Production Stub
+* Displays user profile information in a modal
+*/
+
 <template>
   <div class="user-profile-overlay" @click="handleOverlayClick">
     <div class="user-profile-modal" @click.stop>
       <!-- Loading State -->
       <div v-if="loading" class="profile-loading">
         <div class="loading-spinner" />
-        <p>加载用户档案...</p>
+        <p>Loading user profile...</p>
       </div>
 
       <!-- Error State -->
@@ -15,7 +20,7 @@
             clip-rule="evenodd" />
         </svg>
         <p>{{ error }}</p>
-        <button @click="loadUserProfile" class="retry-btn">重试</button>
+        <button @click="loadUserProfile" class="retry-btn">Retry</button>
       </div>
 
       <!-- Profile Content -->
@@ -30,81 +35,15 @@
 
         <!-- Profile Header -->
         <div class="profile-header">
-          <div class="profile-avatar-large">
-            <img v-if="profile.avatar_url" :src="profile.avatar_url" :alt="profile.fullname" class="avatar-image"
-              @error="handleAvatarError" />
-            <span v-else class="avatar-initials">
-              {{ getUserInitials(profile.fullname) }}
-            </span>
-            <div class="profile-status-indicator" :class="getStatusClass(profile.status)"></div>
+          <div class="profile-avatar">
+            <div class="avatar-initials">{{ getUserInitials(profile.fullname) }}</div>
           </div>
-
           <div class="profile-basic-info">
             <h2 class="profile-name">{{ profile.fullname }}</h2>
             <p class="profile-email">{{ profile.email }}</p>
-            <div v-if="profile.title || profile.department" class="profile-job-info">
-              <span v-if="profile.title" class="job-title">{{ profile.title }}</span>
-              <span v-if="profile.title && profile.department" class="job-separator">·</span>
-              <span v-if="profile.department" class="job-department">{{ profile.department }}</span>
-            </div>
             <div class="profile-status">
               <span class="status-dot" :class="getStatusClass(profile.status)"></span>
               <span class="status-text">{{ getStatusText(profile.status) }}</span>
-              <span v-if="profile.last_active_at" class="last-active">
-                · 最后活跃: {{ formatLastActive(profile.last_active_at) }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Profile Details -->
-        <div class="profile-details">
-          <!-- Contact Information -->
-          <div v-if="profile.phone" class="detail-section">
-            <h3 class="detail-title">联系方式</h3>
-            <div class="detail-item">
-              <svg class="detail-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-              <span>{{ profile.phone }}</span>
-            </div>
-          </div>
-
-          <!-- Bio -->
-          <div v-if="profile.bio" class="detail-section">
-            <h3 class="detail-title">个人简介</h3>
-            <p class="bio-text">{{ profile.bio }}</p>
-          </div>
-
-          <!-- Additional Info -->
-          <div v-if="profile.timezone || profile.language" class="detail-section">
-            <h3 class="detail-title">其他信息</h3>
-            <div v-if="profile.timezone" class="detail-item">
-              <svg class="detail-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>时区: {{ getTimezoneDisplay(profile.timezone) }}</span>
-            </div>
-            <div v-if="profile.language" class="detail-item">
-              <svg class="detail-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
-              </svg>
-              <span>语言: {{ getLanguageDisplay(profile.language) }}</span>
-            </div>
-          </div>
-
-          <!-- Member Since -->
-          <div class="detail-section">
-            <h3 class="detail-title">成员信息</h3>
-            <div class="detail-item">
-              <svg class="detail-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0h6M8 7v2a2 2 0 002 2h4a2 2 0 002-2V7m-6 0V7a2 2 0 012-2h4a2 2 0 012 2v0" />
-              </svg>
-              <span>加入时间: {{ formatJoinDate(profile.created_at) }}</span>
             </div>
           </div>
         </div>
@@ -117,30 +56,10 @@
               <path
                 d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4v3c0 .6.4 1 1 1 .2 0 .4-.1.6-.2l4.9-3.2H20c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
             </svg>
-            {{ startingDM ? '创建中...' : '发送消息' }}
-          </button>
-
-          <button v-if="isCurrentUser" @click="editProfile" class="profile-action-btn primary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path
-                d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
-            </svg>
-            编辑档案
-          </button>
-
-          <button v-if="isCurrentUser" @click="changePassword" class="profile-action-btn secondary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path
-                d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM15.1 8H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
-            </svg>
-            修改密码
+            {{ startingDM ? 'Creating...' : 'Send Message' }}
           </button>
         </div>
       </div>
-
-      <!-- Change Password Modal -->
-      <ChangePasswordModal :is-open="showChangePassword" @close="showChangePassword = false"
-        @success="handlePasswordChanged" />
     </div>
   </div>
 </template>
@@ -153,6 +72,9 @@ import { useToast } from '@/composables/useToast';
 import UserService from '@/services/UserService';
 import ChangePasswordModal from '@/components/user/ChangePasswordModal.vue';
 import type { UserProfileResponse } from '@/types/api';
+import { useChatStore } from '@/stores/chat';
+import ChatService from '@/services/ChatService';
+import Avatar from '@/components/common/Avatar.vue';
 
 // Props
 interface Props {
@@ -168,13 +90,14 @@ const props = withDefaults(defineProps<Props>(), {
 // Emits
 const emit = defineEmits<{
   close: [];
-  startDM: [userId: number];
+  dmCreated: [chat: any];
 }>();
 
 // Composables
 const router = useRouter();
 const authStore = useAuthStore();
-const { notifySuccess, notifyError } = useToast();
+const { success: notifySuccess, error: notifyError } = useToast();
+const chatStore = useChatStore();
 
 // 状态
 const loading = ref(false);
@@ -220,19 +143,19 @@ const getStatusClass = (status: string): string => {
 const getStatusText = (status: string): string => {
   switch (status?.toLowerCase()) {
     case 'active':
-      return '活跃';
+      return 'Active';
     case 'online':
-      return '在线';
+      return 'Online';
     case 'away':
-      return '离开';
+      return 'Away';
     case 'busy':
-      return '忙碌';
+      return 'Busy';
     case 'inactive':
-      return '非活跃';
+      return 'Offline';
     case 'offline':
-      return '离线';
+      return 'Offline';
     default:
-      return '未知';
+      return 'Offline';
   }
 };
 
@@ -335,12 +258,24 @@ const handleAvatarError = (event: Event) => {
 const startDirectMessage = async () => {
   if (!profile.value) return;
 
+  startingDM.value = true;
+  console.log(`[UserProfile] Attempting to find or create DM for user ID: ${(profile.value as any).id}`);
+
   try {
-    startingDM.value = true;
-    emit('startDM', profile.value.id);
-    emit('close');
+    const chat = await chatStore.findOrCreateDM((profile.value as any).id);
+
+    if (chat && (chat as any).id) {
+      console.log(`[UserProfile] Successfully got chat ID: ${(chat as any).id}. Navigating...`);
+      notifySuccess("Opening conversation...");
+      emit('dmCreated', chat);
+      emit('close');
+    } else {
+      // This case should ideally not be reached if the action is robust.
+      throw new Error("Could not retrieve a valid chat.");
+    }
   } catch (err: any) {
-    notifyError('创建对话失败', err.message);
+    console.error('[UserProfile] Failed to start DM:', err);
+    notifyError(err.message || 'An unexpected error occurred.');
   } finally {
     startingDM.value = false;
   }
@@ -499,12 +434,11 @@ onMounted(() => {
   padding-top: 16px;
 }
 
-.profile-avatar-large {
+.profile-avatar {
   position: relative;
   flex-shrink: 0;
 }
 
-.avatar-image,
 .avatar-initials {
   width: 80px;
   height: 80px;
@@ -516,21 +450,6 @@ onMounted(() => {
   font-weight: 600;
   color: white;
   background: linear-gradient(45deg, #6366f1, #8b5cf6);
-}
-
-.avatar-image {
-  object-fit: cover;
-  border: 3px solid #f3f4f6;
-}
-
-.profile-status-indicator {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 3px solid white;
 }
 
 .profile-basic-info {
@@ -550,18 +469,6 @@ onMounted(() => {
   font-size: 16px;
   color: #6b7280;
   margin: 0 0 8px 0;
-  word-wrap: break-word;
-}
-
-.profile-job-info {
-  margin-bottom: 8px;
-  font-size: 14px;
-  color: #4b5563;
-}
-
-.job-separator {
-  margin: 0 8px;
-  color: #d1d5db;
 }
 
 .profile-status {
@@ -578,11 +485,6 @@ onMounted(() => {
   margin-right: 8px;
 }
 
-.last-active {
-  color: #9ca3af;
-}
-
-/* Status Colors */
 .status-online {
   background-color: #10b981;
 }
@@ -592,11 +494,16 @@ onMounted(() => {
 }
 
 .status-busy {
-  background-color: #dc2626;
+  background-color: #ef4444;
 }
 
 .status-offline {
   background-color: #6b7280;
+}
+
+.status-text {
+  font-size: 14px;
+  color: #6b7280;
 }
 
 /* Profile Details */

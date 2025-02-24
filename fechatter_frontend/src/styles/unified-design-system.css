@@ -1,0 +1,218 @@
+/* 🎨 Unified Design System - 统一设计系统
+ * 解决多套CSS变量冲突，恢复人体工学美学设计
+ * 基于Discord优秀设计，整合现代设计原则
+ */
+
+:root {
+  /* 🎯 统一色彩系统 - Discord优化版 */
+  --primary: #5865f2;
+  --primary-hover: #4752c4;
+  --primary-active: #3c45a5;
+  --primary-light: rgba(88, 101, 242, 0.1);
+
+  /* 🎯 语义化背景色 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f2f3f5;
+  --bg-tertiary: #e3e5e8;
+  --bg-accent: #f6f6f7;
+  --bg-floating: #ffffff;
+  --bg-message-hover: rgba(4, 4, 5, 0.07);
+  --bg-message-selected: rgba(88, 101, 242, 0.1);
+
+  /* 🎯 精确文字色彩层次 */
+  --text-primary: #060607;
+  --text-secondary: #4e5058;
+  --text-muted: #6b7280;
+  --text-inverse: #ffffff;
+  --text-link: #006ce7;
+  --text-brand: #5865f2;
+
+  /* 🎯 状态色彩 */
+  --success: #248046;
+  --warning: #f0b232;
+  --danger: #da373c;
+  --info: #0969da;
+
+  /* 🎯 边框系统 */
+  --border-primary: #e3e5e8;
+  --border-secondary: #d7d9dc;
+  --border-focus: #5865f2;
+  --border-hover: #a5b4fc;
+
+  /* 🎯 统一字体系统 - Discord标准 */
+  --font-family-primary: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-family-mono: "Consolas", "Andale Mono WT", "Andale Mono", "Lucida Console", monospace;
+
+  /* 🎯 人体工学间距系统 */
+  --space-micro: 2px;
+  /* 微小间距 */
+  --space-tiny: 4px;
+  /* 极小间距 */
+  --space-small: 8px;
+  /* 小间距 */
+  --space-medium: 12px;
+  /* 中等间距 */
+  --space-large: 16px;
+  /* 大间距 */
+  --space-xl: 20px;
+  /* 超大间距 */
+  --space-xxl: 24px;
+  /* 特大间距 */
+
+  /* 🎯 Discord消息布局系统 */
+  --message-padding-vertical: 2px;
+  --message-padding-horizontal: 16px;
+  --message-padding-left: 72px;
+  /* 为头像留出空间 */
+  --message-min-height: 44px;
+  /* 符合触摸标准 */
+  --message-spacing: 8px;
+  /* 消息间呼吸空间 */
+
+  /* 🎯 头像系统 */
+  --avatar-size: 40px;
+  --avatar-offset-left: 16px;
+  --avatar-offset-top: 2px;
+  --avatar-border: 2px solid var(--border-primary);
+
+  /* 🎯 阴影层次 */
+  --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-strong: 0 8px 16px rgba(0, 0, 0, 0.15);
+  --shadow-floating: 0 12px 24px rgba(0, 0, 0, 0.2);
+
+  /* 🎯 圆角系统 */
+  --radius-small: 4px;
+  --radius-medium: 6px;
+  --radius-large: 8px;
+  --radius-xl: 12px;
+  --radius-round: 50%;
+
+  /* 🎯 过渡动画 */
+  --transition-fast: 0.06s ease;
+  --transition-medium: 0.15s ease;
+  --transition-slow: 0.25s ease;
+
+  /* 🎯 Z-index层级 */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  --z-toast: 1080;
+}
+
+/* 🌙 暗色主题 */
+[data-theme="dark"] {
+  --bg-primary: #313338;
+  --bg-secondary: #2b2d31;
+  --bg-tertiary: #1e1f22;
+  --bg-accent: #404249;
+  --bg-floating: #2b2d31;
+  --bg-message-hover: rgba(255, 255, 255, 0.06);
+
+  --text-primary: #f2f3f5;
+  --text-secondary: #b5bac1;
+  --text-muted: #9ca3af;
+  --text-inverse: #313338;
+
+  --border-primary: #3f4147;
+  --border-secondary: #4e5058;
+
+  --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-strong: 0 8px 16px rgba(0, 0, 0, 0.4);
+  --shadow-floating: 0 12px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* 🎯 全局应用字体系统 */
+body,
+#app {
+  font-family: var(--font-family-primary);
+  font-size: 16px;
+  line-height: 1.375;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+}
+
+/* 🎯 消息美学恢复 */
+.discord-message {
+  /* 恢复原始精美间距 */
+  padding: var(--message-padding-vertical) var(--message-padding-horizontal) var(--message-padding-vertical) var(--message-padding-left);
+  min-height: var(--message-min-height);
+  margin-bottom: var(--message-spacing);
+
+  /* 恢复微妙交互 */
+  transition: background-color var(--transition-fast);
+  border-radius: var(--radius-small);
+}
+
+.discord-message:hover {
+  background-color: var(--bg-message-hover);
+}
+
+/* 🎯 头像精确定位恢复 */
+.message-avatar-slot {
+  position: absolute;
+  left: var(--avatar-offset-left);
+  top: var(--avatar-offset-top);
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+}
+
+/* 🎯 视觉呼吸感恢复 */
+.simple-message-list {
+  padding: var(--space-large);
+  background-color: var(--bg-primary);
+}
+
+/* 🎯 时间分隔符美学间距 */
+.time-session-divider {
+  margin: var(--space-xl) 0;
+  padding: var(--space-medium) 0;
+}
+
+/* 🎯 滚动条美学优化 */
+.discord-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.discord-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border-secondary);
+  border-radius: var(--radius-medium);
+}
+
+.discord-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--border-focus);
+}
+
+/* 🎯 无障碍和响应式 */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --message-padding-left: 56px;
+    --avatar-size: 32px;
+    --message-spacing: 6px;
+  }
+}
+
+/* 🎯 焦点管理 */
+*:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-small);
+}
+
+/* 🎯 选择样式 */
+::selection {
+  background: var(--primary-light);
+  color: var(--text-primary);
+}

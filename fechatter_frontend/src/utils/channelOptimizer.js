@@ -60,7 +60,6 @@ class ChannelOptimizer {
       if (cached) {
         this.applyCachedData(cached);
       }
-    }
 
     // 2. Parallel data fetching
     const fetchPromises = [];
@@ -89,7 +88,9 @@ class ChannelOptimizer {
     this.preloadAdjacentChannels(chatId);
 
     const loadTime = performance.now() - startTime;
-    console.log(`⚡ Channel switched in ${loadTime.toFixed(2)}ms`);
+    if (import.meta.env.DEV) {
+      console.log(`⚡ Channel switched in ${loadTime.toFixed(2)}ms`);
+    }
 
     return results;
   }
@@ -142,10 +143,10 @@ class ChannelOptimizer {
 
       return members;
     } catch (error) {
-      console.warn('Failed to fetch members:', error);
+      if (import.meta.env.DEV) {
+        console.warn('Failed to fetch members:', error);
       return [];
     }
-  }
 
   /**
    * Get all cached data for instant display
@@ -173,7 +174,6 @@ class ChannelOptimizer {
     if (cached.members.length > 0) {
       this.chatStore.chatMembers[this.chatStore.currentChatId] = cached.members;
     }
-  }
 
   /**
    * Record channel access patterns
@@ -205,8 +205,6 @@ class ChannelOptimizer {
       if (!this.activePreloads.has(chatId)) {
         this.preloadChannel(chatId);
       }
-    }
-  }
 
   /**
    * Get most accessed channels
@@ -232,8 +230,6 @@ class ChannelOptimizer {
         if (!channels.includes(chatId)) {
           channels.push(chatId);
         }
-      }
-    }
 
     return channels.slice(0, this.config.maxPreloadChannels);
   }
@@ -252,9 +248,13 @@ class ChannelOptimizer {
           this.fetchMembersOptimized(chatId)
         ]);
 
-        console.log(`📦 Preloaded channel ${chatId}`);
+        if (import.meta.env.DEV) {
+          console.log(`📦 Preloaded channel ${chatId}`);
+        }
       } catch (error) {
-        console.warn(`Failed to preload channel ${chatId}:`, error);
+        if (import.meta.env.DEV) {
+          console.warn(`Failed to preload channel ${chatId}:`, error);
+        }
       } finally {
         this.activePreloads.delete(chatId);
       }
@@ -281,7 +281,6 @@ class ChannelOptimizer {
         this.preloadChannel(chatId);
       }
     });
-  }
 
   /**
    * Schedule background refresh for stale data
@@ -313,15 +312,12 @@ class ChannelOptimizer {
       if (now - data.timestamp > timeout) {
         this.messageCache.delete(chatId);
       }
-    }
 
     // Clean member cache
     for (const [chatId, data] of this.memberCache.entries()) {
       if (now - data.timestamp > timeout) {
         this.memberCache.delete(chatId);
       }
-    }
-  }
 
   /**
    * Get optimizer statistics
@@ -346,7 +342,6 @@ class ChannelOptimizer {
     this.activePreloads.clear();
     this.preloadQueue.clear();
   }
-}
 
 // Create singleton instance
 const channelOptimizer = new ChannelOptimizer();

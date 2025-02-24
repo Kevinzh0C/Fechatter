@@ -1,274 +1,387 @@
 /**
- * Reading Position Manager
- * 管理用户在每个频道的阅读位置和访问历史
+ * 📖 Reading Position Manager - Smart scroll position memory
+ * 
+ * Features:
+ * - First visit: Scroll to bottom (latest messages)
+ * - Return visits: Restore to saved position
+ * - Cross-session persistence with localStorage
+ * - Automatic cleanup of old positions
  */
 
-export class ReadingPositionManager {
+class ReadingPositionManager {
   constructor() {
-    this.STORAGE_KEY = 'fechatter_reading_positions';
-    this.VISIT_HISTORY_KEY = 'fechatter_channel_visits';
-    this.SESSION_KEY = 'fechatter_session_channels';
-    
-    // 当前会话访问的频道（内存中）
-    this.sessionChannels = new Set();
-    
-    // 从 sessionStorage 恢复会话数据
-    this.restoreSessionData();
+    this.positions = new Map(); // chatId -> position data
+    this.visitHistory = new Map(); // chatId -> visit count
+    this.storageKey = 'fechatter_reading_positions';
+    this.maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+    this.maxPositions = 50; // Maximum positions to store
+
+    this.loadFromStorage();
   }
 
   /**
-   * 恢复会话数据
+   * Check if this is the first visit to a chat
    */
-  restoreSessionData() {
-    try {
-      const sessionData = sessionStorage.getItem(this.SESSION_KEY);
-      if (sessionData) {
-        const channels = JSON.parse(sessionData);
-        this.sessionChannels = new Set(channels);
-      }
-    } catch (error) {
-      console.warn('Failed to restore session data:', error);
+  isFirstVisit(chatId) {
+    const visits = this.visitHistory.get(parseInt(chatId)) || 0;
+    return visits === 0;
+  }
+
+  /**
+   * Record a visit to a chat
+   */
+  recordVisit(chatId) {
+    const normalizedChatId = parseInt(chatId);
+    const currentVisits = this.visitHistory.get(normalizedChatId) || 0;
+    this.visitHistory.set(normalizedChatId, currentVisits + 1);
+
+    if (import.meta.env.DEV) {
+      console.log(`📖 [ReadingPosition] Recorded visit to chat ${chatId}, total visits: ${currentVisits + 1}`);
     }
   }
 
   /**
-   * 保存会话数据
+   * Save current reading position
    */
-  saveSessionData() {
-    try {
-      sessionStorage.setItem(this.SESSION_KEY, JSON.stringify([...this.sessionChannels]));
-    } catch (error) {
-      console.warn('Failed to save session data:', error);
+  savePosition(chatId, scrollTop, messageId = null) {
+    const normalizedChatId = parseInt(chatId);
+    const position = {
+      scrollTop,
+      messageId,
+      timestamp: Date.now(),
+      chatId: normalizedChatId
+    };
+
+    this.positions.set(normalizedChatId, position);
+    this.saveToStorage();
+
+    if (import.meta.env.DEV) {
+      console.log(`📖 [ReadingPosition] Saved position for chat ${chatId}:`, {
+        scrollTop,
+        messageId,
+        timestamp: new Date(position.timestamp).toLocaleTimeString()
+      });
     }
   }
 
   /**
-   * 检查频道是否在当前会话中已访问过
-   * @param {number|string} channelId - 频道ID
-   * @returns {boolean} 是否已访问过
+   * Get saved reading position
    */
-  isChannelVisitedInSession(channelId) {
-    return this.sessionChannels.has(String(channelId));
-  }
+  getPosition(chatId) {
+    const normalizedChatId = parseInt(chatId);
+    const position = this.positions.get(normalizedChatId);
 
-  /**
-   * 标记频道为已访问
-   * @param {number|string} channelId - 频道ID
-   */
-  markChannelAsVisited(channelId) {
-    this.sessionChannels.add(String(channelId));
-    this.saveSessionData();
-    
-    // 同时更新持久化的访问历史
-    this.updateVisitHistory(channelId);
-  }
-
-  /**
-   * 更新访问历史（localStorage，跨会话持久化）
-   * @param {number|string} channelId - 频道ID
-   */
-  updateVisitHistory(channelId) {
-    try {
-      let history = this.getVisitHistory();
-      history[String(channelId)] = {
-        lastVisit: Date.now(),
-        visitCount: (history[String(channelId)]?.visitCount || 0) + 1
-      };
-      
-      localStorage.setItem(this.VISIT_HISTORY_KEY, JSON.stringify(history));
-    } catch (error) {
-      console.warn('Failed to update visit history:', error);
-    }
-  }
-
-  /**
-   * 获取访问历史
-   * @returns {Object} 访问历史对象
-   */
-  getVisitHistory() {
-    try {
-      const history = localStorage.getItem(this.VISIT_HISTORY_KEY);
-      return history ? JSON.parse(history) : {};
-    } catch (error) {
-      console.warn('Failed to get visit history:', error);
-      return {};
-    }
-  }
-
-  /**
-   * 保存阅读位置
-   * @param {number|string} channelId - 频道ID
-   * @param {Object} position - 位置信息
-   */
-  saveReadingPosition(channelId, position) {
-    try {
-      let positions = this.getReadingPositions();
-      positions[String(channelId)] = {
-        ...position,
-        timestamp: Date.now()
-      };
-      
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(positions));
-      console.log(`📖 [ReadingPosition] Saved position for channel ${channelId}:`, position);
-    } catch (error) {
-      console.warn('Failed to save reading position:', error);
-    }
-  }
-
-  /**
-   * 获取阅读位置
-   * @param {number|string} channelId - 频道ID
-   * @returns {Object|null} 阅读位置或null
-   */
-  getReadingPosition(channelId) {
-    try {
-      const positions = this.getReadingPositions();
-      const position = positions[String(channelId)];
-      
-      // 如果位置超过7天，认为过期
-      if (position && (Date.now() - position.timestamp) > 7 * 24 * 60 * 60 * 1000) {
-        this.clearReadingPosition(channelId);
-        return null;
-      }
-      
-      return position || null;
-    } catch (error) {
-      console.warn('Failed to get reading position:', error);
+    if (!position) {
       return null;
     }
+
+    // Check if position is too old
+    const age = Date.now() - position.timestamp;
+    if (age > this.maxAge) {
+      this.positions.delete(normalizedChatId);
+      this.saveToStorage();
+      return null;
+    }
+
+    return position;
   }
 
   /**
-   * 获取所有阅读位置
-   * @returns {Object} 所有阅读位置
+   * Determine scroll strategy for a chat
    */
-  getReadingPositions() {
-    try {
-      const positions = localStorage.getItem(this.STORAGE_KEY);
-      return positions ? JSON.parse(positions) : {};
-    } catch (error) {
-      console.warn('Failed to get reading positions:', error);
-      return {};
+  getScrollStrategy(chatId) {
+    const normalizedChatId = parseInt(chatId);
+    const isFirst = this.isFirstVisit(normalizedChatId);
+    const savedPosition = this.getPosition(normalizedChatId);
+
+    if (isFirst) {
+      return {
+        strategy: 'scroll-to-bottom',
+        reason: 'first-visit',
+        position: null
+      };
+    }
+
+    if (savedPosition) {
+      return {
+        strategy: 'restore-position',
+        reason: 'has-saved-position',
+        position: savedPosition
+      };
+    }
+
+    return {
+      strategy: 'scroll-to-bottom',
+      reason: 'no-saved-position',
+      position: null
+    };
+  }
+
+  /**
+   * Apply scroll strategy to a container
+   */
+  async applyScrollStrategy(chatId, container, messages = []) {
+    const strategy = this.getScrollStrategy(chatId);
+
+    if (import.meta.env.DEV) {
+      console.log(`📖 [ReadingPosition] Applying strategy for chat ${chatId}:`, strategy);
+    }
+
+    switch (strategy.strategy) {
+      case 'scroll-to-bottom':
+        this.scrollToBottom(container);
+        this.recordVisit(chatId);
+        break;
+
+      case 'restore-position':
+        await this.restorePosition(container, strategy.position, messages);
+        break;
     }
   }
 
   /**
-   * 清除频道的阅读位置
-   * @param {number|string} channelId - 频道ID
+   * Scroll to bottom of container
    */
-  clearReadingPosition(channelId) {
-    try {
-      let positions = this.getReadingPositions();
-      delete positions[String(channelId)];
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(positions));
-    } catch (error) {
-      console.warn('Failed to clear reading position:', error);
+  scrollToBottom(container) {
+    if (!container) return;
+
+    // Use requestAnimationFrame for smooth execution
+    requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight - container.clientHeight;
+
+      if (import.meta.env.DEV) {
+        console.log('📖 [ReadingPosition] Scrolled to bottom');
+      }
+    });
+  }
+
+  /**
+   * Restore saved scroll position
+   */
+  async restorePosition(container, position, messages = []) {
+    if (!container || !position) return;
+
+    // Try to find the target message element
+    if (position.messageId && messages.length > 0) {
+      await this.scrollToMessage(container, position.messageId);
+    } else {
+      // Fallback to scroll position
+      requestAnimationFrame(() => {
+        container.scrollTop = position.scrollTop;
+
+        if (import.meta.env.DEV) {
+          console.log(`📖 [ReadingPosition] Restored scroll position: ${position.scrollTop}px`);
+        }
+      });
     }
   }
 
   /**
-   * 确定频道的加载策略
-   * @param {number|string} channelId - 频道ID
-   * @returns {Object} 加载策略
+   * Scroll to a specific message
    */
-  getLoadingStrategy(channelId) {
-    const isVisitedInSession = this.isChannelVisitedInSession(channelId);
-    const savedPosition = this.getReadingPosition(channelId);
-    const visitHistory = this.getVisitHistory()[String(channelId)];
+  async scrollToMessage(container, messageId) {
+    // Wait for DOM to be ready
+    await new Promise(resolve => requestAnimationFrame(resolve));
 
-    console.log(`📖 [ReadingPosition] Strategy for channel ${channelId}:`, {
-      visitedInSession: isVisitedInSession,
-      hasSavedPosition: !!savedPosition,
-      hasVisitHistory: !!visitHistory
+    const messageElement = container.querySelector(`[data-message-id="${messageId}"]`);
+
+    if (messageElement) {
+      messageElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+
+      if (import.meta.env.DEV) {
+        console.log(`📖 [ReadingPosition] Scrolled to message ${messageId}`);
+      }
+    } else {
+      if (import.meta.env.DEV) {
+        console.warn(`📖 [ReadingPosition] Message ${messageId} not found in DOM`);
+      }
+    }
+  }
+
+  /**
+   * Get the currently visible message ID
+   */
+  getCurrentVisibleMessage(container) {
+    if (!container) return null;
+
+    const messageElements = container.querySelectorAll('[data-message-id]');
+    const containerRect = container.getBoundingClientRect();
+    const centerY = containerRect.top + containerRect.height / 2;
+
+    let closestElement = null;
+    let closestDistance = Infinity;
+
+    messageElements.forEach(element => {
+      const elementRect = element.getBoundingClientRect();
+      const elementCenterY = elementRect.top + elementRect.height / 2;
+      const distance = Math.abs(centerY - elementCenterY);
+
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestElement = element;
+      }
     });
 
-    if (!isVisitedInSession) {
-      // 首次访问：加载最新消息
-      return {
-        type: 'latest',
-        scrollToBottom: true,
-        reason: 'first_visit_in_session'
-      };
-    } else if (savedPosition) {
-      // 有保存的阅读位置：恢复到该位置
-      return {
-        type: 'resume',
-        scrollToMessage: savedPosition.messageId,
-        scrollOffset: savedPosition.scrollOffset,
-        reason: 'resume_last_position'
-      };
-    } else {
-      // 访问过但没有保存位置：加载最新消息
-      return {
-        type: 'latest',
-        scrollToBottom: true,
-        reason: 'no_saved_position'
-      };
+    return closestElement ? closestElement.getAttribute('data-message-id') : null;
+  }
+
+  /**
+   * Auto-save current position
+   */
+  autoSavePosition(chatId, container) {
+    if (!container) return;
+
+    const scrollTop = container.scrollTop;
+    const visibleMessageId = this.getCurrentVisibleMessage(container);
+
+    this.savePosition(chatId, scrollTop, visibleMessageId);
+  }
+
+  /**
+   * Load positions from localStorage
+   */
+  loadFromStorage() {
+    try {
+      const stored = localStorage.getItem(this.storageKey);
+      if (stored) {
+        const data = JSON.parse(stored);
+
+        // Restore positions
+        if (data.positions) {
+          Object.entries(data.positions).forEach(([chatId, position]) => {
+            this.positions.set(parseInt(chatId), position);
+          });
+        }
+
+        // Restore visit history
+        if (data.visitHistory) {
+          Object.entries(data.visitHistory).forEach(([chatId, visits]) => {
+            this.visitHistory.set(parseInt(chatId), visits);
+          });
+        }
+
+        if (import.meta.env.DEV) {
+          console.log(`📖 [ReadingPosition] Loaded ${this.positions.size} positions from storage`);
+        }
+      }
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('📖 [ReadingPosition] Failed to load from storage:', error);
+      }
     }
   }
 
   /**
-   * 清理过期数据
+   * Save positions to localStorage
+   */
+  saveToStorage() {
+    try {
+      // Clean up old positions
+      this.cleanup();
+
+      const data = {
+        positions: Object.fromEntries(this.positions),
+        visitHistory: Object.fromEntries(this.visitHistory),
+        version: 1,
+        timestamp: Date.now()
+      };
+
+      localStorage.setItem(this.storageKey, JSON.stringify(data));
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('📖 [ReadingPosition] Failed to save to storage:', error);
+      }
+    }
+  }
+
+  /**
+   * Clean up old positions
    */
   cleanup() {
-    try {
-      // 清理过期的阅读位置（超过7天）
-      const positions = this.getReadingPositions();
-      const now = Date.now();
-      const sevenDays = 7 * 24 * 60 * 60 * 1000;
-      
-      Object.keys(positions).forEach(channelId => {
-        if (now - positions[channelId].timestamp > sevenDays) {
-          delete positions[channelId];
-        }
+    const now = Date.now();
+    const toDelete = [];
+
+    // Remove old positions
+    this.positions.forEach((position, chatId) => {
+      if (now - position.timestamp > this.maxAge) {
+        toDelete.push(chatId);
+      }
+    });
+
+    toDelete.forEach(chatId => {
+      this.positions.delete(chatId);
+      this.visitHistory.delete(chatId);
+    });
+
+    // Limit total positions
+    if (this.positions.size > this.maxPositions) {
+      const sorted = Array.from(this.positions.entries())
+        .sort((a, b) => b[1].timestamp - a[1].timestamp) // Sort by timestamp, newest first
+        .slice(this.maxPositions); // Keep only the newest
+
+      this.positions.clear();
+      sorted.forEach(([chatId, position]) => {
+        this.positions.set(chatId, position);
       });
-      
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(positions));
-      
-      // 清理过期的访问历史（超过30天）
-      const history = this.getVisitHistory();
-      const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-      
-      Object.keys(history).forEach(channelId => {
-        if (now - history[channelId].lastVisit > thirtyDays) {
-          delete history[channelId];
-        }
-      });
-      
-      localStorage.setItem(this.VISIT_HISTORY_KEY, JSON.stringify(history));
-      
-      console.log('📖 [ReadingPosition] Cleanup completed');
-    } catch (error) {
-      console.warn('Failed to cleanup reading positions:', error);
+    }
+
+    if (import.meta.env.DEV && toDelete.length > 0) {
+      console.log(`📖 [ReadingPosition] Cleaned up ${toDelete.length} old positions`);
     }
   }
 
   /**
-   * 获取调试信息
-   * @returns {Object} 调试信息
+   * Clear all saved positions
+   */
+  clearAll() {
+    this.positions.clear();
+    this.visitHistory.clear();
+    localStorage.removeItem(this.storageKey);
+
+    if (import.meta.env.DEV) {
+      console.log('📖 [ReadingPosition] Cleared all saved positions');
+    }
+  }
+
+  /**
+   * Get debug information
    */
   getDebugInfo() {
     return {
-      sessionChannels: [...this.sessionChannels],
-      readingPositions: this.getReadingPositions(),
-      visitHistory: this.getVisitHistory()
+      totalPositions: this.positions.size,
+      totalVisits: this.visitHistory.size,
+      positions: Array.from(this.positions.entries()).map(([chatId, pos]) => ({
+        chatId,
+        scrollTop: pos.scrollTop,
+        messageId: pos.messageId,
+        age: Math.round((Date.now() - pos.timestamp) / 1000 / 60), // minutes
+        timestamp: new Date(pos.timestamp).toLocaleString()
+      })),
+      visitHistory: Object.fromEntries(this.visitHistory)
     };
   }
 }
 
-// 创建单例实例
-export const readingPositionManager = new ReadingPositionManager();
+// Create global instance
+const readingPositionManager = new ReadingPositionManager();
 
-// 在页面卸载时清理
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
-    readingPositionManager.saveSessionData();
-  });
-  
-  // 开发模式下暴露到全局
-  if (import.meta.env.DEV) {
-    window.readingPositionManager = readingPositionManager;
-  }
+// Export for module usage
+export { readingPositionManager };
+
+// Make available globally in development
+if (import.meta.env.DEV) {
+  window.readingPositionManager = readingPositionManager;
+
+  // Add debug commands
+  window.debugReadingPositions = () => {
+    console.log('📖 [ReadingPosition] Debug Info:', readingPositionManager.getDebugInfo());
+  };
+
+  window.clearReadingPositions = () => {
+    readingPositionManager.clearAll();
+    console.log('📖 [ReadingPosition] All positions cleared');
+  };
 }
-
-export default readingPositionManager;

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search Functionality Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .success {
+      border-color: #28a745;
+      background: #f8fff9;
+    }
+
+    .error {
+      border-color: #dc3545;
+      background: #fff8f8;
+    }
+
+    .warning {
+      border-color: #ffc107;
+      background: #fffbf0;
+    }
+
+    .info {
+      border-color: #17a2b8;
+      background: #f0f9ff;
+    }
+
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    input[type="text"] {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      width: 200px;
+    }
+
+    .results {
+      margin-top: 10px;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .message-item {
+      padding: 8px;
+      margin: 4px 0;
+      background: white;
+      border-radius: 4px;
+      border-left: 3px solid #007bff;
+    }
+
+    .log {
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔍 Search Functionality Test</h1>
+    <p>This page tests the search functionality to ensure it works properly.</p>
+
+    <div class="test-section info">
+      <h3>📊 System Status</h3>
+      <div id="system-status">Loading...</div>
+      <button onclick="checkSystemStatus()">🔄 Refresh Status</button>
+    </div>
+
+    <div class="test-section">
+      <h3>📝 Generate Test Messages</h3>
+      <p>First, let's add some test messages to search through:</p>
+      <button onclick="generateTestMessages()">➕ Generate Test Messages</button>
+      <button onclick="addSpecificMessages()">📨 Add Messages with "hi"</button>
+      <button onclick="clearMessages()">🗑️ Clear Messages</button>
+      <div id="message-status"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>🔍 Test Search</h3>
+      <input type="text" id="searchQuery" placeholder="Enter search term..." value="hi">
+      <input type="number" id="chatId" placeholder="Chat ID" value="3" min="1">
+      <br><br>
+      <button onclick="testBackendSearch()">🌐 Test Backend Search</button>
+      <button onclick="testFallbackSearch()">💾 Test Fallback Search</button>
+      <button onclick="testBothSearches()">🔬 Test Both</button>
+      <div id="search-results" class="results"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>📋 Debug Information</h3>
+      <button onclick="showDebugInfo()">🔍 Show Debug Info</button>
+      <button onclick="clearLog()">🗑️ Clear Log</button>
+      <div id="debug-log" class="log"></div>
+    </div>
+  </div>
+
+  <script>
+    const log = (message, type = 'info') => {
+      const debugLog = document.getElementById('debug-log');
+      const timestamp = new Date().toLocaleTimeString();
+      const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+      debugLog.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+      debugLog.scrollTop = debugLog.scrollHeight;
+      console.log(`[${timestamp}] ${message}`);
+    };
+
+    const clearLog = () => {
+      document.getElementById('debug-log').innerHTML = '';
+    };
+
+    // Test messages
+    let testMessages = [];
+
+    const generateTestMessages = () => {
+      testMessages = [];
+      for (let i = 1; i <= 10; i++) {
+        testMessages.push({
+          id: i,
+          content: `Test message ${i}: This is a sample message for testing search functionality.`,
+          sender_id: Math.floor(Math.random() * 3) + 1,
+          sender_name: `User${Math.floor(Math.random() * 3) + 1}`,
+          chat_id: 3,
+          created_at: new Date(Date.now() - Math.random() * 86400000).toISOString()
+        });
+      }
+
+      // Add to UnifiedMessageService if available
+      if (window.unifiedMessageService) {
+        window.unifiedMessageService.messagesByChat.set(3, testMessages);
+        window.unifiedMessageService.messageCache[3] = {
+          messages: testMessages,
+          timestamp: Date.now()
+        };
+        log('✅ Added test messages to UnifiedMessageService', 'success');
+      }
+
+      // Add to global cache
+      if (!window.messageCache) window.messageCache = {};
+      window.messageCache[3] = { messages: testMessages };
+
+      updateMessageStatus();
+      log(`✅ Generated ${testMessages.length} test messages`, 'success');
+    };
+
+    const addSpecificMessages = () => {
+      const hiMessages = [
+        { id: 101, content: 'Hi there! How are you today?', sender_name: 'Alice', chat_id: 3, created_at: new Date().toISOString() },
+        { id: 102, content: 'Hello everyone, hi from the team!', sender_name: 'Bob', chat_id: 3, created_at: new Date().toISOString() },
+        { id: 103, content: 'Hi, I need help with this issue.', sender_name: 'Charlie', chat_id: 3, created_at: new Date().toISOString() }
+      ];
+
+      testMessages.push(...hiMessages);
+
+      if (window.unifiedMessageService) {
+        const existing = window.unifiedMessageService.messagesByChat.get(3) || [];
+        const combined = [...existing, ...hiMessages];
+        window.unifiedMessageService.messagesByChat.set(3, combined);
+        window.unifiedMessageService.messageCache[3] = {
+          messages: combined,
+          timestamp: Date.now()
+        };
+        log('✅ Added "hi" messages to UnifiedMessageService', 'success');
+      }
+
+      if (!window.messageCache) window.messageCache = {};
+      window.messageCache[3] = { messages: testMessages };
+
+      updateMessageStatus();
+      log(`✅ Added ${hiMessages.length} messages containing "hi"`, 'success');
+    };
+
+    const clearMessages = () => {
+      testMessages = [];
+
+      if (window.unifiedMessageService) {
+        window.unifiedMessageService.messagesByChat.set(3, []);
+        delete window.unifiedMessageService.messageCache[3];
+        log('🗑️ Cleared UnifiedMessageService messages', 'info');
+      }
+
+      if (window.messageCache) {
+        delete window.messageCache[3];
+        log('🗑️ Cleared global message cache', 'info');
+      }
+
+      updateMessageStatus();
+      log('🗑️ All messages cleared', 'info');
+    };
+
+    const updateMessageStatus = () => {
+      let totalMessages = 0;
+      let sources = [];
+
+      if (window.unifiedMessageService) {
+        const msgs = window.unifiedMessageService.getMessagesForChat(3) || [];
+        if (msgs.length > 0) {
+          totalMessages = Math.max(totalMessages, msgs.length);
+          sources.push(`UnifiedMessageService: ${msgs.length}`);
+        }
+      }
+
+      if (window.messageCache && window.messageCache[3]) {
+        const msgs = window.messageCache[3].messages || window.messageCache[3] || [];
+        if (msgs.length > 0) {
+          totalMessages = Math.max(totalMessages, msgs.length);
+          sources.push(`GlobalCache: ${msgs.length}`);
+        }
+      }
+
+      const statusDiv = document.getElementById('message-status');
+      if (totalMessages > 0) {
+        statusDiv.innerHTML = `<div class="success">✅ ${totalMessages} messages available<br>Sources: ${sources.join(', ')}</div>`;
+      } else {
+        statusDiv.innerHTML = '<div class="warning">⚠️ No messages available for testing</div>';
+      }
+    };
+
+    const checkSystemStatus = () => {
+      const statusDiv = document.getElementById('system-status');
+      let status = '';
+
+      // Check UnifiedMessageService
+      if (window.unifiedMessageService) {
+        status += '✅ UnifiedMessageService available<br>';
+        status += `📊 Initialized: ${window.unifiedMessageService.isInitialized?.value || 'Unknown'}<br>`;
+        status += `💾 Cache size: ${window.unifiedMessageService.messagesByChat?.size || 0} chats<br>`;
+      } else {
+        status += '❌ UnifiedMessageService not available<br>';
+      }
+
+      // Check search service
+      if (window.searchService) {
+        status += '✅ Search service available<br>';
+      } else {
+        status += '⚠️ Search service not detected<br>';
+      }
+
+      // Check global cache
+      if (window.messageCache) {
+        status += `✅ Global message cache available (${Object.keys(window.messageCache).length} entries)<br>`;
+      } else {
+        status += '⚠️ Global message cache not available<br>';
+      }
+
+      statusDiv.innerHTML = status;
+      updateMessageStatus();
+    };
+
+    const testBackendSearch = async () => {
+      const query = document.getElementById('searchQuery').value;
+      const chatId = document.getElementById('chatId').value;
+      const resultsDiv = document.getElementById('search-results');
+
+      if (!query.trim()) {
+        resultsDiv.innerHTML = '<div class="error">❌ Please enter a search query</div>';
+        return;
+      }
+
+      log(`🌐 Testing backend search for "${query}" in chat ${chatId}...`);
+      resultsDiv.innerHTML = '<div class="info">🔄 Searching backend...</div>';
+
+      try {
+        // Try to import and use the search service
+        const searchModule = await import('./src/services/searchService.js');
+        const searchService = searchModule.default;
+
+        const results = await searchService.intelligentSearch({
+          query: query,
+          chatId: parseInt(chatId),
+          limit: 10,
+          offset: 0
+        });
+
+        displayResults(results, 'Backend');
+        log(`✅ Backend search completed: ${results.hits?.length || 0} results`, 'success');
+
+      } catch (error) {
+        log(`❌ Backend search failed: ${error.message}`, 'error');
+        resultsDiv.innerHTML = `<div class="error">❌ Backend search failed: ${error.message}</div>`;
+      }
+    };
+
+    const testFallbackSearch = async () => {
+      const query = document.getElementById('searchQuery').value;
+      const chatId = document.getElementById('chatId').value;
+      const resultsDiv = document.getElementById('search-results');
+
+      if (!query.trim()) {
+        resultsDiv.innerHTML = '<div class="error">❌ Please enter a search query</div>';
+        return;
+      }
+
+      log(`💾 Testing fallback search for "${query}" in chat ${chatId}...`);
+      resultsDiv.innerHTML = '<div class="info">🔄 Searching locally...</div>';
+
+      try {
+        // Try to import and use the search service
+        const searchModule = await import('./src/services/searchService.js');
+        const searchService = searchModule.default;
+
+        const results = await searchService.fallbackSearch(query, parseInt(chatId), 10, 0);
+
+        displayResults(results, 'Fallback');
+        log(`✅ Fallback search completed: ${results.hits?.length || 0} results`, 'success');
+
+      } catch (error) {
+        log(`❌ Fallback search failed: ${error.message}`, 'error');
+        resultsDiv.innerHTML = `<div class="error">❌ Fallback search failed: ${error.message}</div>`;
+      }
+    };
+
+    const testBothSearches = async () => {
+      log('🔬 Testing both backend and fallback searches...');
+      await testBackendSearch();
+      setTimeout(testFallbackSearch, 1000);
+    };
+
+    const displayResults = (results, source) => {
+      const resultsDiv = document.getElementById('search-results');
+
+      if (!results || !results.hits || results.hits.length === 0) {
+        resultsDiv.innerHTML = `<div class="warning">⚠️ ${source} search: No results found</div>`;
+        if (results.message) {
+          resultsDiv.innerHTML += `<div class="info">💡 ${results.message}</div>`;
+        }
+        return;
+      }
+
+      let html = `<div class="success">✅ ${source} search: Found ${results.hits.length} results</div>`;
+
+      if (results.fallback) {
+        html += '<div class="info">💾 Used local fallback search</div>';
+      }
+
+      if (results.message) {
+        html += `<div class="info">💡 ${results.message}</div>`;
+      }
+
+      results.hits.forEach(hit => {
+        html += `<div class="message-item">
+                    <strong>${hit.sender_name || 'Unknown'}</strong>
+                    <div>${hit.content_highlighted || hit.content}</div>
+                    <small>Score: ${hit.relevance_score || 'N/A'} | ${new Date(hit.created_at).toLocaleString()}</small>
+                </div>`;
+      });
+
+      resultsDiv.innerHTML = html;
+    };
+
+    const showDebugInfo = () => {
+      log('🔍 === DEBUG INFORMATION ===');
+
+      // UnifiedMessageService info
+      if (window.unifiedMessageService) {
+        const messageCount = Array.from(window.unifiedMessageService.messagesByChat.values())
+          .reduce((sum, msgs) => sum + msgs.length, 0);
+        log(`📊 UnifiedMessageService: ${messageCount} total messages across ${window.unifiedMessageService.messagesByChat.size} chats`);
+
+        const chat3Messages = window.unifiedMessageService.getMessagesForChat(3) || [];
+        log(`📋 Chat 3 messages: ${chat3Messages.length}`);
+
+        if (chat3Messages.length > 0) {
+          const sampleMsg = chat3Messages[0];
+          log(`📝 Sample message structure: ${JSON.stringify({
+            id: sampleMsg.id,
+            hasContent: !!sampleMsg.content,
+            contentLength: sampleMsg.content?.length || 0,
+            sender: sampleMsg.sender_name,
+            chat_id: sampleMsg.chat_id
+          })}`);
+        }
+      }
+
+      // Global cache info
+      if (window.messageCache) {
+        const cacheKeys = Object.keys(window.messageCache);
+        log(`💾 Global cache: ${cacheKeys.length} entries for chats: ${cacheKeys.join(', ')}`);
+      }
+
+      log('🔍 === END DEBUG INFO ===');
+    };
+
+    // Initialize
+    checkSystemStatus();
+    log('🚀 Search test page loaded');
+  </script>
+</body>
+
+</html>

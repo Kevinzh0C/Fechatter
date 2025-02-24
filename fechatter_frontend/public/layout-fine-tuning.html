@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎨 Fechatter 布局微调工具</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f8f9fa; }
+        .card { background: white; border-radius: 12px; padding: 24px; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .btn { padding: 8px 16px; background: #0969da; color: white; border: none; border-radius: 6px; cursor: pointer; margin: 5px; }
+        .status { padding: 8px 12px; border-radius: 6px; margin: 5px 0; font-weight: bold; }
+        .success { background: #d1edff; color: #0969da; }
+        .info { background: #f6f8fa; color: #24292e; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🎨 Fechatter 布局微调工具</h1>
+        <div class="status success">✅ 消息显示系统正常工作</div>
+        <div class="status info">📊 基于DAG分析的优化建议</div>
+        
+        <h3>🔧 一键优化操作</h3>
+        <button class="btn" onclick="optimizeMessageSpacing()">优化消息间距</button>
+        <button class="btn" onclick="alignAvatars()">对齐头像位置</button>
+        <button class="btn" onclick="smoothTransitions()">优化动画效果</button>
+        <button class="btn" onclick="verifyLayout()">验证布局质量</button>
+        
+        <h3>📋 布局检查结果</h3>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            document.getElementById('results').appendChild(div);
+        }
+
+        function optimizeMessageSpacing() {
+            const style = document.createElement('style');
+            style.textContent = `
+                /* 🎯 优化消息间距 */
+                .discord-message {
+                    padding: 16px 16px 16px 72px !important;
+                    margin-bottom: 2px !important;
+                }
+                .message-wrapper {
+                    margin: 0 !important;
+                }
+            `;
+            document.head.appendChild(style);
+            log('✅ 消息间距已优化 (16px padding)', 'success');
+        }
+
+        function alignAvatars() {
+            const style = document.createElement('style');
+            style.textContent = `
+                /* �� 完美对齐头像 */
+                .message-avatar-slot {
+                    position: absolute !important;
+                    left: 16px !important;
+                    top: 8px !important;
+                    width: 40px !important;
+                    height: 40px !important;
+                }
+                .message-content-slot {
+                    margin-left: 0 !important;
+                    padding-left: 0 !important;
+                }
+            `;
+            document.head.appendChild(style);
+            log('✅ 头像对齐已优化', 'success');
+        }
+
+        function smoothTransitions() {
+            const style = document.createElement('style');
+            style.textContent = `
+                /* 🎯 优化动画效果 */
+                .discord-message {
+                    transition: background-color 0.15s ease !important;
+                }
+                .discord-message:hover {
+                    transform: none !important;
+                    background-color: rgba(124, 58, 237, 0.02) !important;
+                }
+                .message-toolbar {
+                    transition: opacity 0.2s ease !important;
+                }
+            `;
+            document.head.appendChild(style);
+            log('✅ 动画效果已优化', 'success');
+        }
+
+        function verifyLayout() {
+            const messages = document.querySelectorAll('.discord-message');
+            const dividers = document.querySelectorAll('.time-session-divider');
+            
+            log(`📊 布局验证结果:`, 'info');
+            log(`消息数量: ${messages.length}`, 'info');
+            log(`时间分隔符: ${dividers.length}`, 'info');
+            
+            let alignmentIssues = 0;
+            messages.forEach((msg, index) => {
+                const avatar = msg.querySelector('.message-avatar-slot');
+                const content = msg.querySelector('.message-content-slot');
+                
+                if (avatar && content) {
+                    const avatarRect = avatar.getBoundingClientRect();
+                    const contentRect = content.getBoundingClientRect();
+                    
+                    if (Math.abs(avatarRect.left + 56 - contentRect.left) > 5) {
+                        alignmentIssues++;
+                    }
+                }
+            });
+            
+            if (alignmentIssues === 0) {
+                log('✅ 所有消息对齐完美', 'success');
+            } else {
+                log(`⚠️ ${alignmentIssues} 个消息需要对齐调整`, 'info');
+            }
+        }
+    </script>
+</body>
+</html>

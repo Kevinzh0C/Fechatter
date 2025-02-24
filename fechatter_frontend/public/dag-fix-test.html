@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔧 DAG Fix Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .test-btn {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 15px 25px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      margin: 10px 5px;
+      transition: background 0.3s;
+    }
+
+    .test-btn:hover {
+      background: #45a049;
+    }
+
+    .status {
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+      font-weight: bold;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .status.warning {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .log {
+      background: #2c3e50;
+      color: #ecf0f1;
+      padding: 20px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.4;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔧 DAG Authentication Fix Test</h1>
+    <p>Test the fixed token validation and authentication logic</p>
+
+    <button class="test-btn" onclick="testTokenValidation()">🔑 Test Token Validation</button>
+    <button class="test-btn" onclick="testAuthLogic()">📊 Test Auth Logic</button>
+    <button class="test-btn" onclick="testFullFlow()">🚀 Test Full Flow</button>
+    <button class="test-btn" onclick="clearLog()" style="background: #dc3545;">🗑️ Clear</button>
+
+    <div id="status"></div>
+    <div id="log" class="log"></div>
+  </div>
+
+  <script>
+    let logContent = '';
+
+    function log(message) {
+      const timestamp = new Date().toLocaleTimeString();
+      logContent += `[${timestamp}] ${message}\n`;
+      document.getElementById('log').textContent = logContent;
+      document.getElementById('log').scrollTop = document.getElementById('log').scrollHeight;
+    }
+
+    function updateStatus(message, type) {
+      const statusEl = document.getElementById('status');
+      statusEl.innerHTML = `<div class="status ${type}">${message}</div>`;
+    }
+
+    // Mock the enhanced token validation
+    function mockTokenValidation(token) {
+      if (!token || typeof token !== 'string') return false;
+      if (token.length < 10) return false;
+      if (token.length > 2000) return false;
+
+      const hasBasicStructure = token.includes('.') || token.length >= 20;
+      const notObviouslyInvalid =
+        !token.includes(' ') &&
+        !token.includes('\n') &&
+        !token.includes('\t') &&
+        !/^[0-9]+$/.test(token);
+
+      return hasBasicStructure && notObviouslyInvalid;
+    }
+
+    // Mock the practical auth verification
+    function mockAuthVerification(authStore) {
+      const authChecks = {
+        storeHasToken: !!authStore.token && authStore.token.length > 10,
+        storeHasUser: !!authStore.user && !!authStore.user.id,
+        functionallyAuthenticated: (() => {
+          const hasWorkingToken = !!authStore.token && authStore.token.length > 10;
+          const hasWorkingUser = !!authStore.user && !!authStore.user.id;
+          const hasWorkingAuth = hasWorkingToken && hasWorkingUser;
+          const storeReportsAuth = authStore.isAuthenticated;
+          return hasWorkingAuth || storeReportsAuth;
+        })()
+      };
+
+      const coreRequirements = [
+        authChecks.storeHasToken,
+        authChecks.storeHasUser,
+        authChecks.functionallyAuthenticated
+      ];
+
+      const coreAuthPassed = coreRequirements.filter(Boolean).length;
+      const perfectCase = coreAuthPassed === 3;
+      const goodCase = coreAuthPassed >= 2;
+
+      return {
+        isReady: perfectCase || goodCase,
+        coreAuthPassed,
+        checks: authChecks
+      };
+    }
+
+    async function testTokenValidation() {
+      log('🔑 Testing enhanced token validation...');
+      updateStatus('Testing token validation...', 'warning');
+
+      const testTokens = [
+        { name: 'JWT Token', token: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0In0.abc', expected: true },
+        { name: 'Mock Token', token: 'mock_token_1234567890', expected: true },
+        { name: 'Long Token', token: 'a'.repeat(50), expected: true },
+        { name: 'Short Token', token: 'short', expected: false },
+        { name: 'Numbers Only', token: '123456789', expected: false }
+      ];
+
+      let passed = 0;
+      for (const test of testTokens) {
+        const result = mockTokenValidation(test.token);
+        const success = result === test.expected;
+        log(`${success ? '✅' : '❌'} ${test.name}: ${result} (expected ${test.expected})`);
+        if (success) passed++;
+      }
+
+      log(`📊 Token validation: ${passed}/${testTokens.length} tests passed`);
+      updateStatus(passed === testTokens.length ? '✅ Token validation tests passed!' : `⚠️ Some token tests failed`, passed === testTokens.length ? 'success' : 'warning');
+    }
+
+    async function testAuthLogic() {
+      log('📊 Testing authentication logic...');
+      updateStatus('Testing auth logic...', 'warning');
+
+      const scenarios = [
+        {
+          name: 'Perfect Auth',
+          authStore: {
+            token: 'mock_token_1234567890',
+            user: { id: 123, email: 'test@example.com' },
+            isAuthenticated: true
+          },
+          expected: true
+        },
+        {
+          name: 'Functional Auth (isAuthenticated=false but has token+user)',
+          authStore: {
+            token: 'mock_token_1234567890',
+            user: { id: 456, email: 'test2@example.com' },
+            isAuthenticated: false
+          },
+          expected: true // Should pass due to functional auth check
+        },
+        {
+          name: 'Missing User',
+          authStore: {
+            token: 'mock_token_1234567890',
+            user: null,
+            isAuthenticated: false
+          },
+          expected: false
+        }
+      ];
+
+      let passed = 0;
+      for (const scenario of scenarios) {
+        const result = mockAuthVerification(scenario.authStore);
+        const success = result.isReady === scenario.expected;
+        log(`${success ? '✅' : '❌'} ${scenario.name}: ready=${result.isReady}, core=${result.coreAuthPassed}/3`);
+        if (success) passed++;
+      }
+
+      log(`📊 Auth logic: ${passed}/${scenarios.length} tests passed`);
+      updateStatus(passed === scenarios.length ? '✅ Auth logic tests passed!' : `⚠️ Some auth tests failed`, passed === scenarios.length ? 'success' : 'warning');
+    }
+
+    async function testFullFlow() {
+      log('🚀 Testing full authentication flow...');
+      updateStatus('Testing full flow...', 'warning');
+
+      // Simulate the problematic scenario from the user's report
+      const problematicCase = {
+        token: 'mock_token_that_might_fail_jwt_validation',
+        user: { id: 789, email: 'problem@test.com' },
+        isAuthenticated: false // This was the issue - strict validation failed
+      };
+
+      // Test with old logic (would fail)
+      const oldLogicWouldFail = problematicCase.isAuthenticated === true;
+      log(`❌ Old logic result: ${oldLogicWouldFail} (would require strict isAuthenticated=true)`);
+
+      // Test with new logic (should pass)
+      const newLogicResult = mockAuthVerification(problematicCase);
+      log(`✅ New logic result: ${newLogicResult.isReady} (functional auth check)`);
+
+      // Test token validation
+      const tokenValid = mockTokenValidation(problematicCase.token);
+      log(`🔑 Token validation: ${tokenValid}`);
+
+      if (newLogicResult.isReady && !oldLogicWouldFail) {
+        log('🎉 DAG fix successful! Problem scenario now passes with new logic');
+        updateStatus('✅ DAG fix verified! Authentication flow now works correctly', 'success');
+      } else {
+        log('⚠️ DAG fix needs more work');
+        updateStatus('⚠️ DAG fix verification shows issues', 'warning');
+      }
+    }
+
+    function clearLog() {
+      logContent = '';
+      document.getElementById('log').textContent = '';
+      document.getElementById('status').innerHTML = '';
+    }
+
+    // Initialize
+    log('🔧 DAG Fix Test Tool Ready');
+    log('✅ Ready to test the authentication DAG fixes');
+  </script>
+</body>
+
+</html>

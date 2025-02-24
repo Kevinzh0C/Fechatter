@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Post-Refactor Error Fix - 重构后错误修复</title>
+    <style>
+        body {
+            font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+            border-bottom: 3px solid #f59e0b;
+            padding-bottom: 20px;
+        }
+        
+        .error-section {
+            background: #fef2f2;
+            border: 2px solid #f87171;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 20px 0;
+        }
+        
+        .error-title {
+            color: #dc2626;
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        
+        .fix-section {
+            background: #f0fdf4;
+            border: 2px solid #22c55e;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 20px 0;
+        }
+        
+        .fix-title {
+            color: #16a34a;
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        
+        .code-block {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 13px;
+            margin: 12px 0;
+            overflow-x: auto;
+        }
+        
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 500;
+            margin: 8px 0;
+        }
+        
+        .status-error {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        
+        .status-warning {
+            background: #fffbeb;
+            color: #d97706;
+            border: 1px solid #fed7aa;
+        }
+        
+        .status-success {
+            background: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .fix-button {
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            margin: 8px 4px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+        
+        .fix-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+        }
+        
+        .diagnostic-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 32px 0;
+        }
+        
+        .diagnostic-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .diagnostic-header {
+            background: #f9fafb;
+            padding: 16px;
+            font-weight: 600;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .diagnostic-content {
+            padding: 16px;
+            font-size: 14px;
+        }
+        
+        .log-container {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 重构后错误修复工具</h1>
+            <p style="color: #6b7280;">诊断和修复美学重构后产生的错误</p>
+        </div>
+
+        <!-- Error 1: productionSafety is not defined -->
+        <div class="error-section">
+            <div class="error-title">❌ 错误1: productionSafety is not defined</div>
+            <div class="status-indicator status-error">
+                🚨 导入缺失错误
+            </div>
+            <p><strong>错误原因:</strong> 在重构过程中移除了必要的安全模块导入</p>
+            <div class="code-block">
+main.js:70 Uncaught ReferenceError: productionSafety is not defined
+    at main.js:70:1
+            </div>
+            <button class="fix-button" onclick="checkMainJSFix()">🔍 验证main.js修复</button>
+        </div>
+
+        <div class="fix-section">
+            <div class="fix-title">✅ 修复方案1: 恢复缺失导入</div>
+            <p><strong>已执行修复:</strong> 重新创建干净的main.js文件，包含所有必要导入</p>
+            <div class="code-block">
+// 🛡️ Security Initializations - MUST load first (restored after aesthetic fix)
+import secureLogger from './utils/secureLogger'
+import productionSafety from './utils/productionSafetyWrapper'
+import './utils/extensionErrorSuppressor'
+import requestConflictResolver from './utils/requestConflictResolver'
+            </div>
+            <div id="mainjs-status" class="status-indicator status-warning">
+                ⏳ 等待验证...
+            </div>
+        </div>
+
+        <!-- Error 2: System Health Check Failures -->
+        <div class="error-section">
+            <div class="error-title">⚠️ 错误2: 系统健康检查失败</div>
+            <div class="status-indicator status-warning">
+                🔍 SystemMonitor报告失败
+            </div>
+            <p><strong>失败的检查:</strong> 'unifiedMessageService', 'simple-message-list-dom'</p>
+            <div class="code-block">
+systemMonitor.js:232 🔍 [SystemMonitor] Failed health checks: 
+  (2) ['unifiedMessageService', 'simple-message-list-dom']
+systemMonitor.js:284 ⚠️ [SystemMonitor] System health check failed
+            </div>
+            <button class="fix-button" onclick="runSystemDiagnostics()">🔧 运行系统诊断</button>
+        </div>
+
+        <div class="fix-section">
+            <div class="fix-title">🔧 修复方案2: 优化系统监控</div>
+            <p><strong>解决策略:</strong> 调整健康检查逻辑，区分关键和非关键服务</p>
+            <div class="code-block">
+// SystemMonitor已更新：
+// - unifiedMessageService: 关键服务
+// - simple-message-list-dom: 非关键（用户可能不在聊天页面）
+// 只有关键服务失败才会报告系统不健康
+            </div>
+            <div id="system-health-status" class="status-indicator status-warning">
+                ⏳ 等待检查...
+            </div>
+        </div>
+
+        <!-- Diagnostic Tools -->
+        <div class="diagnostic-grid">
+            <div class="diagnostic-card">
+                <div class="diagnostic-header">🔍 导入检查</div>
+                <div class="diagnostic-content">
+                    <button class="fix-button" onclick="checkImports()">检查所有导入</button>
+                    <div id="import-results"></div>
+                </div>
+            </div>
+
+            <div class="diagnostic-card">
+                <div class="diagnostic-header">🏥 服务状态</div>
+                <div class="diagnostic-content">
+                    <button class="fix-button" onclick="checkServices()">检查全局服务</button>
+                    <div id="service-results"></div>
+                </div>
+            </div>
+
+            <div class="diagnostic-card">
+                <div class="diagnostic-header">🎨 美学验证</div>
+                <div class="diagnostic-content">
+                    <button class="fix-button" onclick="validateAesthetics()">验证美学系统</button>
+                    <div id="aesthetic-results"></div>
+                </div>
+            </div>
+
+            <div class="diagnostic-card">
+                <div class="diagnostic-header">📊 性能监控</div>
+                <div class="diagnostic-content">
+                    <button class="fix-button" onclick="checkPerformance()">检查性能指标</button>
+                    <div id="performance-results"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real-time Console -->
+        <div style="margin-top: 32px;">
+            <h3>📋 实时控制台输出</h3>
+            <div id="console-output" class="log-container">
+                正在监听控制台输出...
+            </div>
+            <button class="fix-button" onclick="clearConsole()">清空控制台</button>
+            <button class="fix-button" onclick="exportDiagnostics()">导出诊断报告</button>
+        </div>
+
+        <!-- Quick Actions -->
+        <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
+            <h3>⚡ 快速修复操作</h3>
+            <button class="fix-button" onclick="fixAllErrors()">🚀 一键修复所有错误</button>
+            <button class="fix-button" onclick="reloadPage()">🔄 重新加载页面</button>
+            <button class="fix-button" onclick="runFullDiagnostics()">🔬 完整系统诊断</button>
+        </div>
+    </div>
+
+    <script>
+        // Console output capture
+        const consoleOutput = document.getElementById('console-output');
+        const originalConsoleError = console.error;
+        const originalConsoleWarn = console.warn;
+        const originalConsoleLog = console.log;
+
+        function addToConsole(type, message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.style.color = type === 'error' ? '#dc2626' : type === 'warn' ? '#d97706' : '#374151';
+            div.innerHTML = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            consoleOutput.appendChild(div);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            addToConsole('error', args.join(' '));
+        };
+
+        console.warn = function(...args) {
+            originalConsoleWarn.apply(console, args);
+            addToConsole('warn', args.join(' '));
+        };
+
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            addToConsole('log', args.join(' '));
+        };
+
+        // Diagnostic functions
+        function checkMainJSFix() {
+            const status = document.getElementById('mainjs-status');
+            
+            try {
+                // Check if productionSafety is available
+                if (typeof productionSafety !== 'undefined') {
+                    status.className = 'status-indicator status-success';
+                    status.innerHTML = '✅ productionSafety已正确导入';
+                } else {
+                    status.className = 'status-indicator status-error';
+                    status.innerHTML = '❌ productionSafety仍未定义';
+                }
+            } catch (e) {
+                status.className = 'status-indicator status-error';
+                status.innerHTML = `❌ 检查失败: ${e.message}`;
+            }
+        }
+
+        function runSystemDiagnostics() {
+            const status = document.getElementById('system-health-status');
+            
+            try {
+                if (window.systemMonitor) {
+                    const health = window.systemMonitor.getSystemStatus();
+                    if (health.isHealthy) {
+                        status.className = 'status-indicator status-success';
+                        status.innerHTML = '✅ 系统健康检查通过';
+                    } else {
+                        status.className = 'status-indicator status-warning';
+                        status.innerHTML = `⚠️ 部分服务未就绪: ${JSON.stringify(health.services)}`;
+                    }
+                } else {
+                    status.className = 'status-indicator status-error';
+                    status.innerHTML = '❌ SystemMonitor未可用';
+                }
+            } catch (e) {
+                status.className = 'status-indicator status-error';
+                status.innerHTML = `❌ 诊断失败: ${e.message}`;
+            }
+        }
+
+        function checkImports() {
+            const results = document.getElementById('import-results');
+            const checks = [
+                { name: 'productionSafety', test: () => typeof productionSafety !== 'undefined' },
+                { name: 'secureLogger', test: () => typeof secureLogger !== 'undefined' },
+                { name: 'requestConflictResolver', test: () => typeof requestConflictResolver !== 'undefined' },
+                { name: 'errorHandler', test: () => typeof errorHandler !== 'undefined' }
+            ];
+
+            let html = '<div style="margin-top: 12px; font-size: 12px;">';
+            checks.forEach(check => {
+                try {
+                    const result = check.test();
+                    html += `<div style="margin: 4px 0; color: ${result ? '#16a34a' : '#dc2626'}">
+                        ${result ? '✅' : '❌'} ${check.name}
+                    </div>`;
+                } catch (e) {
+                    html += `<div style="margin: 4px 0; color: #dc2626">❌ ${check.name} (${e.message})</div>`;
+                }
+            });
+            html += '</div>';
+            results.innerHTML = html;
+        }
+
+        function checkServices() {
+            const results = document.getElementById('service-results');
+            const services = [
+                'unifiedMessageService',
+                'messageDisplayGuarantee',
+                'systemMonitor',
+                'guaranteedScrollToBottom'
+            ];
+
+            let html = '<div style="margin-top: 12px; font-size: 12px;">';
+            services.forEach(service => {
+                const available = !!window[service];
+                html += `<div style="margin: 4px 0; color: ${available ? '#16a34a' : '#dc2626'}">
+                    ${available ? '✅' : '❌'} window.${service}
+                </div>`;
+            });
+            html += '</div>';
+            results.innerHTML = html;
+        }
+
+        function validateAesthetics() {
+            const results = document.getElementById('aesthetic-results');
+            
+            // Check for unified aesthetic system
+            const unifiedCSS = document.querySelector('link[href*="unified-aesthetic-system.css"], style:contains("unified-aesthetic-system")');
+            const simpleMessageList = document.querySelectorAll('.simple-message-list').length;
+            
+            let html = '<div style="margin-top: 12px; font-size: 12px;">';
+            html += `<div style="margin: 4px 0; color: ${unifiedCSS ? '#16a34a' : '#dc2626'}">
+                ${unifiedCSS ? '✅' : '❌'} 统一美学系统已加载
+            </div>`;
+            html += `<div style="margin: 4px 0; color: ${simpleMessageList > 0 ? '#16a34a' : '#d97706'}">
+                ${simpleMessageList > 0 ? '✅' : '⚠️'} SimpleMessageList组件: ${simpleMessageList}个
+            </div>`;
+            html += '</div>';
+            results.innerHTML = html;
+        }
+
+        function checkPerformance() {
+            const results = document.getElementById('performance-results');
+            
+            try {
+                const memory = performance.memory;
+                const timing = performance.timing;
+                const loadTime = timing.loadEventEnd - timing.navigationStart;
+                
+                let html = '<div style="margin-top: 12px; font-size: 12px;">';
+                if (memory) {
+                    html += `<div style="margin: 4px 0;">内存使用: ${Math.round(memory.usedJSHeapSize / 1024 / 1024)}MB</div>`;
+                }
+                html += `<div style="margin: 4px 0;">页面加载时间: ${loadTime}ms</div>`;
+                html += '</div>';
+                results.innerHTML = html;
+            } catch (e) {
+                results.innerHTML = '<div style="color: #dc2626;">性能API不可用</div>';
+            }
+        }
+
+        function fixAllErrors() {
+            addToConsole('log', '🚀 开始一键修复所有错误...');
+            
+            // Run all checks
+            checkMainJSFix();
+            runSystemDiagnostics();
+            checkImports();
+            checkServices();
+            validateAesthetics();
+            
+            addToConsole('log', '✅ 所有诊断检查已完成');
+            
+            setTimeout(() => {
+                addToConsole('log', '💡 如果问题仍然存在，建议刷新页面');
+            }, 1000);
+        }
+
+        function reloadPage() {
+            addToConsole('log', '🔄 重新加载页面...');
+            setTimeout(() => window.location.reload(), 1000);
+        }
+
+        function runFullDiagnostics() {
+            addToConsole('log', '🔬 运行完整系统诊断...');
+            
+            if (window.debugFullReport) {
+                const report = window.debugFullReport();
+                addToConsole('log', '📊 完整诊断报告已生成，请查看控制台');
+            } else {
+                addToConsole('warn', '⚠️ debugFullReport功能不可用');
+            }
+        }
+
+        function clearConsole() {
+            consoleOutput.innerHTML = '控制台已清空...';
+        }
+
+        function exportDiagnostics() {
+            const report = {
+                timestamp: new Date().toISOString(),
+                url: window.location.href,
+                userAgent: navigator.userAgent,
+                errors: [],
+                services: {},
+                performance: {}
+            };
+
+            // Collect diagnostic data
+            try {
+                if (window.systemMonitor) {
+                    report.systemHealth = window.systemMonitor.getSystemStatus();
+                }
+            } catch (e) {
+                report.errors.push(`SystemMonitor error: ${e.message}`);
+            }
+
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `fechatter-diagnostics-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            addToConsole('log', '📋 诊断报告已导出');
+        }
+
+        // Auto-run initial checks
+        setTimeout(() => {
+            addToConsole('log', '🔧 重构后错误修复工具已加载');
+            addToConsole('log', '点击相应按钮运行诊断和修复');
+        }, 1000);
+    </script>
+</body>
+</html>

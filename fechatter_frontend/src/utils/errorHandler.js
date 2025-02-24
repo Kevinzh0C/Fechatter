@@ -244,11 +244,13 @@ export class ErrorHandler {
 
     // 记录日志
     if (log && process.env.NODE_ENV !== 'production') {
-      console.error(`[${context || 'Error'}]`, {
-        type: errorType,
-        message,
-        error
-      });
+      if (import.meta.env.DEV) {
+        console.error(`[${context || 'Error'}]`, {
+          type: errorType,
+          message,
+          error
+        });
+      }
     }
 
     // 执行特定错误类型的回调
@@ -327,7 +329,9 @@ export class ErrorHandler {
    * 处理未捕获的Promise错误
    */
   handleUnhandledRejection(event) {
-    console.error('Unhandled promise rejection:', event.reason);
+    if (import.meta.env.DEV) {
+      console.error('Unhandled promise rejection:', event.reason);
+    }
 
     // 在开发环境显示错误
     if (process.env.NODE_ENV !== 'production') {

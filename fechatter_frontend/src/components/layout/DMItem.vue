@@ -5,19 +5,7 @@
     'online': isUserOnline
   }" @click="$emit('click', dm)" @contextmenu="$emit('context-menu', $event)">
     <!-- User Avatar -->
-    <div class="user-avatar">
-      <img v-if="dm.avatar_url" :src="dm.avatar_url" :alt="dm.name" class="avatar-image" @error="handleImageError" />
-      <div v-else class="avatar-placeholder" :class="{ 'group-avatar': isGroupChat }">
-        <Icon v-if="isGroupChat" name="users" class="group-icon" />
-        <span v-else>{{ getInitials(dm.name) }}</span>
-      </div>
-
-      <!-- Online Status Indicator (only for DMs, not groups) -->
-      <div v-if="!isGroupChat" class="status-indicator" :class="getStatusClass()" :title="getStatusText()"></div>
-      <div v-else class="group-indicator" :title="`${dm.member_count || 0} members`">
-        <Icon name="users" class="group-count-icon" />
-      </div>
-    </div>
+    <Avatar :src="dm.avatar_url" :alt="dm.name" :user-id="dm.id" :status="dm.user_status" :size="32" />
 
     <!-- DM Content -->
     <div class="dm-content">
@@ -62,6 +50,7 @@
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import Icon from '@/components/ui/Icon.vue'
+import Avatar from '@/components/common/Avatar.vue'
 
 // Props
 const props = defineProps({
@@ -190,8 +179,8 @@ const handleImageError = (event) => {
 .dm-item {
   display: flex;
   align-items: center;
-  padding: 6px 16px;
-  margin: 0 2px;
+  padding: 6px 8px;
+  margin: 0 0 1px 0;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
@@ -231,53 +220,19 @@ const handleImageError = (event) => {
   color: white;
 }
 
-/* 👤 User Avatar - Enhanced design */
-.user-avatar {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  margin-right: 12px;
+/* Avatar container spacing */
+.dm-item .avatar-container {
+  margin-right: 8px;
   flex-shrink: 0;
-  transition: transform 0.15s ease;
 }
 
-.dm-item:hover .user-avatar {
-  transform: scale(1.05);
-}
-
-.avatar-image {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  transition: border-color 0.15s ease;
-}
-
-.dm-item:hover .avatar-image {
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.avatar-placeholder {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #1264a3, #0e4f82);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
+/* Unified channel name font size */
+.user-name {
   font-size: 14px;
-  font-weight: 700;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 2px 8px rgba(18, 100, 163, 0.2);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.dm-item:hover .avatar-placeholder {
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 4px 12px rgba(18, 100, 163, 0.3);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 🟢 Status Indicator - Modern design */
@@ -326,16 +281,6 @@ const handleImageError = (event) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-.user-name {
-  font-size: 15px;
-  font-weight: 500;
-  color: inherit;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.4;
 }
 
 .dm-item.active .user-name {

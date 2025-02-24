@@ -45,7 +45,9 @@ class CompleteErrorSuppressor {
    * Initialize the suppressor
    */
   initialize() {
-    console.log('🛡️ [CompleteErrorSuppressor] Initializing...');
+    if (import.meta.env.DEV) {
+      console.log('🛡️ [CompleteErrorSuppressor] Initializing...');
+    }
 
     // Override console.error
     this.overrideConsoleError();
@@ -56,8 +58,9 @@ class CompleteErrorSuppressor {
     // Add unhandled rejection handler
     this.addUnhandledRejectionHandler();
 
-    console.log('✅ [CompleteErrorSuppressor] Initialized successfully');
-  }
+    if (import.meta.env.DEV) {
+      console.log('✅ [CompleteErrorSuppressor] Initialized successfully');
+    }
 
   /**
    * Override console.error with intelligent filtering
@@ -126,9 +129,7 @@ class CompleteErrorSuppressor {
           reason: event.reason,
           promise: event.promise
         });
-      }
     });
-  }
 
   /**
    * Check if arguments should be suppressed
@@ -143,8 +144,6 @@ class CompleteErrorSuppressor {
           return JSON.stringify(arg);
         } catch {
           return String(arg);
-        }
-      }
       return String(arg);
     }).join(' ');
 
@@ -181,24 +180,27 @@ class CompleteErrorSuppressor {
    */
   enable() {
     this.enabled = true;
-    console.log('✅ [CompleteErrorSuppressor] Suppression enabled');
-  }
+    if (import.meta.env.DEV) {
+      console.log('✅ [CompleteErrorSuppressor] Suppression enabled');
+    }
 
   /**
    * Disable suppression
    */
   disable() {
     this.enabled = false;
-    console.log('❌ [CompleteErrorSuppressor] Suppression disabled');
-  }
+    if (import.meta.env.DEV) {
+      console.log('❌ [CompleteErrorSuppressor] Suppression disabled');
+    }
 
   /**
    * Restore original console.error
    */
   restore() {
     console.error = this.originalConsoleError;
-    console.log('🔄 [CompleteErrorSuppressor] Original console.error restored');
-  }
+    if (import.meta.env.DEV) {
+      console.log('🔄 [CompleteErrorSuppressor] Original console.error restored');
+    }
 
   /**
    * Get statistics
@@ -217,33 +219,41 @@ class CompleteErrorSuppressor {
    * Show suppressed errors
    */
   showSuppressed() {
-    console.log('🔇 [CompleteErrorSuppressor] Suppressed Errors:');
-    console.log(`Total suppressed: ${this.suppressedErrors.length}`);
+    if (import.meta.env.DEV) {
+      console.log('🔇 [CompleteErrorSuppressor] Suppressed Errors:');
+    if (import.meta.env.DEV) {
+      console.log(`Total suppressed: ${this.suppressedErrors.length}`);
+    }
 
     this.suppressedErrors.slice(-10).forEach((entry, index) => {
-      console.log(`\n--- Suppressed Error ${index + 1} ---`);
-      console.log('Time:', entry.timestamp.toLocaleTimeString());
-      console.log('Type:', entry.type || 'console.error');
+      if (import.meta.env.DEV) {
+        console.log(`\n--- Suppressed Error ${index + 1} ---`);
+      if (import.meta.env.DEV) {
+        console.log('Time:', entry.timestamp.toLocaleTimeString());
+      if (import.meta.env.DEV) {
+        console.log('Type:', entry.type || 'console.error');
+      }
 
       if (entry.args) {
-        console.log('Args:', entry.args);
-      }
+        if (import.meta.env.DEV) {
+          console.log('Args:', entry.args);
       if (entry.error) {
-        console.log('Error:', entry.error);
-      }
+        if (import.meta.env.DEV) {
+          console.log('Error:', entry.error);
       if (entry.message) {
-        console.log('Message:', entry.message);
-      }
+        if (import.meta.env.DEV) {
+          console.log('Message:', entry.message);
+        }
     });
-  }
 
   /**
    * Clear suppressed errors
    */
   clearSuppressed() {
     this.suppressedErrors = [];
-    console.log('🧹 [CompleteErrorSuppressor] Suppressed errors cleared');
-  }
+    if (import.meta.env.DEV) {
+      console.log('🧹 [CompleteErrorSuppressor] Suppressed errors cleared');
+    }
 
   /**
    * Add custom pattern
@@ -251,31 +261,39 @@ class CompleteErrorSuppressor {
   addPattern(pattern) {
     if (pattern instanceof RegExp) {
       this.patterns.push(pattern);
-      console.log('➕ [CompleteErrorSuppressor] Added pattern:', pattern);
+      if (import.meta.env.DEV) {
+        console.log('➕ [CompleteErrorSuppressor] Added pattern:', pattern);
+      }
     } else if (typeof pattern === 'string') {
       this.patterns.push(new RegExp(pattern, 'i'));
-      console.log('➕ [CompleteErrorSuppressor] Added pattern:', pattern);
-    }
-  }
+      if (import.meta.env.DEV) {
+        console.log('➕ [CompleteErrorSuppressor] Added pattern:', pattern);
+      }
 
   /**
    * Test suppression
    */
   test() {
-    console.log('🧪 [CompleteErrorSuppressor] Running suppression test...');
+    if (import.meta.env.DEV) {
+      console.log('🧪 [CompleteErrorSuppressor] Running suppression test...');
+    }
 
     // Test 1: Extension error
-    console.error('Error: fetchError: Failed to fetch at chrome-extension://abc/content.js:123');
+    if (import.meta.env.DEV) {
+      console.error('Error: fetchError: Failed to fetch at chrome-extension://abc/content.js:123');
+    }
 
     // Test 2: Normal error (should pass)
-    console.error('Normal application error');
+    if (import.meta.env.DEV) {
+      console.error('Normal application error');
+    }
 
     // Test 3: Unhandled rejection
     Promise.reject(new Error('Extension context invalidated'));
 
-    console.log('Test complete. Stats:', this.getStats());
-  }
-}
+    if (import.meta.env.DEV) {
+      console.log('Test complete. Stats:', this.getStats());
+    }
 
 // Create and initialize global instance
 const completeErrorSuppressor = new CompleteErrorSuppressor();

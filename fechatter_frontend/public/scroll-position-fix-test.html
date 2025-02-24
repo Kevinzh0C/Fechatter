@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔧 历史消息加载滚动位置保持测试</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+
+    .test-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      margin: 0 0 8px 0;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .problem-description {
+      background: rgba(239, 68, 68, 0.1);
+      border-left: 4px solid #ef4444;
+      padding: 16px;
+      margin-bottom: 24px;
+      border-radius: 8px;
+    }
+
+    .solution-description {
+      background: rgba(16, 185, 129, 0.1);
+      border-left: 4px solid #10b981;
+      padding: 16px;
+      margin-bottom: 24px;
+      border-radius: 8px;
+    }
+
+    .test-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .test-panel {
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 12px;
+      padding: 20px;
+      border: 2px solid transparent;
+      transition: all 0.3s ease;
+    }
+
+    .test-panel.before {
+      border-color: #ef4444;
+    }
+
+    .test-panel.after {
+      border-color: #10b981;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .status-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .status-icon.problem {
+      background: #ef4444;
+      color: white;
+    }
+
+    .status-icon.solution {
+      background: #10b981;
+      color: white;
+    }
+
+    .chat-simulator {
+      background: #36393f;
+      border-radius: 8px;
+      height: 300px;
+      overflow-y: auto;
+      position: relative;
+      margin-bottom: 16px;
+    }
+
+    .message-item {
+      display: flex;
+      gap: 12px;
+      padding: 8px 16px;
+      color: #dcddde;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .message-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .message-content {
+      flex: 1;
+    }
+
+    .message-username {
+      font-weight: 600;
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+
+    .message-text {
+      line-height: 1.4;
+      font-size: 14px;
+    }
+
+    .current-position {
+      background: rgba(255, 212, 59, 0.3);
+      border-left: 3px solid #ffd43b;
+    }
+
+    .load-more-btn {
+      background: #5865f2;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      margin-bottom: 8px;
+    }
+
+    .load-more-btn:hover {
+      background: #4752c4;
+    }
+
+    .load-more-btn:disabled {
+      background: #72767d;
+      cursor: not-allowed;
+    }
+
+    .scroll-info {
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 12px;
+      color: #6b7280;
+      background: rgba(0, 0, 0, 0.05);
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 8px;
+    }
+
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 24px;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .comparison-table th {
+      background: #f8fafc;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .comparison-table .problem-cell {
+      color: #dc2626;
+    }
+
+    .comparison-table .solution-cell {
+      color: #059669;
+    }
+
+    .test-controls {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .test-btn {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .test-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    .loading-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      gap: 8px;
+      color: #72767d;
+      font-size: 14px;
+      background: rgba(79, 84, 92, 0.1);
+      border-radius: 8px;
+      margin: 8px 16px;
+    }
+
+    .loading-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #40444b;
+      border-top: 2px solid #5865f2;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .test-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .test-container {
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="test-container">
+    <div class="header">
+      <h1>🔧 历史消息加载滚动位置保持修复</h1>
+      <p>测试和验证聊天应用中历史消息加载时的滚动连续性</p>
+    </div>
+
+    <div class="problem-description">
+      <h3>❌ 问题描述</h3>
+      <p>在传统的聊天应用中，当用户向上滚动并触发历史消息加载时，新消息插入到列表顶部会导致：</p>
+      <ul>
+        <li>滚动条突然跳回顶部，用户丢失当前阅读位置</li>
+        <li>页面发生"回弹"，打断阅读连续性</li>
+        <li>用户需要重新滚动找到之前查看的消息</li>
+        <li>严重影响用户体验，特别是在查看历史聊天记录时</li>
+      </ul>
+    </div>
+
+    <div class="solution-description">
+      <h3>✅ 解决方案</h3>
+      <p>通过精确的滚动位置计算和补偿，实现无缝的历史消息加载：</p>
+      <ul>
+        <li><strong>步骤1：</strong> 加载前保存当前scrollTop和scrollHeight</li>
+        <li><strong>步骤2：</strong> 触发历史消息加载</li>
+        <li><strong>步骤3：</strong> 等待DOM更新完成</li>
+        <li><strong>步骤4：</strong> 计算新增内容高度，调整scrollTop保持用户视觉位置</li>
+      </ul>
+    </div>
+
+    <div class="test-controls">
+      <button class="test-btn" onclick="demonstrateProblem()">🔴 演示问题</button>
+      <button class="test-btn" onclick="demonstrateSolution()">🟢 演示解决方案</button>
+      <button class="test-btn" onclick="resetSimulators()">🔄 重置</button>
+    </div>
+
+    <div class="test-grid">
+      <!-- 问题演示 -->
+      <div class="test-panel before">
+        <div class="panel-header">
+          <div class="status-icon problem">!</div>
+          <h3>修复前：滚动回弹问题</h3>
+        </div>
+
+        <div class="chat-simulator" id="problemSimulator">
+          <!-- 初始消息 -->
+          <div class="message-item">
+            <div class="message-avatar">U5</div>
+            <div class="message-content">
+              <div class="message-username">User 5</div>
+              <div class="message-text">这是第5条消息</div>
+            </div>
+          </div>
+          <div class="message-item">
+            <div class="message-avatar">U6</div>
+            <div class="message-content">
+              <div class="message-username">User 6</div>
+              <div class="message-text">这是第6条消息</div>
+            </div>
+          </div>
+          <div class="message-item">
+            <div class="message-avatar">U7</div>
+            <div class="message-content">
+              <div class="message-username">User 7</div>
+              <div class="message-text">这是第7条消息</div>
+            </div>
+          </div>
+          <div class="message-item current-position">
+            <div class="message-avatar">U8</div>
+            <div class="message-content">
+              <div class="message-username">User 8</div>
+              <div class="message-text">👀 用户当前查看的消息</div>
+            </div>
+          </div>
+          <div class="message-item">
+            <div class="message-avatar">U9</div>
+            <div class="message-content">
+              <div class="message-username">User 9</div>
+              <div class="message-text">这是第9条消息</div>
+            </div>
+          </div>
+          <div class="message-item">
+            <div class="message-avatar">U10</div>
+            <div class="message-content">
+              <div class="message-username">User 10</div>
+              <div class="message-text">这是第10条消息</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="load-more-btn" onclick="loadMoreProblem()" id="problemBtn">⬆️ 加载历史消息（问题版）</button>
+        <div class="scroll-info" id="problemScrollInfo">滚动到消息中间位置，然后点击加载按钮</div>
+      </div>
+
+      <!-- 解决方案演示 -->
+      <div class="test-panel after">
+        <div class="panel-header">
+          <div class="status-icon solution">✓</div>
+          <h3>修复后：位置保持完美</h3>
+        </div>
+
+        <div class="chat-simulator" id="solutionSimulator">
+          <!-- 初始消息 -->
+          <div class="message-item">
+            <div class="message-avatar">U5</div>
+            <div class="message-content">
+              <div class="message-username">User 5</div>
+              <div class="message-text">这是第5条消息</div>
+            </div>
+          </div>
+          <div class="message-item">
+            <div class="message-avatar">U6</div>
+            <div class="message-content">
+              <div class="message-username">User 6</div>
+              <div class="message-text">这是第6条消息</div>
+            </div>
+          </div>
+          <div class="message-item">
+            <div class="message-avatar">U7</div>
+            <div class="message-content">
+              <div class="message-username">User 7</div>
+              <div class="message-text">这是第7条消息</div>
+            </div>
+          </div>
+          <div class="message-item current-position">
+            <div class="message-avatar">U8</div>
+            <div class="message-content">
+              <div class="message-username">User 8</div>
+              <div class="message-text">👀 用户当前查看的消息</div>
+            </div>
+          </div>
+          <div class="message-item">
+            <div class="message-avatar">U9</div>
+            <div class="message-content">
+              <div class="message-username">User 9</div>
+              <div class="message-text">这是第9条消息</div>
+            </div>
+          </div>
+          <div class="message-item">
+            <div class="message-avatar">U10</div>
+            <div class="message-content">
+              <div class="message-username">User 10</div>
+              <div class="message-text">这是第10条消息</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="load-more-btn" onclick="loadMoreSolution()" id="solutionBtn">⬆️ 加载历史消息（修复版）</button>
+        <div class="scroll-info" id="solutionScrollInfo">滚动到消息中间位置，然后点击加载按钮</div>
+      </div>
+    </div>
+
+    <!-- 技术对比表 -->
+    <table class="comparison-table">
+      <thead>
+        <tr>
+          <th>特性</th>
+          <th>修复前（问题版）</th>
+          <th>修复后（解决方案）</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>加载历史消息时</strong></td>
+          <td class="problem-cell">❌ 滚动条跳回顶部</td>
+          <td class="solution-cell">✅ 保持当前阅读位置</td>
+        </tr>
+        <tr>
+          <td><strong>用户体验</strong></td>
+          <td class="problem-cell">❌ 打断阅读连续性</td>
+          <td class="solution-cell">✅ 无缝阅读体验</td>
+        </tr>
+        <tr>
+          <td><strong>位置记忆</strong></td>
+          <td class="problem-cell">❌ 丢失当前位置</td>
+          <td class="solution-cell">✅ 精确位置保持</td>
+        </tr>
+        <tr>
+          <td><strong>实现复杂度</strong></td>
+          <td class="problem-cell">❌ 复杂的异步处理</td>
+          <td class="solution-cell">✅ 简单可靠的算法</td>
+        </tr>
+        <tr>
+          <td><strong>性能</strong></td>
+          <td class="problem-cell">❌ 多次DOM查询</td>
+          <td class="solution-cell">✅ 高效的高度计算</td>
+        </tr>
+        <tr>
+          <td><strong>可靠性</strong></td>
+          <td class="problem-cell">❌ 时序问题频发</td>
+          <td class="solution-cell">✅ 100%可靠保持</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    let problemMessageCount = 10;
+    let solutionMessageCount = 10;
+
+    // 初始化模拟器
+    function initializeSimulators() {
+      // 滚动到中间位置
+      setTimeout(() => {
+        const problemSim = document.getElementById('problemSimulator');
+        const solutionSim = document.getElementById('solutionSimulator');
+
+        problemSim.scrollTop = problemSim.scrollHeight / 2;
+        solutionSim.scrollTop = solutionSim.scrollHeight / 2;
+
+        updateScrollInfo();
+      }, 100);
+    }
+
+    // 问题版本：加载历史消息（会回弹）
+    async function loadMoreProblem() {
+      const simulator = document.getElementById('problemSimulator');
+      const btn = document.getElementById('problemBtn');
+
+      btn.disabled = true;
+      btn.textContent = '加载中...';
+
+      // 显示加载指示器
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'loading-indicator';
+      loadingDiv.innerHTML = '<div class="loading-spinner"></div><span>Loading earlier messages...</span>';
+      simulator.insertBefore(loadingDiv, simulator.firstChild);
+
+      // 模拟网络延迟
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // 移除加载指示器
+      loadingDiv.remove();
+
+      // 添加新的历史消息（问题：没有保持滚动位置）
+      for (let i = 4; i >= 1; i--) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message-item';
+        messageDiv.innerHTML = `
+          <div class="message-avatar">U${i}</div>
+          <div class="message-content">
+            <div class="message-username">User ${i}</div>
+            <div class="message-text">这是第${i}条历史消息</div>
+          </div>
+        `;
+        simulator.insertBefore(messageDiv, simulator.firstChild);
+      }
+
+      // 问题：没有调整scrollTop，导致用户看到跳到顶部
+
+      btn.disabled = false;
+      btn.textContent = '✅ 已加载（注意跳动）';
+      updateScrollInfo();
+    }
+
+    // 解决方案版本：加载历史消息（保持位置）
+    async function loadMoreSolution() {
+      const simulator = document.getElementById('solutionSimulator');
+      const btn = document.getElementById('solutionBtn');
+
+      btn.disabled = true;
+      btn.textContent = '加载中...';
+
+      // 🔧 步骤1: 保存当前滚动状态
+      const beforeScrollTop = simulator.scrollTop;
+      const beforeScrollHeight = simulator.scrollHeight;
+
+      console.log('📊 Solution - Before:', { scrollTop: beforeScrollTop, scrollHeight: beforeScrollHeight });
+
+      // 显示加载指示器
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'loading-indicator';
+      loadingDiv.innerHTML = '<div class="loading-spinner"></div><span>Loading earlier messages...</span>';
+      simulator.insertBefore(loadingDiv, simulator.firstChild);
+
+      // 模拟网络延迟
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // 移除加载指示器
+      loadingDiv.remove();
+
+      // 添加新的历史消息
+      for (let i = 4; i >= 1; i--) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message-item';
+        messageDiv.innerHTML = `
+          <div class="message-avatar">U${i}</div>
+          <div class="message-content">
+            <div class="message-username">User ${i}</div>
+            <div class="message-text">这是第${i}条历史消息</div>
+          </div>
+        `;
+        simulator.insertBefore(messageDiv, simulator.firstChild);
+      }
+
+      // 等待一帧确保DOM更新
+      await new Promise(resolve => requestAnimationFrame(resolve));
+
+      // 🔧 步骤4: 计算新增内容高度并调整滚动位置
+      const afterScrollHeight = simulator.scrollHeight;
+      const heightDifference = afterScrollHeight - beforeScrollHeight;
+
+      if (heightDifference > 0) {
+        // 🎯 关键：保持用户看到的内容位置不变
+        const newScrollTop = beforeScrollTop + heightDifference;
+        simulator.scrollTop = newScrollTop;
+
+        console.log('✅ Solution - After:', {
+          scrollTop: newScrollTop,
+          scrollHeight: afterScrollHeight,
+          heightAdded: heightDifference
+        });
+      }
+
+      btn.disabled = false;
+      btn.textContent = '✅ 已加载（位置保持）';
+      updateScrollInfo();
+    }
+
+    // 更新滚动信息显示
+    function updateScrollInfo() {
+      const problemSim = document.getElementById('problemSimulator');
+      const solutionSim = document.getElementById('solutionSimulator');
+
+      document.getElementById('problemScrollInfo').innerHTML = `
+        ScrollTop: ${problemSim.scrollTop}px<br>
+        ScrollHeight: ${problemSim.scrollHeight}px<br>
+        ClientHeight: ${problemSim.clientHeight}px
+      `;
+
+      document.getElementById('solutionScrollInfo').innerHTML = `
+        ScrollTop: ${solutionSim.scrollTop}px<br>
+        ScrollHeight: ${solutionSim.scrollHeight}px<br>
+        ClientHeight: ${solutionSim.clientHeight}px
+      `;
+    }
+
+    // 演示问题
+    function demonstrateProblem() {
+      const simulator = document.getElementById('problemSimulator');
+      simulator.scrollTop = simulator.scrollHeight / 2;
+
+      setTimeout(() => {
+        loadMoreProblem();
+      }, 500);
+    }
+
+    // 演示解决方案
+    function demonstrateSolution() {
+      const simulator = document.getElementById('solutionSimulator');
+      simulator.scrollTop = simulator.scrollHeight / 2;
+
+      setTimeout(() => {
+        loadMoreSolution();
+      }, 500);
+    }
+
+    // 重置模拟器
+    function resetSimulators() {
+      location.reload();
+    }
+
+    // 监听滚动事件
+    document.getElementById('problemSimulator').addEventListener('scroll', updateScrollInfo);
+    document.getElementById('solutionSimulator').addEventListener('scroll', updateScrollInfo);
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeSimulators();
+      console.log('🔧 历史消息加载滚动位置保持测试工具已初始化');
+    });
+  </script>
+</body>
+
+</html>

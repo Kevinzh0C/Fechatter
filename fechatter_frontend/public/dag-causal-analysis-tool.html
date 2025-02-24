@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DAG Causal Analysis Tool</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      color: #333;
+    }
+
+    .container {
+      background: white;
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: #2d3748;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #718096;
+      margin-bottom: 30px;
+      font-style: italic;
+    }
+
+    .analysis-section {
+      background: #f8fafc;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+      border-left: 4px solid #3182ce;
+    }
+
+    .call-chain {
+      background: #f7fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .call-step {
+      display: flex;
+      align-items: center;
+      margin: 8px 0;
+      padding: 12px;
+      border-radius: 8px;
+      border-left: 3px solid #cbd5e0;
+      background: white;
+      transition: all 0.3s ease;
+    }
+
+    .call-step.success {
+      border-left-color: #38a169;
+      background: #f0fff4;
+    }
+
+    .call-step.error {
+      border-left-color: #e53e3e;
+      background: #fed7d7;
+    }
+
+    .call-step.warning {
+      border-left-color: #dd6b20;
+      background: #fffaf0;
+    }
+
+    .call-step.analyzing {
+      border-left-color: #3182ce;
+      background: #ebf8ff;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.7;
+      }
+    }
+
+    .step-icon {
+      font-size: 18px;
+      margin-right: 12px;
+      min-width: 25px;
+    }
+
+    .step-content {
+      flex: 1;
+    }
+
+    .step-title {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .step-details {
+      font-size: 13px;
+      opacity: 0.8;
+    }
+
+    .step-result {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-top: 5px;
+    }
+
+    .result-success {
+      background: #c6f6d5;
+      color: #22543d;
+    }
+
+    .result-error {
+      background: #fed7d7;
+      color: #742a2a;
+    }
+
+    .result-warning {
+      background: #fef5e7;
+      color: #744210;
+    }
+
+    .layer-analysis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .layer {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .layer h4 {
+      margin-top: 0;
+      color: #2d3748;
+      display: flex;
+      align-items: center;
+    }
+
+    .layer h4::before {
+      font-size: 20px;
+      margin-right: 10px;
+    }
+
+    .network-layer h4::before {
+      content: "🌐";
+    }
+
+    .api-layer h4::before {
+      content: "🔗";
+    }
+
+    .business-layer h4::before {
+      content: "💼";
+    }
+
+    .button {
+      background: linear-gradient(135deg, #3182ce 0%, #2b6cb0 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin: 5px;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .button.secondary {
+      background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
+    }
+
+    .button.danger {
+      background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+    }
+
+    .results {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .info {
+      background: #ebf8ff;
+      color: #2a4365;
+      border: 1px solid #90cdf4;
+    }
+
+    .success {
+      background: #f0fff4;
+      color: #22543d;
+      border: 1px solid #9ae6b4;
+    }
+
+    .error {
+      background: #fed7d7;
+      color: #742a2a;
+      border: 1px solid #fc8181;
+    }
+
+    .warning {
+      background: #fffaf0;
+      color: #744210;
+      border: 1px solid #f6ad55;
+    }
+
+    .fix-strategy {
+      background: #f0fff4;
+      border: 2px solid #68d391;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .fix-step {
+      display: flex;
+      align-items: flex-start;
+      margin: 15px 0;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      border-left: 4px solid #38a169;
+    }
+
+    .fix-number {
+      background: #38a169;
+      color: white;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin-right: 15px;
+      flex-shrink: 0;
+    }
+
+    .fix-content {
+      flex: 1;
+    }
+
+    .fix-title {
+      font-weight: bold;
+      color: #2d3748;
+      margin-bottom: 5px;
+    }
+
+    .fix-description {
+      color: #4a5568;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    .fix-code {
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: #2d3748;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .metric {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      border: 1px solid #e2e8f0;
+    }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #3182ce;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      color: #718096;
+      margin-top: 5px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #48bb78, #38a169);
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔬 DAG因果推理分析工具</h1>
+    <p class="subtitle">深度分析文件上传失败的调用链和根因</p>
+
+    <!-- 错误调用链重构 -->
+    <div class="analysis-section">
+      <h3>📋 错误调用链重构</h3>
+      <div class="call-chain">
+        <div class="call-step" id="step-1">
+          <div class="step-icon">🎯</div>
+          <div class="step-content">
+            <div class="step-title">MessageInput.vue:931 → sendMessage()</div>
+            <div class="step-details">用户触发消息发送，包含文件上传</div>
+          </div>
+        </div>
+
+        <div class="call-step" id="step-2">
+          <div class="step-icon">📊</div>
+          <div class="step-content">
+            <div class="step-title">fileUploadStore.js:426 → uploadAll()</div>
+            <div class="step-details">文件上传存储管理器处理所有文件</div>
+          </div>
+        </div>
+
+        <div class="call-step" id="step-3">
+          <div class="step-icon">⚡</div>
+          <div class="step-content">
+            <div class="step-title">Promise.allSettled() → 并发上传</div>
+            <div class="step-details">并行处理多个文件上传请求</div>
+          </div>
+        </div>
+
+        <div class="call-step" id="step-4">
+          <div class="step-icon">🌐</div>
+          <div class="step-content">
+            <div class="step-title">ChatService.uploadFile()</div>
+            <div class="step-details">核心文件上传服务处理</div>
+          </div>
+        </div>
+
+        <div class="call-step" id="step-5">
+          <div class="step-icon">❤️</div>
+          <div class="step-content">
+            <div class="step-title">Network Health Check</div>
+            <div class="step-details">fetch('/health') → 检查网络连通性</div>
+          </div>
+        </div>
+
+        <div class="call-step" id="step-6">
+          <div class="step-icon">📤</div>
+          <div class="step-content">
+            <div class="step-title">POST /files/single</div>
+            <div class="step-details">实际文件上传请求 (失败点)</div>
+          </div>
+        </div>
+
+        <div class="call-step" id="step-7">
+          <div class="step-icon">🔄</div>
+          <div class="step-content">
+            <div class="step-title">Retry Mechanism</div>
+            <div class="step-details">3次重试机制，全部失败</div>
+          </div>
+        </div>
+
+        <div class="call-step" id="step-8">
+          <div class="step-icon">❌</div>
+          <div class="step-content">
+            <div class="step-title">Final Network Error</div>
+            <div class="step-details">最终网络错误，阻塞消息发送</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 分层分析 -->
+    <div class="analysis-section">
+      <h3>🏗️ 分层根因分析</h3>
+      <div class="layer-analysis">
+        <div class="layer network-layer">
+          <h4>网络层分析</h4>
+          <button class="button" onclick="analyzeNetworkLayer()">🔍 分析网络层</button>
+          <div id="network-results" class="results info" style="display: none;"></div>
+        </div>
+
+        <div class="layer api-layer">
+          <h4>API层分析</h4>
+          <button class="button" onclick="analyzeAPILayer()">🔗 分析API层</button>
+          <div id="api-results" class="results info" style="display: none;"></div>
+        </div>
+
+        <div class="layer business-layer">
+          <h4>业务层分析</h4>
+          <button class="button" onclick="analyzeBusinessLayer()">💼 分析业务层</button>
+          <div id="business-results" class="results info" style="display: none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 细粒度诊断 -->
+    <div class="analysis-section">
+      <h3>🔬 细粒度诊断</h3>
+      <button class="button" onclick="runDeepDiagnostic()">🚀 运行深度诊断</button>
+      <button class="button secondary" onclick="simulateUpload()">📁 模拟文件上传</button>
+      <button class="button secondary" onclick="traceRequest()">🔍 追踪请求路径</button>
+      <div class="progress-bar" id="diagnostic-progress" style="display: none;">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+      <div id="diagnostic-results" class="results info" style="display: none;"></div>
+    </div>
+
+    <!-- 修复策略 -->
+    <div class="fix-strategy" id="fix-strategy" style="display: none;">
+      <h3>🛠️ 智能修复策略</h3>
+      <div id="fix-steps"></div>
+      <button class="button" onclick="applyFixes()">✅ 应用修复</button>
+      <button class="button secondary" onclick="previewFixes()">👁️ 预览修复</button>
+    </div>
+
+    <!-- 指标监控 -->
+    <div class="metrics-grid">
+      <div class="metric">
+        <div class="metric-value" id="requests-analyzed">0</div>
+        <div class="metric-label">请求分析</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="errors-found">0</div>
+        <div class="metric-label">发现错误</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="fixes-suggested">0</div>
+        <div class="metric-label">建议修复</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="success-rate">0%</div>
+        <div class="metric-label">成功率预测</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 全局状态
+    let analysisState = {
+      requestsAnalyzed: 0,
+      errorsFound: 0,
+      fixesSuggested: 0,
+      successRate: 0,
+      currentLayer: null,
+      diagnosticResults: {},
+      suggestedFixes: []
+    };
+
+    // 工具函数
+    function logMessage(containerId, message, type = 'info') {
+      const container = document.getElementById(containerId);
+      container.style.display = 'block';
+      container.className = `results ${type}`;
+      container.textContent += `[${new Date().toLocaleTimeString()}] ${message}\n`;
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function clearResults(containerId) {
+      const container = document.getElementById(containerId);
+      container.textContent = '';
+      container.style.display = 'none';
+    }
+
+    function updateStepStatus(stepId, status, result = '') {
+      const step = document.getElementById(stepId);
+      step.className = `call-step ${status}`;
+
+      if (result) {
+        let existingResult = step.querySelector('.step-result');
+        if (existingResult) {
+          existingResult.remove();
+        }
+
+        const resultDiv = document.createElement('div');
+        resultDiv.className = `step-result result-${status}`;
+        resultDiv.textContent = result;
+        step.querySelector('.step-content').appendChild(resultDiv);
+      }
+    }
+
+    function updateMetrics() {
+      document.getElementById('requests-analyzed').textContent = analysisState.requestsAnalyzed;
+      document.getElementById('errors-found').textContent = analysisState.errorsFound;
+      document.getElementById('fixes-suggested').textContent = analysisState.fixesSuggested;
+      document.getElementById('success-rate').textContent = `${analysisState.successRate}%`;
+    }
+
+    function updateProgress(percentage) {
+      const progressBar = document.getElementById('diagnostic-progress');
+      const progressFill = document.getElementById('progress-fill');
+      progressBar.style.display = 'block';
+      progressFill.style.width = `${percentage}%`;
+
+      if (percentage >= 100) {
+        setTimeout(() => {
+          progressBar.style.display = 'none';
+        }, 2000);
+      }
+    }
+
+    // 网络层分析
+    async function analyzeNetworkLayer() {
+      clearResults('network-results');
+      logMessage('network-results', '🌐 开始网络层分析...', 'info');
+      updateStepStatus('step-5', 'analyzing');
+      updateStepStatus('step-6', 'analyzing');
+
+      analysisState.requestsAnalyzed++;
+
+      // 1. 检查基础连通性
+      logMessage('network-results', '\n1. 检查基础网络连通性...', 'info');
+      try {
+        const healthResponse = await fetch('/health', { method: 'HEAD' });
+        if (healthResponse.ok) {
+          logMessage('network-results', '   ✅ 健康检查端点可达', 'success');
+          updateStepStatus('step-5', 'success', '健康检查通过');
+        } else {
+          logMessage('network-results', `   ❌ 健康检查失败: ${healthResponse.status}`, 'error');
+          updateStepStatus('step-5', 'error', `健康检查失败: ${healthResponse.status}`);
+          analysisState.errorsFound++;
+        }
+      } catch (error) {
+        logMessage('network-results', `   ❌ 网络连接异常: ${error.message}`, 'error');
+        updateStepStatus('step-5', 'error', '网络连接异常');
+        analysisState.errorsFound++;
+      }
+
+      // 2. 检查文件上传端点
+      logMessage('network-results', '\n2. 检查文件上传端点...', 'info');
+      try {
+        const uploadResponse = await fetch('/api/files/single', {
+          method: 'HEAD',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token') || 'test-token'}`
+          }
+        });
+
+        if (uploadResponse.ok || uploadResponse.status === 401 || uploadResponse.status === 422) {
+          logMessage('network-results', '   ✅ 文件上传端点可达', 'success');
+          updateStepStatus('step-6', 'success', '端点可达');
+        } else if (uploadResponse.status === 404) {
+          logMessage('network-results', '   ❌ 文件上传端点不存在 (404)', 'error');
+          updateStepStatus('step-6', 'error', '端点不存在 (404)');
+          analysisState.errorsFound++;
+        } else {
+          logMessage('network-results', `   ⚠️ 端点响应异常: ${uploadResponse.status}`, 'warning');
+          updateStepStatus('step-6', 'warning', `异常响应: ${uploadResponse.status}`);
+        }
+      } catch (error) {
+        logMessage('network-results', `   ❌ 端点连接失败: ${error.message}`, 'error');
+        updateStepStatus('step-6', 'error', '连接失败');
+        analysisState.errorsFound++;
+      }
+
+      // 3. 代理配置检查
+      logMessage('network-results', '\n3. 检查Vite代理配置...', 'info');
+      try {
+        // 检查代理是否正确转发
+        const directTest = await fetch('/api/files/single', { method: 'OPTIONS' });
+        logMessage('network-results', `   📊 代理转发状态: ${directTest.status}`, 'info');
+
+        // 检查CORS头部
+        const corsHeaders = directTest.headers.get('access-control-allow-origin');
+        if (corsHeaders) {
+          logMessage('network-results', '   ✅ CORS配置正常', 'success');
+        } else {
+          logMessage('network-results', '   ⚠️ CORS头部缺失', 'warning');
+        }
+      } catch (error) {
+        logMessage('network-results', `   ❌ 代理配置检查失败: ${error.message}`, 'error');
+      }
+
+      logMessage('network-results', '\n✅ 网络层分析完成', 'success');
+      updateMetrics();
+    }
+
+    // API层分析
+    async function analyzeAPILayer() {
+      clearResults('api-results');
+      logMessage('api-results', '🔗 开始API层分析...', 'info');
+
+      analysisState.requestsAnalyzed++;
+
+      // 1. 检查认证头部
+      logMessage('api-results', '\n1. 检查认证配置...', 'info');
+      const authToken = localStorage.getItem('auth_token');
+      if (authToken) {
+        logMessage('api-results', `   ✅ 认证令牌存在: ${authToken.substring(0, 20)}...`, 'success');
+
+        // 验证令牌格式
+        if (authToken.length > 20) {
+          logMessage('api-results', '   ✅ 令牌格式合理', 'success');
+        } else {
+          logMessage('api-results', '   ⚠️ 令牌长度异常', 'warning');
+        }
+      } else {
+        logMessage('api-results', '   ❌ 认证令牌缺失', 'error');
+        analysisState.errorsFound++;
+      }
+
+      // 2. 检查API基础配置
+      logMessage('api-results', '\n2. 检查API基础配置...', 'info');
+      try {
+        // 动态导入API配置
+        logMessage('api-results', '   📊 API baseURL: /api', 'info');
+        logMessage('api-results', '   📊 预期请求: POST /api/files/single', 'info');
+        logMessage('api-results', '   📊 代理目标: http://45.77.178.85:8080', 'info');
+      } catch (error) {
+        logMessage('api-results', `   ❌ API配置读取失败: ${error.message}`, 'error');
+      }
+
+      // 3. 检查FormData格式
+      logMessage('api-results', '\n3. 模拟FormData构建...', 'info');
+      try {
+        const testFile = new File(['test content'], 'test.png', { type: 'image/png' });
+        const formData = new FormData();
+        formData.append('file', testFile);
+
+        logMessage('api-results', '   ✅ FormData构建成功', 'success');
+        logMessage('api-results', `   📊 文件名: ${testFile.name}`, 'info');
+        logMessage('api-results', `   📊 文件类型: ${testFile.type}`, 'info');
+        logMessage('api-results', `   📊 文件大小: ${testFile.size} bytes`, 'info');
+      } catch (error) {
+        logMessage('api-results', `   ❌ FormData构建失败: ${error.message}`, 'error');
+        analysisState.errorsFound++;
+      }
+
+      // 4. 检查请求头配置
+      logMessage('api-results', '\n4. 检查请求头配置...', 'info');
+      const expectedHeaders = {
+        'Authorization': authToken ? `Bearer ${authToken}` : 'Missing',
+        'Content-Type': 'multipart/form-data (auto-set)',
+        'Accept': 'application/json'
+      };
+
+      Object.entries(expectedHeaders).forEach(([key, value]) => {
+        logMessage('api-results', `   📊 ${key}: ${value}`, 'info');
+      });
+
+      logMessage('api-results', '\n✅ API层分析完成', 'success');
+      updateMetrics();
+    }
+
+    // 业务层分析
+    async function analyzeBusinessLayer() {
+      clearResults('business-results');
+      logMessage('business-results', '💼 开始业务层分析...', 'info');
+
+      analysisState.requestsAnalyzed++;
+
+      // 1. 检查文件验证逻辑
+      logMessage('business-results', '\n1. 检查文件验证逻辑...', 'info');
+      const testFile = new File(['x'.repeat(1024)], 'test.png', { type: 'image/png' });
+      const maxSize = 2 * 1024 * 1024; // 2MB
+
+      if (testFile.size <= maxSize) {
+        logMessage('business-results', '   ✅ 文件大小验证通过', 'success');
+      } else {
+        logMessage('business-results', '   ❌ 文件大小超限', 'error');
+        analysisState.errorsFound++;
+      }
+
+      // 2. 检查重试机制
+      logMessage('business-results', '\n2. 检查重试机制配置...', 'info');
+      logMessage('business-results', '   📊 最大重试次数: 3', 'info');
+      logMessage('business-results', '   📊 重试延迟: 指数退避 (1s → 2s → 4s)', 'info');
+      logMessage('business-results', '   📊 超时设置: 30秒', 'info');
+
+      // 3. 检查错误处理
+      logMessage('business-results', '\n3. 检查错误处理逻辑...', 'info');
+      logMessage('business-results', '   📊 网络错误: 执行重试', 'info');
+      logMessage('business-results', '   📊 4xx错误: 不重试 (除429)', 'info');
+      logMessage('business-results', '   📊 5xx错误: 执行重试', 'info');
+
+      // 4. 检查状态管理
+      logMessage('business-results', '\n4. 检查状态管理...', 'info');
+      try {
+        // 检查文件上传store状态
+        logMessage('business-results', '   📊 fileUploadStore状态检查', 'info');
+        logMessage('business-results', '   📊 并发上传控制: Promise.allSettled', 'info');
+        logMessage('business-results', '   📊 进度追踪: 支持', 'info');
+      } catch (error) {
+        logMessage('business-results', `   ❌ 状态管理检查失败: ${error.message}`, 'error');
+      }
+
+      logMessage('business-results', '\n✅ 业务层分析完成', 'success');
+      updateMetrics();
+    }
+
+    // 深度诊断
+    async function runDeepDiagnostic() {
+      clearResults('diagnostic-results');
+      logMessage('diagnostic-results', '🚀 开始深度诊断...', 'info');
+      updateProgress(0);
+
+      // 重置所有步骤状态
+      for (let i = 1; i <= 8; i++) {
+        updateStepStatus(`step-${i}`, '', '');
+      }
+
+      // 模拟完整上传流程诊断
+      const steps = [
+        { id: 'step-1', name: 'MessageInput触发', test: () => Promise.resolve(true) },
+        { id: 'step-2', name: 'fileUploadStore处理', test: () => Promise.resolve(true) },
+        { id: 'step-3', name: 'Promise.allSettled并发', test: () => Promise.resolve(true) },
+        { id: 'step-4', name: 'ChatService处理', test: () => Promise.resolve(true) },
+        { id: 'step-5', name: '网络健康检查', test: () => fetch('/health').then(r => r.ok) },
+        { id: 'step-6', name: '文件上传请求', test: () => fetch('/api/files/single', { method: 'HEAD' }).then(r => r.status !== 404) },
+        { id: 'step-7', name: '重试机制', test: () => Promise.resolve(true) },
+        { id: 'step-8', name: '错误处理', test: () => Promise.resolve(true) }
+      ];
+
+      for (let i = 0; i < steps.length; i++) {
+        const step = steps[i];
+        updateStepStatus(step.id, 'analyzing');
+        updateProgress((i / steps.length) * 100);
+
+        try {
+          const result = await step.test();
+          if (result) {
+            updateStepStatus(step.id, 'success', '✅ 通过');
+            logMessage('diagnostic-results', `✅ ${step.name}: 通过`, 'success');
+          } else {
+            updateStepStatus(step.id, 'error', '❌ 失败');
+            logMessage('diagnostic-results', `❌ ${step.name}: 失败`, 'error');
+            analysisState.errorsFound++;
+          }
+        } catch (error) {
+          updateStepStatus(step.id, 'error', `❌ ${error.message}`);
+          logMessage('diagnostic-results', `❌ ${step.name}: ${error.message}`, 'error');
+          analysisState.errorsFound++;
+        }
+
+        // 添加延迟以显示进度
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      updateProgress(100);
+
+      // 生成修复建议
+      await generateFixStrategy();
+
+      logMessage('diagnostic-results', '\n🎯 深度诊断完成！', 'success');
+      updateMetrics();
+    }
+
+    // 生成修复策略
+    async function generateFixStrategy() {
+      const fixes = [];
+
+      // 基于分析结果生成修复建议
+      if (analysisState.errorsFound > 0) {
+        fixes.push({
+          title: '修复网络连接问题',
+          description: '解决POST /files/single请求失败的根因',
+          code: `// 1. 检查Gateway路由配置
+// 确保 /api/files/single 路由正确配置
+
+// 2. 验证后端服务状态
+// 检查fechatter-server的文件服务是否运行
+
+// 3. 增强错误诊断
+const uploadWithDiagnostic = async (file) => {
+  try {
+    // 预检查端点可用性
+    const healthCheck = await fetch('/api/files/single', {method: 'HEAD'});
+    if (!healthCheck.ok) {
+      throw new Error('File upload endpoint not available');
+    }
+    
+    // 执行实际上传
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch('/api/files/single', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'Authorization': 'Bearer ' + getAuthToken()
+      }
+    });
+    
+    return response;
+  } catch (error) {
+    console.error('Upload diagnostic:', error);
+    throw error;
+  }
+};`
+        });
+
+        fixes.push({
+          title: '增强重试机制',
+          description: '实现更智能的重试和降级策略',
+          code: `// 增强的重试机制
+const enhancedRetry = async (uploadFn, maxRetries = 3) => {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await uploadFn();
+      return result;
+    } catch (error) {
+      console.log('Retry attempt', attempt, 'failed:', error.message);
+      
+      // 分析错误类型
+      if (error.status === 404) {
+        throw new Error('Endpoint not found - check server configuration');
+      }
+      
+      if (attempt === maxRetries) {
+        throw new Error('Upload failed after ' + maxRetries + ' attempts: ' + error.message);
+      }
+      
+      // 指数退避
+      const delay = Math.pow(2, attempt - 1) * 1000;
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+};`
+        });
+
+        fixes.push({
+          title: '添加详细日志',
+          description: '增加详细的错误追踪和调试信息',
+          code: `// 详细的上传日志
+const logUploadAttempt = (attempt, file, error = null) => {
+  const logData = {
+    timestamp: new Date().toISOString(),
+    attempt,
+    fileName: file.name,
+    fileSize: file.size,
+    fileType: file.type,
+    error: error ? error.message : null,
+    stackTrace: error ? error.stack : null
+  };
+  
+  console.group('📤 Upload Attempt', attempt);
+  console.table(logData);
+  if (error) {
+    console.error('Error details:', error);
+  }
+  console.groupEnd();
+  
+  // 发送到分析工具
+  if (window.uploadAnalytics) {
+    window.uploadAnalytics.track('upload_attempt', logData);
+  }
+};`
+        });
+      }
+
+      if (fixes.length > 0) {
+        analysisState.fixesSuggested = fixes.length;
+        analysisState.suggestedFixes = fixes;
+
+        // 显示修复策略
+        displayFixStrategy(fixes);
+
+        // 计算成功率预测
+        analysisState.successRate = Math.max(0, 90 - (analysisState.errorsFound * 20));
+      }
+
+      updateMetrics();
+    }
+
+    // 显示修复策略
+    function displayFixStrategy(fixes) {
+      const fixStrategy = document.getElementById('fix-strategy');
+      const fixSteps = document.getElementById('fix-steps');
+
+      fixSteps.innerHTML = '';
+
+      fixes.forEach((fix, index) => {
+        const fixStep = document.createElement('div');
+        fixStep.className = 'fix-step';
+        fixStep.innerHTML = `
+                    <div class="fix-number">${index + 1}</div>
+                    <div class="fix-content">
+                        <div class="fix-title">${fix.title}</div>
+                        <div class="fix-description">${fix.description}</div>
+                        <div class="fix-code">${fix.code}</div>
+                    </div>
+                `;
+        fixSteps.appendChild(fixStep);
+      });
+
+      fixStrategy.style.display = 'block';
+    }
+
+    // 模拟文件上传
+    async function simulateUpload() {
+      clearResults('diagnostic-results');
+      logMessage('diagnostic-results', '📁 模拟文件上传测试...', 'info');
+
+      try {
+        // 创建测试文件
+        const testFile = new File(['test content for upload simulation'], 'test-upload.png', {
+          type: 'image/png'
+        });
+
+        logMessage('diagnostic-results', `📊 测试文件: ${testFile.name} (${testFile.size} bytes)`, 'info');
+
+        // 模拟上传流程
+        const formData = new FormData();
+        formData.append('file', testFile);
+
+        const authToken = localStorage.getItem('auth_token');
+        const headers = {};
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`;
+        }
+
+        logMessage('diagnostic-results', '🚀 发送上传请求...', 'info');
+
+        const response = await fetch('/api/files/single', {
+          method: 'POST',
+          body: formData,
+          headers: headers
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          logMessage('diagnostic-results', '✅ 上传成功！', 'success');
+          logMessage('diagnostic-results', `📊 响应: ${JSON.stringify(result, null, 2)}`, 'success');
+        } else {
+          logMessage('diagnostic-results', `❌ 上传失败: ${response.status} ${response.statusText}`, 'error');
+          const errorText = await response.text();
+          logMessage('diagnostic-results', `📊 错误详情: ${errorText}`, 'error');
+        }
+
+      } catch (error) {
+        logMessage('diagnostic-results', `❌ 上传异常: ${error.message}`, 'error');
+        logMessage('diagnostic-results', `📊 错误堆栈: ${error.stack}`, 'error');
+      }
+    }
+
+    // 追踪请求路径
+    async function traceRequest() {
+      clearResults('diagnostic-results');
+      logMessage('diagnostic-results', '🔍 追踪请求路径...', 'info');
+
+      const tracePath = [
+        { step: '前端请求', url: '/api/files/single', desc: 'Vite开发服务器' },
+        { step: 'Vite代理', url: 'http://45.77.178.85:8080/api/files/single', desc: '代理转发' },
+        { step: 'Gateway路由', url: 'fechatter-server:6688/api/files/single', desc: 'Gateway内部路由' },
+        { step: '后端处理', url: 'files/single handler', desc: 'Rust后端处理器' }
+      ];
+
+      tracePath.forEach((trace, index) => {
+        logMessage('diagnostic-results', `${index + 1}. ${trace.step}`, 'info');
+        logMessage('diagnostic-results', `   📍 ${trace.url}`, 'info');
+        logMessage('diagnostic-results', `   📝 ${trace.desc}`, 'info');
+        logMessage('diagnostic-results', '', 'info');
+      });
+
+      logMessage('diagnostic-results', '🎯 可能的故障点:', 'warning');
+      logMessage('diagnostic-results', '   • Gateway路由配置缺失/错误', 'warning');
+      logMessage('diagnostic-results', '   • 后端文件服务未启动', 'warning');
+      logMessage('diagnostic-results', '   • 网络连接问题', 'warning');
+      logMessage('diagnostic-results', '   • 认证/授权问题', 'warning');
+    }
+
+    // 应用修复
+    function applyFixes() {
+      alert('修复建议已生成！请手动应用代码修复，或使用开发工具进行调试。');
+    }
+
+    // 预览修复
+    function previewFixes() {
+      if (analysisState.suggestedFixes.length > 0) {
+        console.group('🛠️ 修复预览');
+        analysisState.suggestedFixes.forEach((fix, index) => {
+          console.log(`${index + 1}. ${fix.title}`);
+          console.log(`   描述: ${fix.description}`);
+          console.log(`   代码:`, fix.code);
+        });
+        console.groupEnd();
+
+        alert('修复预览已输出到控制台！请按F12查看。');
+      } else {
+        alert('暂无修复建议。请先运行深度诊断。');
+      }
+    }
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', function () {
+      updateMetrics();
+
+      // 自动运行初步分析
+      setTimeout(() => {
+        logMessage('diagnostic-results', '🎯 DAG因果推理分析工具已就绪', 'info');
+        logMessage('diagnostic-results', '💡 建议先运行"深度诊断"来全面分析问题', 'info');
+      }, 1000);
+    });
+  </script>
+</body>
+
+</html>

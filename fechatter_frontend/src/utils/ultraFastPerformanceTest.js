@@ -7,8 +7,9 @@ class UltraFastPerformanceTest {
   constructor() {
     this.testResults = [];
     this.isRunning = false;
-    console.log('⚡ Ultra-Fast Performance Test initialized');
-  }
+    if (import.meta.env.DEV) {
+      console.log('⚡ Ultra-Fast Performance Test initialized');
+    }
 
   /**
    * Run comprehensive performance test
@@ -16,36 +17,50 @@ class UltraFastPerformanceTest {
    */
   async runTest() {
     if (this.isRunning) {
-      console.log('⚠️ Test already running');
+      if (import.meta.env.DEV) {
+        console.log('⚠️ Test already running');
       return;
     }
 
     this.isRunning = true;
     this.testResults = [];
 
-    console.log('\n⚡ ULTRA-FAST PERFORMANCE TEST');
-    console.log('==============================');
+    if (import.meta.env.DEV) {
+      console.log('\n⚡ ULTRA-FAST PERFORMANCE TEST');
+    if (import.meta.env.DEV) {
+      console.log('==============================');
+    }
 
     try {
       // Test 1: UI Update Speed
       const uiTest = await this.testUIUpdateSpeed();
-      console.log(`📱 UI Update Speed: ${uiTest.average.toFixed(2)}ms`);
+      if (import.meta.env.DEV) {
+        console.log(`📱 UI Update Speed: ${uiTest.average.toFixed(2)}ms`);
+      }
 
       // Test 2: Message Send Speed
       const sendTest = await this.testMessageSendSpeed();
-      console.log(`📤 Message Send Speed: ${sendTest.average.toFixed(2)}ms`);
+      if (import.meta.env.DEV) {
+        console.log(`📤 Message Send Speed: ${sendTest.average.toFixed(2)}ms`);
+      }
 
       // Test 3: SSE Processing Speed
       const sseTest = this.testSSEProcessingSpeed();
-      console.log(`📨 SSE Processing Speed: ${sseTest.average.toFixed(2)}ms`);
+      if (import.meta.env.DEV) {
+        console.log(`📨 SSE Processing Speed: ${sseTest.average.toFixed(2)}ms`);
+      }
 
       // Test 4: Cache Update Speed
       const cacheTest = await this.testCacheUpdateSpeed();
-      console.log(`📦 Cache Update Speed: ${cacheTest.average.toFixed(2)}ms`);
+      if (import.meta.env.DEV) {
+        console.log(`📦 Cache Update Speed: ${cacheTest.average.toFixed(2)}ms`);
+      }
 
       // Test 5: End-to-End Speed
       const e2eTest = await this.testEndToEndSpeed();
-      console.log(`🔄 End-to-End Speed: ${e2eTest.average.toFixed(2)}ms`);
+      if (import.meta.env.DEV) {
+        console.log(`🔄 End-to-End Speed: ${e2eTest.average.toFixed(2)}ms`);
+      }
 
       // Summary
       this.showSummary({
@@ -57,11 +72,12 @@ class UltraFastPerformanceTest {
       });
 
     } catch (error) {
-      console.error('❌ Performance test failed:', error);
+      if (import.meta.env.DEV) {
+        console.error('❌ Performance test failed:', error);
+      }
     } finally {
       this.isRunning = false;
     }
-  }
 
   /**
    * Test UI update speed
@@ -145,8 +161,9 @@ class UltraFastPerformanceTest {
         }
 
       } catch (error) {
-        console.warn(`Send test ${i} failed:`, error);
-      }
+        if (import.meta.env.DEV) {
+          console.warn(`Send test ${i} failed:`, error);
+        }
 
       await new Promise(resolve => setTimeout(resolve, 50));
     }
@@ -247,7 +264,6 @@ class UltraFastPerformanceTest {
           const testChatId = 888;
           if (!chatStore.messageCache[testChatId]) {
             chatStore.messageCache[testChatId] = { messages: [], timestamp: Date.now() };
-          }
           chatStore.messageCache[testChatId].messages.push(testMessage);
 
           // 4. Simulate persistence (localStorage write)
@@ -267,8 +283,9 @@ class UltraFastPerformanceTest {
         }
 
       } catch (error) {
-        console.warn(`E2E test ${i} failed:`, error);
-      }
+        if (import.meta.env.DEV) {
+          console.warn(`E2E test ${i} failed:`, error);
+        }
 
       await new Promise(resolve => setTimeout(resolve, 20));
     }
@@ -302,18 +319,27 @@ class UltraFastPerformanceTest {
    * Show performance summary
    */
   showSummary(results) {
-    console.log('\n📊 PERFORMANCE SUMMARY');
-    console.log('======================');
+    if (import.meta.env.DEV) {
+      console.log('\n📊 PERFORMANCE SUMMARY');
+    if (import.meta.env.DEV) {
+      console.log('======================');
+    }
 
     Object.values(results).forEach(result => {
       if (result.count > 0) {
-        console.log(`${result.label}:`);
-        console.log(`  Average: ${result.average.toFixed(2)}ms`);
-        console.log(`  Min: ${result.min.toFixed(2)}ms`);
-        console.log(`  Max: ${result.max.toFixed(2)}ms`);
-        console.log(`  Tests: ${result.count}`);
-        console.log('');
-      }
+        if (import.meta.env.DEV) {
+          console.log(`${result.label}:`);
+        if (import.meta.env.DEV) {
+          console.log(`  Average: ${result.average.toFixed(2)}ms`);
+        if (import.meta.env.DEV) {
+          console.log(`  Min: ${result.min.toFixed(2)}ms`);
+        if (import.meta.env.DEV) {
+          console.log(`  Max: ${result.max.toFixed(2)}ms`);
+        if (import.meta.env.DEV) {
+          console.log(`  Tests: ${result.count}`);
+        if (import.meta.env.DEV) {
+          console.log('');
+        }
     });
 
     // Performance rating
@@ -323,18 +349,25 @@ class UltraFastPerformanceTest {
     if (avgE2E > 50) rating = '🐌 SLOW';
     if (avgE2E > 100) rating = '🚨 VERY SLOW';
 
-    console.log(`Overall Rating: ${rating} (${avgE2E.toFixed(2)}ms E2E)`);
-    console.log('');
+    if (import.meta.env.DEV) {
+      console.log(`Overall Rating: ${rating} (${avgE2E.toFixed(2)}ms E2E)`);
+    if (import.meta.env.DEV) {
+      console.log('');
+    }
 
     // Recommendations
     if (avgE2E < 5) {
-      console.log('✅ Excellent performance! System is ultra-fast.');
+      if (import.meta.env.DEV) {
+        console.log('✅ Excellent performance! System is ultra-fast.');
+      }
     } else if (avgE2E < 20) {
-      console.log('✅ Good performance! System is fast enough.');
+      if (import.meta.env.DEV) {
+        console.log('✅ Good performance! System is fast enough.');
+      }
     } else {
-      console.log('⚠️ Performance could be improved. Check for bottlenecks.');
-    }
-  }
+      if (import.meta.env.DEV) {
+        console.log('⚠️ Performance could be improved. Check for bottlenecks.');
+      }
 
   /**
    * Get chat store reference
@@ -345,7 +378,6 @@ class UltraFastPerformanceTest {
     } catch (error) {
       return null;
     }
-  }
 
   /**
    * Get current performance baseline
@@ -360,7 +392,6 @@ class UltraFastPerformanceTest {
       timestamp: new Date().toISOString()
     };
   }
-}
 
 // Create global instance
 const ultraFastTest = new UltraFastPerformanceTest();
@@ -375,7 +406,12 @@ if (typeof window !== 'undefined') {
   window.getPerformanceBaseline = () => ultraFastTest.getBaseline();
 }
 
-console.log('⚡ Ultra-Fast Performance Test loaded');
-console.log('   Commands:');
-console.log('   - window.testPerformance() - Run full performance test');
-console.log('   - window.getPerformanceBaseline() - Get current baseline'); 
+if (import.meta.env.DEV) {
+  console.log('⚡ Ultra-Fast Performance Test loaded');
+if (import.meta.env.DEV) {
+  console.log('   Commands:');
+if (import.meta.env.DEV) {
+  console.log('   - window.testPerformance() - Run full performance test');
+if (import.meta.env.DEV) {
+  console.log('   - window.getPerformanceBaseline() - Get current baseline'); 
+}

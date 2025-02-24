@@ -1,8 +1,8 @@
 <template>
   <teleport to="body">
     <div v-if="visible" 
-         class="fixed bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50 min-w-[160px]"
-         :style="menuStyle"
+         class="fixed bg-white rounded-lg shadow-xl border border-gray-200 py-1 min-w-[160px]"
+         :style="getMenuStyle()"
          @click.stop>
       <button @click="handleReply" 
               class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2">
@@ -91,14 +91,22 @@ const props = defineProps({
 
 const emit = defineEmits(['reply', 'edit', 'delete', 'forward', 'copy', 'select', 'close']);
 
-// 计算菜单位置，确保不超出屏幕边界
-const menuStyle = computed(() => {
+// 🔧 修复：动态计算菜单样式和z-index
+const getMenuStyle = () => {
+  const baseZ = 8000; // 提高基础层级
+  const debugPanelZ = 15000; // Debug面板层级
+  
+  // 检查Debug面板是否显示
+  const isDebugVisible = document.querySelector('.draggable-debug-panel');
+  const zIndex = isDebugVisible ? debugPanelZ - 1000 : baseZ;
+  
   const style = {
     top: `${props.y}px`,
-    left: `${props.x}px`
+    left: `${props.x}px`,
+    zIndex: zIndex
   };
   
-  // TODO: 计算实际菜单尺寸，调整位置避免超出屏幕
+  // 计算实际菜单尺寸，调整位置避免超出屏幕
   if (typeof window !== 'undefined') {
     const menuWidth = 200; // 估计宽度
     const menuHeight = 300; // 估计高度
@@ -113,7 +121,10 @@ const menuStyle = computed(() => {
   }
   
   return style;
-});
+};
+
+// 保留旧的computed用于向后兼容
+const menuStyle = computed(() => getMenuStyle());
 
 // 处理函数
 const handleReply = () => {

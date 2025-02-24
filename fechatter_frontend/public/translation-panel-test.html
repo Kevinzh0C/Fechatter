@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Translation Panel Debug Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .mock-panel {
+      width: 400px;
+      background: rgba(255, 255, 255, 0.98);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 16px;
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+      margin: 20px auto;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 16px 20px;
+      background: rgba(0, 0, 0, 0.02);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .message-preview {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .preview-content {
+      background: rgba(0, 0, 0, 0.02);
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .language-selection {
+      padding: 16px 20px;
+    }
+
+    .language-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .language-btn {
+      padding: 10px 12px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      cursor: pointer;
+      background: transparent;
+      font-size: 13px;
+      transition: all 0.15s ease;
+    }
+
+    .language-btn:hover {
+      background-color: rgba(0, 122, 255, 0.08);
+    }
+
+    .language-btn.selected {
+      background-color: #007AFF;
+      color: white;
+      border-color: #007AFF;
+    }
+
+    .translation-result {
+      padding: 16px 20px;
+      background: rgba(0, 122, 255, 0.02);
+      border-top: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .result-content {
+      background: white;
+      padding: 16px;
+      border-radius: 8px;
+      margin: 12px 0;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .result-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .result-actions button {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      background: transparent;
+    }
+
+    .apply-btn {
+      background: #007AFF !important;
+      color: white !important;
+      border-color: #007AFF !important;
+    }
+
+    .loading-state {
+      padding: 20px;
+      text-align: center;
+      color: #666;
+    }
+
+    .loading-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0, 122, 255, 0.2);
+      border-top: 2px solid #007AFF;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .debug-info {
+      margin-top: 8px;
+      padding: 4px 8px;
+      background: rgba(255, 0, 0, 0.1);
+      border: 1px solid rgba(255, 0, 0, 0.2);
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #666;
+    }
+
+    .debug-state {
+      padding: 8px 16px;
+      background: rgba(0, 0, 255, 0.05);
+      border-top: 1px solid rgba(0, 0, 255, 0.1);
+    }
+
+    .test-controls {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #e9ecef;
+      border-radius: 5px;
+    }
+
+    .test-controls button {
+      margin-right: 10px;
+      padding: 8px 16px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .status {
+      margin-top: 10px;
+      padding: 8px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .status.loading {
+      background: #fff3cd;
+      color: #856404;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔧 Translation Panel Debug Test</h1>
+
+    <div class="test-controls">
+      <h3>Test Controls</h3>
+      <button onclick="simulateTranslation()">Simulate Translation</button>
+      <button onclick="simulateError()">Simulate Error</button>
+      <button onclick="clearState()">Clear State</button>
+      <div id="status" class="status"></div>
+    </div>
+
+    <div class="mock-panel">
+      <!-- Panel Header -->
+      <div class="panel-header">
+        <div>
+          <span style="font-size: 20px;">🌐</span>
+          <span style="font-weight: 600; margin-left: 8px;">Translate Message</span>
+        </div>
+        <div>
+          <span style="font-size: 12px; background: rgba(0, 0, 0, 0.04); padding: 4px 8px; border-radius: 6px;">
+            <span id="quota-remaining">19</span>/20 left today
+          </span>
+        </div>
+      </div>
+
+      <!-- Message Preview -->
+      <div class="message-preview">
+        <div style="font-size: 12px; font-weight: 600; color: #999; margin-bottom: 8px;">ORIGINAL MESSAGE:</div>
+        <div class="preview-content" id="message-content">Hello, this is a test message for the translation panel.</div>
+        <div class="debug-info">
+          <small>Debug: ID=<span id="debug-id">167</span>, Length=<span id="debug-length">52</span></small>
+        </div>
+      </div>
+
+      <!-- Language Selection -->
+      <div class="language-selection">
+        <div style="font-size: 12px; font-weight: 600; color: #999; margin-bottom: 12px;">TRANSLATE TO:</div>
+        <div class="language-grid">
+          <button class="language-btn" onclick="selectLanguage('zh', '中文', '🇨🇳')">
+            🇨🇳 中文
+          </button>
+          <button class="language-btn" onclick="selectLanguage('ja', '日本語', '🇯🇵')">
+            🇯🇵 日本語
+          </button>
+          <button class="language-btn" onclick="selectLanguage('ko', '한국어', '🇰🇷')">
+            🇰🇷 한국어
+          </button>
+          <button class="language-btn" onclick="selectLanguage('es', 'Español', '🇪🇸')">
+            🇪🇸 Español
+          </button>
+          <button class="language-btn" onclick="selectLanguage('fr', 'Français', '🇫🇷')">
+            🇫🇷 Français
+          </button>
+          <button class="language-btn" onclick="selectLanguage('de', 'Deutsch', '🇩🇪')">
+            🇩🇪 Deutsch
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div id="loading-state" class="loading-state" style="display: none;">
+        <div class="loading-spinner"></div>
+        <span>Translating...</span>
+      </div>
+
+      <!-- Translation Result -->
+      <div id="translation-result" class="translation-result" style="display: none;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <span style="font-size: 12px; font-weight: 600; color: #999;">TRANSLATION:</span>
+          <span style="font-size: 11px; background: rgba(0, 0, 0, 0.04); padding: 2px 6px; border-radius: 4px;"
+            id="language-direction">
+            auto-detected → 中文
+          </span>
+        </div>
+        <div class="result-content" id="translated-text">
+          你好，这是翻译面板的测试消息。
+        </div>
+        <div class="result-actions">
+          <button onclick="copyTranslation()">Copy Translation</button>
+          <button class="apply-btn" onclick="applyTranslation()">Apply to Message</button>
+        </div>
+        <div class="debug-info">
+          <small>Debug Result: Confidence=<span id="confidence">0.95</span></small>
+        </div>
+      </div>
+
+      <!-- Debug State -->
+      <div class="debug-state">
+        <div class="debug-info">
+          <small>
+            State Debug: isTranslating=<span id="is-translating">false</span>,
+            hasResult=<span id="has-result">false</span>,
+            selectedLang=<span id="selected-lang">none</span>,
+            quotaRemaining=<span id="quota-debug">19</span>
+          </small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentState = {
+      isTranslating: false,
+      hasResult: false,
+      selectedLanguage: null,
+      quotaRemaining: 19,
+      translationResult: null
+    };
+
+    function updateDebugInfo() {
+      document.getElementById('is-translating').textContent = currentState.isTranslating;
+      document.getElementById('has-result').textContent = currentState.hasResult;
+      document.getElementById('selected-lang').textContent = currentState.selectedLanguage || 'none';
+      document.getElementById('quota-debug').textContent = currentState.quotaRemaining;
+    }
+
+    function updateStatus(message, type = 'success') {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`;
+    }
+
+    function selectLanguage(code, name, flag) {
+      // Clear previous selection
+      document.querySelectorAll('.language-btn').forEach(btn => {
+        btn.classList.remove('selected');
+      });
+
+      // Mark selected
+      event.target.classList.add('selected');
+      currentState.selectedLanguage = code;
+
+      // Start translation simulation
+      startTranslation(code, name);
+      updateDebugInfo();
+    }
+
+    function startTranslation(langCode, langName) {
+      currentState.isTranslating = true;
+      currentState.hasResult = false;
+
+      // Show loading state
+      document.getElementById('loading-state').style.display = 'block';
+      document.getElementById('translation-result').style.display = 'none';
+
+      updateStatus('Starting translation...', 'loading');
+      updateDebugInfo();
+
+      // Simulate API call delay
+      setTimeout(() => {
+        finishTranslation(langCode, langName);
+      }, 1500);
+    }
+
+    function finishTranslation(langCode, langName) {
+      currentState.isTranslating = false;
+      currentState.hasResult = true;
+      currentState.quotaRemaining--;
+
+      // Hide loading, show result
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('translation-result').style.display = 'block';
+
+      // Update content
+      const translations = {
+        'zh': '你好，这是翻译面板的测试消息。',
+        'ja': 'こんにちは、これは翻訳パネルのテストメッセージです。',
+        'ko': '안녕하세요, 이것은 번역 패널의 테스트 메시지입니다.',
+        'es': 'Hola, este es un mensaje de prueba para el panel de traducción.',
+        'fr': 'Bonjour, ceci est un message de test pour le panneau de traduction.',
+        'de': 'Hallo, das ist eine Testnachricht für das Übersetzungspanel.'
+      };
+
+      document.getElementById('translated-text').textContent = translations[langCode] || 'Translation not available';
+      document.getElementById('language-direction').textContent = `auto-detected → ${langName}`;
+      document.getElementById('quota-remaining').textContent = currentState.quotaRemaining;
+      document.getElementById('confidence').textContent = (0.9 + Math.random() * 0.1).toFixed(2);
+
+      updateStatus(`Translation completed! ${currentState.quotaRemaining} left today.`, 'success');
+      updateDebugInfo();
+    }
+
+    function simulateTranslation() {
+      selectLanguage('zh', '中文', '🇨🇳');
+    }
+
+    function simulateError() {
+      currentState.isTranslating = true;
+      document.getElementById('loading-state').style.display = 'block';
+      updateStatus('Simulating error...', 'loading');
+      updateDebugInfo();
+
+      setTimeout(() => {
+        currentState.isTranslating = false;
+        document.getElementById('loading-state').style.display = 'none';
+        updateStatus('Translation failed: Simulated error', 'error');
+        updateDebugInfo();
+      }, 1000);
+    }
+
+    function clearState() {
+      currentState = {
+        isTranslating: false,
+        hasResult: false,
+        selectedLanguage: null,
+        quotaRemaining: 19,
+        translationResult: null
+      };
+
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('translation-result').style.display = 'none';
+      document.querySelectorAll('.language-btn').forEach(btn => {
+        btn.classList.remove('selected');
+      });
+
+      updateStatus('State cleared', 'success');
+      updateDebugInfo();
+    }
+
+    function copyTranslation() {
+      const text = document.getElementById('translated-text').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        updateStatus('Translation copied to clipboard', 'success');
+      });
+    }
+
+    function applyTranslation() {
+      updateStatus('Translation applied to message', 'success');
+    }
+
+    // Initialize
+    updateDebugInfo();
+    updateStatus('Ready for testing');
+  </script>
+</body>
+
+</html>

@@ -5,7 +5,8 @@
         <h2 class="fechatter-modal-title">Start a direct message</h2>
         <button @click="$emit('close')" class="fechatter-icon-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            <path
+              d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
           </svg>
         </button>
       </div>
@@ -15,16 +16,8 @@
           <label for="userSearch" class="fechatter-label">
             Search for people
           </label>
-          <input
-            id="userSearch"
-            v-model="searchQuery"
-            type="text"
-            class="fechatter-input"
-            placeholder="Type a name or email"
-            @input="searchUsers"
-            @focus="showResults = true"
-            autofocus
-          />
+          <input id="userSearch" v-model="searchQuery" type="text" class="fechatter-input"
+            placeholder="Type a name or email" @input="searchUsers" @focus="showResults = true" autofocus />
           <div class="fechatter-help-text">
             Start a direct message with someone in your workspace.
           </div>
@@ -34,13 +27,8 @@
         <div v-if="showResults && searchResults.length > 0" class="fechatter-user-list">
           <h3 class="fechatter-section-title">People</h3>
           <div class="fechatter-user-results">
-            <button
-              v-for="user in searchResults"
-              :key="user.id"
-              @click="createDM(user)"
-              :disabled="creating"
-              class="fechatter-user-item"
-            >
+            <button v-for="user in searchResults" :key="user.id" @click="createDM(user)" :disabled="creating"
+              class="fechatter-user-item">
               <div class="fechatter-user-avatar">
                 {{ user.fullname.charAt(0).toUpperCase() }}
               </div>
@@ -48,10 +36,7 @@
                 <div class="fechatter-user-name">{{ user.fullname }}</div>
                 <div class="fechatter-user-email">{{ user.email }}</div>
                 <div v-if="user.status" class="fechatter-user-status">
-                  <span 
-                    class="fechatter-status-indicator"
-                    :class="getStatusClass(user.status)"
-                  ></span>
+                  <span class="fechatter-status-indicator" :class="getStatusClass(user.status)"></span>
                   {{ getStatusText(user.status) }}
                 </div>
               </div>
@@ -64,7 +49,8 @@
         <div v-else-if="showResults && searchQuery && searchResults.length === 0" class="fechatter-empty-state">
           <div class="fechatter-empty-icon">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" opacity="0.3">
-              <path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2zm0 2a8 8 0 100 16 8 8 0 000-16zm0 3a1 1 0 01.993.883L13 8v4a1 1 0 01-1.993.117L11 12V8a1 1 0 011-1zm0 8a1 1 0 110 2 1 1 0 010-2z"/>
+              <path
+                d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2zm0 2a8 8 0 100 16 8 8 0 000-16zm0 3a1 1 0 01.993.883L13 8v4a1 1 0 01-1.993.117L11 12V8a1 1 0 011-1zm0 8a1 1 0 110 2 1 1 0 010-2z" />
             </svg>
           </div>
           <h3 class="fechatter-empty-title">No people found</h3>
@@ -77,7 +63,8 @@
         <div v-else-if="!showResults || !searchQuery" class="fechatter-initial-state">
           <div class="fechatter-initial-icon">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor" opacity="0.3">
-              <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 7C13.9 7 13 7.9 13 9V10L11 10V9C11 7.9 10.1 7 9 7L3 7V9L9 9V16C9 17.1 9.9 18 11 18L13 18C14.1 18 15 17.1 15 16V11L18 11V16C18 17.1 18.9 18 20 18S22 17.1 22 16V11C22 10.4 21.6 10 21 10S20 10.4 20 11V9L21 9Z"/>
+              <path
+                d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 7C13.9 7 13 7.9 13 9V10L11 10V9C11 7.9 10.1 7 9 7L3 7V9L9 9V16C9 17.1 9.9 18 11 18L13 18C14.1 18 15 17.1 15 16V11L18 11V16C18 17.1 18.9 18 20 18S22 17.1 22 16V11C22 10.4 21.6 10 21 10S20 10.4 20 11V9L21 9Z" />
             </svg>
           </div>
           <h3 class="fechatter-initial-title">Direct messages</h3>
@@ -90,12 +77,8 @@
         <div v-if="recentConversations.length > 0 && !searchQuery" class="fechatter-recent-section">
           <h3 class="fechatter-section-title">Recent conversations</h3>
           <div class="fechatter-user-results">
-            <button
-              v-for="conversation in recentConversations"
-              :key="conversation.id"
-              @click="openExistingDM(conversation)"
-              class="fechatter-user-item"
-            >
+            <button v-for="conversation in recentConversations" :key="conversation.id"
+              @click="openExistingDM(conversation)" class="fechatter-user-item">
               <div class="fechatter-user-avatar">
                 {{ getConversationAvatar(conversation) }}
               </div>
@@ -149,9 +132,9 @@ export default {
 
       showResults.value = true
       const query = searchQuery.value.toLowerCase()
-      
+
       searchResults.value = allUsers.value
-        .filter(user => 
+        .filter(user =>
           user.fullname.toLowerCase().includes(query) ||
           user.email.toLowerCase().includes(query)
         )
@@ -210,7 +193,7 @@ export default {
         'Away': 'fechatter-status-away',
         'Busy': 'fechatter-status-busy',
         'Offline': 'fechatter-status-offline'
-      }
+      };
       return statusClasses[status] || 'fechatter-status-offline'
     }
 
@@ -220,7 +203,7 @@ export default {
         'Away': 'Away',
         'Busy': 'Busy',
         'Offline': 'Offline'
-      }
+      };
       return statusTexts[status] || 'Offline'
     }
 
@@ -231,11 +214,11 @@ export default {
 
     const formatLastMessage = (timestamp) => {
       if (!timestamp) return 'No messages yet'
-      
+
       const date = new Date(timestamp)
       const now = new Date()
       const diffInHours = (now - date) / (1000 * 60 * 60)
-      
+
       if (diffInHours < 1) {
         return 'Just now'
       } else if (diffInHours < 24) {
@@ -459,7 +442,12 @@ export default {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
-</style> 
+</style>

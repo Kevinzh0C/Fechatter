@@ -4,10 +4,30 @@
  * Handles authentication API calls
  */
 
-import api from '@/services/api';
-import { errorHandler } from '@/utils/errorHandler';
+import api from './api';
+import { errorHandler } from '../utils/errorHandler';
 
 class AuthService {
+  constructor() {
+    // Initialize tokenManager reference after module loading
+    this.initializeTokenManagerReference();
+  }
+
+  /**
+   * Initialize tokenManager reference to avoid circular dependencies
+   */
+  async initializeTokenManagerReference() {
+    try {
+      // Set auth service reference in tokenManager to avoid circular imports
+      const { default: tokenManager } = await import('./tokenManager');
+      tokenManager.setAuthService(this);
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('Failed to initialize tokenManager reference:', error);
+      }
+    }
+  }
+
   /**
    * Refresh access token
    */
@@ -114,7 +134,9 @@ class AuthService {
       return true;
     } catch (error) {
       // Logout should always succeed locally even if API fails
-      console.error('Logout API error:', error);
+      if (import.meta.env.DEV) {
+        console.error('Logout API error:', error);
+      }
       return true;
     }
   }

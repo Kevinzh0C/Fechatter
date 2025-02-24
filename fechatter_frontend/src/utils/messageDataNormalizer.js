@@ -13,7 +13,7 @@
  */
 export const MESSAGE_SCHEMA = {
   id: 'number',
-  content: 'string', 
+  content: 'string',
   sender_id: 'number',
   sender: {
     id: 'number',
@@ -35,19 +35,19 @@ export const MESSAGE_SCHEMA = {
  */
 export function normalizeTimestamp(timestamp) {
   if (!timestamp) return new Date().toISOString();
-  
+
   // 如果已经是ISO字符串格式
   if (typeof timestamp === 'string' && timestamp.includes('T')) {
     return timestamp;
   }
-  
+
   // 如果是Unix时间戳（秒）
   if (typeof timestamp === 'number') {
     // 判断是秒还是毫秒（典型的秒级时间戳小于毫秒级）
     const tsMs = timestamp < 1e10 ? timestamp * 1000 : timestamp;
     return new Date(tsMs).toISOString();
   }
-  
+
   // 如果是时间戳字符串
   if (typeof timestamp === 'string') {
     const num = parseFloat(timestamp);
@@ -55,16 +55,14 @@ export function normalizeTimestamp(timestamp) {
       const tsMs = num < 1e10 ? num * 1000 : num;
       return new Date(tsMs).toISOString();
     }
-  }
-  
+
   // 尝试直接解析
   try {
     return new Date(timestamp).toISOString();
   } catch (error) {
-    console.warn('[MessageNormalizer] Failed to parse timestamp:', timestamp);
+    // console.warn('[MessageNormalizer] Failed to parse timestamp:', timestamp);
     return new Date().toISOString();
   }
-}
 
 /**
  * Sender对象标准化函数
@@ -80,7 +78,7 @@ export function normalizeSender(messageData) {
       avatar_url: messageData.sender.avatar_url || null
     };
   }
-  
+
   // 如果只有基础字段，构建sender对象
   return {
     id: messageData.sender_id || 0,
@@ -101,8 +99,6 @@ export function normalizeFiles(files) {
       return JSON.parse(files);
     } catch {
       return [files]; // 如果解析失败，当作单个文件名
-    }
-  }
   return [];
 }
 
@@ -112,7 +108,7 @@ export function normalizeFiles(files) {
  */
 export function normalizeMessage(messageData, source = 'unknown') {
   if (!messageData) {
-    console.warn('[MessageNormalizer] Received null/undefined message data');
+    // console.warn('[MessageNormalizer] Received null/undefined message data');
     return null;
   }
 
@@ -123,17 +119,17 @@ export function normalizeMessage(messageData, source = 'unknown') {
       content: messageData.content || messageData.text || messageData.message || '',
       sender_id: messageData.sender_id || messageData.user_id || 0,
       chat_id: messageData.chat_id || messageData.chatId || 0,
-      
+
       // 复杂字段
       sender: normalizeSender(messageData),
       created_at: normalizeTimestamp(messageData.created_at || messageData.timestamp || messageData.time),
       files: normalizeFiles(messageData.files || messageData.attachments),
-      
+
       // 可选字段
       edited_at: messageData.edited_at ? normalizeTimestamp(messageData.edited_at) : null,
       reply_to: messageData.reply_to || messageData.replyTo || null,
       reactions: messageData.reactions || [],
-      
+
       // 元数据
       _source: source,
       _normalized_at: new Date().toISOString()
@@ -141,27 +137,26 @@ export function normalizeMessage(messageData, source = 'unknown') {
 
     // 验证必需字段
     if (!normalized.id || !normalized.sender_id) {
-      console.warn('[MessageNormalizer] Message missing required fields:', {
-        id: normalized.id,
-        sender_id: normalized.sender_id,
-        source,
-        original: messageData
-      });
-    }
+      // console.warn('[MessageNormalizer] Message missing required fields:', {
+      //   id: normalized.id,
+      //   sender_id: normalized.sender_id,
+      //   source,
+      //   original: messageData
+      // });
 
     return normalized;
   } catch (error) {
-    console.error('[MessageNormalizer] Failed to normalize message:', error, messageData);
+    if (import.meta.env.DEV) {
+      console.error('[MessageNormalizer] Failed to normalize message:', error, messageData);
     return null;
   }
-}
 
 /**
  * 批量消息标准化函数
  */
 export function normalizeMessages(messages, source = 'unknown') {
   if (!Array.isArray(messages)) {
-    console.warn('[MessageNormalizer] Expected array but got:', typeof messages);
+    // console.warn('[MessageNormalizer] Expected array but got:', typeof messages);
     return [];
   }
 
@@ -175,13 +170,13 @@ export function normalizeMessages(messages, source = 'unknown') {
  * 专门处理搜索API的响应格式
  */
 export function normalizeSearchResults(searchResponse) {
-  console.log('[MessageNormalizer] Normalizing search results:', searchResponse);
-  
+  // console.log('[MessageNormalizer] Normalizing search results:', searchResponse);
+
   // 处理不同的响应结构
   let hits = [];
   let total = 0;
   let took_ms = 0;
-  
+
   if (searchResponse.data && searchResponse.data.hits) {
     // 标准的搜索响应格式
     hits = searchResponse.data.hits;
@@ -201,7 +196,7 @@ export function normalizeSearchResults(searchResponse) {
     hits = searchResponse;
     total = hits.length;
   } else {
-    console.warn('[MessageNormalizer] Unexpected search response format:', searchResponse);
+    // console.warn('[MessageNormalizer] Unexpected search response format:', searchResponse);
     return {
       results: [],
       total: 0,
@@ -212,7 +207,7 @@ export function normalizeSearchResults(searchResponse) {
 
   // 标准化每个搜索结果
   const normalizedResults = normalizeMessages(hits, 'search');
-  
+
   return {
     results: normalizedResults,
     total: Math.max(total, normalizedResults.length),
@@ -228,13 +223,13 @@ export function normalizeSearchResults(searchResponse) {
  */
 export function validateMessageData(messageData) {
   const issues = [];
-  
+
   if (!messageData.id) issues.push('Missing ID');
   if (!messageData.content && !messageData.files?.length) issues.push('Missing content and files');
   if (!messageData.sender_id) issues.push('Missing sender_id');
   if (!messageData.sender?.fullname) issues.push('Missing sender name');
   if (!messageData.created_at) issues.push('Missing timestamp');
-  
+
   return {
     isValid: issues.length === 0,
     issues: issues
@@ -247,7 +242,7 @@ export function validateMessageData(messageData) {
 export function compareMessageStructures(msg1, msg2) {
   const diff = {};
   const allKeys = new Set([...Object.keys(msg1 || {}), ...Object.keys(msg2 || {})]);
-  
+
   for (const key of allKeys) {
     if (msg1[key] !== msg2[key]) {
       diff[key] = {
@@ -257,31 +252,30 @@ export function compareMessageStructures(msg1, msg2) {
         type2: typeof msg2[key]
       };
     }
-  }
-  
+
   return diff;
 }
 
 /**
  * 全局暴露调试工具
  */
-if (typeof window !== 'undefined') {
-  window.messageNormalizer = {
-    normalizeMessage,
-    normalizeMessages,
-    normalizeSearchResults,
-    validateMessageData,
-    compareMessageStructures,
-    normalizeTimestamp,
-    normalizeSender
-  };
-  
-  console.log('🔧 Message Data Normalizer loaded. Available commands:');
-  console.log('   window.messageNormalizer.normalizeMessage(data)');
-  console.log('   window.messageNormalizer.normalizeSearchResults(response)');
-  console.log('   window.messageNormalizer.validateMessageData(msg)');
-  console.log('   window.messageNormalizer.compareMessageStructures(msg1, msg2)');
-}
+// if (typeof window !== 'undefined') {
+//   window.messageNormalizer = {
+//     normalizeMessage,
+//     normalizeMessages,
+//     normalizeSearchResults,
+//     validateMessageData,
+//     compareMessageStructures,
+//     normalizeTimestamp,
+//     normalizeSender
+//   };
+
+//   console.log('🔧 Message Data Normalizer loaded. Available commands:');
+//   console.log('   window.messageNormalizer.normalizeMessage(data)');
+//   console.log('   window.messageNormalizer.normalizeSearchResults(response)');
+//   console.log('   window.messageNormalizer.validateMessageData(msg)');
+//   console.log('   window.messageNormalizer.compareMessageStructures(msg1, msg2)');
+// }
 
 export default {
   normalizeMessage,

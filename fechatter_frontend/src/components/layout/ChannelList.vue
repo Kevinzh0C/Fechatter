@@ -28,24 +28,15 @@
         </div>
       </div>
 
-      <!-- Loading State -->
-      <div v-if="isLoading" class="loading-state">
-        <div v-for="n in 3" :key="n" class="channel-skeleton">
-          <div class="skeleton-icon"></div>
-          <div class="skeleton-text"></div>
-        </div>
-      </div>
-
       <!-- Channels List -->
-      <transition-group v-else-if="isChannelsExpanded && channels.length > 0" name="channel-list" tag="div"
-        class="channels-container">
+      <div v-if="isChannelsExpanded && channels.length > 0" class="channels-container">
         <ChannelItem v-for="channel in channels" :key="channel.id" :channel="channel"
           :isActive="currentChatId === channel.id" @click="selectChannel(channel)"
           @context-menu="showChannelContextMenu(channel, $event)" />
-      </transition-group>
+      </div>
 
       <!-- Empty State -->
-      <div v-else-if="isChannelsExpanded && channels.length === 0" class="empty-state">
+      <div v-if="isChannelsExpanded && channels.length === 0" class="empty-state">
         <p class="empty-text">No channels yet</p>
         <button @click="createChannel" class="empty-action">
           Create your first channel
@@ -82,11 +73,10 @@
       </div>
 
       <!-- Direct Messages List -->
-      <transition-group v-if="isDMsExpanded && directMessages.length > 0" name="channel-list" tag="div"
-        class="channels-container">
+      <div v-if="isDMsExpanded && directMessages.length > 0" class="channels-container">
         <DMItem v-for="dm in directMessages" :key="dm.id" :dm="dm" :isActive="currentChatId === dm.id"
           @click="selectChannel(dm)" />
-      </transition-group>
+      </div>
 
       <!-- DMs Empty State -->
       <div v-else-if="isDMsExpanded && directMessages.length === 0" class="empty-state">
@@ -126,11 +116,10 @@
       </div>
 
       <!-- Group Messages List -->
-      <transition-group v-if="isGroupsExpanded && groupMessages.length > 0" name="channel-list" tag="div"
-        class="channels-container">
+      <div v-if="isGroupsExpanded && groupMessages.length > 0" class="channels-container">
         <DMItem v-for="group in groupMessages" :key="group.id" :dm="group" :isActive="currentChatId === group.id"
           @click="selectChannel(group)" />
-      </transition-group>
+      </div>
 
       <!-- Groups Empty State -->
       <div v-else-if="isGroupsExpanded && groupMessages.length === 0" class="empty-state">
@@ -543,9 +532,11 @@ onUnmounted(() => {
   border-radius: 8px;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.24);
   min-width: 180px;
-  z-index: 1000;
+  z-index: var(--z-dropdown, 1000);
   overflow: hidden;
   animation: dropdownSlide 0.15s ease-out;
+  /* Ensure proper stacking context */
+  isolation: isolate;
 }
 
 @keyframes dropdownSlide {
@@ -594,50 +585,6 @@ onUnmounted(() => {
   padding: 0 8px;
 }
 
-/* 🔄 Loading State */
-.loading-state {
-  padding: 0 8px;
-}
-
-.channel-skeleton {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 6px 8px;
-  margin-bottom: 2px;
-  border-radius: 6px;
-}
-
-.skeleton-icon {
-  width: 20px;
-  height: 20px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 4px;
-  animation: shimmer 1.5s infinite;
-}
-
-.skeleton-text {
-  flex: 1;
-  height: 16px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 4px;
-  animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-  0% {
-    opacity: 0.6;
-  }
-
-  50% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0.6;
-  }
-}
-
 /* 🎯 Empty State - Minimal & Elegant */
 .empty-state {
   padding: 16px 16px;
@@ -672,24 +619,13 @@ onUnmounted(() => {
   background: rgba(88, 101, 242, 0.15);
 }
 
-/* 🎬 Smooth Animations */
+/* 🎬 Removed channel list animations to ensure sidebar stability */
 .channel-list-enter-active,
-.channel-list-leave-active {
-  transition: all 0.2s ease;
-}
-
-.channel-list-enter-from {
-  opacity: 0;
-  transform: translateX(-10px);
-}
-
-.channel-list-leave-to {
-  opacity: 0;
-  transform: translateX(10px);
-}
-
+.channel-list-leave-active,
+.channel-list-enter-from,
+.channel-list-leave-to,
 .channel-list-move {
-  transition: transform 0.2s ease;
+  transition: none !important;
 }
 
 /* 🔄 Spinning Animation */
@@ -759,65 +695,65 @@ onUnmounted(() => {
     font-size: 14px;
     padding: 6px 12px;
   }
-}
 
-/* 🎯 Touch-friendly enhancements */
-@media (hover: none) and (pointer: coarse) {
+  /* 🎯 Touch-friendly enhancements */
+  @media (hover: none) and (pointer: coarse) {
 
-  .section-toggle,
-  .action-btn,
-  .dropdown-item,
-  .empty-action {
-    min-height: 44px;
-  }
-}
-
-/* 🎭 Reduced Motion */
-@media (prefers-reduced-motion: reduce) {
-
-  .toggle-icon,
-  .action-btn,
-  .dropdown-item,
-  .empty-action {
-    transition: none;
+    .section-toggle,
+    .action-btn,
+    .dropdown-item,
+    .empty-action {
+      min-height: 44px;
+    }
   }
 
-  .dropdown-menu {
-    animation: none;
+  /* 🎭 Reduced Motion */
+  @media (prefers-reduced-motion: reduce) {
+
+    .toggle-icon,
+    .action-btn,
+    .dropdown-item,
+    .empty-action {
+      transition: none;
+    }
+
+    .dropdown-menu {
+      animation: none;
+    }
+
+    .channel-list-enter-active,
+    .channel-list-leave-active,
+    .channel-list-move {
+      transition: none;
+    }
   }
 
-  .channel-list-enter-active,
-  .channel-list-leave-active,
-  .channel-list-move {
-    transition: none;
-  }
-}
-
-/* 🌙 Focus States for Accessibility */
-.section-toggle:focus-visible,
-.action-btn:focus-visible,
-.dropdown-item:focus-visible,
-.empty-action:focus-visible {
-  outline: 2px solid rgba(88, 101, 242, 0.5);
-  outline-offset: 2px;
-}
-
-/* 🎨 High Contrast Mode */
-@media (prefers-contrast: high) {
-  .section-toggle {
-    color: white;
+  /* 🌙 Focus States for Accessibility */
+  .section-toggle:focus-visible,
+  .action-btn:focus-visible,
+  .dropdown-item:focus-visible,
+  .empty-action:focus-visible {
+    outline: 2px solid rgba(88, 101, 242, 0.5);
+    outline-offset: 2px;
   }
 
-  .section-count {
-    color: rgba(255, 255, 255, 0.7);
-  }
+  /* 🎨 High Contrast Mode */
+  @media (prefers-contrast: high) {
+    .section-toggle {
+      color: white;
+    }
 
-  .dropdown-menu {
-    border: 2px solid white;
-  }
+    .section-count {
+      color: rgba(255, 255, 255, 0.7);
+    }
 
-  .empty-text {
-    color: rgba(255, 255, 255, 0.7);
+    .dropdown-menu {
+      border: 2px solid white;
+    }
+
+    .empty-text {
+      color: rgba(255, 255, 255, 0.7);
+    }
   }
 }
 </style>

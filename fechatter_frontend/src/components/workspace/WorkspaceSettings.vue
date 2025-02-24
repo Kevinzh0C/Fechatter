@@ -15,12 +15,10 @@
       <!-- Sidebar Navigation -->
       <div class="w-64 bg-gray-50 border-r border-gray-200">
         <nav class="p-4 space-y-2">
-          <button v-for="tab in tabs" :key="tab.id"
-                  @click="activeTab = tab.id"
-                  class="w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                  :class="activeTab === tab.id 
-                    ? 'bg-purple-100 text-purple-700' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'">
+          <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
+            class="w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors" :class="activeTab === tab.id
+              ? 'bg-purple-100 text-purple-700'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'">
             <div class="flex items-center">
               <component :is="tab.icon" class="w-5 h-5 mr-3" />
               {{ tab.name }}
@@ -34,17 +32,16 @@
         <!-- General Settings -->
         <div v-if="activeTab === 'general'" class="p-6">
           <h3 class="text-lg font-medium text-gray-900 mb-4">General Settings</h3>
-          
+
           <div class="space-y-6">
             <!-- Workspace Name -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
                 Workspace Name
               </label>
-              <input v-model="workspaceName" 
-                     type="text"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                     placeholder="Enter workspace name">
+              <input v-model="workspaceName" type="text"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="Enter workspace name">
             </div>
 
             <!-- Workspace Description -->
@@ -52,10 +49,9 @@
               <label class="block text-sm font-medium text-gray-700 mb-2">
                 Description
               </label>
-              <textarea v-model="workspaceDescription" 
-                        rows="3"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        placeholder="Describe your workspace..."></textarea>
+              <textarea v-model="workspaceDescription" rows="3"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="Describe your workspace..."></textarea>
             </div>
 
             <!-- Workspace Info -->
@@ -83,9 +79,8 @@
 
             <!-- Save Button -->
             <div class="flex justify-end">
-              <button @click="saveWorkspaceSettings" 
-                      :disabled="workspaceStore.loading"
-                      class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50">
+              <button @click="saveWorkspaceSettings" :disabled="workspaceStore.loading"
+                class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50">
                 {{ workspaceStore.loading ? 'Saving...' : 'Save Changes' }}
               </button>
             </div>
@@ -96,16 +91,16 @@
         <div v-if="activeTab === 'members'" class="p-6">
           <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-medium text-gray-900">Members</h3>
-            <button @click="showInviteModal = true" 
-                    class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">
+            <button @click="showInviteModal = true"
+              class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">
               Invite Member
             </button>
           </div>
 
           <!-- Members List -->
           <div class="space-y-3">
-            <div v-for="member in workspaceStore.workspaceUsers" :key="member.id" 
-                 class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div v-for="member in workspaceStore.workspaceUsers" :key="member.id"
+              class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <div class="flex items-center space-x-3">
                 <!-- Avatar -->
                 <div class="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center">
@@ -113,14 +108,14 @@
                     {{ member.fullname?.charAt(0).toUpperCase() || 'U' }}
                   </span>
                 </div>
-                
+
                 <!-- Member Info -->
                 <div>
                   <p class="font-medium text-gray-900">{{ member.fullname }}</p>
                   <p class="text-sm text-gray-500">{{ member.email }}</p>
                   <div class="flex items-center space-x-2 mt-1">
-                    <span v-if="workspaceStore.isWorkspaceOwner(member.id)" 
-                          class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                    <span v-if="workspaceStore.isWorkspaceOwner(member.id)"
+                      class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
                       Owner
                     </span>
                     <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
@@ -135,15 +130,13 @@
 
               <!-- Actions -->
               <div class="flex items-center space-x-2">
-                <button v-if="canTransferOwnership(member)" 
-                        @click="confirmTransferOwnership(member)"
-                        class="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded hover:bg-yellow-200">
+                <button v-if="canTransferOwnership(member)" @click="confirmTransferOwnership(member)"
+                  class="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded hover:bg-yellow-200">
                   Make Owner
                 </button>
-                
-                <button v-if="canRemoveMember(member)" 
-                        @click="confirmRemoveMember(member)"
-                        class="px-3 py-1 bg-red-100 text-red-800 text-sm rounded hover:bg-red-200">
+
+                <button v-if="canRemoveMember(member)" @click="confirmRemoveMember(member)"
+                  class="px-3 py-1 bg-red-100 text-red-800 text-sm rounded hover:bg-red-200">
                   Remove
                 </button>
               </div>
@@ -155,22 +148,21 @@
         <div v-if="activeTab === 'channels'" class="p-6">
           <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-medium text-gray-900">Channels Overview</h3>
-            <button @click="refreshStats" 
-                    :disabled="workspaceStore.loading"
-                    class="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50">
+            <button @click="refreshStats" :disabled="workspaceStore.loading"
+              class="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50">
               {{ workspaceStore.loading ? 'Refreshing...' : 'Refresh Stats' }}
             </button>
           </div>
-          
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div v-for="chat in workspaceStore.chatStats" :key="chat.id" 
-                 class="p-4 border border-gray-200 rounded-lg relative">
+            <div v-for="chat in workspaceStore.chatStats" :key="chat.id"
+              class="p-4 border border-gray-200 rounded-lg relative">
               <!-- 归档状态指示器 -->
-              <div v-if="chat.is_archived" 
-                   class="absolute top-2 right-2 px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-full">
+              <div v-if="chat.is_archived"
+                class="absolute top-2 right-2 px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-full">
                 Archived
               </div>
-              
+
               <div class="flex items-center justify-between mb-2">
                 <h4 class="font-medium text-gray-900"># {{ chat.name }}</h4>
                 <div class="flex items-center gap-2">
@@ -187,9 +179,9 @@
                   </span>
                 </div>
               </div>
-              
+
               <p class="text-sm text-gray-600 mb-3">{{ chat.description || 'No description' }}</p>
-              
+
               <!-- 详细统计信息 -->
               <div class="grid grid-cols-2 gap-4 text-xs text-gray-500 mb-3">
                 <div>
@@ -205,29 +197,27 @@
                   Score: <span class="font-medium">{{ Math.round(chat.activity_score) }}</span>
                 </div>
               </div>
-              
+
               <div class="flex items-center justify-between text-xs text-gray-500">
                 <span>Creator: {{ chat.creator_name }}</span>
                 <span>Created {{ formatDate(chat.created_at) }}</span>
               </div>
-              
+
               <div v-if="chat.last_activity" class="text-xs text-gray-500 mt-1">
                 Last activity: {{ formatDate(chat.last_activity) }}
               </div>
-              
+
               <!-- 管理员操作按钮 -->
-              <div v-if="workspaceStore.isWorkspaceOwner(currentUserId)" 
-                   class="flex gap-2 mt-3 pt-3 border-t border-gray-100">
-                <button @click="editChat(chat)" 
-                        class="px-3 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100">
+              <div v-if="workspaceStore.isWorkspaceOwner(currentUserId)"
+                class="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                <button @click="editChat(chat)"
+                  class="px-3 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100">
                   Edit
                 </button>
-                <button @click="toggleArchiveChat(chat)" 
-                        :class="{
-                          'bg-gray-50 text-gray-600 hover:bg-gray-100': chat.is_archived,
-                          'bg-orange-50 text-orange-600 hover:bg-orange-100': !chat.is_archived
-                        }"
-                        class="px-3 py-1 text-xs rounded">
+                <button @click="toggleArchiveChat(chat)" :class="{
+                  'bg-gray-50 text-gray-600 hover:bg-gray-100': chat.is_archived,
+                  'bg-orange-50 text-orange-600 hover:bg-orange-100': !chat.is_archived
+                }" class="px-3 py-1 text-xs rounded">
                   {{ chat.is_archived ? 'Unarchive' : 'Archive' }}
                 </button>
               </div>
@@ -238,25 +228,25 @@
         <!-- Permissions -->
         <div v-if="activeTab === 'permissions'" class="p-6">
           <h3 class="text-lg font-medium text-gray-900 mb-6">Permissions & Security</h3>
-          
+
           <div class="space-y-6">
             <!-- Workspace Permissions -->
             <div>
               <h4 class="text-sm font-medium text-gray-900 mb-3">Workspace Permissions</h4>
               <div class="space-y-3">
                 <label class="flex items-center">
-                  <input type="checkbox" v-model="permissions.allowMemberInvites" 
-                         class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                  <input type="checkbox" v-model="permissions.allowMemberInvites"
+                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                   <span class="ml-2 text-sm text-gray-700">Allow members to invite new users</span>
                 </label>
                 <label class="flex items-center">
-                  <input type="checkbox" v-model="permissions.allowChannelCreation" 
-                         class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                  <input type="checkbox" v-model="permissions.allowChannelCreation"
+                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                   <span class="ml-2 text-sm text-gray-700">Allow members to create channels</span>
                 </label>
                 <label class="flex items-center">
-                  <input type="checkbox" v-model="permissions.allowFileUploads" 
-                         class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                  <input type="checkbox" v-model="permissions.allowFileUploads"
+                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                   <span class="ml-2 text-sm text-gray-700">Allow file uploads</span>
                 </label>
               </div>
@@ -267,13 +257,13 @@
               <h4 class="text-sm font-medium text-gray-900 mb-3">Security Settings</h4>
               <div class="space-y-3">
                 <label class="flex items-center">
-                  <input type="checkbox" v-model="security.requireEmailVerification" 
-                         class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                  <input type="checkbox" v-model="security.requireEmailVerification"
+                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                   <span class="ml-2 text-sm text-gray-700">Require email verification for new members</span>
                 </label>
                 <label class="flex items-center">
-                  <input type="checkbox" v-model="security.enableTwoFactor" 
-                         class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                  <input type="checkbox" v-model="security.enableTwoFactor"
+                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                   <span class="ml-2 text-sm text-gray-700">Enable two-factor authentication</span>
                 </label>
               </div>
@@ -287,34 +277,31 @@
     <div v-if="showInviteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg p-6 w-96">
         <h3 class="text-lg font-medium text-gray-900 mb-4">Invite Member</h3>
-        
+
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-            <input v-model="inviteEmail" 
-                   type="email"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                   placeholder="Enter email address">
+            <input v-model="inviteEmail" type="email"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder="Enter email address">
           </div>
-          
+
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
-            <select v-model="inviteRole" 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+            <select v-model="inviteRole"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
               <option value="member">Member</option>
               <option value="admin">Admin</option>
             </select>
           </div>
         </div>
-        
+
         <div class="flex justify-end space-x-3 mt-6">
-          <button @click="showInviteModal = false" 
-                  class="px-4 py-2 text-gray-600 hover:text-gray-800">
+          <button @click="showInviteModal = false" class="px-4 py-2 text-gray-600 hover:text-gray-800">
             Cancel
           </button>
-          <button @click="inviteMember" 
-                  :disabled="!inviteEmail || workspaceStore.loading"
-                  class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50">
+          <button @click="inviteMember" :disabled="!inviteEmail || workspaceStore.loading"
+            class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50">
             {{ workspaceStore.loading ? 'Inviting...' : 'Send Invite' }}
           </button>
         </div>
@@ -322,7 +309,8 @@
     </div>
 
     <!-- Error Message -->
-    <div v-if="workspaceStore.error" class="absolute bottom-4 right-4 bg-red-50 border border-red-200 rounded-lg p-4 max-w-sm">
+    <div v-if="workspaceStore.error"
+      class="absolute bottom-4 right-4 bg-red-50 border border-red-200 rounded-lg p-4 max-w-sm">
       <p class="text-sm text-red-600">{{ workspaceStore.error }}</p>
       <button @click="workspaceStore.clearError()" class="mt-2 text-xs text-red-500 hover:text-red-700">
         Dismiss
@@ -377,23 +365,23 @@ const tabs = [
 const currentUserId = computed(() => authStore.user?.id);
 
 const canRemoveMember = (member) => {
-  return member.id !== currentUserId.value && 
-         workspaceStore.isWorkspaceOwner(currentUserId.value) &&
-         !workspaceStore.isWorkspaceOwner(member.id);
+  return member.id !== currentUserId.value &&
+    workspaceStore.isWorkspaceOwner(currentUserId.value) &&
+    !workspaceStore.isWorkspaceOwner(member.id);
 };
 
 const canTransferOwnership = (member) => {
-  return member.id !== currentUserId.value && 
-         workspaceStore.isWorkspaceOwner(currentUserId.value);
+  return member.id !== currentUserId.value &&
+    workspaceStore.isWorkspaceOwner(currentUserId.value);
 };
 
 function formatDate(dateString) {
   if (!dateString) return 'Unknown';
   const date = new Date(dateString);
-  return date.toLocaleDateString([], { 
-    year: 'numeric', 
-    month: 'short', 
-    day: 'numeric' 
+  return date.toLocaleDateString([], {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
   });
 }
 
@@ -419,7 +407,7 @@ async function inviteMember() {
 async function confirmRemoveMember(member) {
   const confirmed = confirm(`Are you sure you want to remove ${member.fullname} from the workspace?`);
   if (!confirmed) return;
-  
+
   try {
     await workspaceStore.removeUserFromWorkspace(member.id);
   } catch (error) {
@@ -430,7 +418,7 @@ async function confirmRemoveMember(member) {
 async function confirmTransferOwnership(member) {
   const confirmed = confirm(`Are you sure you want to transfer ownership to ${member.fullname}? You will no longer be the workspace owner.`);
   if (!confirmed) return;
-  
+
   try {
     await workspaceStore.transferWorkspaceOwnership(member.id);
   } catch (error) {
@@ -442,7 +430,7 @@ async function confirmTransferOwnership(member) {
 async function editChat(chat) {
   const newName = prompt('Enter new chat name:', chat.name);
   if (!newName || newName === chat.name) return;
-  
+
   try {
     await workspaceStore.updateWorkspaceChat(chat.id, { name: newName });
   } catch (error) {
@@ -455,7 +443,7 @@ async function toggleArchiveChat(chat) {
   const action = chat.is_archived ? 'unarchive' : 'archive';
   const confirmed = confirm(`Are you sure you want to ${action} "${chat.name}"?`);
   if (!confirmed) return;
-  
+
   try {
     await workspaceStore.archiveWorkspaceChat(chat.id, !chat.is_archived);
   } catch (error) {
@@ -478,4 +466,4 @@ onMounted(() => {
     workspaceDescription.value = workspaceStore.currentWorkspace.description || '';
   }
 });
-</script> 
+</script>

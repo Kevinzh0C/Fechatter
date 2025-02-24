@@ -13,8 +13,11 @@ class MessagePersistenceTest {
    * 运行完整的持久化测试套件
    */
   async runCompleteTest() {
-    console.log('\n🧪 COMPREHENSIVE MESSAGE PERSISTENCE TEST');
-    console.log('==========================================\n');
+    if (import.meta.env.DEV) {
+      console.log('\n🧪 COMPREHENSIVE MESSAGE PERSISTENCE TEST');
+    if (import.meta.env.DEV) {
+      console.log('==========================================\n');
+    }
 
     try {
       // 1. 基础功能测试
@@ -39,21 +42,23 @@ class MessagePersistenceTest {
       this.generateTestReport();
 
     } catch (error) {
-      console.error('❌ Test suite failed:', error);
+      if (import.meta.env.DEV) {
+        console.error('❌ Test suite failed:', error);
       this.testResults.push({
         test: 'Test Suite',
         status: 'FAILED',
         error: error.message
       });
-    }
-  }
 
   /**
    * 1. 基础持久化功能测试
    */
   async testBasicPersistence() {
-    console.log('1️⃣ BASIC PERSISTENCE TEST');
-    console.log('==========================');
+    if (import.meta.env.DEV) {
+      console.log('1️⃣ BASIC PERSISTENCE TEST');
+    if (import.meta.env.DEV) {
+      console.log('==========================');
+    }
 
     try {
       const msgPersist = window.msgPersist;
@@ -69,12 +74,14 @@ class MessagePersistenceTest {
         created_at: new Date().toISOString()
       };
 
-      console.log('📝 Testing save/get functionality...');
+      if (import.meta.env.DEV) {
+        console.log('📝 Testing save/get functionality...');
       msgPersist.save(999, testMessage);
       const retrieved = msgPersist.get(999);
 
       if (retrieved.length === 1 && retrieved[0].id === 12345) {
-        console.log('✅ Basic save/get: PASSED');
+        if (import.meta.env.DEV) {
+          console.log('✅ Basic save/get: PASSED');
         this.testResults.push({
           test: 'Basic Persistence',
           status: 'PASSED',
@@ -86,31 +93,36 @@ class MessagePersistenceTest {
 
       // 测试统计功能
       const stats = msgPersist.stats();
-      console.log('📊 Storage stats:', stats);
+      if (import.meta.env.DEV) {
+        console.log('📊 Storage stats:', stats);
+      }
 
     } catch (error) {
-      console.error('❌ Basic persistence test failed:', error);
+      if (import.meta.env.DEV) {
+        console.error('❌ Basic persistence test failed:', error);
       this.testResults.push({
         test: 'Basic Persistence',
         status: 'FAILED',
         error: error.message
       });
-    }
-  }
 
   /**
    * 2. 消息发送测试
    */
   async testMessageSending() {
-    console.log('\n2️⃣ MESSAGE SENDING TEST');
-    console.log('=======================');
+    if (import.meta.env.DEV) {
+      console.log('\n2️⃣ MESSAGE SENDING TEST');
+    if (import.meta.env.DEV) {
+      console.log('=======================');
+    }
 
     try {
       const chatStore = window.app._instance.proxy.$pinia._s.get('chat');
       const currentChatId = chatStore.currentChatId;
 
       if (!currentChatId) {
-        console.log('⚠️ No chat selected. Please open a chat first.');
+        if (import.meta.env.DEV) {
+          console.log('⚠️ No chat selected. Please open a chat first.');
         this.testResults.push({
           test: 'Message Sending',
           status: 'SKIPPED',
@@ -119,7 +131,9 @@ class MessagePersistenceTest {
         return;
       }
 
-      console.log(`📤 Sending test message to chat ${currentChatId}...`);
+      if (import.meta.env.DEV) {
+        console.log(`📤 Sending test message to chat ${currentChatId}...`);
+      }
 
       // 记录发送前的状态
       const beforeMessages = chatStore.messages.length;
@@ -141,9 +155,13 @@ class MessagePersistenceTest {
       const persistenceUpdated = afterPersisted > beforePersisted;
 
       if (uiUpdated && persistenceUpdated) {
-        console.log('✅ Message sending: PASSED');
-        console.log(`   UI: ${beforeMessages} → ${afterMessages} messages`);
-        console.log(`   Storage: ${beforePersisted} → ${afterPersisted} messages`);
+        if (import.meta.env.DEV) {
+          console.log('✅ Message sending: PASSED');
+        if (import.meta.env.DEV) {
+          console.log(`   UI: ${beforeMessages} → ${afterMessages} messages`);
+        if (import.meta.env.DEV) {
+          console.log(`   Storage: ${beforePersisted} → ${afterPersisted} messages`);
+        }
 
         this.testResults.push({
           test: 'Message Sending',
@@ -155,27 +173,30 @@ class MessagePersistenceTest {
       }
 
     } catch (error) {
-      console.error('❌ Message sending test failed:', error);
+      if (import.meta.env.DEV) {
+        console.error('❌ Message sending test failed:', error);
       this.testResults.push({
         test: 'Message Sending',
         status: 'FAILED',
         error: error.message
       });
-    }
-  }
 
   /**
    * 3. 刷新恢复测试
    */
   testRefreshRecovery() {
-    console.log('\n3️⃣ REFRESH RECOVERY TEST');
-    console.log('========================');
+    if (import.meta.env.DEV) {
+      console.log('\n3️⃣ REFRESH RECOVERY TEST');
+    if (import.meta.env.DEV) {
+      console.log('========================');
+    }
 
     const chatStore = window.app._instance.proxy.$pinia._s.get('chat');
     const currentChatId = chatStore.currentChatId;
 
     if (!currentChatId) {
-      console.log('⚠️ No chat selected.');
+      if (import.meta.env.DEV) {
+        console.log('⚠️ No chat selected.');
       this.testResults.push({
         test: 'Refresh Recovery',
         status: 'SKIPPED',
@@ -188,18 +209,30 @@ class MessagePersistenceTest {
     const currentMessages = chatStore.messages.length;
     const persistedMessages = window.msgPersist.get(currentChatId).length;
 
-    console.log(`📊 Current state:`);
-    console.log(`   UI messages: ${currentMessages}`);
-    console.log(`   Persisted messages: ${persistedMessages}`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 Current state:`);
+    if (import.meta.env.DEV) {
+      console.log(`   UI messages: ${currentMessages}`);
+    if (import.meta.env.DEV) {
+      console.log(`   Persisted messages: ${persistedMessages}`);
+    }
 
     if (persistedMessages > 0) {
-      console.log('✅ Refresh recovery: READY');
-      console.log('📋 Manual verification steps:');
-      console.log('   1. Refresh this page (Cmd+R or F5)');
-      console.log('   2. Navigate back to this chat');
-      console.log(`   3. Look for your test message: "${this.testMessage}"`);
-      console.log('   4. If message appears instantly → SUCCESS');
-      console.log('   5. If message missing → FAILURE');
+      if (import.meta.env.DEV) {
+        console.log('✅ Refresh recovery: READY');
+      if (import.meta.env.DEV) {
+        console.log('📋 Manual verification steps:');
+      if (import.meta.env.DEV) {
+        console.log('   1. Refresh this page (Cmd+R or F5)');
+      if (import.meta.env.DEV) {
+        console.log('   2. Navigate back to this chat');
+      if (import.meta.env.DEV) {
+        console.log(`   3. Look for your test message: "${this.testMessage}"`);
+      if (import.meta.env.DEV) {
+        console.log('   4. If message appears instantly → SUCCESS');
+      if (import.meta.env.DEV) {
+        console.log('   5. If message missing → FAILURE');
+      }
 
       this.testResults.push({
         test: 'Refresh Recovery',
@@ -207,75 +240,89 @@ class MessagePersistenceTest {
         details: `${persistedMessages} messages ready for recovery test`
       });
     } else {
-      console.log('⚠️ No persisted messages to test recovery');
+      if (import.meta.env.DEV) {
+        console.log('⚠️ No persisted messages to test recovery');
       this.testResults.push({
         test: 'Refresh Recovery',
         status: 'NO_DATA',
         details: 'No persisted messages available'
       });
-    }
-  }
 
   /**
    * 4. 多聊天测试
    */
   async testMultipleChats() {
-    console.log('\n4️⃣ MULTIPLE CHATS TEST');
-    console.log('======================');
+    if (import.meta.env.DEV) {
+      console.log('\n4️⃣ MULTIPLE CHATS TEST');
+    if (import.meta.env.DEV) {
+      console.log('======================');
+    }
 
     try {
       const stats = window.msgPersist.stats();
       const chatCount = stats.totalChats;
       const messageCount = stats.totalMessages;
 
-      console.log(`📊 Multi-chat statistics:`);
-      console.log(`   Total chats with messages: ${chatCount}`);
-      console.log(`   Total persisted messages: ${messageCount}`);
-      console.log(`   Storage size: ${stats.storageSize}`);
+      if (import.meta.env.DEV) {
+        console.log(`📊 Multi-chat statistics:`);
+      if (import.meta.env.DEV) {
+        console.log(`   Total chats with messages: ${chatCount}`);
+      if (import.meta.env.DEV) {
+        console.log(`   Total persisted messages: ${messageCount}`);
+      if (import.meta.env.DEV) {
+        console.log(`   Storage size: ${stats.storageSize}`);
+      }
 
       // 显示每个聊天的详情
       stats.chats.forEach(chat => {
-        console.log(`   Chat ${chat.chatId}: ${chat.messageCount} messages`);
+        if (import.meta.env.DEV) {
+          console.log(`   Chat ${chat.chatId}: ${chat.messageCount} messages`);
+        }
       });
 
       if (chatCount > 0) {
-        console.log('✅ Multiple chats: PASSED');
+        if (import.meta.env.DEV) {
+          console.log('✅ Multiple chats: PASSED');
         this.testResults.push({
           test: 'Multiple Chats',
           status: 'PASSED',
           details: `${chatCount} chats, ${messageCount} total messages`
         });
       } else {
-        console.log('⚠️ No chats found in storage');
+        if (import.meta.env.DEV) {
+          console.log('⚠️ No chats found in storage');
         this.testResults.push({
           test: 'Multiple Chats',
           status: 'NO_DATA',
           details: 'No chats in storage'
         });
-      }
 
     } catch (error) {
-      console.error('❌ Multiple chats test failed:', error);
+      if (import.meta.env.DEV) {
+        console.error('❌ Multiple chats test failed:', error);
       this.testResults.push({
         test: 'Multiple Chats',
         status: 'FAILED',
         error: error.message
       });
-    }
-  }
 
   /**
    * 5. 错误处理测试
    */
   testErrorHandling() {
-    console.log('\n5️⃣ ERROR HANDLING TEST');
-    console.log('======================');
+    if (import.meta.env.DEV) {
+      console.log('\n5️⃣ ERROR HANDLING TEST');
+    if (import.meta.env.DEV) {
+      console.log('======================');
+    }
 
     try {
       const msgPersist = window.msgPersist;
 
       // 测试无效输入
-      console.log('🧪 Testing invalid inputs...');
+      if (import.meta.env.DEV) {
+        console.log('🧪 Testing invalid inputs...');
+      }
 
       // 这些不应该崩溃
       msgPersist.save(null, null);
@@ -283,7 +330,8 @@ class MessagePersistenceTest {
       msgPersist.get(null);
       msgPersist.get(undefined);
 
-      console.log('✅ Error handling: PASSED');
+      if (import.meta.env.DEV) {
+        console.log('✅ Error handling: PASSED');
       this.testResults.push({
         test: 'Error Handling',
         status: 'PASSED',
@@ -291,21 +339,23 @@ class MessagePersistenceTest {
       });
 
     } catch (error) {
-      console.error('❌ Error handling test failed:', error);
+      if (import.meta.env.DEV) {
+        console.error('❌ Error handling test failed:', error);
       this.testResults.push({
         test: 'Error Handling',
         status: 'FAILED',
         error: error.message
       });
-    }
-  }
 
   /**
    * 6. 性能测试
    */
   testPerformance() {
-    console.log('\n6️⃣ PERFORMANCE TEST');
-    console.log('===================');
+    if (import.meta.env.DEV) {
+      console.log('\n6️⃣ PERFORMANCE TEST');
+    if (import.meta.env.DEV) {
+      console.log('===================');
+    }
 
     try {
       const msgPersist = window.msgPersist;
@@ -331,46 +381,54 @@ class MessagePersistenceTest {
       const stats = msgPersist.stats();
       const statsTime = performance.now() - statsStart;
 
-      console.log(`⏱️ Performance results:`);
-      console.log(`   Save: ${saveTime.toFixed(2)}ms`);
-      console.log(`   Get: ${getTime.toFixed(2)}ms`);
-      console.log(`   Stats: ${statsTime.toFixed(2)}ms`);
+      if (import.meta.env.DEV) {
+        console.log(`⏱️ Performance results:`);
+      if (import.meta.env.DEV) {
+        console.log(`   Save: ${saveTime.toFixed(2)}ms`);
+      if (import.meta.env.DEV) {
+        console.log(`   Get: ${getTime.toFixed(2)}ms`);
+      if (import.meta.env.DEV) {
+        console.log(`   Stats: ${statsTime.toFixed(2)}ms`);
+      }
 
       // 验证性能目标 (< 5ms for basic operations)
       const allUnder5ms = saveTime < 5 && getTime < 5 && statsTime < 10;
 
       if (allUnder5ms) {
-        console.log('✅ Performance: EXCELLENT');
+        if (import.meta.env.DEV) {
+          console.log('✅ Performance: EXCELLENT');
         this.testResults.push({
           test: 'Performance',
           status: 'PASSED',
           details: `Save: ${saveTime.toFixed(2)}ms, Get: ${getTime.toFixed(2)}ms`
         });
       } else {
-        console.log('⚠️ Performance: ACCEPTABLE (but could be better)');
+        if (import.meta.env.DEV) {
+          console.log('⚠️ Performance: ACCEPTABLE (but could be better)');
         this.testResults.push({
           test: 'Performance',
           status: 'WARNING',
           details: `Some operations > 5ms threshold`
         });
-      }
 
     } catch (error) {
-      console.error('❌ Performance test failed:', error);
+      if (import.meta.env.DEV) {
+        console.error('❌ Performance test failed:', error);
       this.testResults.push({
         test: 'Performance',
         status: 'FAILED',
         error: error.message
       });
-    }
-  }
 
   /**
    * 7. 生成测试报告
    */
   generateTestReport() {
-    console.log('\n📊 FINAL TEST REPORT');
-    console.log('====================\n');
+    if (import.meta.env.DEV) {
+      console.log('\n📊 FINAL TEST REPORT');
+    if (import.meta.env.DEV) {
+      console.log('====================\n');
+    }
 
     const passed = this.testResults.filter(r => r.status === 'PASSED').length;
     const failed = this.testResults.filter(r => r.status === 'FAILED').length;
@@ -378,7 +436,8 @@ class MessagePersistenceTest {
     const skipped = this.testResults.filter(r => r.status === 'SKIPPED').length;
     const manual = this.testResults.filter(r => r.status === 'MANUAL_VERIFY').length;
 
-    console.log('🔍 Test Results Summary:');
+    if (import.meta.env.DEV) {
+      console.log('🔍 Test Results Summary:');
     this.testResults.forEach(result => {
       const emoji = {
         'PASSED': '✅',
@@ -389,25 +448,34 @@ class MessagePersistenceTest {
         'NO_DATA': '📭'
       }[result.status] || '❓';
 
-      console.log(`   ${emoji} ${result.test}: ${result.status}`);
+      if (import.meta.env.DEV) {
+        console.log(`   ${emoji} ${result.test}: ${result.status}`);
       if (result.details) {
-        console.log(`      ${result.details}`);
-      }
+        if (import.meta.env.DEV) {
+          console.log(`      ${result.details}`);
       if (result.error) {
-        console.log(`      Error: ${result.error}`);
-      }
+        if (import.meta.env.DEV) {
+          console.log(`      Error: ${result.error}`);
+        }
     });
 
-    console.log(`\n📊 Summary: ${passed} passed, ${failed} failed, ${warnings} warnings, ${skipped} skipped, ${manual} manual`);
+    if (import.meta.env.DEV) {
+      console.log(`\n📊 Summary: ${passed} passed, ${failed} failed, ${warnings} warnings, ${skipped} skipped, ${manual} manual`);
+    }
 
     // 整体状态评估
     if (failed === 0 && passed >= 3) {
-      console.log('🎉 OVERALL STATUS: SUCCESS - Message persistence is working correctly!');
+      if (import.meta.env.DEV) {
+        console.log('🎉 OVERALL STATUS: SUCCESS - Message persistence is working correctly!');
+      }
     } else if (failed === 0) {
-      console.log('👍 OVERALL STATUS: GOOD - Basic functionality working');
+      if (import.meta.env.DEV) {
+        console.log('👍 OVERALL STATUS: GOOD - Basic functionality working');
+      }
     } else {
-      console.log('⚠️ OVERALL STATUS: ISSUES DETECTED - Review failed tests');
-    }
+      if (import.meta.env.DEV) {
+        console.log('⚠️ OVERALL STATUS: ISSUES DETECTED - Review failed tests');
+      }
 
     return {
       passed,
@@ -423,28 +491,34 @@ class MessagePersistenceTest {
    * 快速验证功能
    */
   quickVerify() {
-    console.log('\n⚡ QUICK VERIFICATION');
-    console.log('====================');
+    if (import.meta.env.DEV) {
+      console.log('\n⚡ QUICK VERIFICATION');
+    if (import.meta.env.DEV) {
+      console.log('====================');
+    }
 
     const chatStore = window.app._instance.proxy.$pinia._s.get('chat');
     const msgPersist = window.msgPersist;
 
     if (!msgPersist) {
-      console.log('❌ Message persistence not loaded');
+      if (import.meta.env.DEV) {
+        console.log('❌ Message persistence not loaded');
       return false;
     }
 
     if (!chatStore.currentChatId) {
-      console.log('⚠️ No chat selected');
+      if (import.meta.env.DEV) {
+        console.log('⚠️ No chat selected');
       return false;
     }
 
     const stats = msgPersist.stats();
-    console.log(`✅ Message persistence loaded - ${stats.totalMessages} messages in ${stats.totalChats} chats`);
+    if (import.meta.env.DEV) {
+      console.log(`✅ Message persistence loaded - ${stats.totalMessages} messages in ${stats.totalChats} chats`);
+    }
 
     return true;
   }
-}
 
 // 创建全局实例并暴露到window
 const messagePersistenceTest = new MessagePersistenceTest();
@@ -457,11 +531,16 @@ if (typeof window !== 'undefined') {
     refresh: () => messagePersistenceTest.testRefreshRecovery()
   };
 
-  console.log('🧪 Message Persistence Test loaded');
-  console.log('   Commands:');
-  console.log('   - window.testPersistence.run() - Full test suite');
-  console.log('   - window.testPersistence.quick() - Quick verification');
-  console.log('   - window.testPersistence.sending() - Test message sending');
-}
+  if (import.meta.env.DEV) {
+    console.log('🧪 Message Persistence Test loaded');
+  if (import.meta.env.DEV) {
+    console.log('   Commands:');
+  if (import.meta.env.DEV) {
+    console.log('   - window.testPersistence.run() - Full test suite');
+  if (import.meta.env.DEV) {
+    console.log('   - window.testPersistence.quick() - Quick verification');
+  if (import.meta.env.DEV) {
+    console.log('   - window.testPersistence.sending() - Test message sending');
+  }
 
 export default messagePersistenceTest; 

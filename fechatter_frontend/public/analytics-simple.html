@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Analytics Test (JSON)</title>
+  <style>
+    body {
+      font-family: monospace;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .panel {
+      background: #f5f5f5;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+    }
+
+    .btn {
+      padding: 10px 15px;
+      margin: 5px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: #0056b3;
+    }
+
+    .logs {
+      background: #1a1a1a;
+      color: #fff;
+      padding: 10px;
+      height: 200px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+
+    .status {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .status-item {
+      padding: 5px;
+      background: white;
+      border-radius: 3px;
+    }
+
+    .success {
+      color: #28a745;
+    }
+
+    .error {
+      color: #dc3545;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>📊 Analytics Test (JSON Mode)</h1>
+
+  <div class="panel">
+    <h3>Status</h3>
+    <div class="status" id="status">
+      <div class="status-item">Mode: JSON</div>
+      <div class="status-item">Total: <span id="total">0</span></div>
+      <div class="status-item">Success: <span id="success" class="success">0</span></div>
+      <div class="status-item">Failed: <span id="failed" class="error">0</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Test Events</h3>
+    <button class="btn" onclick="sendEvent('app_start', {})">🚀 App Start</button>
+    <button class="btn" onclick="sendEvent('user_login', {email: 'test@example.com', login_method: 'password'})">👤
+      Login</button>
+    <button class="btn" onclick="sendEvent('message_sent', {chat_id: 'test', type: 'text', size: 100})">💬
+      Message</button>
+    <button class="btn" onclick="sendEvent('error_occurred', {error_type: 'Test', error_message: 'Test error'})">⚠️
+      Error</button>
+  </div>
+
+  <div class="panel">
+    <h3>Logs</h3>
+    <div class="logs" id="logs"></div>
+    <button class="btn" onclick="clearLogs()">Clear</button>
+  </div>
+
+  <script>
+    let stats = { total: 0, success: 0, failed: 0 };
+    let logs = [];
+    const clientId = 'client_' + Date.now();
+
+    function log(msg, type = 'info') {
+      const time = new Date().toLocaleTimeString();
+      const color = type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#2196f3';
+      logs.unshift(`<span style="color: ${color}">[${time}] ${msg}</span>`);
+      if (logs.length > 50) logs = logs.slice(0, 50);
+      document.getElementById('logs').innerHTML = logs.join('<br>');
+    }
+
+    function updateStats() {
+      document.getElementById('total').textContent = stats.total;
+      document.getElementById('success').textContent = stats.success;
+      document.getElementById('failed').textContent = stats.failed;
+    }
+
+    async function sendEvent(eventType, eventData) {
+      const payload = {
+        context: {
+          client_id: clientId,
+          session_id: 'session_' + Date.now(),
+          user_id: 'test-user',
+          app_version: '1.0.0',
+          client_ts: Date.now(),
+          user_agent: navigator.userAgent,
+          system: {
+            os: navigator.platform.includes('Mac') ? 'macOS' : 'Other',
+            browser: navigator.userAgent.includes('Chrome') ? 'Chrome' : 'Other',
+            locale: navigator.language,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          }
+        },
+        event_type: { [eventType]: eventData }
+      };
+
+      try {
+        log(`Sending ${eventType} event...`);
+
+        const response = await fetch('http://127.0.0.1:6691/api/event', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        stats.total++;
+
+        if (response.ok) {
+          stats.success++;
+          const result = await response.json();
+          log(`✅ ${eventType} sent successfully`, 'success');
+        } else {
+          stats.failed++;
+          log(`❌ ${eventType} failed: ${response.status}`, 'error');
+        }
+      } catch (error) {
+        stats.total++;
+        stats.failed++;
+        log(`❌ ${eventType} error: ${error.message}`, 'error');
+      }
+
+      updateStats();
+    }
+
+    function clearLogs() {
+      logs = [];
+      document.getElementById('logs').innerHTML = '';
+      log('Logs cleared');
+    }
+
+    // Initialize
+    log('Analytics client ready (JSON mode)');
+  </script>
+</body>
+
+</html>

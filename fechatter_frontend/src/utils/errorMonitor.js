@@ -68,9 +68,13 @@ class ErrorMonitor {
     // 检查是否是关键错误
     if (this.isCriticalError(error)) {
       this.criticalErrors.push(errorEntry);
-      console.error('🚨 CRITICAL ERROR:', errorEntry);
+      if (import.meta.env.DEV) {
+        console.error('🚨 CRITICAL ERROR:', errorEntry);
+      }
     } else {
-      console.error('❌ ERROR:', errorEntry);
+      if (import.meta.env.DEV) {
+        console.error('❌ ERROR:', errorEntry);
+      }
     }
 
     // 通知监听器
@@ -89,7 +93,9 @@ class ErrorMonitor {
 
   logWarning(message, context = {}) {
     this.warningsCount++;
-    console.warn('⚠️ WARNING:', message, context);
+    if (import.meta.env.DEV) {
+      console.warn('⚠️ WARNING:', message, context);
+    }
 
     const warningEntry = {
       id: Date.now() + '_' + Math.random(),
@@ -203,7 +209,9 @@ class ErrorMonitor {
       const recentLogs = existingLogs.slice(0, 50);
       localStorage.setItem(storageKey, JSON.stringify(recentLogs));
     } catch (e) {
-      console.warn('Failed to persist error log:', e);
+      if (import.meta.env.DEV) {
+        console.warn('Failed to persist error log:', e);
+      }
     }
   }
 
@@ -217,7 +225,9 @@ class ErrorMonitor {
       try {
         listener(entry);
       } catch (e) {
-        console.error('Error in error monitor listener:', e);
+        if (import.meta.env.DEV) {
+          console.error('Error in error monitor listener:', e);
+        }
       }
     });
   }

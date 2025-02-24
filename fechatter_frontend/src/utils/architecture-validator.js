@@ -78,11 +78,9 @@ export async function validateArchitecture() {
           } else {
             addResult(results, 'error', 'Vite Proxy', 'Health端点不可访问', '请检查Gateway是否运行和代理配置');
           }
-        }
       } catch (error) {
         addResult(results, 'warning', 'Vite Proxy', '代理测试失败', error.message);
       }
-    }
 
     // 5. 验证SSE服务配置
     try {
@@ -96,28 +94,36 @@ export async function validateArchitecture() {
 
     // 6. 生成报告
     const summary = generateSummary(results);
-    console.log('\n📊 验证摘要:');
-    console.log(`❌ 失败: ${results.failed}`);
-    console.log(`⚠️ 警告: ${results.warnings}`);
+    if (import.meta.env.DEV) {
+      console.log('\n📊 验证摘要:');
+    if (import.meta.env.DEV) {
+      console.log(`❌ 失败: ${results.failed}`);
+    if (import.meta.env.DEV) {
+      console.log(`⚠️ 警告: ${results.warnings}`);
+    }
 
     if (results.failed === 0) {
-      console.log('\n🎉 架构验证通过！前端已正确配置通过Gateway连接。');
+      if (import.meta.env.DEV) {
+        console.log('\n🎉 架构验证通过！前端已正确配置通过Gateway连接。');
+      }
     } else {
-      console.log('\n🚨 架构验证失败！请检查以下问题:');
+      if (import.meta.env.DEV) {
+        console.log('\n🚨 架构验证失败！请检查以下问题:');
       results.details.filter(d => d.level === 'error').forEach(detail => {
-        console.log(`   ❌ ${detail.component}: ${detail.message}`);
+        if (import.meta.env.DEV) {
+          console.log(`   ❌ ${detail.component}: ${detail.message}`);
+        }
       });
-    }
 
     console.groupEnd();
     return summary;
 
   } catch (error) {
-    console.error('架构验证过程中发生错误:', error);
+    if (import.meta.env.DEV) {
+      console.error('架构验证过程中发生错误:', error);
     console.groupEnd();
     return { success: false, error: error.message };
   }
-}
 
 /**
  * 测试实际连接路径
@@ -148,7 +154,9 @@ export async function testConnectionPaths() {
 
   for (const test of tests) {
     try {
-      console.log(`🧪 Testing: ${test.name}`);
+      if (import.meta.env.DEV) {
+        console.log(`🧪 Testing: ${test.name}`);
+      }
 
       const response = await fetch(test.url, {
         method: test.method || 'GET',
@@ -162,7 +170,9 @@ export async function testConnectionPaths() {
           status: response.status,
           message: `${test.description} - 连接成功`
         });
-        console.log(`   ✅ ${test.name}: 连接成功 (${response.status})`);
+        if (import.meta.env.DEV) {
+          console.log(`   ✅ ${test.name}: 连接成功 (${response.status})`);
+        }
       } else {
         results.push({
           name: test.name,
@@ -170,8 +180,9 @@ export async function testConnectionPaths() {
           status: response.status,
           message: `${test.description} - HTTP ${response.status}`
         });
-        console.log(`   ❌ ${test.name}: HTTP ${response.status}`);
-      }
+        if (import.meta.env.DEV) {
+          console.log(`   ❌ ${test.name}: HTTP ${response.status}`);
+        }
     } catch (error) {
       results.push({
         name: test.name,
@@ -179,9 +190,9 @@ export async function testConnectionPaths() {
         error: error.message,
         message: `${test.description} - 连接失败: ${error.message}`
       });
-      console.log(`   ❌ ${test.name}: 连接失败 - ${error.message}`);
-    }
-  }
+      if (import.meta.env.DEV) {
+        console.log(`   ❌ ${test.name}: 连接失败 - ${error.message}`);
+      }
 
   console.groupEnd();
   return results;
@@ -210,7 +221,6 @@ function addResult(results, level, component, message, details) {
       results.warnings++;
       break;
   }
-}
 
 /**
  * 生成验证摘要

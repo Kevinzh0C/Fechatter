@@ -93,7 +93,7 @@ channelOptimizer.switchChannel = async function (...args) {
 
 onMounted(() => {
   updateStats();
-  updateInterval = setInterval(updateStats, 2000);
+  updateInterval = setInterval(updateStats, 10000);
 });
 
 onUnmounted(() => {

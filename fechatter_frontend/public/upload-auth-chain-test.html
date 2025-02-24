@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔗 Upload Auth Chain Test - Fechatter</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    h2 {
+      color: #555;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 10px;
+    }
+
+    .test-section {
+      margin: 30px 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .test-result {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    .success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .warning {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .info {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+      margin: 5px;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    button:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+
+    .chain-visualization {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin: 20px 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+
+    .chain-step {
+      min-width: 120px;
+      padding: 15px;
+      text-align: center;
+      background: white;
+      border: 2px solid #dee2e6;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .chain-step.active {
+      border-color: #007bff;
+      background: #e7f1ff;
+    }
+
+    .chain-step.success {
+      border-color: #28a745;
+      background: #d4edda;
+    }
+
+    .chain-step.error {
+      border-color: #dc3545;
+      background: #f8d7da;
+    }
+
+    .chain-arrow {
+      font-size: 24px;
+      color: #6c757d;
+    }
+
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+
+    .file-input {
+      margin: 20px 0;
+    }
+
+    #fileInput {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔗 Upload Auth Chain Test</h1>
+    <p>Complete diagnosis of authentication and file upload chain</p>
+
+    <!-- Chain Visualization -->
+    <div class="chain-visualization">
+      <div class="chain-step" id="step-1">
+        <strong>1. LocalStorage</strong>
+        <div>Token Storage</div>
+      </div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-step" id="step-2">
+        <strong>2. TokenManager</strong>
+        <div>Token Retrieval</div>
+      </div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-step" id="step-3">
+        <strong>3. API Service</strong>
+        <div>Header Setup</div>
+      </div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-step" id="step-4">
+        <strong>4. HTTP Request</strong>
+        <div>Auth Header</div>
+      </div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-step" id="step-5">
+        <strong>5. Remote API</strong>
+        <div>Validation</div>
+      </div>
+    </div>
+
+    <!-- Test Sections -->
+    <div class="test-section">
+      <h2>🔐 Step 1: Token Storage Check</h2>
+      <div id="storage-results"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>🎫 Step 2: Token Format Validation</h2>
+      <div id="token-results"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>🌐 Step 3: API Connectivity</h2>
+      <div id="api-results"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>📤 Step 4: File Upload Test</h2>
+      <div class="file-input">
+        <input type="file" id="fileInput" accept="image/*">
+        <button onclick="testFileUpload()">Test Upload</button>
+      </div>
+      <div id="upload-results"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>🔧 Diagnostic Actions</h2>
+      <button onclick="runFullDiagnostic()">🔍 Run Full Diagnostic</button>
+      <button onclick="testRemoteDirectly()">🌐 Test Remote API Directly</button>
+      <button onclick="regenerateToken()">🔄 Regenerate Token</button>
+      <button onclick="clearAndRelogin()">🚪 Clear & Re-login</button>
+    </div>
+
+    <div class="test-section">
+      <h2>📊 Summary</h2>
+      <div id="summary"></div>
+    </div>
+  </div>
+
+  <script>
+    let authToken = null;
+    let authData = null;
+
+    function updateStep(stepId, status) {
+      const step = document.getElementById(stepId);
+      step.className = `chain-step ${status}`;
+    }
+
+    function addResult(containerId, message, type = 'info') {
+      const container = document.getElementById(containerId);
+      const result = document.createElement('div');
+      result.className = `test-result ${type}`;
+      result.innerHTML = message;
+      container.appendChild(result);
+    }
+
+    function clearResults() {
+      ['storage-results', 'token-results', 'api-results', 'upload-results', 'summary'].forEach(id => {
+        document.getElementById(id).innerHTML = '';
+      });
+      for (let i = 1; i <= 5; i++) {
+        updateStep(`step-${i}`, '');
+      }
+    }
+
+    async function checkTokenStorage() {
+      updateStep('step-1', 'active');
+
+      // Check localStorage
+      authToken = localStorage.getItem('auth_token');
+      authData = localStorage.getItem('auth');
+      const refreshToken = localStorage.getItem('refresh_token');
+
+      addResult('storage-results', '🔍 Checking token storage...', 'info');
+
+      if (!authToken && !authData) {
+        addResult('storage-results', '❌ No authentication data found in localStorage', 'error');
+        updateStep('step-1', 'error');
+        return false;
+      }
+
+      if (authToken) {
+        addResult('storage-results', `✅ auth_token found: ${authToken.substring(0, 30)}...`, 'success');
+      }
+
+      if (authData) {
+        try {
+          const parsed = JSON.parse(authData);
+          authData = parsed;
+          addResult('storage-results', '✅ auth object found and parsed successfully', 'success');
+
+          if (parsed.tokens?.accessToken) {
+            if (!authToken) {
+              authToken = parsed.tokens.accessToken;
+              addResult('storage-results', '✅ Extracted token from auth object', 'success');
+            }
+          }
+
+          if (parsed.user) {
+            addResult('storage-results', `✅ User data: ${parsed.user.email || parsed.user.username}`, 'success');
+          }
+        } catch (e) {
+          addResult('storage-results', '❌ Failed to parse auth object: ' + e.message, 'error');
+        }
+      }
+
+      if (refreshToken) {
+        addResult('storage-results', '✅ Refresh token found', 'success');
+      }
+
+      updateStep('step-1', authToken ? 'success' : 'error');
+      return !!authToken;
+    }
+
+    async function validateTokenFormat() {
+      updateStep('step-2', 'active');
+
+      if (!authToken) {
+        addResult('token-results', '❌ No token to validate', 'error');
+        updateStep('step-2', 'error');
+        return false;
+      }
+
+      addResult('token-results', '🔍 Validating token format...', 'info');
+
+      // Check token characteristics
+      const tokenLength = authToken.length;
+      const isJWT = authToken.split('.').length === 3;
+      const hasBearer = authToken.startsWith('Bearer ');
+
+      addResult('token-results', `📏 Token length: ${tokenLength} characters`, 'info');
+      addResult('token-results', `🎫 Token type: ${isJWT ? 'JWT' : 'Opaque token'}`, 'info');
+      addResult('token-results', `🏷️ Has Bearer prefix: ${hasBearer ? 'Yes' : 'No'}`, 'info');
+
+      if (tokenLength < 20) {
+        addResult('token-results', '❌ Token seems too short', 'error');
+        updateStep('step-2', 'error');
+        return false;
+      }
+
+      // Check expiry if JWT
+      if (isJWT) {
+        try {
+          const parts = authToken.split('.');
+          const payload = JSON.parse(atob(parts[1]));
+          const exp = payload.exp;
+          if (exp) {
+            const expDate = new Date(exp * 1000);
+            const isExpired = expDate < new Date();
+            addResult('token-results', `⏰ Expiry: ${expDate.toLocaleString()} (${isExpired ? 'EXPIRED' : 'Valid'})`, isExpired ? 'error' : 'success');
+
+            if (isExpired) {
+              updateStep('step-2', 'error');
+              return false;
+            }
+          }
+        } catch (e) {
+          addResult('token-results', '⚠️ Could not decode JWT payload', 'warning');
+        }
+      }
+
+      addResult('token-results', '✅ Token format appears valid', 'success');
+      updateStep('step-2', 'success');
+      return true;
+    }
+
+    async function testAPIConnectivity() {
+      updateStep('step-3', 'active');
+      updateStep('step-4', 'active');
+
+      addResult('api-results', '🌐 Testing API connectivity...', 'info');
+
+      // Test 1: Health check (no auth)
+      try {
+        const healthResponse = await fetch('/api/health');
+        addResult('api-results', `Health check: ${healthResponse.status} ${healthResponse.statusText}`, healthResponse.ok ? 'success' : 'warning');
+      } catch (e) {
+        addResult('api-results', '❌ Health check failed: ' + e.message, 'error');
+      }
+
+      // Test 2: Authenticated request
+      if (!authToken) {
+        addResult('api-results', '⚠️ Skipping auth test - no token', 'warning');
+        updateStep('step-3', 'error');
+        updateStep('step-4', 'error');
+        return false;
+      }
+
+      try {
+        addResult('api-results', '🔐 Testing authenticated request...', 'info');
+
+        const response = await fetch('/api/user/me', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        addResult('api-results', `Auth request: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+
+        if (response.ok) {
+          const userData = await response.json();
+          addResult('api-results', `✅ User authenticated: ${userData.data?.email || userData.data?.username || 'Unknown'}`, 'success');
+          updateStep('step-3', 'success');
+          updateStep('step-4', 'success');
+          updateStep('step-5', 'success');
+          return true;
+        } else {
+          const errorText = await response.text();
+          addResult('api-results', `❌ Auth failed: ${errorText}`, 'error');
+
+          if (response.status === 401) {
+            addResult('api-results', '🔍 401 Error Analysis:', 'warning');
+            addResult('api-results', '• Token may be expired or invalid', 'warning');
+            addResult('api-results', '• Server may not recognize the token', 'warning');
+            addResult('api-results', '• User session may have been revoked', 'warning');
+          }
+
+          updateStep('step-4', 'error');
+          updateStep('step-5', 'error');
+          return false;
+        }
+      } catch (e) {
+        addResult('api-results', '❌ Network error: ' + e.message, 'error');
+        updateStep('step-3', 'error');
+        updateStep('step-4', 'error');
+        return false;
+      }
+    }
+
+    async function testFileUpload() {
+      const fileInput = document.getElementById('fileInput');
+      const file = fileInput.files[0];
+
+      if (!file) {
+        addResult('upload-results', '❌ Please select a file first', 'error');
+        return;
+      }
+
+      if (!authToken) {
+        addResult('upload-results', '❌ No authentication token available', 'error');
+        return;
+      }
+
+      addResult('upload-results', `📤 Uploading ${file.name} (${(file.size / 1024).toFixed(1)} KB)...`, 'info');
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('/api/files/single', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: formData
+        });
+
+        addResult('upload-results', `Response: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+
+        if (response.ok) {
+          const data = await response.json();
+          addResult('upload-results', '✅ Upload successful!', 'success');
+          addResult('upload-results', `<pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+        } else {
+          const errorText = await response.text();
+          addResult('upload-results', `❌ Upload failed: ${errorText}`, 'error');
+
+          if (response.status === 401) {
+            addResult('upload-results', '🔐 Authentication failed during upload', 'error');
+            addResult('upload-results', 'Token is not being accepted by the file upload endpoint', 'warning');
+          }
+        }
+      } catch (error) {
+        addResult('upload-results', '❌ Network error: ' + error.message, 'error');
+      }
+    }
+
+    async function testRemoteDirectly() {
+      clearResults();
+      addResult('summary', '🌐 Testing remote API directly...', 'info');
+
+      try {
+        // Test remote gateway
+        const response = await fetch('http://45.77.178.85:8080/api/health', {
+          method: 'GET',
+          headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
+        });
+
+        addResult('summary', `Remote API: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+
+        if (authToken) {
+          // Test authenticated endpoint on remote
+          const authResponse = await fetch('http://45.77.178.85:8080/api/user/me', {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${authToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          addResult('summary', `Remote auth test: ${authResponse.status} ${authResponse.statusText}`, authResponse.ok ? 'success' : 'error');
+
+          if (authResponse.status === 401) {
+            addResult('summary', '❌ Remote API is rejecting the token', 'error');
+            addResult('summary', 'This confirms the token is invalid or expired on the server', 'warning');
+          }
+        }
+      } catch (error) {
+        addResult('summary', '❌ Cannot reach remote API: ' + error.message, 'error');
+      }
+    }
+
+    async function runFullDiagnostic() {
+      clearResults();
+
+      const step1 = await checkTokenStorage();
+      if (!step1) {
+        addResult('summary', '❌ Authentication data not found. Please login first.', 'error');
+        return;
+      }
+
+      const step2 = await validateTokenFormat();
+      const step3 = await testAPIConnectivity();
+
+      // Summary
+      addResult('summary', '📊 Diagnostic Summary:', 'info');
+
+      if (step1 && step2 && step3) {
+        addResult('summary', '✅ Authentication chain is working correctly!', 'success');
+        addResult('summary', 'File uploads should work. If they don\'t, the issue may be with the file or server configuration.', 'info');
+      } else {
+        addResult('summary', '❌ Authentication chain has issues:', 'error');
+
+        if (!step1) {
+          addResult('summary', '• No authentication tokens found', 'error');
+        }
+        if (!step2) {
+          addResult('summary', '• Token format is invalid or expired', 'error');
+        }
+        if (!step3) {
+          addResult('summary', '• API is rejecting the authentication', 'error');
+        }
+
+        addResult('summary', '🔧 Recommended action: Clear data and login again', 'warning');
+      }
+    }
+
+    function regenerateToken() {
+      if (authData && authData.user) {
+        // Try to set auth_token from auth object
+        if (authData.tokens?.accessToken) {
+          localStorage.setItem('auth_token', authData.tokens.accessToken);
+          addResult('summary', '✅ Regenerated auth_token from auth object', 'success');
+          setTimeout(() => runFullDiagnostic(), 500);
+        } else {
+          addResult('summary', '❌ No token found in auth object', 'error');
+        }
+      } else {
+        addResult('summary', '❌ No auth data available for regeneration', 'error');
+      }
+    }
+
+    function clearAndRelogin() {
+      if (confirm('This will clear all authentication data and redirect to login. Continue?')) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth');
+        localStorage.removeItem('auth_user');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('fechatter_access_token');
+
+        window.location.href = '/login';
+      }
+    }
+
+    // Auto-run on load
+    window.addEventListener('load', () => {
+      runFullDiagnostic();
+    });
+  </script>
+</body>
+
+</html>

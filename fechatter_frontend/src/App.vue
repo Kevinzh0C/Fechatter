@@ -1,12 +1,45 @@
 <template>
   <div id="app" class="discord-chat-container">
-    <router-view />
+    <!-- Global notifications -->
+    <NotificationContainer />
+
+    <!-- Auth Loading Overlay -->
+    <div v-if="isAuthLoading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
+      <div class="text-center">
+        <div class="animate-spin rounded-full h-32 w-32 border-b-2 border-violet-600 mx-auto mb-4"></div>
+        <h2 class="text-xl font-semibold text-gray-700">Loading...</h2>
+        <p class="text-gray-500 mt-2">Initializing your workspace</p>
+      </div>
+    </div>
+
+    <!-- Main App -->
+    <div v-else>
+      <!-- Public Routes -->
+      <template v-if="!authStore.isAuthenticated">
+        <router-view />
+      </template>
+
+      <!-- Protected Routes -->
+      <template v-else>
+        <div class="app-container">
+          <router-view />
+        </div>
+      </template>
+    </div>
+
+    <!-- Error Boundary for unknown errors -->
+    <div v-if="hasGlobalError" class="fixed inset-0 bg-red-50 z-50 flex items-center justify-center">
+      <div class="text-center p-8">
+        <h2 class="text-2xl font-bold text-red-600 mb-4">Application Error</h2>
+        <p class="text-gray-700 mb-4">{{ globalError }}</p>
+        <button @click="reloadPage" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+          Reload Page
+        </button>
+      </div>
+    </div>
+
     <!-- Notification Toast Container -->
     <ToastContainer />
-    <!-- Debug Panel - 只在开发环境显示 -->
-    <DebugPanel v-if="isDev" />
-    <!-- Performance Monitor - 只在开发环境显示 -->
-    <PerformanceMonitor v-if="isDev" />
     <!-- Keyboard Shortcuts Modal -->
     <KeyboardShortcutsModal v-model="showShortcutsModal" :shortcuts="keyboardShortcuts.shortcuts" />
   </div>
@@ -14,15 +47,12 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import DebugPanel from './views/DebugPanel.vue';
 import KeyboardShortcutsModal from './components/modals/KeyboardShortcutsModal.vue';
 import ToastContainer from './components/ui/ToastContainer.vue';
-import PerformanceMonitor from './components/PerformanceMonitor.vue';
+import NotificationContainer from './components/ui/NotificationContainer.vue';
 import { useKeyboardShortcuts } from './composables/useKeyboardShortcuts';
 import healthCheck from './utils/healthCheck';
-
-// 检查是否为开发环境
-const isDev = computed(() => import.meta.env.DEV);
+import { useAuthStore } from './stores/auth';
 
 // Keyboard shortcuts state
 const showShortcutsModal = ref(false);
@@ -44,25 +74,22 @@ const handleGlobalEvents = (event) => {
     case 'open-settings':
       // This will be handled by specific components
       break;
-    case 'toggle-debug-panel':
-      // This could toggle a debug panel state
-      break;
     default:
       // Let other components handle their specific events
       break;
   }
 };
 
-// 初始化主题系统
+// Initialize theme system
 const initializeTheme = () => {
-  // 从localStorage获取保存的主题
+  // Get saved theme from localStorage
   const savedTheme = localStorage.getItem('fechatter-theme');
   const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-  // 确定使用的主题
+  // Determine theme to use
   const useDark = savedTheme ? savedTheme === 'dark' : systemPrefersDark;
 
-  // 应用主题
+  // Apply theme
   const html = document.documentElement;
   if (useDark) {
     html.setAttribute('data-theme', 'dark');
@@ -71,68 +98,71 @@ const initializeTheme = () => {
     html.setAttribute('data-theme', 'light');
     html.classList.remove('dark');
   }
-
 };
 
-// 确保在应用完全挂载后再运行第一次健康检查
-onMounted(async () => {
-  // 首先初始化主题
-  initializeTheme();
+// Store
+const authStore = useAuthStore();
 
-  // Setup global keyboard shortcut event listeners
-  window.addEventListener('fechatter:show-shortcuts-help', handleGlobalEvents);
-  window.addEventListener('fechatter:open-settings', handleGlobalEvents);
-  window.addEventListener('fechatter:toggle-debug-panel', handleGlobalEvents);
+// State
+const isInitialized = ref(false);
+const hasGlobalError = ref(false);
+const globalError = ref('');
+const isAuthLoading = ref(true);
 
-  // Initialize authentication state validation
-  await initializeAuthState();
-
-  // 移除重复的健康检查 - main.js中已经有自动健康监控
-  // 在开发环境中通过 window.healthHelper 手动访问健康检查
-  if (isDev.value) {
-    console.log('🔧 [APP] Health monitoring managed by main.js - use window.healthHelper for manual checks');
-  }
-});
+// Methods
+const reloadPage = () => {
+  window.location.reload();
+};
 
 // Initialize and validate authentication state on app startup
 const initializeAuthState = async () => {
   try {
-    console.log('🔐 [APP] Initializing authentication state...');
-
-    // Dynamic import to avoid circular dependencies
-    const { useAuthStore } = await import('./stores/auth');
-
-    const authStore = useAuthStore();
+    isAuthLoading.value = true;
+    // console.log('🔐 [APP] Initializing authentication state...');
 
     // Initialize auth store - let it handle all token validation and refresh logic
     const isInitialized = await authStore.initialize();
 
     if (isInitialized) {
-      console.log('✅ [APP] Authentication initialized successfully');
+      // console.log('✅ [APP] Authentication initialized successfully');
     } else {
-      console.log('ℹ️ [APP] No valid authentication found - user will need to login');
+      // console.log('ℹ️ [APP] No valid authentication found - user will need to login');
     }
 
   } catch (error) {
     console.error('❌ [APP] Error during auth initialization:', error);
+    hasGlobalError.value = true;
+    globalError.value = error.message || 'Authentication initialization failed';
 
     // Clear any potentially corrupted auth state as fallback
     try {
-      const { useAuthStore } = await import('./stores/auth');
-      const authStore = useAuthStore();
       authStore.clearAuth();
-      console.log('🧹 [APP] Cleared corrupted auth state');
+      // console.log('🧹 [APP] Cleared corrupted auth state');
     } catch (clearError) {
       console.error('❌ [APP] Failed to clear auth state:', clearError);
     }
+  } finally {
+    isAuthLoading.value = false;
   }
 };
+
+// Ensure health check runs after app is fully mounted
+onMounted(async () => {
+  // First initialize theme
+  initializeTheme();
+
+  // Setup global keyboard shortcut event listeners
+  window.addEventListener('fechatter:show-shortcuts-help', handleGlobalEvents);
+  window.addEventListener('fechatter:open-settings', handleGlobalEvents);
+
+  // Initialize authentication state validation
+  await initializeAuthState();
+});
 
 onUnmounted(() => {
   // Cleanup global event listeners
   window.removeEventListener('fechatter:show-shortcuts-help', handleGlobalEvents);
   window.removeEventListener('fechatter:open-settings', handleGlobalEvents);
-  window.removeEventListener('fechatter:toggle-debug-panel', handleGlobalEvents);
 });
 </script>
 
@@ -148,10 +178,10 @@ onUnmounted(() => {
 
 /* 🎨 应用级别样式重置 */
 #app {
-  height: 100vh;
+  height: 100vh;              /* ✅ 恢复固定视口高度 */
   width: 100vw;
-  overflow: hidden;
-  position: fixed;
+  overflow: hidden;           /* ✅ 控制总体溢出 */
+  position: fixed;            /* ✅ 固定定位，防止滚动问题 */
   top: 0;
   left: 0;
   /* 确保应用使用主题系统 */

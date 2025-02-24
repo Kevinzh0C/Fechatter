@@ -5,18 +5,14 @@
         <h2 id="modal-title" class="modal-title">
           Create {{ channelType === 'public' ? 'Public' : 'Private' }} Channel
         </h2>
-        <button 
-          @click="$emit('close')" 
-          class="modal-close"
-          aria-label="Close modal"
-          data-testid="modal-close"
-        >
+        <button @click="$emit('close')" class="modal-close" aria-label="Close modal" data-testid="modal-close">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            <path
+              d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
           </svg>
         </button>
       </div>
-      
+
       <form @submit.prevent="handleSubmit" class="modal-form">
         <!-- Channel Type Info -->
         <div class="channel-type-info" :class="channelType === 'public' ? 'public-info' : 'private-info'">
@@ -25,8 +21,8 @@
           </div>
           <div>
             <h4>{{ channelType === 'public' ? 'Public Channel' : 'Private Channel' }}</h4>
-            <p>{{ channelType === 'public' 
-              ? 'Anyone in the workspace can find and join this channel' 
+            <p>{{ channelType === 'public'
+              ? 'Anyone in the workspace can find and join this channel'
               : 'Only invited members can see and join this channel' }}</p>
           </div>
         </div>
@@ -35,54 +31,29 @@
           <label for="channel-name">Channel name <span class="required">*</span></label>
           <div class="input-with-prefix">
             <span class="input-prefix">{{ channelType === 'public' ? '#' : '🔒' }}</span>
-            <input 
-              v-model="channelName"
-              id="channel-name"
-              type="text"
-              required
-              placeholder="e.g. general, random, announcements"
-              class="form-input"
-              :class="{ 'error': hasNameError }"
-              @input="validateChannelName"
-              data-testid="channel-name-input"
-            />
+            <input v-model="channelName" id="channel-name" type="text" required
+              placeholder="e.g. general, random, announcements" class="form-input" :class="{ 'error': hasNameError }"
+              @input="validateChannelName" data-testid="channel-name-input" />
           </div>
           <p v-if="hasNameError" class="form-error-text">{{ nameError }}</p>
           <p v-else class="form-help">Channel names must be lowercase, no spaces (use dashes instead)</p>
         </div>
-        
+
         <div class="form-group">
           <label for="channel-description">Description (optional)</label>
-          <textarea 
-            v-model="description"
-            id="channel-description"
-            rows="3"
-            placeholder="What's this channel about?"
-            class="form-input"
-            data-testid="channel-description-input"
-          />
+          <textarea v-model="description" id="channel-description" rows="3" placeholder="What's this channel about?"
+            class="form-input" data-testid="channel-description-input" />
           <p class="form-help">Help others understand what this channel is for</p>
         </div>
-        
+
         <!-- Members for private channels -->
         <div v-if="channelType === 'private'" class="form-group">
           <label for="member-search">Add Members (Optional)</label>
           <div class="member-search">
-            <input 
-              v-model="searchQuery"
-              id="member-search"
-              type="text"
-              placeholder="Search users to invite..."
-              class="form-input"
-              @input="searchUsers"
-            />
+            <input v-model="searchQuery" id="member-search" type="text" placeholder="Search users to invite..."
+              class="form-input" @input="searchUsers" />
             <div v-if="searchResults.length > 0" class="search-results">
-              <div
-                v-for="user in searchResults"
-                :key="user.id"
-                @click="addMember(user)"
-                class="search-result-item"
-              >
+              <div v-for="user in searchResults" :key="user.id" @click="addMember(user)" class="search-result-item">
                 <div class="user-avatar">{{ user.name.charAt(0).toUpperCase() }}</div>
                 <div class="user-info">
                   <div class="user-name">{{ user.name }}</div>
@@ -91,47 +62,35 @@
               </div>
             </div>
           </div>
-          
+
           <!-- Selected Members -->
           <div v-if="selectedMembers.length > 0" class="selected-members">
             <div class="member-chips">
-              <div
-                v-for="member in selectedMembers"
-                :key="member.id"
-                class="member-chip"
-              >
+              <div v-for="member in selectedMembers" :key="member.id" class="member-chip">
                 <span>{{ member.name }}</span>
                 <button type="button" @click="removeMember(member.id)" class="remove-member">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    <path
+                      d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
                   </svg>
                 </button>
               </div>
             </div>
           </div>
         </div>
-        
+
         <!-- Error message -->
         <div v-if="error" class="form-error">
           {{ error }}
         </div>
-        
+
         <div class="modal-footer">
-          <button 
-            type="button" 
-            @click="$emit('close')"
-            class="btn btn-secondary"
-            data-testid="modal-cancel"
-            :disabled="isLoading"
-          >
+          <button type="button" @click="$emit('close')" class="btn btn-secondary" data-testid="modal-cancel"
+            :disabled="isLoading">
             Cancel
           </button>
-          <button 
-            type="submit"
-            :disabled="!isFormValid || isLoading"
-            class="btn btn-primary"
-            data-testid="modal-submit"
-          >
+          <button type="submit" :disabled="!isFormValid || isLoading" class="btn btn-primary"
+            data-testid="modal-submit">
             <span v-if="isLoading">Creating...</span>
             <span v-else>Create Channel</span>
           </button>
@@ -194,7 +153,7 @@ function resetForm() {
 
 function validateChannelName() {
   const name = channelName.value.trim();
-  
+
   if (name === '') {
     nameError.value = '';
     return;
@@ -233,8 +192,8 @@ function searchUsers() {
   const query = searchQuery.value.toLowerCase();
   searchResults.value = props.availableUsers.filter(user => {
     const isAlreadySelected = selectedMembers.value.some(member => member.id === user.id);
-    const matchesQuery = user.name.toLowerCase().includes(query) || 
-                        user.email.toLowerCase().includes(query);
+    const matchesQuery = user.name.toLowerCase().includes(query) ||
+      user.email.toLowerCase().includes(query);
     return !isAlreadySelected && matchesQuery;
   });
 }
@@ -255,10 +214,10 @@ const handleOverlayClick = () => {
 
 const handleSubmit = async () => {
   if (!isFormValid.value) return;
-  
+
   isLoading.value = true;
   error.value = null;
-  
+
   try {
     // 使用chat store创建频道
     const channelData = {
@@ -274,7 +233,7 @@ const handleSubmit = async () => {
       channelData.description,
       props.channelType === 'private' ? 'PrivateChannel' : 'PublicChannel'
     );
-    
+
     emit('created', channel);
     emit('close');
   } catch (err) {

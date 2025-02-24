@@ -15,10 +15,10 @@ class MentionsService {
       const data = response.data?.data || response.data;
       return Array.isArray(data) ? data : [];
     } catch (error) {
-      console.error('Failed to fetch unread mentions:', error);
+      if (import.meta.env.DEV) {
+        console.error('Failed to fetch unread mentions:', error);
       return [];
     }
-  }
 
   /**
    * 获取消息的提及信息
@@ -31,10 +31,10 @@ class MentionsService {
       const data = response.data?.data || response.data;
       return Array.isArray(data) ? data : [];
     } catch (error) {
-      console.error('Failed to fetch message mentions:', error);
+      if (import.meta.env.DEV) {
+        console.error('Failed to fetch message mentions:', error);
       return [];
     }
-  }
 
   /**
    * 从消息内容中提取提及
@@ -55,7 +55,6 @@ class MentionsService {
         position: match.index,
         length: match[0].length
       });
-    }
     
     // 匹配 @everyone
     if (content.includes('@everyone')) {
@@ -65,7 +64,6 @@ class MentionsService {
         position: content.indexOf('@everyone'),
         length: 9
       });
-    }
     
     // 匹配 @here
     if (content.includes('@here')) {
@@ -75,7 +73,6 @@ class MentionsService {
         position: content.indexOf('@here'),
         length: 5
       });
-    }
     
     return mentions;
   }
@@ -150,7 +147,6 @@ class MentionsService {
         display: '@everyone',
         description: 'Notify everyone in this chat'
       });
-    }
     
     if ('here'.startsWith(query.toLowerCase())) {
       suggestions.push({
@@ -159,7 +155,6 @@ class MentionsService {
         display: '@here',
         description: 'Notify online members'
       });
-    }
     
     // 添加用户提及
     const filteredUsers = availableUsers.filter(user => 
@@ -223,6 +218,5 @@ class MentionsService {
       cursorPosition: newCursorPosition
     };
   }
-}
 
 export default new MentionsService();
