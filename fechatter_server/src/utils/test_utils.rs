@@ -9,7 +9,7 @@ macro_rules! setup_test_users {
 
       tokio::time::sleep(std::time::Duration::from_millis(50)).await;
       let mut users = Vec::with_capacity($num_users);
-      let names = vec![
+      let names = [
         "Alice", "Bob", "Charlie", "David", "Eve", "Frank", "Grace", "Hank", "Ivy", "Judy",
         "Kevin", "Linda", "Michael", "Nancy", "Oscar", "Peggy", "Quentin", "Ruth", "Steve",
         "Tracy", "Ursula", "Victor", "Wendy", "Xavier", "Yvonne", "Zoe",
