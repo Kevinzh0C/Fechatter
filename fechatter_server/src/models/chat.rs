@@ -310,6 +310,7 @@ impl CreateChat {
 #[allow(unused)]
 #[cfg(test)]
 impl Chat {
+  #[allow(clippy::too_many_arguments)]
   pub fn new(
     id: i64,
     name: &str,
