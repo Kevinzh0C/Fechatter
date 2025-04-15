@@ -654,7 +654,7 @@ mod tests {
       user1.id,
       "Duplicate Members Group",
       ChatType::Group,
-      Some(vec![user2.id, user3.id, user2.id, user3.id]),
+      Some([user2.id, user3.id, user2.id, user3.id].to_vec()),
       None,
     )
     .await?;
@@ -666,7 +666,7 @@ mod tests {
       user1.id,
       "Self Included Group",
       ChatType::Group,
-      Some(vec![user1.id, user2.id, user3.id]),
+      Some([user1.id, user2.id, user3.id].to_vec()),
       None,
     )
     .await?;
@@ -692,7 +692,7 @@ mod tests {
       user1.id,
       "Self Included Private Channel",
       ChatType::PrivateChannel,
-      Some(vec![user1.id, user2.id]),
+      Some([user1.id, user2.id].to_vec()),
       None,
     )
     .await?;
@@ -705,7 +705,7 @@ mod tests {
       user1.id,
       "Duplicate Private Channel",
       ChatType::PrivateChannel,
-      Some(vec![user2.id, user2.id, user3.id, user3.id]),
+      Some([user2.id, user2.id, user3.id, user3.id].to_vec()),
       None,
     )
     .await?;
@@ -730,7 +730,7 @@ mod tests {
       user1.id,
       "Public Channel With Members",
       ChatType::PublicChannel,
-      Some(vec![user2.id, user3.id, user4.id]),
+      Some([user2.id, user3.id, user4.id].to_vec()),
       None,
     )
     .await?;
@@ -782,7 +782,7 @@ mod tests {
     let user5 = &users[4]; // Eve
 
     // 1. Create department group chat
-    let department_members = Some(vec![user2.id, user3.id, user4.id, user5.id]);
+    let department_members = Some([user2.id, user3.id, user4.id, user5.id].to_vec());
     let department_chat = create_new_chat(
       &state,
       user1.id, // Alice as creator
@@ -796,7 +796,7 @@ mod tests {
     assert_eq!(department_chat.chat_members.len(), 5);
 
     // 2. Create project team
-    let project_members = Some(vec![user2.id, user3.id]); // Bob and Charlie
+    let project_members = Some([user2.id, user3.id].to_vec()); // Bob and Charlie
     let project_chat = create_new_chat(
       &state,
       user1.id, // Alice as creator
@@ -862,7 +862,7 @@ mod tests {
     let first_chat = CreateChat::new(
       "Unique Name Test",
       ChatType::Group,
-      vec![user2.id, user3.id],
+      [user2.id, user3.id].to_vec(),
       "",
     );
     let first_chat = create_new_chat(
@@ -882,7 +882,7 @@ mod tests {
       user4.id,           // Different creator
       "Unique Name Test", // Same name
       ChatType::Group,
-      Some(vec![user5.id, user6.id]), // Different members
+      Some([user5.id, user6.id].to_vec()), // Different members
       None,
     )
     .await;
@@ -893,7 +893,7 @@ mod tests {
 
     // Use various special characters as chat name
     let special_name = "!@#$%^&*()_+-=[]{}|;':\",./<>?";
-    let special_chat = CreateChat::new(special_name, ChatType::Group, vec![user2.id, user3.id], "");
+    let special_chat = CreateChat::new(special_name, ChatType::Group, [user2.id, user3.id].to_vec(), "");
     let special_chat = create_new_chat(
       &state,
       user1.id,
@@ -913,7 +913,7 @@ mod tests {
     let long_desc_chat = CreateChat::new(
       "Long Description Chat",
       ChatType::Group,
-      vec![user2.id, user3.id],
+      [user2.id, user3.id].to_vec(),
       &long_desc,
     );
     let long_desc_chat = create_new_chat(
@@ -934,9 +934,9 @@ mod tests {
     let large_group = CreateChat::new(
       "Large Group Chat",
       ChatType::Group,
-      vec![
+      [
         user2.id, user3.id, user4.id, user5.id, user6.id, user7.id, user8.id,
-      ],
+      ].to_vec(),
       "",
     );
     let large_group = create_new_chat(
@@ -954,7 +954,7 @@ mod tests {
     // ===== 5. Test different chat types with same members =====
 
     // Create different chat types for the same group of users
-    let members = vec![user2.id];
+    let members = [user2.id].to_vec();
 
     // Single chat
     let single_chat = CreateChat::new("Same Members Single", ChatType::Single, members.clone(), "");
@@ -995,7 +995,7 @@ mod tests {
     // ===== 6. Test all-whitespace name =====
 
     // Try to use all-spaces name
-    let all_spaces = CreateChat::new("   ", ChatType::Group, vec![user2.id, user3.id], "");
+    let all_spaces = CreateChat::new("   ", ChatType::Group, [user2.id, user3.id].to_vec(), "");
     let result = create_new_chat(
       &state,
       user1.id,
