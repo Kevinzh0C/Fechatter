@@ -97,7 +97,7 @@ fn process_chat_members(
       )),
     },
     ChatType::Group => {
-      let mut result = vec![creator_id];
+      let mut result = [creator_id].to_vec();
       if let Some(members) = target_members {
         for &id in members {
           if id != creator_id && !result.contains(&id) {
@@ -113,7 +113,7 @@ fn process_chat_members(
       Ok(result)
     }
     ChatType::PrivateChannel => {
-      let mut result = vec![creator_id];
+      let mut result = [creator_id].to_vec();
       if let Some(members) = target_members {
         for &id in members {
           if id != creator_id && !result.contains(&id) {
@@ -472,7 +472,7 @@ mod tests {
       user1.id,
       "Single Chat with Bob (for update/delete)", // Slightly different name
       ChatType::Single,
-      Some(vec![user2.id]),
+      Some([user2.id].to_vec()),
       Some("One-on-one chat"),
     )
     .await?;
@@ -558,7 +558,7 @@ mod tests {
       user1.id,
       "",
       ChatType::Single,
-      Some(vec![user2.id]),
+      Some([user2.id].to_vec()),
       None,
     )
     .await;
@@ -570,7 +570,7 @@ mod tests {
       user1.id,
       "Self Chat",
       ChatType::Single,
-      Some(vec![user1.id]),
+      Some([user1.id].to_vec()),
       None,
     )
     .await;
@@ -594,7 +594,7 @@ mod tests {
       user1.id,
       "Empty Members Chat",
       ChatType::Single,
-      Some(vec![]),
+      Some([].to_vec()),
       None,
     )
     .await;
@@ -606,7 +606,7 @@ mod tests {
       user1.id,
       "Multi Target Chat",
       ChatType::Single,
-      Some(vec![user2.id, user3.id]),
+      Some([user2.id, user3.id].to_vec()),
       None,
     )
     .await;
@@ -618,7 +618,7 @@ mod tests {
       user1.id,
       "Small Group",
       ChatType::Group,
-      Some(vec![user2.id]), // Only two people
+      Some([user2.id].to_vec()), // Only two people
       None,
     )
     .await;
@@ -642,7 +642,7 @@ mod tests {
       user1.id,
       "Empty Members Group",
       ChatType::Group,
-      Some(vec![]),
+      Some([].to_vec()),
       None,
     )
     .await;
@@ -744,7 +744,7 @@ mod tests {
       user1.id,
       &long_name,
       ChatType::Single,
-      Some(vec![user2.id]),
+      Some([user2.id].to_vec()),
       None,
     )
     .await;
@@ -756,7 +756,7 @@ mod tests {
       user1.id,
       "Chat With Description",
       ChatType::Single,
-      Some(vec![user2.id]),
+      Some([user2.id].to_vec()),
       Some("This is a test description that should be saved correctly"),
     )
     .await?;
@@ -828,7 +828,7 @@ mod tests {
       user1.id, // Alice
       "Alice & Bob",
       ChatType::Single,
-      Some(vec![user2.id]), // Bob
+      Some([user2.id].to_vec()), // Bob
       None,
     )
     .await?;
@@ -1039,7 +1039,7 @@ mod tests {
       user1.id,
       &name_128,
       ChatType::Single,
-      Some(vec![user2.id]),
+      Some([user2.id].to_vec()),
       None,
     )
     .await?;
