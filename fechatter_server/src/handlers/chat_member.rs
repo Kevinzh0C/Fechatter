@@ -200,7 +200,7 @@ mod tests {
     )
     .await;
 
-    let members_to_add = vec![user4.id];
+    let members_to_add = [user4.id].to_vec();
 
     let added_members = assert_handler_success!(
       add_chat_members_batch_handler(
@@ -240,7 +240,7 @@ mod tests {
     )
     .await;
 
-    let members_to_add = vec![user4.id];
+    let members_to_add = [user4.id].to_vec();
 
     assert_handler_error!(
       add_chat_members_batch_handler(
@@ -273,7 +273,7 @@ mod tests {
     )
     .await;
 
-    let members_to_remove = vec![user3.id, user4.id];
+    let members_to_remove = [user3.id, user4.id].to_vec();
 
     assert_handler_success!(
       remove_chat_member_handler(
@@ -308,7 +308,7 @@ mod tests {
     )
     .await;
 
-    let members_to_remove = vec![user3.id];
+    let members_to_remove = [user3.id].to_vec();
 
     assert_handler_error!(
       remove_chat_member_handler(
