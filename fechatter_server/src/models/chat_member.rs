@@ -71,7 +71,7 @@ pub async fn add_single_member(
   user_id: i64,
   member_id: i64,
 ) -> Result<ChatMember, AppError> {
-  let added_members = add_chat_members(state, chat_id, user_id, vec![member_id]).await?;
+  let added_members = add_chat_members(state, chat_id, user_id, [member_id].to_vec()).await?;
 
   added_members.into_iter().next().ok_or_else(|| {
     AppError::ChatValidationError(format!(
@@ -508,7 +508,7 @@ mod tests {
       user1.id,
       "Test Chat",
       ChatType::Group,
-      Some(vec![user2.id, user3.id]),
+      Some([user2.id, user3.id].to_vec()),
       None,
     )
     .await?;
@@ -566,7 +566,7 @@ mod tests {
       user1.id,
       "Test Chat",
       ChatType::Group,
-      Some(vec![user2.id, user3.id]),
+      Some([user2.id, user3.id].to_vec()),
       Some("Test Description"),
     )
     .await?;
@@ -610,7 +610,7 @@ mod tests {
       user1.id,
       "Test Chat",
       ChatType::Group,
-      Some(vec![user2.id, user3.id]),
+      Some([user2.id, user3.id].to_vec()),
       None,
     )
     .await?;
@@ -675,13 +675,13 @@ mod tests {
       user1.id,
       "Test Chat",
       ChatType::Group,
-      Some(vec![user2.id, user3.id]),
+      Some([user2.id, user3.id].to_vec()),
       None,
     )
     .await?;
 
     // Test batch addition of members
-    let members_to_add = vec![user4.id, user5.id];
+    let members_to_add = [user4.id, user5.id].to_vec();
     let added_members = add_chat_members(&state, chat.id, user1.id, members_to_add).await?;
 
     // Verify the number of added members
@@ -706,7 +706,7 @@ mod tests {
 
     // Test duplicate addition (should be idempotent)
     let duplicate_members =
-      add_chat_members(&state, chat.id, user1.id, vec![user4.id, user5.id]).await?;
+      add_chat_members(&state, chat.id, user1.id, [user4.id, user5.id].to_vec()).await?;
     assert_eq!(
       duplicate_members.len(),
       0,
@@ -721,7 +721,7 @@ mod tests {
     );
 
     // Test removing a member
-    remove_group_chat_members(&state, chat.id, user1.id, vec![user4.id]).await?;
+    remove_group_chat_members(&state, chat.id, user1.id, [user4.id].to_vec()).await?;
 
     // Verify user4 is no longer a member
     let is_still_member = member_exists_in_chat(
@@ -757,7 +757,7 @@ mod tests {
       user1.id,
       "Test Chat",
       ChatType::Group,
-      Some(vec![user2.id, user3.id]),
+      Some([user2.id, user3.id].to_vec()),
       None,
     )
     .await?;
