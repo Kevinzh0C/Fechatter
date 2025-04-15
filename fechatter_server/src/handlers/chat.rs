@@ -155,16 +155,16 @@ mod tests {
       state,
       user1,
       ChatType::Group,
-      vec![user2, user3],
+      [user2, user3],
       "Group Chat 1"
     )
     .await;
-    create_new_test_chat!(state, user1, ChatType::Single, vec![user2], "Single Chat 1").await;
+    create_new_test_chat!(state, user1, ChatType::Single, [user2], "Single Chat 1").await;
     create_new_test_chat!(
       state,
       user2,
       ChatType::Group,
-      vec![user1, user3],
+      [user1, user3],
       "Group Chat 2"
     )
     .await;
@@ -186,7 +186,7 @@ mod tests {
       state,
       user1,
       ChatType::Group,
-      vec![user2, user3],
+      [user2, user3],
       "Chat to Update",
       "Original Desc"
     )
@@ -227,7 +227,7 @@ mod tests {
       state,
       user1,
       ChatType::Group,
-      vec![user2, user3],
+      [user2, user3],
       "Permission Test Chat"
     )
     .await;
@@ -262,7 +262,7 @@ mod tests {
       state,
       user1,
       ChatType::Group,
-      vec![user2, user3],
+      [user2, user3],
       "Chat to Delete"
     )
     .await;
@@ -293,7 +293,7 @@ mod tests {
       state,
       user1,
       ChatType::Group,
-      vec![user2, user3],
+      [user2, user3],
       "Delete Permission Test"
     )
     .await;

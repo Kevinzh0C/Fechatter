@@ -90,7 +90,7 @@ fn process_chat_members(
             "Single chat must have exactly one member".to_string(),
           ));
         }
-        Ok(vec![creator_id, target_id])
+        Ok([creator_id, target_id].to_vec())
       }
       _ => Err(AppError::ChatValidationError(
         "Invalid single chat members".to_string(),
@@ -123,12 +123,12 @@ fn process_chat_members(
       }
       Ok(result)
     }
-    ChatType::PublicChannel => Ok(vec![creator_id]),
+    ChatType::PublicChannel => Ok([creator_id].to_vec()),
   }
 }
 
-async fn insert_chat_record<'a>(
-  tx: &'a mut sqlx::Transaction<'_, sqlx::Postgres>,
+async fn insert_chat_record(
+  tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
   name: &str,
   chat_type: &ChatType,
   chat_members: &Vec<i64>,
@@ -362,7 +362,7 @@ mod tests {
     let user3 = &users[2];
 
     // 1. Create single chat
-    let single_members = vec![user2.id];
+    let single_members = [user2.id].to_vec();
     let single_chat = CreateChat::new(
       "Single Chat with Bob",
       ChatType::Single,
@@ -387,7 +387,7 @@ mod tests {
     assert_eq!(single_chat_created.description, "One-on-one chat");
 
     // 2. Create group chat
-    let group_members = vec![user2.id, user3.id];
+    let group_members = [user2.id, user3.id].to_vec();
     let group_chat = CreateChat::new(
       "Work Team",
       ChatType::Group,
@@ -411,7 +411,7 @@ mod tests {
     assert!(chat.chat_members.contains(&user3.id));
 
     // 3. Create private channel
-    let channel_members = vec![user2.id];
+    let channel_members = [user2.id].to_vec();
     let private_chat = CreateChat::new(
       "Project Updates",
       ChatType::PrivateChannel,
@@ -435,7 +435,7 @@ mod tests {
     let public_chat = CreateChat::new(
       "Company Announcements",
       ChatType::PublicChannel,
-      vec![], // Empty vec for members
+      [].to_vec(), // Empty vec for members
       "Company announcements",
     );
     let chat = create_new_chat(
@@ -477,7 +477,7 @@ mod tests {
     .await?;
     assert_eq!(single_chat.chat_type, ChatType::Single);
 
-    let group_members = vec![user2.id, user3.id];
+    let group_members = [user2.id, user3.id].to_vec();
     let group_chat = CreateChat::new(
       "Group Chat with Bob and Charlie",
       ChatType::Group,
@@ -528,13 +528,13 @@ mod tests {
     assert_eq!(chats.len(), 2);
 
     let deleted_single_chat = delete_chat(&state, single_chat.id, user1.id).await?;
-    assert_eq!(deleted_single_chat, true);
+    assert!(deleted_single_chat);
 
     let chats = list_chats_of_user(&state, user1.id).await?;
     assert_eq!(chats.len(), 1); // Should be 1 after deleting single chat, group chat remains
 
     let deleted_group_chat = delete_chat(&state, group_chat.id, user1.id).await?;
-    assert_eq!(deleted_group_chat, true);
+    assert!(deleted_group_chat);
 
     let chats = list_chats_of_user(&state, user1.id).await?;
     assert_eq!(chats.len(), 0);

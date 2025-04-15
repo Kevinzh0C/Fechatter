@@ -152,7 +152,7 @@ pub async fn add_chat_members(
 }
 
 // Insertion for chat creation
-pub(crate) async fn insert_chat_members_relation<'a>(
+pub(crate) async fn insert_chat_members_relation(
   chat_id: i64,
   chat_members: &[i64],
   tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
