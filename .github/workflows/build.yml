@@ -63,8 +63,7 @@ jobs:
           sleep 5
           export DATABASE_URL="postgres://postgres:postgres@localhost:5432/postgres"
           sqlx database create
-          cd fechatter_server
-          sqlx migrate run
+          sqlx migrate run --source migrations
         
       - name: Generate SQLx prepare data
         run: |
