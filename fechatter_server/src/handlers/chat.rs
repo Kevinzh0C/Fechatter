@@ -92,7 +92,7 @@ mod tests {
     let payload = CreateChat {
       name: "Test Group Chat".to_string(),
       chat_type: ChatType::Group,
-      chat_members: vec![user2.id, user3.id], // IDs needed here
+      chat_members: [user2.id, user3.id].to_vec(), // IDs needed here
       description: "A test group".to_string(),
     };
 
@@ -124,7 +124,7 @@ mod tests {
     let payload = CreateChat {
       name: "Test Single Chat".to_string(),
       chat_type: ChatType::Single,
-      chat_members: vec![user2.id],
+      chat_members: [user2.id].to_vec(),
       description: "".to_string(),
     };
 
