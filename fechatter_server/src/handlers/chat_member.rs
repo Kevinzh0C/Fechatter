@@ -146,7 +146,7 @@ mod tests {
       state,
       user1,
       ChatType::Group,
-      vec![user2, user3],
+      [user2, user3],
       "List Member Test Chat"
     )
     .await;
@@ -169,7 +169,7 @@ mod tests {
       state,
       user1,
       ChatType::Group,
-      vec![user2, user3],
+      [user2, user3],
       "List Member Permission Test"
     )
     .await;
@@ -195,7 +195,7 @@ mod tests {
       state,
       user1,
       ChatType::Group,
-      vec![user2, user3],
+      [user2, user3],
       "Add Member Batch Test"
     )
     .await;
@@ -235,7 +235,7 @@ mod tests {
       state,
       user1,
       ChatType::Group,
-      vec![user2, user3],
+      [user2, user3],
       "Add Member Perm Test"
     )
     .await;
@@ -268,7 +268,7 @@ mod tests {
       state,
       user1,
       ChatType::Group,
-      vec![user2, user3, user4],
+      [user2, user3, user4],
       "Remove Member Test"
     )
     .await;
@@ -303,7 +303,7 @@ mod tests {
       state,
       user1,
       ChatType::Group,
-      vec![user2, user3, user4],
+      [user2, user3, user4],
       "Remove Member Perm Test"
     )
     .await;
@@ -334,7 +334,7 @@ mod tests {
       state,
       user1,
       ChatType::Group,
-      vec![user2, user3],
+      [user2, user3],
       "Transfer Owner Test"
     )
     .await;
@@ -370,7 +370,7 @@ mod tests {
       state,
       user1,
       ChatType::Group,
-      vec![user2, user3],
+      [user2, user3],
       "Transfer Owner Perm Test"
     )
     .await;
@@ -400,7 +400,7 @@ mod tests {
       state,
       user1,
       ChatType::Group,
-      vec![user2, user3],
+      [user2, user3],
       "Transfer Target Member Test"
     )
     .await;
