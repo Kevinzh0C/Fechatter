@@ -9,6 +9,7 @@ A real-time chat application built with Rust, Axum, SQLx, and WebSockets.
 - PostgreSQL database for data persistence
 - RESTful API for user and chat room management
 - Secure password hashing with Argon2
+- Comprehensive error handling
 
 ## Prerequisites
 
