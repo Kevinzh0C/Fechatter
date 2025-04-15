@@ -893,7 +893,12 @@ mod tests {
 
     // Use various special characters as chat name
     let special_name = "!@#$%^&*()_+-=[]{}|;':\",./<>?";
-    let special_chat = CreateChat::new(special_name, ChatType::Group, [user2.id, user3.id].to_vec(), "");
+    let special_chat = CreateChat::new(
+      special_name,
+      ChatType::Group,
+      [user2.id, user3.id].to_vec(),
+      "",
+    );
     let special_chat = create_new_chat(
       &state,
       user1.id,
@@ -936,7 +941,8 @@ mod tests {
       ChatType::Group,
       [
         user2.id, user3.id, user4.id, user5.id, user6.id, user7.id, user8.id,
-      ].to_vec(),
+      ]
+      .to_vec(),
       "",
     );
     let large_group = create_new_chat(
