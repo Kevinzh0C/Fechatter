@@ -1014,7 +1014,7 @@ mod tests {
     let creator_included = CreateChat::new(
       "Creator In Members",
       ChatType::Group,
-      vec![user2.id, user3.id, user1.id, user3.id],
+      [user2.id, user3.id, user1.id, user3.id].to_vec(),
       "",
     );
     let creator_included = create_new_chat(
@@ -1052,7 +1052,7 @@ mod tests {
     let relation_test = CreateChat::new(
       "Relation Test Chat",
       ChatType::Group,
-      vec![user2.id, user3.id],
+      [user2.id, user3.id].to_vec(),
       "",
     );
     let relation_test = create_new_chat(
@@ -1074,7 +1074,7 @@ mod tests {
     let normal_chat = CreateChat::new(
       "Normal Group Chat",
       ChatType::Group,
-      vec![user2.id, user3.id],
+      [user2.id, user3.id].to_vec(),
       "",
     );
     let normal_chat = create_new_chat(
@@ -1123,7 +1123,7 @@ mod tests {
     let non_english_chat = CreateChat::new(
       "Chat with non-English name test",
       ChatType::Group,
-      vec![user2.id, user3.id],
+      [user2.id, user3.id].to_vec(),
       "This is a non-English description, testing UTF-8 support",
     );
     let non_english_chat = create_new_chat(
@@ -1148,7 +1148,7 @@ mod tests {
     let emoji_chat = CreateChat::new(
       "😀 Emoji Chat 🎉",
       ChatType::Group,
-      vec![user2.id, user3.id],
+      [user2.id, user3.id].to_vec(),
       "Testing emoji support 😊👍",
     );
     let emoji_chat = create_new_chat(
