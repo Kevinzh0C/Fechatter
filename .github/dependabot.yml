@@ -1,0 +1,26 @@
+version: 2
+updates:
+- package-ecosystem: "cargo"
+  directory: "/" # Location of package manifests
+  schedule:
+    interval: "weekly"
+  # Limit the number of open pull requests to 5 to avoid overwhelming maintainers
+  open-pull-requests-limit: 5
+  ignore:
+  - dependency-name: serde
+    versions: [ 1.0.0 ]
+  groups:
+    rust-all-deps:           # ← name can be anything
+      patterns:
+        - "*"                # put all crates into the same PR
+      update-types:
+        - "minor"
+        - "patch"
+
+- package-ecosystem: "github-actions"
+  directory: "/"
+  schedule:
+    interval: "monthly"
+  groups:
+    gh-actions:
+      patterns: ["*"]
