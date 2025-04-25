@@ -3,7 +3,7 @@ members = ["fechatter_server", "notify_server"]
 resolver = "2"
 
 [workspace.dependencies]
-tokio = { version = "1.32", features = [
+tokio = { version = "1.44", features = [
   "full",
   "macros",
   "rt",
