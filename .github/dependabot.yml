@@ -1,0 +1,15 @@
+version: 2
+updates:
+- package-ecosystem: "cargo"
+  directory: "/" # Location of package manifests
+  schedule:
+    interval: "weekly"
+  # Limit the number of open pull requests to 5 to avoid overwhelming maintainers
+  open-pull-requests-limit: 5
+  ignore:
+  - dependency-name: serde
+    versions: [ 1.0.0 ]
+- package-ecosystem: "github-actions"
+  directory: "/"
+  schedule:
+    interval: "monthly"
