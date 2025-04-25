@@ -23,7 +23,7 @@ tower-http = { workspace = true }
 argon2 = { version = "0.5", features = ["std"] }
 dotenv = "0.15"
 jsonwebtoken = "9.1"
-once_cell = "1.18"
+once_cell = "1.21"
 validator = { version = "0.20.0", features = ["derive"] }
 async-trait = "0.1"
 tower = "0.5.2"
