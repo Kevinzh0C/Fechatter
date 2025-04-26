@@ -330,6 +330,7 @@ mod tests {
       email: user.email.clone(),
       status: user.status,
       created_at: user.created_at,
+      workspace_id: user.workspace_id,
     });
 
     let response = logout_handler(State(state.clone()), jar, auth_user)

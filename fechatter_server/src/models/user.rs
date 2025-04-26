@@ -13,21 +13,6 @@ use crate::{AppError, User};
 use super::{ChatUser, UserStatus, Workspace};
 
 impl User {
-  pub async fn find_by_id(id: i64, pool: &PgPool) -> Result<Option<User>, AppError> {
-    let user = sqlx::query_as!(
-      User,
-      r#"
-      SELECT id, fullname, email, password, status as "status: UserStatus", created_at
-      FROM users
-      WHERE id = $1
-      "#,
-      id
-    )
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(user)
-  }
   /// Check if a user with the given email exists in the database.
   pub async fn email_user_exists(email: &str, pool: &PgPool) -> Result<Option<Self>, AppError> {
     let user = sqlx::query_as::<_, User>(
