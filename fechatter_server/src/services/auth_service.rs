@@ -132,3 +132,106 @@ pub async fn logout(pool: &PgPool, refresh_token_str: &str) -> Result<(), AppErr
   }
   Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::{assert_handler_error, assert_handler_success, setup_test_users};
+  use anyhow::Result;
+
+  #[tokio::test]
+  async fn refresh_token_service_should_work() -> Result<()> {
+    let (_tdb, state, users) = setup_test_users!(1).await;
+    let user = &users[0];
+    
+    let initial_tokens = state.token_manager
+      .generate_auth_tokens(user, None, None, &state.pool)
+      .await?;
+    
+    let refresh_result = refresh_token(
+      &state.pool,
+      &state.token_manager,
+      &initial_tokens.refresh_token.token
+    ).await?;
+    
+    assert_ne!(refresh_result.access_token, initial_tokens.access_token);
+    assert_ne!(refresh_result.refresh_token.token, initial_tokens.refresh_token.token);
+    
+    Ok(())
+  }
+  
+  #[tokio::test]
+  async fn refresh_token_service_should_fail_with_invalid_token() -> Result<()> {
+    let (_tdb, state, _users) = setup_test_users!(1).await;
+    
+    let result = refresh_token(
+      &state.pool,
+      &state.token_manager,
+      "invalid_token"
+    ).await;
+    
+    assert!(result.is_err());
+    if let Err(AppError::InvalidInput(_)) = result {
+    } else {
+      panic!("Expected InvalidInput error");
+    }
+    
+    Ok(())
+  }
+  
+  #[tokio::test]
+  async fn logout_service_should_revoke_token() -> Result<()> {
+    let (_tdb, state, users) = setup_test_users!(1).await;
+    let user = &users[0];
+    
+    let tokens = state.token_manager
+      .generate_auth_tokens(user, None, None, &state.pool)
+      .await?;
+    
+    logout(&state.pool, &tokens.refresh_token.token).await?;
+    
+    let refresh_result = refresh_token(
+      &state.pool,
+      &state.token_manager,
+      &tokens.refresh_token.token
+    ).await;
+    
+    assert!(refresh_result.is_err());
+    
+    Ok(())
+  }
+  
+  #[tokio::test]
+  async fn refresh_token_can_only_be_used_once() -> Result<()> {
+    let (_tdb, state, users) = setup_test_users!(1).await;
+    let user = &users[0];
+    
+    let initial_tokens = state.token_manager
+      .generate_auth_tokens(user, None, None, &state.pool)
+      .await?;
+    
+    let new_tokens = refresh_token(
+      &state.pool,
+      &state.token_manager,
+      &initial_tokens.refresh_token.token
+    ).await?;
+    
+    let result = refresh_token(
+      &state.pool,
+      &state.token_manager,
+      &initial_tokens.refresh_token.token
+    ).await;
+    
+    assert!(result.is_err());
+    
+    let another_refresh = refresh_token(
+      &state.pool,
+      &state.token_manager,
+      &new_tokens.refresh_token.token
+    ).await;
+    
+    assert!(another_refresh.is_ok());
+    
+    Ok(())
+  }
+}

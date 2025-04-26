@@ -172,6 +172,33 @@ macro_rules! assert_chat_member_count {
 }
 
 #[cfg(test)]
+pub mod cookie_helpers {
+  use axum_extra::extract::cookie::{Cookie, CookieJar};
+  use axum::http::HeaderMap;
+  
+  pub fn extract_cookie(headers: &HeaderMap, name: &str) -> Option<String> {
+    headers.get_all("set-cookie")
+      .iter()
+      .find_map(|v| {
+        let cookie_str = v.to_str().ok()?;
+        if cookie_str.starts_with(&format!("{}=", name)) {
+          Some(cookie_str.to_string())
+        } else {
+          None
+        }
+      })
+  }
+  
+  pub fn create_cookie_jar(cookie_value: &str) -> CookieJar {
+    let mut jar = CookieJar::new();
+    if let Ok(cookie) = Cookie::parse(cookie_value.to_string()) {
+      jar = jar.add(cookie);
+    }
+    jar
+  }
+}
+
+#[cfg(test)]
 mod tests {
 
   #[tokio::test]

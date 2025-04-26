@@ -161,7 +161,6 @@ pub(crate) async fn logout_handler(
       .into_response(),
   )
 }
-
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -169,6 +168,7 @@ mod tests {
   use crate::{assert_handler_error, assert_handler_success, setup_test_users};
   use anyhow::Result;
   use axum::{Json, http::StatusCode};
+  use axum_extra::extract::cookie::{CookieJar, Cookie};
   use http_body_util::BodyExt;
   #[tokio::test]
   async fn signup_handler_should_work() -> Result<()> {
@@ -188,6 +188,7 @@ mod tests {
     );
 
     assert_ne!(auth_response.access_token, "");
+    assert_eq!(auth_response.expires_in, ACCESS_TOKEN_EXPIRATION);
     Ok(())
   }
 
@@ -205,6 +206,7 @@ mod tests {
     );
 
     assert_ne!(auth_response.access_token, "");
+    assert_eq!(auth_response.expires_in, ACCESS_TOKEN_EXPIRATION);
     Ok(())
   }
 
@@ -241,6 +243,119 @@ mod tests {
     let body = BodyExt::collect(response.into_body()).await?.to_bytes();
     let res: ErrorOutput = serde_json::from_slice(&body)?;
     assert_eq!(res.error, "Invalid credentials");
+
+    Ok(())
+  }
+
+  #[tokio::test]
+  async fn refresh_token_handler_should_work() -> Result<()> {
+    let (_tdb, state, users) = setup_test_users!(1).await;
+    let user = &users[0];
+
+    let tokens = state.token_manager
+      .generate_auth_tokens(user, None, None, &state.pool)
+      .await?;
+
+    let mut jar = CookieJar::new();
+    jar = jar.add(Cookie::new("refresh_token", tokens.refresh_token.token.clone()));
+
+    let auth_response = assert_handler_success!(
+      refresh_token_handler(State(state), jar),
+      StatusCode::OK,
+      AuthResponse
+    );
+
+    assert_ne!(auth_response.access_token, "");
+    assert_eq!(auth_response.expires_in, ACCESS_TOKEN_EXPIRATION);
+
+    Ok(())
+  }
+
+  #[tokio::test]
+  async fn refresh_token_handler_should_fail_without_refresh_token() -> Result<()> {
+    let (_tdb, state, _users) = setup_test_users!(1).await;
+
+    let response = refresh_token_handler(State(state), CookieJar::new())
+      .await?
+      .into_response();
+
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    let body = BodyExt::collect(response.into_body()).await?.to_bytes();
+    let res: ErrorOutput = serde_json::from_slice(&body)?;
+    assert_eq!(res.error, "Refresh token not provided");
+
+    Ok(())
+  }
+
+  #[tokio::test]
+  async fn refresh_token_handler_should_fail_with_invalid_refresh_token() -> Result<()> {
+    let (_tdb, state, _users) = setup_test_users!(1).await;
+
+    let mut jar = CookieJar::new();
+    jar = jar.add(Cookie::new("refresh_token", "invalid_token"));
+
+    let response = refresh_token_handler(State(state), jar)
+      .await;
+
+    match response {
+      Ok(resp) => {
+        let resp = resp.into_response();
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+        let body = BodyExt::collect(resp.into_body()).await?.to_bytes();
+        let res: ErrorOutput = serde_json::from_slice(&body)?;
+        assert_eq!(res.error, "Invalid or expired refresh token");
+      },
+      Err(_) => {
+      }
+    }
+
+    Ok(())
+  }
+
+  #[tokio::test]
+  async fn logout_handler_should_work() -> Result<()> {
+    let (_tdb, state, users) = setup_test_users!(1).await;
+    let user = &users[0];
+
+    let tokens = state.token_manager
+      .generate_auth_tokens(user, None, None, &state.pool)
+      .await?;
+
+    let mut jar = CookieJar::new();
+    jar = jar.add(Cookie::new("refresh_token", tokens.refresh_token.token.clone()));
+
+    let auth_user = Extension(AuthUser {
+      id: user.id,
+      fullname: user.fullname.clone(),
+      email: user.email.clone(),
+      status: user.status,
+      created_at: user.created_at,
+      workspace_id: user.workspace_id,
+    });
+
+    let response = logout_handler(State(state.clone()), jar, auth_user)
+      .await?
+      .into_response();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = BodyExt::collect(response.into_body()).await?.to_bytes();
+    let res: serde_json::Value = serde_json::from_slice(&body)?;
+    assert_eq!(res["message"], "Logged out successfully");
+
+    let mut jar2 = CookieJar::new();
+    jar2 = jar2.add(Cookie::new("refresh_token", tokens.refresh_token.token));
+
+    let refresh_response = refresh_token_handler(State(state), jar2)
+      .await;
+
+    match refresh_response {
+      Ok(resp) => {
+        let resp = resp.into_response();
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+      },
+      Err(_) => {
+      }
+    }
 
     Ok(())
   }

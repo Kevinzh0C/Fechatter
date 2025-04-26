@@ -10,7 +10,7 @@ tokio = { version = "1.32", features = [
   "rt-multi-thread",
 ] }
 axum = { version = "0.8.3", features = ["http2", "query", "tracing", "multipart", "tower-log"] }
-axum-extra = { version = "0.10.0", features = ["typed-header"] }
+axum-extra = { version = "0.10.0", features = ["typed-header", "cookie"] }
 sqlx = { version = "0.8.3", features = [
   "postgres",
   "runtime-tokio",
