@@ -1,4 +1,4 @@
-mod bearer_auth;
+pub mod bearer_auth;
 mod request_id;
 mod server_time;
 

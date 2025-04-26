@@ -5,8 +5,8 @@ edition = "2024"
 
 [dependencies]
 anyhow = { workspace = true }
-axum = { workspace = true }
-axum-extra = { workspace = true }
+axum = { workspace = true, features = ["macros"] }
+axum-extra = { workspace = true, features = ["cookie"] }
 sqlx = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -29,6 +29,9 @@ async-trait = "0.1"
 tower = "0.5.2"
 lazy_static = "1.5.0"
 dashmap = "6.1.0"
+sha2 = "0.10.7"
+hex = "0.4.3"
+rand = "0.8.5"
 
 
 [dev-dependencies]
