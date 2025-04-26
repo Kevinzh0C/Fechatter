@@ -1,4 +1,4 @@
-mod auth;
+pub mod auth;
 mod chat;
 mod chat_member;
 mod messages;
