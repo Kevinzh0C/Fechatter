@@ -23,7 +23,7 @@ tower-http = { workspace = true }
 argon2 = { version = "0.5", features = ["std"] }
 dotenv = "0.15"
 jsonwebtoken = "9.1"
-once_cell = "1.18"
+once_cell = "1.21"
 validator = { version = "0.20.0", features = ["derive"] }
 async-trait = "0.1"
 tower = "0.5.2"
@@ -31,7 +31,7 @@ lazy_static = "1.5.0"
 dashmap = "6.1.0"
 sha2 = "0.10.7"
 hex = "0.4.3"
-rand = "0.8.5"
+rand = "0.9.1"
 
 [dev-dependencies]
 sqlx-db-tester = "0.6.0"
