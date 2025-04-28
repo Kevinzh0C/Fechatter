@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="800" height="600" viewBox="0 0 800 600">
+  <!-- System Components -->
+  <rect x="50" y="50" width="200" height="100" rx="10" ry="10" fill="#4285F4" stroke="#2A56C6" stroke-width="2"/>
+  <text x="150" y="100" font-family="Arial" font-size="16" text-anchor="middle" fill="white">Client</text>
+  
+  <rect x="50" y="250" width="200" height="100" rx="10" ry="10" fill="#4285F4" stroke="#2A56C6" stroke-width="2"/>
+  <text x="150" y="300" font-family="Arial" font-size="16" text-anchor="middle" fill="white">Client</text>
+  
+  <rect x="350" y="150" width="200" height="100" rx="10" ry="10" fill="#0F9D58" stroke="#0B8043" stroke-width="2"/>
+  <text x="450" y="200" font-family="Arial" font-size="16" text-anchor="middle" fill="white">fechatter_server</text>
+  
+  <rect x="650" y="150" width="200" height="100" rx="10" ry="10" fill="#F4B400" stroke="#E37400" stroke-width="2"/>
+  <text x="750" y="200" font-family="Arial" font-size="16" text-anchor="middle" fill="white">notify_server</text>
+  
+  <rect x="500" y="350" width="200" height="100" rx="10" ry="10" fill="#DB4437" stroke="#B31412" stroke-width="2"/>
+  <text x="600" y="400" font-family="Arial" font-size="16" text-anchor="middle" fill="white">PostgreSQL</text>
+  
+  <!-- Connections -->
+  <line x1="250" y1="100" x2="350" y2="150" stroke="#333" stroke-width="2"/>
+  <text x="300" y="120" font-family="Arial" font-size="12" text-anchor="middle" fill="#333">HTTP API</text>
+  
+  <line x1="250" y1="250" x2="350" y2="200" stroke="#333" stroke-width="2"/>
+  <text x="300" y="220" font-family="Arial" font-size="12" text-anchor="middle" fill="#333">HTTP API</text>
+  
+  <line x1="250" y1="100" x2="650" y2="150" stroke="#333" stroke-width="2"/>
+  <text x="450" y="120" font-family="Arial" font-size="12" text-anchor="middle" fill="#333">SSE</text>
+  
+  <line x1="250" y1="250" x2="650" y2="200" stroke="#333" stroke-width="2"/>
+  <text x="450" y="220" font-family="Arial" font-size="12" text-anchor="middle" fill="#333">SSE</text>
+  
+  <line x1="550" y1="200" x2="650" y2="200" stroke="#333" stroke-width="2"/>
+  <text x="600" y="180" font-family="Arial" font-size="12" text-anchor="middle" fill="#333">Events</text>
+  
+  <line x1="450" y1="250" x2="500" y2="350" stroke="#333" stroke-width="2"/>
+  <text x="460" y="300" font-family="Arial" font-size="12" text-anchor="middle" fill="#333">Data Operations</text>
+  
+  <line x1="750" y1="250" x2="700" y2="350" stroke="#333" stroke-width="2"/>
+  <text x="740" y="300" font-family="Arial" font-size="12" text-anchor="middle" fill="#333">Listen for Changes</text>
+  
+  <!-- Data Model -->
+  <rect x="50" y="450" width="700" height="120" rx="10" ry="10" fill="#E1E1E1" stroke="#9E9E9E" stroke-width="2"/>
+  <text x="400" y="470" font-family="Arial" font-size="16" text-anchor="middle" fill="#333">Data Model</text>
+  
+  <rect x="100" y="490" width="100" height="50" rx="5" ry="5" fill="white" stroke="#9E9E9E" stroke-width="1"/>
+  <text x="150" y="520" font-family="Arial" font-size="14" text-anchor="middle" fill="#333">User</text>
+  
+  <rect x="250" y="490" width="100" height="50" rx="5" ry="5" fill="white" stroke="#9E9E9E" stroke-width="1"/>
+  <text x="300" y="520" font-family="Arial" font-size="14" text-anchor="middle" fill="#333">Chat</text>
+  
+  <rect x="400" y="490" width="100" height="50" rx="5" ry="5" fill="white" stroke="#9E9E9E" stroke-width="1"/>
+  <text x="450" y="520" font-family="Arial" font-size="14" text-anchor="middle" fill="#333">Message</text>
+  
+  <rect x="550" y="490" width="100" height="50" rx="5" ry="5" fill="white" stroke="#9E9E9E" stroke-width="1"/>
+  <text x="600" y="520" font-family="Arial" font-size="14" text-anchor="middle" fill="#333">Workspace</text>
+  
+  <line x1="200" y1="515" x2="250" y2="515" stroke="#333" stroke-width="1"/>
+  <line x1="350" y1="515" x2="400" y2="515" stroke="#333" stroke-width="1"/>
+  <line x1="500" y1="515" x2="550" y2="515" stroke="#333" stroke-width="1"/>
+</svg>
