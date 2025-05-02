@@ -1,5 +1,5 @@
 use crate::AppState;
-use axum::{Router, middleware::from_fn_with_state, routing::RouterIntoService};
+use axum::{Router, middleware::from_fn_with_state};
 use std::marker::PhantomData;
 
 use super::{
@@ -71,7 +71,7 @@ where
   }
 
   /// 构建路由器，仅应用令牌刷新
-  pub fn build(self) -> Router<()> {
+  pub fn build(self) -> Router<S> {
     self.router
   }
 }
@@ -96,7 +96,7 @@ where
   }
 
   /// 构建路由器，应用了认证和刷新
-  pub fn build(self) -> Router<()> {
+  pub fn build(self) -> Router<S> {
     self.router
   }
 }
@@ -106,7 +106,7 @@ where
   S: Clone + Send + Sync + 'static,
 {
   /// 构建路由器，应用了认证、刷新和工作区上下文
-  pub fn build(self) -> Router<()> {
+  pub fn build(self) -> Router<S> {
     self.router
   }
 }
