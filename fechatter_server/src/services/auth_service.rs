@@ -242,13 +242,6 @@ impl<'a> AuthServiceTrait for AuthService<'a> {
   }
 
 <<<<<<< HEAD
-  async fn create_user(&self, _payload: &CreateUser) -> Result<User, AppError> {
-    unimplemented!("create_user not implemented in this example")
-  }
-
-  async fn authenticate(&self, _payload: &SigninUser) -> Result<Option<User>, AppError> {
-    unimplemented!("authenticate not implemented in this example")
-=======
   async fn create_user(&self, payload: &CreateUser) -> Result<User, AppError> {
     let mut tx = self.provider.pool().begin().await?;
 
@@ -380,7 +373,6 @@ impl<'a> AuthServiceTrait for AuthService<'a> {
       }
       None => Ok(None), // User not found, so it's not authenticated
     }
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
   }
 }
 
@@ -503,6 +495,10 @@ mod tests {
     assert!(!tokens.access_token.is_empty());
     assert!(!tokens.refresh_token.token.is_empty());
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> e1f38b1 (refactor: middleware refresh_token & auth cleanup)
     Ok(())
   }
 

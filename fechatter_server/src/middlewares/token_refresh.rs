@@ -11,15 +11,14 @@ use axum::{
 use tracing::{debug, warn};
 
 use crate::{
-  AppState,
-<<<<<<< HEAD
-  services::{AuthServiceTrait, auth_service::AuthService},
-  utils::jwt::RefreshTokenData,
-=======
+  AppError, AppState, AppState,
   models::AuthUser,
   services::AuthServiceTrait,
+  services::{AuthServiceTrait, auth_service::AuthService},
+  services::{AuthServiceTrait, auth_service::AuthService},
+  utils::jwt::RefreshTokenData,
+  utils::jwt::RefreshTokenData,
   utils::{jwt::RefreshTokenData, token::TokenValidator},
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
 };
 
 const AUTH_HEADER: &str = "Authorization";
@@ -95,12 +94,11 @@ pub async fn refresh_token_middleware(
     .map(String::from);
 
   // Create auth service using trait-based approach
-<<<<<<< HEAD
+
+  let auth_service: Box<dyn AuthServiceTrait> = state.service_provider.create_service();
+
   let auth_service: Box<dyn AuthServiceTrait> =
     state.service_provider.create_service::<AuthService>();
-=======
-  let auth_service: Box<dyn AuthServiceTrait> = state.service_provider.create_service();
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
 
   // Try to refresh the token
   match auth_service

@@ -3,7 +3,9 @@ use axum::http::Request;
 use axum::{extract::State, http::StatusCode, middleware::Next, response::Response};
 use tracing::{debug, warn};
 
-<<<<<<< HEAD
+
+use crate::{AppState, models::AuthUser, utils::token::TokenValidator};
+
 use axum_extra::{
   TypedHeader,
   headers::{Authorization, authorization::Bearer},
@@ -13,9 +15,6 @@ use tracing::warn;
 use crate::AppState;
 use crate::models::AuthUser;
 use crate::utils::token::TokenValidator;
-=======
-use crate::{AppState, models::AuthUser, utils::token::TokenValidator};
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
 
 /// Get authentication from Bearer token and add user to request context
 pub async fn verify_token_middleware(
@@ -29,21 +28,6 @@ pub async fn verify_token_middleware(
     .get("Authorization")
     .and_then(|h| h.to_str().ok());
 
-<<<<<<< HEAD
-  match state.token_manager.validate_token(&token) {
-    Ok(claims) => {
-      let user = AuthUser {
-        id: claims.id,
-        fullname: claims.fullname,
-        email: claims.email,
-        status: claims.status,
-        created_at: claims.created_at,
-        workspace_id: claims.workspace_id,
-      };
-      let mut req = Request::from_parts(parts, body);
-      req.extensions_mut().insert(user);
-      next.run(req).await
-=======
   match auth_header {
     Some(auth) if auth.starts_with("Bearer ") => {
       debug!("Bearer token extracted successfully");
@@ -88,7 +72,6 @@ pub async fn verify_token_middleware(
         // Return 401 Unauthorized status
         Err(StatusCode::UNAUTHORIZED)
       }
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
     }
   }
 }

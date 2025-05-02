@@ -17,7 +17,7 @@ use axum::{
 };
 pub use config::AppConfig;
 use dashmap::DashMap;
-use services::ServiceProvider;
+
 use sqlx::PgPool;
 use tokio::fs;
 use tokio::time::Instant;
@@ -25,16 +25,15 @@ pub use utils::jwt::TokenManager;
 
 pub use error::{AppError, ErrorOutput};
 use handlers::*;
-<<<<<<< HEAD
-use middlewares::{RouterExt, SetLayer};
-pub use models::{ChatSidebar, CreateUser, SigninUser, User};
-use services::ServiceProvider;
-=======
+
 pub use middlewares::{RouterExt, SetAuthLayer, SetLayer, WorkspaceContext};
 pub use models::{ChatSidebar, ChatUser, CreateUser, SigninUser, User, UserStatus, Workspace};
 pub use services::{AuthServiceTrait, auth_service::AuthService};
 pub use utils::*;
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
+
+use middlewares::{RouterExt, SetLayer};
+pub use models::{ChatSidebar, CreateUser, SigninUser, User};
+use services::ServiceProvider;
 
 #[derive(Debug, Clone)]
 pub struct AppState {
@@ -58,7 +57,9 @@ pub async fn get_router(config: AppConfig) -> Result<Router<AppState>, AppError>
     .route("/signup", post(signup_handler))
     .route(
       "/refresh",
-      post(|state, cookies, headers, auth_user| refresh_token_handler(state, cookies, headers, auth_user)),
+      post(|state, cookies, headers, auth_user| {
+        refresh_token_handler(state, cookies, headers, auth_user)
+      }),
     )
     .with_token_refresh(&state);
 
@@ -117,12 +118,7 @@ pub async fn get_router(config: AppConfig) -> Result<Router<AppState>, AppError>
   let app = Router::new()
     .route("/", get(index_handler))
     .nest("/api", api)
-<<<<<<< HEAD
-    .layer(axum::extract::Extension(state))
-    .set_layer();
-=======
     .with_state(state);
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
 
   Ok(app)
 }

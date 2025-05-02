@@ -29,14 +29,13 @@ impl ServiceProvider {
     T::create(self)
   }
 
-<<<<<<< HEAD
+
+  pub fn create_service(&self) -> Box<dyn crate::services::AuthServiceTrait + '_> {
+
   /// 创建特定类型的服务使用特征对象
   pub fn create_service<T: 'static + Send + Sync>(
     &self,
-  ) -> Box<dyn crate::services::AuthServiceTrait + '_> {
-=======
-  pub fn create_service(&self) -> Box<dyn crate::services::AuthServiceTrait + '_> {
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
+  ) -> Box<dyn crate::services::AuthServiceTrait + '_>
     Box::new(crate::services::auth_service::AuthService::new(self))
   }
 }
@@ -62,10 +61,7 @@ macro_rules! define_service {
             _marker: std::marker::PhantomData<$marker>,
         }
 
-<<<<<<< HEAD
-        // 实现服务工厂
-=======
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
+
         impl $crate::services::service_provider::ServiceFactory for $marker {
             type Service = $service_name;
 
