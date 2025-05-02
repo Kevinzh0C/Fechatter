@@ -1,5 +1,5 @@
 use crate::AppState;
-use axum::{Router, middleware::from_fn_with_state, routing::RouterIntoService};
+use axum::{Router, middleware::from_fn_with_state};
 use std::marker::PhantomData;
 
 use super::{
@@ -68,7 +68,7 @@ where
   }
 
   /// 构建路由器，仅应用令牌刷新
-  pub fn build(self) -> Router<()> {
+  pub fn build(self) -> Router<S> {
     self.router
   }
 }
@@ -143,6 +143,7 @@ where
 =======
   /// 构建路由器，应用了认证和刷新
 <<<<<<< HEAD
+<<<<<<< HEAD
   pub fn build(self) -> Router {
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -156,6 +157,9 @@ where
 >>>>>>> 8cdd2c3 (fix: use into_service() instead of into_make_service())
 =======
   pub fn build(self) -> Router<()> {
+=======
+  pub fn build(self) -> Router<S> {
+>>>>>>> f71d19c (fix: update return type in builder.rs to Router<S>)
     self.router
 >>>>>>> d9d11d9 (fix: update return type in builder.rs)
   }
@@ -166,6 +170,7 @@ impl<S> MiddlewareBuilder<S, WithoutAuth, WithRefresh, WithoutWorkspace, Without
 where
   S: Clone + Send + Sync + 'static,
 {
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -188,6 +193,9 @@ where
     }
   }
 
+=======
+  /// 构建路由器，应用了认证、刷新和工作区上下文
+>>>>>>> f71d19c (fix: update return type in builder.rs to Router<S>)
   pub fn build(self) -> Router<S> {
     self.router
 <<<<<<< HEAD
