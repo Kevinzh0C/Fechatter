@@ -4,8 +4,8 @@ pub mod handlers;
 pub mod middlewares;
 pub mod models;
 pub mod services;
-pub mod utils;
 pub mod tests;
+pub mod utils;
 
 use std::sync::Arc;
 use std::{fmt, ops::Deref};

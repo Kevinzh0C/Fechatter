@@ -67,7 +67,6 @@ macro_rules! create_new_test_chat {
     }};
 }
 
-
 #[cfg(test)]
 #[macro_export]
 macro_rules! assert_handler_success {
@@ -110,7 +109,6 @@ macro_rules! assert_handler_success {
   }};
 }
 
-
 #[cfg(test)]
 #[macro_export]
 macro_rules! assert_handler_error {
@@ -125,7 +123,6 @@ macro_rules! assert_handler_error {
         }
     }};
 }
-
 
 #[cfg(test)]
 #[macro_export]

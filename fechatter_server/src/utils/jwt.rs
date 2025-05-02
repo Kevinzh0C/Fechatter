@@ -192,7 +192,7 @@ impl RefreshToken {
       .await?;
 
     let token_still_valid = sqlx::query_scalar::<_, bool>(
-      "SELECT NOT revoked FROM refresh_tokens WHERE id = $1 FOR UPDATE"
+      "SELECT NOT revoked FROM refresh_tokens WHERE id = $1 FOR UPDATE",
     )
     .bind(self.id)
     .fetch_one(&mut *tx)
@@ -200,7 +200,9 @@ impl RefreshToken {
 
     if !token_still_valid {
       tx.rollback().await?;
-      return Err(AppError::InvalidInput("Token already revoked or replaced".to_string()));
+      return Err(AppError::InvalidInput(
+        "Token already revoked or replaced".to_string(),
+      ));
     }
 
     let refresh_token = sqlx::query_as::<_, RefreshToken>(

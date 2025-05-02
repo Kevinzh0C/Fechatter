@@ -243,50 +243,52 @@ impl<'a> AuthServiceTrait for AuthService<'a> {
 
   async fn create_user(&self, payload: &CreateUser) -> Result<User, AppError> {
     let mut tx = self.provider.pool().begin().await?;
-    
+
     let conn = tx.acquire().await?;
-    
+
     let mut is_new_workspace = false;
-    let workspace = match crate::models::Workspace::find_by_name(&payload.workspace, &mut *conn).await? {
-      Some(workspace) => {
-        if workspace.owner_id == 0 {
-          is_new_workspace = true;
+    let workspace =
+      match crate::models::Workspace::find_by_name(&payload.workspace, &mut *conn).await? {
+        Some(workspace) => {
+          if workspace.owner_id == 0 {
+            is_new_workspace = true;
+          }
+          workspace
         }
-        workspace
-      }
-      None => {
-        is_new_workspace = true;
-        sqlx::query_as::<_, crate::models::Workspace>(
-          r#"
+        None => {
+          is_new_workspace = true;
+          sqlx::query_as::<_, crate::models::Workspace>(
+            r#"
           INSERT INTO workspaces (name, owner_id)
           VALUES ($1, 0)
           RETURNING id, name, owner_id, created_at
           "#,
-        )
-        .bind(&payload.workspace)
-        .fetch_one(&mut *conn)
-        .await?
-      }
-    };
-    
+          )
+          .bind(&payload.workspace)
+          .fetch_one(&mut *conn)
+          .await?
+        }
+      };
+
     let password_to_hash = payload.password.clone();
     let password_hash = tokio::task::spawn_blocking(move || {
       use argon2::{
-        password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
         Argon2,
+        password_hash::{PasswordHasher, SaltString, rand_core::OsRng},
       };
-      
+
       let salt = SaltString::generate(&mut OsRng);
       let argon2 = Argon2::default();
-      
-      argon2.hash_password(password_to_hash.as_bytes(), &salt)
+
+      argon2
+        .hash_password(password_to_hash.as_bytes(), &salt)
         .map(|hash| hash.to_string())
         .map_err(|e| anyhow::anyhow!("Password hashing error: {}", e))
     })
     .await
     .map_err(|e| AppError::AnyError(anyhow::anyhow!("Task join error: {}", e)))?
     .map_err(|e| AppError::AnyError(e))?;
-    
+
     let user = sqlx::query_as::<_, User>(
       r#"
       INSERT INTO users (workspace_id, email, fullname, password_hash) 
@@ -311,21 +313,21 @@ impl<'a> AuthServiceTrait for AuthService<'a> {
         e.into()
       }
     })?;
-    
+
     if is_new_workspace {
       let res = sqlx::query("UPDATE workspaces SET owner_id = $1 WHERE id = $2")
         .bind(user.id)
         .bind(workspace.id)
         .execute(&mut *conn)
         .await?;
-        
+
       if res.rows_affected() == 0 {
         return Err(AppError::NotFound(vec![payload.workspace.clone()]));
       }
     }
-    
+
     tx.commit().await?;
-    
+
     Ok(user)
   }
 
@@ -336,30 +338,32 @@ impl<'a> AuthServiceTrait for AuthService<'a> {
     .bind(&payload.email)
     .fetch_optional(self.provider.pool())
     .await?;
-    
+
     match user {
       Some(mut user) => {
         let password_hash = match std::mem::take(&mut user.password_hash) {
           Some(h) => h,
           None => return Ok(None), // User has no password hash, so it's not authenticated
         };
-        
+
         let password_to_check = payload.password.clone();
-        
+
         let is_valid = tokio::task::spawn_blocking(move || {
           use argon2::{Argon2, PasswordHash, PasswordVerifier};
-          
+
           let argon2 = Argon2::default();
           let parsed_hash = match PasswordHash::new(&password_hash) {
             Ok(hash) => hash,
             Err(_) => return false,
           };
-          
-          argon2.verify_password(password_to_check.as_bytes(), &parsed_hash).is_ok()
+
+          argon2
+            .verify_password(password_to_check.as_bytes(), &parsed_hash)
+            .is_ok()
         })
         .await
         .map_err(|e| AppError::AnyError(anyhow::anyhow!("Task join error: {}", e)))?;
-        
+
         if is_valid {
           Ok(Some(user))
         } else {
@@ -482,9 +486,9 @@ mod tests {
     let result = auth_service.signup(&create_user_payload, None, None).await;
 
     if let Err(ref e) = result {
-        println!("Signup error: {:?}", e);
+      println!("Signup error: {:?}", e);
     }
-    
+
     assert!(result.is_ok());
     let tokens = result.unwrap();
     assert!(!tokens.access_token.is_empty());
