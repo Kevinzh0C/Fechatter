@@ -69,7 +69,7 @@ where
 
   /// 构建路由器，仅应用令牌刷新
   pub fn build(self) -> Router {
-    self.router.into_make_service()
+    self.router.into_service()
   }
 }
 
@@ -144,11 +144,15 @@ where
   /// 构建路由器，应用了认证和刷新
   pub fn build(self) -> Router {
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> e1f38b1 (refactor: middleware refresh_token & auth cleanup)
     self.router
 =======
     self.router.into_make_service()
 >>>>>>> 66199ca (fix: resolve linting and type errors)
+=======
+    self.router.into_service()
+>>>>>>> 8cdd2c3 (fix: use into_service() instead of into_make_service())
   }
 }
 
@@ -157,6 +161,7 @@ impl<S> MiddlewareBuilder<S, WithoutAuth, WithRefresh, WithoutWorkspace, Without
 where
   S: Clone + Send + Sync + 'static,
 {
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
   pub fn with_auth(
@@ -319,11 +324,9 @@ impl<S> MiddlewareBuilder<S, WithAuth, WithRefresh, WithWorkspace, WithChatMembe
 where
   S: Clone + Send + Sync + 'static,
 {
-  pub fn build(self) -> Router<S> {
-
   /// 构建路由器，应用了认证、刷新和工作区上下文
   pub fn build(self) -> Router {
-    self.router.into_make_service()
+    self.router.into_service()
   }
 }
 
