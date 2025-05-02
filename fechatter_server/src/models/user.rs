@@ -299,7 +299,7 @@ mod tests {
   #[tokio::test]
   async fn create_user_should_work() -> Result<()> {
     let (_tdb, state, _users) = setup_test_users!(0).await;
-    let pool = &state.pool;
+    let _pool = &state.pool;
 
     let input = CreateUser::new("Alice", "alice1@acme.test", "Acme", "hunter4332");
     let user = state.create(&input).await?;
