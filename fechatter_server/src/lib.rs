@@ -25,6 +25,7 @@ pub use error::{AppError, ErrorOutput};
 use handlers::*;
 use middlewares::{RouterExt, SetLayer};
 pub use models::{ChatSidebar, CreateUser, SigninUser, User};
+use services::ServiceProvider;
 
 #[derive(Debug, Clone)]
 pub(crate) struct AppState {
@@ -36,6 +37,7 @@ pub(crate) struct AppStateInner {
   pub(crate) token_manager: TokenManager,
   pub(crate) pool: PgPool,
   pub(crate) chat_list_cache: DashMap<i64, (Arc<Vec<ChatSidebar>>, Instant)>,
+  pub(crate) service_provider: ServiceProvider,
 }
 
 pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
@@ -148,12 +150,14 @@ impl AppState {
     let token_manager = TokenManager::from_config(&config.auth)?;
     let pool = create_pool(&config.server.db_url).await?;
     let chat_list_cache = DashMap::new();
+    let service_provider = ServiceProvider::new(pool.clone(), token_manager.clone());
 
     let state = AppStateInner {
       config,
       token_manager,
       pool,
       chat_list_cache,
+      service_provider,
     };
 
     Ok(Self {
@@ -181,11 +185,13 @@ impl AppState {
 
     let pool = tdb.get_pool().await;
     let chat_list_cache = DashMap::new();
+    let service_provider = ServiceProvider::new(pool.clone(), token_manager.clone());
     let state = AppStateInner {
       config,
       token_manager,
       pool,
       chat_list_cache,
+      service_provider,
     };
 
     Ok((

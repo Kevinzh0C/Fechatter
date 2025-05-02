@@ -1,4 +1,9 @@
-use crate::{AppError, User, config::AuthConfig, models::UserStatus};
+use crate::{
+  AppError, User,
+  config::AuthConfig,
+  models::UserStatus,
+  utils::token::{TokenParser, TokenValidator},
+};
 use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
@@ -31,6 +36,7 @@ pub struct UserClaims {
   pub created_at: DateTime<Utc>,
 }
 
+#[derive(Clone)]
 pub struct TokenManager {
   encoding_key: EncodingKey,
   decoding_key: DecodingKey,
@@ -181,27 +187,26 @@ impl RefreshToken {
 
     let mut tx = pool.begin().await?;
 
-    sqlx::query(
+    sqlx::query("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
+      .execute(&mut *tx)
+      .await?;
+
+    let refresh_token = sqlx::query_as::<_, RefreshToken>(
       r#"
-      UPDATE refresh_tokens
-      SET revoked = TRUE, replaced_by = $1
-      WHERE id = $2
+      WITH revoked_token AS (
+        UPDATE refresh_tokens
+        SET revoked = TRUE, replaced_by = $1
+        WHERE id = $2
+        RETURNING user_id
+      )
+      INSERT INTO refresh_tokens (user_id, token_hash, expires_at, user_agent, ip_address, absolute_expires_at)
+      SELECT user_id, $1, $3, $4, $5, $6
+      FROM revoked_token
+      RETURNING id, user_id, token_hash, expires_at, issued_at, revoked, replaced_by, user_agent, ip_address, absolute_expires_at
       "#,
     )
     .bind(&new_token_hash)
     .bind(self.id)
-    .execute(&mut *tx)
-    .await?;
-
-    let refresh_token = sqlx::query_as::<_, RefreshToken>(
-      r#"
-      INSERT INTO refresh_tokens (user_id, token_hash, expires_at, user_agent, ip_address, absolute_expires_at)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING id, user_id, token_hash, expires_at, issued_at, revoked, replaced_by, user_agent, ip_address, absolute_expires_at
-      "#,
-    )
-    .bind(self.user_id)
-    .bind(&new_token_hash)
     .bind(if new_expires_at < absolute_expires_at { new_expires_at } else { absolute_expires_at })
     .bind(user_agent)
     .bind(ip_address)
@@ -291,6 +296,12 @@ impl TokenManager {
   }
 
   pub fn verify_token(&self, token: &str) -> Result<UserClaims, AppError> {
+    self.parse_token(token)
+  }
+}
+
+impl TokenParser for TokenManager {
+  fn parse_token(&self, token: &str) -> Result<UserClaims, AppError> {
     let token_data = decode::<Claims>(token, &self.decoding_key, &self.validation)?;
     let user_claims = UserClaims {
       id: token_data.claims.user.id,
@@ -304,6 +315,8 @@ impl TokenManager {
     Ok(user_claims)
   }
 }
+
+impl TokenValidator for TokenManager {}
 
 #[cfg(test)]
 mod tests {

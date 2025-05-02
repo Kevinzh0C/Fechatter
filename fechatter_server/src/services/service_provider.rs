@@ -1,7 +1,6 @@
 use crate::AppError;
 use crate::utils::jwt::TokenManager;
 use sqlx::PgPool;
-use std::marker::PhantomData;
 use std::sync::Arc;
 
 /// 服务标记特征，用于静态多态
@@ -37,6 +36,13 @@ impl ServiceProvider {
   pub fn create<T: ServiceFactory>(&self) -> T::Service {
     T::create(self)
   }
+
+  /// 创建特定类型的服务使用特征对象
+  pub fn create_service<T: 'static + Send + Sync>(
+    &self,
+  ) -> Box<dyn crate::services::AuthServiceTrait + '_> {
+    Box::new(crate::services::auth_service::AuthService::new(self))
+  }
 }
 
 /// 工厂特征，用于创建服务
@@ -61,7 +67,7 @@ macro_rules! define_service {
     ) => {
         // 定义服务标记
         pub struct $marker;
-        impl crate::services::service_provider::ServiceMarker for $marker {}
+        impl $crate::services::service_provider::ServiceMarker for $marker {}
 
         // 定义服务
         pub struct $service_name {

@@ -4,12 +4,12 @@ use axum::http::Request;
 use axum::{
   http::StatusCode,
   middleware::Next,
-  response::{IntoResponse, Response},
+  response::Response,
 };
 use std::sync::Arc;
 
 use crate::{
-  AppError, AppState,
+  AppState,
   models::{AuthUser, Workspace},
 };
 
@@ -30,7 +30,7 @@ impl WorkspaceContext {
 
 /// Middleware to ensure user is a member of the specified workspace
 pub async fn ensure_workspace_member(
-  State(state): State<AppState>,
+  State(_state): State<AppState>,
   Extension(auth_user): Extension<AuthUser>,
   Path(ws_id): Path<i64>,
   request: Request<Body>,
@@ -47,7 +47,7 @@ pub async fn ensure_workspace_member(
 
 /// Extract workspace context from the request
 pub async fn with_workspace_context(
-  State(state): State<AppState>,
+  State(_state): State<AppState>,
   Extension(auth_user): Extension<AuthUser>,
   mut request: Request<Body>,
   next: Next,

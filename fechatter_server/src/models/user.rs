@@ -141,7 +141,7 @@ impl AppState {
           None => return Ok(None), // User has no password hash, so it's not authenticated
         };
 
-        let is_valid = verify_password(&input.password, &password_hash)?;
+        let is_valid = verify_password_async(input.password.clone(), password_hash).await?;
         if is_valid {
           Ok(Some(user))
         } else {
@@ -188,6 +188,41 @@ fn verify_password(password: &str, password_hash: &str) -> Result<bool, AppError
     .is_ok();
 
   Ok(is_valid)
+}
+
+async fn verify_password_async(password: String, password_hash: String) -> Result<bool, AppError> {
+  tokio::task::spawn_blocking(move || {
+    let argon2 = Argon2::default();
+    let parsed_hash = match PasswordHash::new(&password_hash) {
+      Ok(hash) => hash,
+      Err(e) => return Err(AppError::AnyError(anyhow::anyhow!("{}", e))),
+    };
+
+    let is_valid = argon2
+      .verify_password(password.as_bytes(), &parsed_hash)
+      .is_ok();
+
+    Ok(is_valid)
+  })
+  .await
+  .map_err(|e| AppError::AnyError(anyhow::anyhow!("Task join error: {}", e)))?
+}
+
+impl User {
+  pub fn is_active(&self) -> bool {
+    matches!(self.status, UserStatus::Active)
+  }
+
+  pub async fn find_by_id(id: i64, pool: &sqlx::PgPool) -> Result<Option<User>, AppError> {
+    let user = sqlx::query_as::<_, User>(
+      "SELECT id, fullname, email, password_hash, status, created_at, workspace_id FROM users WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(user)
+  }
 }
 
 impl ChatUser {

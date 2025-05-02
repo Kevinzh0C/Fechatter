@@ -13,6 +13,7 @@ use tracing::warn;
 
 use crate::AppState;
 use crate::models::AuthUser;
+use crate::utils::token::TokenValidator;
 
 pub async fn verify_token_middleware(
   State(state): State<AppState>,
@@ -30,7 +31,7 @@ pub async fn verify_token_middleware(
       }
     };
 
-  match state.token_manager.verify_token(&token) {
+  match state.token_manager.validate_token(&token) {
     Ok(claims) => {
       let user = AuthUser {
         id: claims.id,

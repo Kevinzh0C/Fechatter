@@ -1,4 +1,4 @@
-use sqlx::{Executor, PgPool, Postgres};
+use sqlx::PgPool;
 
 use crate::{
   AppError,

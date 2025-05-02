@@ -1,5 +1,5 @@
 use crate::models::AuthUser;
-use crate::services::auth_service::AuthService;
+use crate::services::{AuthServiceTrait, auth_service::AuthService};
 use crate::utils::jwt::ACCESS_TOKEN_EXPIRATION;
 use crate::{AppState, ErrorOutput, SigninUser, error::AppError, models::CreateUser};
 use axum::{
@@ -92,7 +92,8 @@ pub(crate) async fn signin_handler(
     .and_then(|h| h.to_str().ok())
     .map(String::from);
 
-  let auth_service = AuthService::new(&state.pool, &state.token_manager);
+  let auth_service: Box<dyn AuthServiceTrait> =
+    state.service_provider.create_service::<AuthService>();
   match auth_service
     .signin(&payload, user_agent, ip_address)
     .await?
@@ -171,7 +172,8 @@ pub(crate) async fn refresh_token_handler(
     }
   };
 
-  let auth_service = AuthService::new(&state.pool, &state.token_manager);
+  let auth_service: Box<dyn AuthServiceTrait> =
+    state.service_provider.create_service::<AuthService>();
   match auth_service
     .refresh_token(&refresh_token_str, user_agent, ip_address)
     .await
@@ -217,7 +219,8 @@ pub(crate) async fn logout_handler(
   let mut response_headers = HeaderMap::new();
   clear_refresh_token_cookie(&mut response_headers)?;
 
-  let auth_service = AuthService::new(&state.pool, &state.token_manager);
+  let auth_service: Box<dyn AuthServiceTrait> =
+    state.service_provider.create_service::<AuthService>();
 
   // First try to get refresh token from cookie
   let refresh_token_str = if let Some(cookie) = cookies.get("refresh_token") {
@@ -262,7 +265,8 @@ pub(crate) async fn logout_all_handler(
   // Clear refresh_token cookie
   clear_refresh_token_cookie(&mut response_headers)?;
 
-  let auth_service = AuthService::new(&state.pool, &state.token_manager);
+  let auth_service: Box<dyn AuthServiceTrait> =
+    state.service_provider.create_service::<AuthService>();
   let user_id = _auth_user.id;
 
   // Try to get refresh token from cookie
@@ -286,7 +290,6 @@ pub(crate) async fn logout_all_handler(
     None => None,
   };
 
-  
   match auth_service.logout_all(user_id).await {
     Ok(_) => {
       info!("All sessions for user {} revoked successfully", user_id);
@@ -424,7 +427,8 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
 
-    let auth_service = AuthService::new(&state.pool, &state.token_manager);
+    let auth_service: Box<dyn AuthServiceTrait> =
+      state.service_provider.create_service::<AuthService>();
     let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
 
     let mut jar = CookieJar::new();
@@ -493,7 +497,8 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
 
-    let auth_service = AuthService::new(&state.pool, &state.token_manager);
+    let auth_service: Box<dyn AuthServiceTrait> =
+      state.service_provider.create_service::<AuthService>();
     let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
 
     let mut jar = CookieJar::new();
