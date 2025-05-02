@@ -40,7 +40,7 @@ pub(crate) struct AppStateInner {
   pub(crate) service_provider: ServiceProvider,
 }
 
-pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
+pub async fn get_router(config: AppConfig) -> Result<Router<AppState>, AppError> {
   let state = AppState::try_new(config).await?;
 
   // Public routes - no authentication required but apply token refresh
