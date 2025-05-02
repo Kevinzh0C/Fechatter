@@ -364,7 +364,6 @@ mod tests {
     assert!(!tokens.access_token.is_empty());
     assert!(!tokens.refresh_token.token.is_empty());
 
-
     Ok(())
   }
 

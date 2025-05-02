@@ -151,7 +151,7 @@ mod tests {
       .create_new_chat(
         user1.id,
         "Test Chat",
-        ChatType::Group,
+        crate::models::ChatType::Group,
         Some(vec![user1.id, user2.id, user3.id]),
         Some("Test chat for messages"),
         user1.workspace_id,
@@ -223,7 +223,7 @@ mod tests {
       .create_new_chat(
         user1.id,
         "Test Chat",
-        ChatType::Group,
+        crate::models::ChatType::Group,
         Some(users.iter().map(|u| u.id).collect()),
         Some("Test chat for messages"),
         user1.workspace_id,

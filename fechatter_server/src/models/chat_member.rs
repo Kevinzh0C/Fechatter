@@ -559,15 +559,16 @@ mod tests {
     let user3 = &users[2];
 
     // Create a chat with the user as creator
-    let chat = state.create_new_chat(
-      user1.id,
-      "Test Chat",
-      ChatType::Group,
-      Some(vec![user2.id, user3.id]),
-      Some("Test Description"),
-      user1.workspace_id,
-    )
-    .await?;
+    let chat = state
+      .create_new_chat(
+        user1.id,
+        "Test Chat",
+        ChatType::Group,
+        Some(vec![user2.id, user3.id]),
+        Some("Test Description"),
+        user1.workspace_id,
+      )
+      .await?;
 
     // Check if the user is the creator
     let is_creator = is_creator_in_chat(
@@ -603,15 +604,16 @@ mod tests {
     let user3 = &users[2];
 
     // Create a chat with user1 as creator and user2, user3 as members
-    let chat = state.create_new_chat( 
-      user1.id,
-      "Test Chat",
-      ChatType::Group,
-      Some(vec![user2.id, user3.id]),
-      None,
-      user1.workspace_id,
-    )
-    .await?;
+    let chat = state
+      .create_new_chat(
+        user1.id,
+        "Test Chat",
+        ChatType::Group,
+        Some(vec![user2.id, user3.id]),
+        None,
+        user1.workspace_id,
+      )
+      .await?;
 
     // Check if all users are members
     let is_member1 = member_exists_in_chat(
@@ -668,15 +670,16 @@ mod tests {
     let user5 = &users[4];
 
     // Create a chat with user1 as creator and initial members
-    let chat = state.create_new_chat(
-      user1.id,
-      "Test Chat",
-      ChatType::Group,
-      Some(vec![user2.id, user3.id]),
-      None,
-      user1.workspace_id,
-    )
-    .await?;
+    let chat = state
+      .create_new_chat(
+        user1.id,
+        "Test Chat",
+        ChatType::Group,
+        Some(vec![user2.id, user3.id]),
+        None,
+        user1.workspace_id,
+      )
+      .await?;
 
     // Test batch addition of members
     let members_to_add = vec![user4.id, user5.id];
@@ -750,15 +753,16 @@ mod tests {
     let user3 = &users[2];
 
     // Create a chat with user1 as creator and user2, user3 as members
-    let chat = state.create_new_chat(
-      user1.id,
-      "Test Chat",
-      ChatType::Group,
-      Some(vec![user2.id, user3.id]),
-      None,
-      user1.workspace_id,
-    )
-    .await?;
+    let chat = state
+      .create_new_chat(
+        user1.id,
+        "Test Chat",
+        ChatType::Group,
+        Some(vec![user2.id, user3.id]),
+        None,
+        user1.workspace_id,
+      )
+      .await?;
 
     // List members
     let members = list_chat_members(&state.pool, chat.id).await?;

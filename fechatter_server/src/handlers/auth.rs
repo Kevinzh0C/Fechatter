@@ -451,7 +451,7 @@ mod tests {
       |state, jar| async { refresh_token_handler(State(state), HeaderMap::new(), jar).await };
 
     let auth_response =
-      assert_handler_success!(test_handler(state, jar), StatusCode::OK, AuthResponse);
+      assert_handler_success!(test_handler(state.clone(), jar), StatusCode::OK, AuthResponse);
 
     assert_ne!(auth_response.access_token, "");
     assert_eq!(auth_response.expires_in, ACCESS_TOKEN_EXPIRATION);
@@ -539,10 +539,21 @@ mod tests {
     let res: serde_json::Value = serde_json::from_slice(&body)?;
     assert_eq!(res["message"], "Logged out successfully");
 
-    println!("Made it past the first part of the test");
+    let mut jar2 = CookieJar::new();
+    jar2 = jar2.add(Cookie::new("refresh_token", tokens.refresh_token.token));
 
-    // Skip the refresh token check since it's not relevant to the logout test
-    // The token should be invalidated server-side, but we're just testing the handler
+    let test_refresh =
+      |state, jar| async { refresh_token_handler(State(state), HeaderMap::new(), jar).await };
+
+    let refresh_response = test_refresh(state.clone(), jar2).await;
+
+    match refresh_response {
+      Ok(resp) => {
+        let resp = resp.into_response();
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+      }
+      Err(_) => {}
+    }
 
     Ok(())
   }

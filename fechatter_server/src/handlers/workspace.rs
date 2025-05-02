@@ -31,7 +31,9 @@ pub async fn get_workspace_by_id(
   Extension(user): Extension<AuthUser>,
 ) -> Result<impl IntoResponse, AppError> {
   if user.workspace_id != id {
-    return Err(AppError::ChatPermissionError("No access to this workspace".into()));
+    return Err(AppError::ChatPermissionError(
+      "No access to this workspace".into(),
+    ));
   }
 
   let workspace = Workspace::find_by_id(id, &state.pool)

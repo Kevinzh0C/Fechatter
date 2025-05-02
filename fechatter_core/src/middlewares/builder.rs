@@ -72,7 +72,7 @@ where
 
   /// 构建路由器，仅应用令牌刷新
   pub fn build(self) -> Router {
-    self.router
+    self.router.into_make_service()
   }
 }
 
@@ -97,7 +97,7 @@ where
 
   /// 构建路由器，应用了认证和刷新
   pub fn build(self) -> Router {
-    self.router
+    self.router.into_make_service()
   }
 }
 
@@ -107,7 +107,7 @@ where
 {
   /// 构建路由器，应用了认证、刷新和工作区上下文
   pub fn build(self) -> Router {
-    self.router
+    self.router.into_make_service()
   }
 }
 

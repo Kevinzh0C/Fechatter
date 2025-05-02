@@ -323,7 +323,4 @@ mod tests {
     assert_eq!(updated_workspace.owner_id, user2.id);
     Ok(())
   }
-
-
-  
 }
