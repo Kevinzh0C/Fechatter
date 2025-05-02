@@ -11,10 +11,12 @@ use axum::{
 use tracing::{debug, warn};
 
 use crate::{
-  AppError, AppState, AppState,
+  AppState,
   models::AuthUser,
   services::AuthServiceTrait,
-  services::{AuthServiceTrait, auth_service::AuthService},
+  utils::{jwt::RefreshTokenData, token::TokenValidator},
+  AppError, AppState,
+  AppState,
   services::{AuthServiceTrait, auth_service::AuthService},
   utils::jwt::RefreshTokenData,
   utils::jwt::RefreshTokenData,

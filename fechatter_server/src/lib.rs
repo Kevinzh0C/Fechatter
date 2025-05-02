@@ -118,7 +118,12 @@ pub async fn get_router(config: AppConfig) -> Result<Router<AppState>, AppError>
   let app = Router::new()
     .route("/", get(index_handler))
     .nest("/api", api)
+<<<<<<< HEAD
     .with_state(state);
+=======
+    .layer(axum::extract::Extension(state))
+    .set_layer();
+>>>>>>> eef9927 (fix: resolve linting and type errors)
 
   Ok(app)
 }
