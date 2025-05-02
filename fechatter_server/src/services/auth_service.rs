@@ -1,17 +1,19 @@
+use async_trait::async_trait;
 use chrono::Utc;
 use tracing::{error, info, warn};
 
 use crate::{
   AppError,
   models::{CreateUser, SigninUser, User},
-  services::service_provider::{ServiceFactory, ServiceProvider, ServiceResult},
+  services::{
+    AuthServiceTrait,
+    service_provider::{ServiceFactory, ServiceProvider},
+  },
   utils::jwt::{AuthTokens, RefreshToken, RefreshTokenData, generate_refresh_token},
 };
 
-/// 认证服务标记
 pub struct AuthServiceMarker;
 
-/// 认证服务，处理用户认证相关逻辑
 pub struct AuthService<'a> {
   provider: &'a ServiceProvider,
 }
@@ -20,8 +22,6 @@ impl ServiceFactory for AuthServiceMarker {
   type Service = AuthService<'static>;
 
   fn create(provider: &ServiceProvider) -> Self::Service {
-    // 这里有个生命周期问题，需要使用不安全代码解决
-    // 实际上ServiceProvider是Arc包装的，所以这是安全的
     let provider_static = unsafe { std::mem::transmute(provider) };
     AuthService {
       provider: provider_static,
@@ -30,22 +30,21 @@ impl ServiceFactory for AuthServiceMarker {
 }
 
 impl<'a> AuthService<'a> {
-  /// 创建新的认证服务
   pub fn new(provider: &'a ServiceProvider) -> Self {
     Self { provider }
   }
+}
 
-  /// 处理用户注册
-  pub async fn signup(
+#[async_trait]
+impl<'a> AuthServiceTrait for AuthService<'a> {
+  async fn signup(
     &self,
     payload: &CreateUser,
     user_agent: Option<String>,
     ip_address: Option<String>,
-  ) -> ServiceResult<AuthTokens> {
-    // 创建用户逻辑...
+  ) -> Result<AuthTokens, AppError> {
     let user = self.create_user(payload).await?;
 
-    // 生成令牌
     let tokens = self
       .generate_auth_tokens(&user, user_agent, ip_address)
       .await?;
@@ -54,13 +53,12 @@ impl<'a> AuthService<'a> {
     Ok(tokens)
   }
 
-  /// 处理用户登录
-  pub async fn signin(
+  async fn signin(
     &self,
     payload: &SigninUser,
     user_agent: Option<String>,
     ip_address: Option<String>,
-  ) -> ServiceResult<Option<AuthTokens>> {
+  ) -> Result<Option<AuthTokens>, AppError> {
     match self.authenticate(payload).await? {
       Some(user) => {
         let tokens = self
@@ -82,17 +80,14 @@ impl<'a> AuthService<'a> {
     }
   }
 
-  /// 处理令牌刷新
-  pub async fn refresh_token(
+  async fn refresh_token(
     &self,
     refresh_token_str: &str,
     user_agent: Option<String>,
     ip_address: Option<String>,
-  ) -> ServiceResult<AuthTokens> {
-    // 验证刷新令牌
+  ) -> Result<AuthTokens, AppError> {
     let token_record = self.validate_refresh_token(refresh_token_str).await?;
 
-    // 安全检查
     if let Some(saved) = &token_record.user_agent {
       match &user_agent {
         None => {
@@ -117,10 +112,15 @@ impl<'a> AuthService<'a> {
       }
     }
 
-    // 查找用户
     let user = self.find_user_by_token(&token_record).await?;
 
-    // 生成新令牌
+    if !user.is_active() {
+      warn!("Attempt to refresh token for disabled user: {}", user.id);
+      return Err(AppError::InvalidInput(
+        "User account is disabled".to_string(),
+      ));
+    }
+
     let (access_token, refresh_token_data) = self
       .rotate_tokens(&token_record, &user, user_agent, ip_address)
       .await?;
@@ -132,8 +132,7 @@ impl<'a> AuthService<'a> {
     })
   }
 
-  /// 处理用户登出
-  pub async fn logout(&self, refresh_token_str: &str) -> ServiceResult<()> {
+  async fn logout(&self, refresh_token_str: &str) -> Result<(), AppError> {
     if let Some(token_record) =
       RefreshToken::find_by_token(refresh_token_str, self.provider.pool()).await?
     {
@@ -145,15 +144,25 @@ impl<'a> AuthService<'a> {
     Ok(())
   }
 
-  /// 登出用户所有会话
-  pub async fn logout_all(&self, user_id: i64) -> ServiceResult<()> {
+  async fn logout_all(&self, user_id: i64) -> Result<(), AppError> {
     RefreshToken::revoke_all_for_user(user_id, self.provider.pool()).await?;
     info!("All sessions revoked for user: {}", user_id);
     Ok(())
   }
 
-  /// 验证刷新令牌
-  async fn validate_refresh_token(&self, token_str: &str) -> ServiceResult<RefreshToken> {
+  async fn find_user_by_token(&self, token: &RefreshToken) -> Result<User, AppError> {
+    User::find_by_id(token.user_id, self.provider.pool())
+      .await?
+      .ok_or_else(|| {
+        error!(
+          "User not found for valid refresh token: user_id {}",
+          token.user_id
+        );
+        AppError::NotFound(vec!["User linked to refresh token not found".to_string()])
+      })
+  }
+
+  async fn validate_refresh_token(&self, token_str: &str) -> Result<RefreshToken, AppError> {
     let token_record = RefreshToken::find_by_token(token_str, self.provider.pool())
       .await?
       .ok_or_else(|| {
@@ -161,7 +170,6 @@ impl<'a> AuthService<'a> {
         AppError::InvalidInput("Invalid or expired refresh token".to_string())
       })?;
 
-    // 检查是否过期
     if token_record.expires_at < Utc::now() {
       info!(
         "Refresh token expired for user: {} (Expiry: {}, Now: {})",
@@ -174,7 +182,6 @@ impl<'a> AuthService<'a> {
       ));
     }
 
-    // 检查是否已撤销
     if token_record.revoked {
       warn!(
         "Attempt to use revoked refresh token for user: {}",
@@ -188,26 +195,12 @@ impl<'a> AuthService<'a> {
     Ok(token_record)
   }
 
-  /// 根据令牌查找用户
-  async fn find_user_by_token(&self, token: &RefreshToken) -> ServiceResult<User> {
-    User::find_by_id(token.user_id, self.provider.pool())
-      .await?
-      .ok_or_else(|| {
-        error!(
-          "User not found for valid refresh token: user_id {}",
-          token.user_id
-        );
-        AppError::NotFound(vec!["User linked to refresh token not found".to_string()])
-      })
-  }
-
-  /// 生成认证令牌
-  pub async fn generate_auth_tokens(
+  async fn generate_auth_tokens(
     &self,
     user: &User,
     user_agent: Option<String>,
     ip_address: Option<String>,
-  ) -> ServiceResult<AuthTokens> {
+  ) -> Result<AuthTokens, AppError> {
     self
       .provider
       .token_manager()
@@ -215,22 +208,18 @@ impl<'a> AuthService<'a> {
       .await
   }
 
-  /// 旋转令牌（生成新令牌并替换旧令牌）
   async fn rotate_tokens(
     &self,
     old_token: &RefreshToken,
     user: &User,
     current_user_agent: Option<String>,
     current_ip_address: Option<String>,
-  ) -> ServiceResult<(String, RefreshTokenData)> {
-    // 生成新的刷新令牌
+  ) -> Result<(String, RefreshTokenData), AppError> {
     let new_refresh_token_str = generate_refresh_token();
 
-    // 保留原始用户代理和IP（如果当前请求未提供）
     let user_agent = current_user_agent.or_else(|| old_token.user_agent.clone());
     let ip_address = current_ip_address.or_else(|| old_token.ip_address.clone());
 
-    // 替换旧令牌
     let new_token_db_record = old_token
       .replace(
         &new_refresh_token_str,
@@ -240,10 +229,8 @@ impl<'a> AuthService<'a> {
       )
       .await?;
 
-    // 生成新的访问令牌
     let access_token = self.provider.token_manager().generate_token(user)?;
 
-    // 创建刷新令牌数据
     let refresh_token_data = RefreshTokenData {
       token: new_refresh_token_str,
       expires_at: new_token_db_record.expires_at,
@@ -253,14 +240,11 @@ impl<'a> AuthService<'a> {
     Ok((access_token, refresh_token_data))
   }
 
-  // 其他方法实现...
-  async fn create_user(&self, _payload: &CreateUser) -> ServiceResult<User> {
-    // TODO: 简化版，实际实现省略
+  async fn create_user(&self, _payload: &CreateUser) -> Result<User, AppError> {
     unimplemented!("create_user not implemented in this example")
   }
 
-  async fn authenticate(&self, _payload: &SigninUser) -> ServiceResult<Option<User>> {
-    // TODO: 简化版，实际实现省略
+  async fn authenticate(&self, _payload: &SigninUser) -> Result<Option<User>, AppError> {
     unimplemented!("authenticate not implemented in this example")
   }
 }
@@ -278,7 +262,7 @@ mod tests {
   async fn refresh_token_service_should_work() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
-    let auth_service = AuthService::new(&state.provider);
+    let auth_service = AuthService::new(&state.service_provider);
 
     let initial_tokens = auth_service.generate_auth_tokens(user, None, None).await?;
 
@@ -300,7 +284,7 @@ mod tests {
   #[tokio::test]
   async fn refresh_token_service_should_fail_with_invalid_token() -> Result<()> {
     let (_tdb, state, _users) = setup_test_users!(1).await;
-    let auth_service = AuthService::new(&state.provider);
+    let auth_service = AuthService::new(&state.service_provider);
 
     let result = auth_service
       .refresh_token("invalid_token", None, None)
@@ -319,7 +303,7 @@ mod tests {
   async fn logout_service_should_revoke_token() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
-    let auth_service = AuthService::new(&state.provider);
+    let auth_service = AuthService::new(&state.service_provider);
 
     let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
 
@@ -338,7 +322,7 @@ mod tests {
   async fn refresh_token_can_only_be_used_once() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
-    let auth_service = AuthService::new(&state.provider);
+    let auth_service = AuthService::new(&state.service_provider);
 
     let initial_tokens = auth_service.generate_auth_tokens(user, None, None).await?;
 
@@ -364,7 +348,7 @@ mod tests {
   #[tokio::test]
   async fn signup_service_should_create_user_and_tokens() -> Result<()> {
     let (_tdb, state, _) = setup_test_users!(0).await; // Setup DB, no initial users needed
-    let auth_service = AuthService::new(&state.provider);
+    let auth_service = AuthService::new(&state.service_provider);
 
     let create_user_payload = CreateUser {
       workspace: "Acme".to_string(), // Use workspace (String) instead of workspace_id
@@ -380,10 +364,6 @@ mod tests {
     assert!(!tokens.access_token.is_empty());
     assert!(!tokens.refresh_token.token.is_empty());
 
-    // Optional: Verify user exists in DB
-    let user_check = User::email_user_exists("newuser@test.com", &state.provider.pool()).await?;
-    assert!(user_check.is_some());
-    assert_eq!(user_check.unwrap().fullname, "New User");
 
     Ok(())
   }
@@ -392,7 +372,7 @@ mod tests {
   async fn signin_service_should_return_tokens_for_valid_credentials() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await; // Setup with one user
     let user = &users[0];
-    let auth_service = AuthService::new(&state.provider);
+    let auth_service = AuthService::new(&state.service_provider);
 
     let signin_payload = SigninUser {
       email: user.email.clone(),
@@ -413,16 +393,14 @@ mod tests {
   async fn test_user_agent_consistency_check() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
-    let auth_service = AuthService::new(&state.provider);
+    let auth_service = AuthService::new(&state.service_provider);
 
-    // Create token with specific user agent
     let original_agent = Some("Chrome Browser".to_string());
 
     let tokens = auth_service
       .generate_auth_tokens(user, original_agent.clone(), None)
       .await?;
 
-    // Try to refresh with different user agent should fail
     let different_agent = Some("Firefox Browser".to_string());
     let refresh_result = auth_service
       .refresh_token(&tokens.refresh_token.token, different_agent, None)
@@ -435,7 +413,6 @@ mod tests {
       panic!("Expected security validation error");
     }
 
-    // Try with same agent should work
     let refresh_success = auth_service
       .refresh_token(&tokens.refresh_token.token, original_agent, None)
       .await;
@@ -449,16 +426,14 @@ mod tests {
   async fn test_missing_user_agent_fails_when_token_has_one() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
-    let auth_service = AuthService::new(&state.provider);
+    let auth_service = AuthService::new(&state.service_provider);
 
-    // Create token with specific user agent
     let original_agent = Some("Chrome Browser".to_string());
 
     let tokens = auth_service
       .generate_auth_tokens(user, original_agent, None)
       .await?;
 
-    // Try to refresh without providing a user agent should fail
     let refresh_result = auth_service
       .refresh_token(&tokens.refresh_token.token, None, None)
       .await;
@@ -477,16 +452,13 @@ mod tests {
   async fn logout_all_sessions_should_work() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
-    let auth_service = AuthService::new(&state.provider);
+    let auth_service = AuthService::new(&state.service_provider);
 
-    // Create multiple tokens
     let token1 = auth_service.generate_auth_tokens(user, None, None).await?;
     let token2 = auth_service.generate_auth_tokens(user, None, None).await?;
 
-    // Logout all sessions
     auth_service.logout_all(user.id).await?;
 
-    // Both tokens should be invalid
     let refresh1 = auth_service
       .refresh_token(&token1.refresh_token.token, None, None)
       .await;

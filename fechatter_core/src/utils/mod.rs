@@ -1,9 +1,6 @@
-pub mod jwt;
-pub mod test_helpers;
-
-#[cfg(test)]
-pub use jwt::MockTokenManagerTrait;
-pub use jwt::*;
+pub(crate) mod jwt;
+pub(crate) mod test_utils;
+pub(crate) mod token;
 
 #[macro_export]
 macro_rules! auth_user {

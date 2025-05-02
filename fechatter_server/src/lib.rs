@@ -54,6 +54,7 @@ trait WithDbPool {
 trait WithTokenManager {
   fn token_manager(&self) -> &TokenManager;
 }
+use services::ServiceProvider;
 
 #[derive(Debug, Clone)]
 pub(crate) struct AppState {
@@ -65,6 +66,55 @@ pub(crate) struct AppStateInner {
   pub(crate) token_manager: TokenManager,
   pub(crate) pool: PgPool,
   pub(crate) chat_list_cache: DashMap<i64, (Arc<Vec<ChatSidebar>>, Instant)>,
+  pub(crate) service_provider: ServiceProvider,
+}
+
+impl TokenVerifier for AppState {
+  type Error = AppError;
+  type Claims = UserClaims;
+
+  fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error> {
+    self
+      .inner
+      .token_manager
+      .verify_token(token)
+      .map_err(AppError::from)
+  }
+}
+
+impl WithDbPool for AppState {
+  fn db_pool(&self) -> &PgPool {
+    &self.inner.pool
+  }
+}
+
+impl WithTokenManager for AppState {
+  fn token_manager(&self) -> &TokenManager {
+    &self.inner.token_manager
+  }
+}
+
+impl WithCache<i64, (Arc<Vec<ChatSidebar>>, Instant)> for AppState {
+  fn get_from_cache(&self, key: &i64) -> Option<(Arc<Vec<ChatSidebar>>, Instant)> {
+    if let Some(entry) = self.inner.chat_list_cache.get(key) {
+      let (chats, created_at) = &*entry;
+      return Some((Arc::clone(chats), *created_at));
+    }
+    None
+  }
+
+  fn insert_into_cache(
+    &self,
+    key: i64,
+    value: (Arc<Vec<ChatSidebar>>, Instant),
+    _ttl_seconds: u64,
+  ) {
+    self.inner.chat_list_cache.insert(key, value);
+  }
+
+  fn remove_from_cache(&self, key: &i64) {
+    self.inner.chat_list_cache.remove(key);
+  }
 }
 
 impl TokenVerifier for AppState {
@@ -224,12 +274,14 @@ impl AppState {
     let token_manager = TokenManager::from_config(&config.auth)?;
     let pool = create_pool(&config.server.db_url).await?;
     let chat_list_cache = DashMap::new();
+    let service_provider = ServiceProvider::new(pool.clone(), token_manager.clone());
 
     let state = AppStateInner {
       config,
       token_manager,
       pool,
       chat_list_cache,
+      service_provider,
     };
 
     Ok(Self {
@@ -257,11 +309,13 @@ impl AppState {
 
     let pool = tdb.get_pool().await;
     let chat_list_cache = DashMap::new();
+    let service_provider = ServiceProvider::new(pool.clone(), token_manager.clone());
     let state = AppStateInner {
       config,
       token_manager,
       pool,
       chat_list_cache,
+      service_provider,
     };
 
     Ok((

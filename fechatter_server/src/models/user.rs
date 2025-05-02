@@ -199,7 +199,7 @@ fn verify_password(password: &str, password_hash: &str) -> Result<bool, AppError
   Ok(is_valid)
 }
 
-impl AppState {
+impl ChatUser {
   #[allow(dead_code)]
   pub async fn get_users_in_workspace(&self, pool: &PgPool) -> Result<Vec<User>, AppError> {
     let workspace_id = sqlx::query_scalar::<_, i64>("SELECT workspace_id FROM users LIMIT 1")

@@ -71,8 +71,8 @@ where
   }
 
   /// 构建路由器，仅应用令牌刷新
-  pub fn build(self) -> Router<S> {
-    self.router.with_state(self.state)
+  pub fn build(self) -> Router {
+    self.router
   }
 }
 
@@ -96,8 +96,8 @@ where
   }
 
   /// 构建路由器，应用了认证和刷新
-  pub fn build(self) -> Router<S> {
-    self.router.with_state(self.state)
+  pub fn build(self) -> Router {
+    self.router
   }
 }
 
@@ -106,8 +106,8 @@ where
   S: Clone + Send + Sync + 'static,
 {
   /// 构建路由器，应用了认证、刷新和工作区上下文
-  pub fn build(self) -> Router<S> {
-    self.router.with_state(self.state)
+  pub fn build(self) -> Router {
+    self.router
   }
 }
 
