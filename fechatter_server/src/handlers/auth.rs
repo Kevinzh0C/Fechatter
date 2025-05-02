@@ -1,6 +1,7 @@
 use crate::models::AuthUser;
 use crate::services::AuthServiceTrait;
 use crate::services::auth_service::AuthService;
+use crate::services::{AuthServiceTrait, auth_service::AuthService};
 use crate::utils::jwt::ACCESS_TOKEN_EXPIRATION;
 use crate::{AppState, ErrorOutput, SigninUser, error::AppError, models::CreateUser};
 use axum::{
@@ -495,8 +496,11 @@ mod tests {
     let test_handler =
       |state, jar| async { refresh_token_handler(State(state), HeaderMap::new(), jar, None).await };
 
-    let auth_response =
-      assert_handler_success!(test_handler(state, jar), StatusCode::OK, AuthResponse);
+    let auth_response = assert_handler_success!(
+      test_handler(state.clone(), jar),
+      StatusCode::OK,
+      AuthResponse
+    );
 
     assert_ne!(auth_response.access_token, "");
     assert_eq!(auth_response.expires_in, ACCESS_TOKEN_EXPIRATION);
