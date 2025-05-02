@@ -495,10 +495,6 @@ mod tests {
     assert!(!tokens.access_token.is_empty());
     assert!(!tokens.refresh_token.token.is_empty());
 
-<<<<<<< HEAD
-=======
-
->>>>>>> e1f38b1 (refactor: middleware refresh_token & auth cleanup)
     Ok(())
   }
 

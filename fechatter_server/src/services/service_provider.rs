@@ -62,6 +62,7 @@ macro_rules! define_service {
         }
 
 
+        // 实现服务工厂
         impl $crate::services::service_provider::ServiceFactory for $marker {
             type Service = $service_name;
 

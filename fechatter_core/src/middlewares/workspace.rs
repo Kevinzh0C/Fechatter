@@ -1,15 +1,11 @@
 use axum::body::Body;
 use axum::extract::{Extension, Path, State};
 use axum::http::Request;
-<<<<<<< HEAD
+
 use axum::{http::StatusCode, middleware::Next, response::Response};
-=======
-use axum::{
-  http::StatusCode,
-  middleware::Next,
-  response::Response,
-};
->>>>>>> e1f38b1 (refactor: middleware refresh_token & auth cleanup)
+use axum::{http::StatusCode, middleware::Next, response::Response};
+
+use axum::{http::StatusCode, middleware::Next, response::Response};
 use std::sync::Arc;
 
 use crate::{
