@@ -73,7 +73,7 @@ mod tests {
     let token = state.token_manager.generate_token(&user1)?;
     let req = Request::builder()
       .uri("/api")
-      .header("Authorization", format!("Bearer {}", token))
+      .header("Authorization", format!("Bearer {token}"))
       .body(Body::empty())?;
 
     let response = app.oneshot(req).await.unwrap();

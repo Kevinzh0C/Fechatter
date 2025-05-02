@@ -67,7 +67,7 @@ mod refresh_token_tests {
     assert!(result.is_err());
 
     if let Err(err) = result {
-      assert!(format!("{:?}", err).contains("User account is disabled"));
+      assert!(format!("{err:?}").contains("User account is disabled"));
     } else {
       panic!("Expected an error but got success");
     }
