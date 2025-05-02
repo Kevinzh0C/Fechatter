@@ -3,7 +3,9 @@ use axum::http::Request;
 use axum::{extract::State, http::StatusCode, middleware::Next, response::Response};
 use tracing::{debug, warn};
 
-<<<<<<< HEAD
+
+use crate::{AppState, models::AuthUser, utils::token::TokenValidator};
+
 use axum_extra::{
   TypedHeader,
   headers::{Authorization, authorization::Bearer},
@@ -88,7 +90,6 @@ pub async fn verify_token_middleware(
         // Return 401 Unauthorized status
         Err(StatusCode::UNAUTHORIZED)
       }
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
     }
   }
 }

@@ -66,14 +66,11 @@ where
       _chat_membership_marker: PhantomData,
     }
   }
-<<<<<<< HEAD
 
   /// 构建路由器，仅应用令牌刷新
-  pub fn build(self) -> Router<S> {
+  pub fn build(self) -> Router {
     self.router
   }
-=======
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
 }
 
 // For backwards compatibility, allow token refresh first if needed
@@ -141,7 +138,12 @@ where
     }
   }
 
+<<<<<<< HEAD
   pub fn build(self) -> Router<S> {
+=======
+  /// 构建路由器，应用了认证和刷新
+  pub fn build(self) -> Router {
+>>>>>>> e1f38b1 (refactor: middleware refresh_token & auth cleanup)
     self.router
   }
 }
@@ -151,6 +153,7 @@ impl<S> MiddlewareBuilder<S, WithoutAuth, WithRefresh, WithoutWorkspace, Without
 where
   S: Clone + Send + Sync + 'static,
 {
+<<<<<<< HEAD
   pub fn with_auth(
     self,
   ) -> MiddlewareBuilder<S, WithAuth, WithRefresh, WithoutWorkspace, WithoutChatMembership> {
@@ -312,6 +315,10 @@ where
   S: Clone + Send + Sync + 'static,
 {
   pub fn build(self) -> Router<S> {
+=======
+  /// 构建路由器，应用了认证、刷新和工作区上下文
+  pub fn build(self) -> Router {
+>>>>>>> e1f38b1 (refactor: middleware refresh_token & auth cleanup)
     self.router
 >>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
   }

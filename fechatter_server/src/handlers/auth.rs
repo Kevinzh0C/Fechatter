@@ -93,12 +93,10 @@ pub(crate) async fn signin_handler(
     .and_then(|h| h.to_str().ok())
     .map(String::from);
 
-<<<<<<< HEAD
+  let auth_service = AuthService::new(&state.service_provider);
+
   let auth_service: Box<dyn AuthServiceTrait> =
     state.service_provider.create_service::<AuthService>();
-=======
-  let auth_service = AuthService::new(&state.service_provider);
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
   match auth_service
     .signin(&payload, user_agent, ip_address)
     .await?
@@ -133,7 +131,6 @@ pub(crate) async fn refresh_token_handler(
   auth_user: Option<Extension<AuthUser>>,
 ) -> Result<impl IntoResponse, AppError> {
   if let Some(Extension(user)) = auth_user {
-    
     let auth_service = AuthService::new(&state.service_provider);
     let user_agent = headers
       .get("user-agent")
@@ -144,7 +141,7 @@ pub(crate) async fn refresh_token_handler(
       .get("x-forwarded-for")
       .and_then(|h| h.to_str().ok())
       .map(String::from);
-    
+
     let user_model = crate::models::User {
       id: user.id,
       fullname: user.fullname.clone(),
@@ -154,9 +151,11 @@ pub(crate) async fn refresh_token_handler(
       created_at: user.created_at,
       workspace_id: user.workspace_id,
     };
-    
-    let tokens = auth_service.generate_auth_tokens(&user_model, user_agent, ip_address).await?;
-    
+
+    let tokens = auth_service
+      .generate_auth_tokens(&user_model, user_agent, ip_address)
+      .await?;
+
     let mut response_headers = HeaderMap::new();
     set_refresh_token_cookie(
       &mut response_headers,
@@ -168,10 +167,10 @@ pub(crate) async fn refresh_token_handler(
       expires_in: ACCESS_TOKEN_EXPIRATION,
       refresh_token: Some(tokens.refresh_token.token),
     });
-    
+
     return Ok((StatusCode::OK, response_headers, body).into_response());
   }
-  
+
   let user_agent = headers
     .get("user-agent")
     .and_then(|h| h.to_str().ok())
@@ -219,12 +218,10 @@ pub(crate) async fn refresh_token_handler(
     }
   };
 
-<<<<<<< HEAD
+  let auth_service = AuthService::new(&state.service_provider);
+
   let auth_service: Box<dyn AuthServiceTrait> =
     state.service_provider.create_service::<AuthService>();
-=======
-  let auth_service = AuthService::new(&state.service_provider);
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
   match auth_service
     .refresh_token(&refresh_token_str, user_agent, ip_address)
     .await
@@ -274,12 +271,10 @@ pub(crate) async fn logout_handler(
   let mut response_headers = HeaderMap::new();
   clear_refresh_token_cookie(&mut response_headers)?;
 
-<<<<<<< HEAD
+  let auth_service = AuthService::new(&state.service_provider);
+
   let auth_service: Box<dyn AuthServiceTrait> =
     state.service_provider.create_service::<AuthService>();
-=======
-  let auth_service = AuthService::new(&state.service_provider);
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
 
   // First try to get refresh token from cookie
   let refresh_token_str = if let Some(cookie) = cookies.get("refresh_token") {
@@ -324,12 +319,11 @@ pub(crate) async fn logout_all_handler(
   // Clear refresh_token cookie
   clear_refresh_token_cookie(&mut response_headers)?;
 
-<<<<<<< HEAD
+  let auth_service = AuthService::new(&state.service_provider);
+
   let auth_service: Box<dyn AuthServiceTrait> =
     state.service_provider.create_service::<AuthService>();
-=======
-  let auth_service = AuthService::new(&state.service_provider);
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
+
   let user_id = _auth_user.id;
 
   // Try to get refresh token from cookie
@@ -494,12 +488,11 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
 
-<<<<<<< HEAD
+    let auth_service = AuthService::new(&state.service_provider);
+
     let auth_service: Box<dyn AuthServiceTrait> =
       state.service_provider.create_service::<AuthService>();
-=======
-    let auth_service = AuthService::new(&state.service_provider);
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
+
     let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
 
     let mut jar = CookieJar::new();
@@ -571,12 +564,7 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
 
-<<<<<<< HEAD
-    let auth_service: Box<dyn AuthServiceTrait> =
-      state.service_provider.create_service::<AuthService>();
-=======
     let auth_service = AuthService::new(&state.service_provider);
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
     let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
 
     let mut jar = CookieJar::new();

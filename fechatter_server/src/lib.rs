@@ -60,7 +60,10 @@ pub use middlewares::{RouterExt, SetAuthLayer, SetLayer, WorkspaceContext};
 pub use models::{ChatSidebar, ChatUser, CreateUser, SigninUser, User, UserStatus, Workspace};
 pub use services::{AuthServiceTrait, auth_service::AuthService};
 pub use utils::*;
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
+
+use middlewares::{RouterExt, SetLayer};
+pub use models::{ChatSidebar, CreateUser, SigninUser, User};
+use services::ServiceProvider;
 
 #[derive(Debug, Clone)]
 pub struct AppState {
@@ -180,7 +183,9 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
     .route("/signup", post(signup_handler))
     .route(
       "/refresh",
-      post(|state, cookies, headers, auth_user| refresh_token_handler(state, cookies, headers, auth_user)),
+      post(|state, cookies, headers, auth_user| {
+        refresh_token_handler(state, cookies, headers, auth_user)
+      }),
     )
     .with_token_refresh(&state);
 

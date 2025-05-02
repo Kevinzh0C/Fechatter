@@ -191,8 +191,7 @@ impl RefreshToken {
       .execute(&mut *tx)
       .await?;
 
-<<<<<<< HEAD
-=======
+
     let token_still_valid = sqlx::query_scalar::<_, bool>(
       "SELECT NOT revoked FROM refresh_tokens WHERE id = $1 FOR UPDATE",
     )
@@ -207,17 +206,12 @@ impl RefreshToken {
       ));
     }
 
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
     let refresh_token = sqlx::query_as::<_, RefreshToken>(
       r#"
       WITH revoked_token AS (
         UPDATE refresh_tokens
         SET revoked = TRUE, replaced_by = $1
-<<<<<<< HEAD
-        WHERE id = $2
-=======
         WHERE id = $2 AND NOT revoked
->>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
         RETURNING user_id
       )
       INSERT INTO refresh_tokens (user_id, token_hash, expires_at, user_agent, ip_address, absolute_expires_at)
