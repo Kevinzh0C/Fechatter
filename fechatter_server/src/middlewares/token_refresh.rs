@@ -10,7 +10,7 @@ use axum::{
 };
 
 use crate::{
-  AppError, AppState,
+  AppState,
   services::{AuthServiceTrait, auth_service::AuthService},
   utils::jwt::RefreshTokenData,
 };

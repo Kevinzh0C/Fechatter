@@ -121,7 +121,7 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
   let app = Router::new()
     .route("/", get(index_handler))
     .nest("/api", api)
-    .with_state(state)
+    .layer(axum::extract::Extension(state))
     .set_layer();
 
   Ok(app)
