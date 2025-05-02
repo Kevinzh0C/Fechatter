@@ -76,10 +76,10 @@ macro_rules! define_service {
         }
 
         // 实现服务工厂
-        impl crate::services::service_provider::ServiceFactory for $marker {
+        impl $crate::services::service_provider::ServiceFactory for $marker {
             type Service = $service_name;
 
-            fn create(provider: &crate::services::service_provider::ServiceProvider) -> Self::Service {
+            fn create(provider: &$crate::services::service_provider::ServiceProvider) -> Self::Service {
                 $service_name {
                     $(
                         $field: compile_error!("Please specify how to create each field"),

@@ -2,7 +2,6 @@
 macro_rules! setup_test_users {
   ($num_users:expr) => {{
     async {
-      
       let (tdb, state) = $crate::AppState::test_new()
         .await
         .expect("Failed to create test state");
@@ -34,7 +33,8 @@ macro_rules! setup_test_users {
         let password = "password";
         let workspace = "Acme";
         let user_payload = $crate::models::CreateUser::new(&fullname, &email, &workspace, password);
-        let user = state.create(&user_payload)
+        let user = state
+          .create(&user_payload)
           .await
           .expect(&format!("Failed to create user {}", fullname));
         users.push(user);

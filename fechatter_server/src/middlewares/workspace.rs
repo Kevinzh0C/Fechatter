@@ -1,11 +1,7 @@
 use axum::body::Body;
 use axum::extract::{Extension, Path, State};
 use axum::http::Request;
-use axum::{
-  http::StatusCode,
-  middleware::Next,
-  response::Response,
-};
+use axum::{http::StatusCode, middleware::Next, response::Response};
 use std::sync::Arc;
 
 use crate::{
@@ -53,8 +49,7 @@ pub async fn with_workspace_context(
   next: Next,
 ) -> Result<Response, StatusCode> {
   // Find workspace
-  let workspace = state
-    .find_workspace_by_id(auth_user.workspace_id, &state.pool)
+  let workspace = crate::models::Workspace::find_by_id(auth_user.workspace_id, &_state.pool)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     .ok_or(StatusCode::NOT_FOUND)?;

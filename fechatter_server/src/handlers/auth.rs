@@ -441,7 +441,7 @@ mod tests {
       |state, jar| async { refresh_token_handler(State(state), HeaderMap::new(), jar).await };
 
     let auth_response =
-      assert_handler_success!(test_handler(state, jar), StatusCode::OK, AuthResponse);
+      assert_handler_success!(test_handler(state.clone(), jar), StatusCode::OK, AuthResponse);
 
     assert_ne!(auth_response.access_token, "");
     assert_eq!(auth_response.expires_in, ACCESS_TOKEN_EXPIRATION);
@@ -535,7 +535,7 @@ mod tests {
     let test_refresh =
       |state, jar| async { refresh_token_handler(State(state), HeaderMap::new(), jar).await };
 
-    let refresh_response = test_refresh(state, jar2).await;
+    let refresh_response = test_refresh(state.clone(), jar2).await;
 
     match refresh_response {
       Ok(resp) => {

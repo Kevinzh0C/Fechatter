@@ -26,15 +26,16 @@ pub(crate) async fn create_chat_handler(
   Extension(user): Extension<AuthUser>,
   Json(payload): Json<CreateChat>,
 ) -> Result<impl IntoResponse, AppError> {
-  let chat = state.create_new_chat(
-    user.id,
-    &payload.name,
-    payload.chat_type,
-    Some(payload.chat_members),
-    Some(&payload.description),
-    user.workspace_id,
-  )
-  .await?;
+  let chat = state
+    .create_new_chat(
+      user.id,
+      &payload.name,
+      payload.chat_type,
+      Some(payload.chat_members),
+      Some(&payload.description),
+      user.workspace_id,
+    )
+    .await?;
 
   Ok((StatusCode::CREATED, Json(chat)))
 }

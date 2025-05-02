@@ -23,9 +23,7 @@ pub use self::builder::RouterExt;
 pub(crate) use self::request_id::request_id_middleware;
 pub(crate) use self::server_time::ServerTimeLayer;
 pub(crate) use self::token_refresh::refresh_token_middleware;
-pub(crate) use self::workspace::{
-  WorkspaceContext, with_workspace_context,
-};
+pub(crate) use self::workspace::{WorkspaceContext, with_workspace_context};
 use crate::AppState;
 
 pub const REQUEST_ID_HEADER: &str = "x-request-id";

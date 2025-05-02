@@ -11,7 +11,6 @@ use axum::{
 
 use bytes::Bytes;
 use futures::{StreamExt, TryStreamExt, stream::BoxStream};
-use mime_guess;
 use sha2::{Digest, Sha256};
 use std::path::{Path as StdPath, PathBuf};
 use std::str::FromStr as _;
@@ -458,15 +457,13 @@ async fn save_file_to_storage(
   }
 
   // Check if path already exists, handle possible path conflicts
-  if final_path.exists() {
-    if handle_existing_path(&final_path).await? {
-      // If it's a file and already exists (handle_existing_path returned true),
-      // assume content is the same (due to hash) and skip the move/copy.
-      return Ok(file_meta.url());
-    }
-    // If handle_existing_path returned false, it means it was a directory that got deleted,
-    // or some other state where we should proceed with creating the file.
+  if final_path.exists() && handle_existing_path(&final_path).await? {
+    // If it's a file and already exists (handle_existing_path returned true),
+    // assume content is the same (due to hash) and skip the move/copy.
+    return Ok(file_meta.url());
   }
+  // If handle_existing_path returned false, it means it was a directory that got deleted,
+  // or some other state where we should proceed with creating the file.
 
   // Move or copy the temporary file to the final path
   match fs::rename(temp_path, &final_path).await {
@@ -883,7 +880,8 @@ mod tests {
     let email = "test_user@example.com".to_string();
     let workspace = "TestWorkspace".to_string();
     let user_payload = crate::models::CreateUser::new(&fullname, &email, &workspace, "password");
-    let user = state.create(&user_payload)
+    let user = state
+      .create(&user_payload)
       .await
       .expect("Failed to create test user");
     users.push(user);
@@ -977,7 +975,8 @@ mod tests {
     let email = "test_user@example.com".to_string();
     let workspace = "TestWorkspace".to_string();
     let user_payload = crate::models::CreateUser::new(&fullname, &email, &workspace, "password");
-    let user = state.create(&user_payload)
+    let user = state
+      .create(&user_payload)
       .await
       .expect("Failed to create test user");
     users.push(user);
