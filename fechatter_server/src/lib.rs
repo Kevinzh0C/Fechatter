@@ -71,9 +71,9 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
   let chat_create_routes = Router::new()
     .route("/chat", post(create_chat_handler))
     .route("/chat", get(list_chats_handler))
-    .with_token_refresh(&state)
+    .with_workspace(&state)
     .with_auth(&state)
-    .with_workspace(&state);
+    .with_token_refresh(&state);
 
   // Chat manage routes - need chat membership verification
   let chat_manage_routes = Router::new()
@@ -95,10 +95,10 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
       "/chat/{id}/messages",
       get(list_messages_handler).post(send_message_handler),
     )
-    .with_token_refresh(&state)
-    .with_auth(&state)
+    .with_chat_membership(&state)
     .with_workspace(&state)
-    .with_chat_membership(&state);
+    .with_auth(&state)
+    .with_token_refresh(&state);
 
   // Merge all routes
   let protected_api = Router::new()
