@@ -32,9 +32,26 @@ pub(crate) async fn send_message_handler(
 
 pub(crate) async fn list_messages_handler(
   State(state): State<AppState>,
+  Extension(user): Extension<AuthUser>,
   Path(chat_id): Path<i64>,
   Query(query): Query<ListMessage>,
 ) -> Result<impl IntoResponse, AppError> {
+  // Verify user is a member of the chat
+  let is_member = sqlx::query_scalar!(
+    "SELECT EXISTS(SELECT 1 FROM chat_members_relation WHERE chat_id = $1 AND user_id = $2)",
+    chat_id,
+    user.id
+  )
+  .fetch_one(&state.pool)
+  .await?;
+
+  if !is_member.unwrap_or(false) {
+    return Err(AppError::ChatPermissionError(format!(
+      "User {} is not a member of chat {}",
+      user.id, chat_id
+    )));
+  }
+
   let messages: Vec<crate::models::Message> = state.list_messages(query, chat_id).await?;
 
   Ok((StatusCode::OK, Json(messages)))
@@ -833,26 +850,38 @@ mod tests {
 
   #[tokio::test]
   async fn list_message_handler_should_work() {
-    let (_tdb, state, users) = setup_test_users!(2).await;
+    let (_tdb, state, users) = setup_test_users!(3).await;
     let user = &users[0];
+    let user2 = &users[1];
+    let user3 = &users[2];
 
-    let auth_user = Extension(AuthUser {
-      id: user.id,
-      fullname: user.fullname.clone(),
-      email: user.email.clone(),
-      status: user.status,
-      created_at: user.created_at,
-      workspace_id: user.workspace_id,
-    });
-
-    let chat_id = 1;
+    // Create a chat with the user as a member
+    let chat = state
+      .create_new_chat(
+        user.id,
+        "Test Chat",
+        crate::models::ChatType::Group,
+        Some(vec![user.id, user2.id, user3.id]),
+        Some("Test chat for messages"),
+        user.workspace_id,
+      )
+      .await
+      .expect("Failed to create chat");
 
     let query = ListMessage {
       last_id: None,
       limit: 10,
     };
 
-    let result = list_messages_handler(State(state.clone()), Path(chat_id), Query(query)).await;
+    let auth_user = Extension(AuthUser {
+      id: user.id,
+      email: user.email.clone(),
+      workspace_id: user.workspace_id,
+      fullname: user.fullname.clone(),
+      status: user.status,
+      created_at: user.created_at,
+    });
+    let result = list_messages_handler(State(state.clone()), auth_user, Path(chat.id), Query(query)).await;
 
     assert!(result.is_ok());
 
@@ -1222,7 +1251,15 @@ mod tests {
         limit: PAGE_SIZE,
       };
 
-      let result = list_messages_handler(State(state.clone()), Path(chat.id), Query(query.clone()))
+      let auth_user = Extension(AuthUser {
+        id: user1.id,
+        email: user1.email.clone(),
+        workspace_id: user1.workspace_id,
+        fullname: user1.fullname.clone(),
+        status: user1.status,
+        created_at: user1.created_at,
+      });
+      let result = list_messages_handler(State(state.clone()), auth_user, Path(chat.id), Query(query.clone()))
         .await
         .expect("Failed to list messages");
 
