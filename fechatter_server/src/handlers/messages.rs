@@ -32,6 +32,7 @@ pub(crate) async fn send_message_handler(
 
 pub(crate) async fn list_messages_handler(
   State(state): State<AppState>,
+  Extension(user): Extension<AuthUser>,
   Path(chat_id): Path<i64>,
   Query(query): Query<ListMessage>,
 ) -> Result<impl IntoResponse, AppError> {
@@ -833,7 +834,18 @@ mod tests {
 
   #[tokio::test]
   async fn list_message_handler_should_work() {
-    let (_tdb, state, _) = setup_test_users!(2).await;
+    let (_tdb, state, users) = setup_test_users!(2).await;
+    let user = &users[0];
+
+    // 创建AuthUser扩展
+    let auth_user = Extension(AuthUser {
+      id: user.id,
+      fullname: user.fullname.clone(),
+      email: user.email.clone(),
+      status: user.status,
+      created_at: user.created_at,
+      workspace_id: user.workspace_id,
+    });
 
     let chat_id = 1;
 
@@ -842,7 +854,8 @@ mod tests {
       limit: 10,
     };
 
-    let result = list_messages_handler(State(state.clone()), Path(chat_id), Query(query)).await;
+    let result =
+      list_messages_handler(State(state.clone()), auth_user, Path(chat_id), Query(query)).await;
 
     assert!(result.is_ok());
 
@@ -1141,6 +1154,16 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(10).await;
     let user1 = &users[0];
 
+    // 创建AuthUser扩展
+    let auth_user = Extension(AuthUser {
+      id: user1.id,
+      fullname: user1.fullname.clone(),
+      email: user1.email.clone(),
+      status: user1.status,
+      created_at: user1.created_at,
+      workspace_id: user1.workspace_id,
+    });
+
     let chat = state
       .create_new_chat(
         user1.id,
@@ -1203,9 +1226,14 @@ mod tests {
         limit: PAGE_SIZE,
       };
 
-      let result = list_messages_handler(State(state.clone()), Path(chat.id), Query(query.clone()))
-        .await
-        .expect("Failed to list messages");
+      let result = list_messages_handler(
+        State(state.clone()),
+        auth_user.clone(),
+        Path(chat.id),
+        Query(query.clone()),
+      )
+      .await
+      .expect("Failed to list messages");
 
       let response = result.into_response();
       assert_eq!(response.status(), StatusCode::OK);

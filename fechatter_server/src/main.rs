@@ -1,14 +1,28 @@
 use anyhow::Result;
 use fechatter_server::{AppConfig, get_router};
 use tokio::net::TcpListener;
-use tracing::{info, level_filters::LevelFilter};
-use tracing_subscriber::{Layer as _, fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt};
+use tracing::{debug, info, level_filters::LevelFilter};
+use tracing_subscriber::{
+  EnvFilter, Layer as _, fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt,
+};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-  // Initialize tracing for logging
-  let layer = Layer::new().with_filter(LevelFilter::INFO);
-  tracing_subscriber::registry().with(layer).init();
+  let fmt_layer = Layer::new();
+
+  let filter_layer = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+    // 默认显示INFO级别，但是对于auth和中间件相关模块使用DEBUG级别
+    EnvFilter::new(
+      "info,fechatter_server::middlewares=debug,fechatter_server::handlers::auth=debug",
+    )
+  });
+
+  tracing_subscriber::registry()
+    .with(filter_layer)
+    .with(fmt_layer)
+    .init();
+
+  debug!("Debug logging enabled");
 
   // Load app configuration
   let config = AppConfig::load()?;
