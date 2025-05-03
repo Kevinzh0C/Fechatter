@@ -193,7 +193,7 @@ Authorization: Bearer {{accessToken}}
 }
 
 ### list messages
-GET {{baseUrl}}/api/chat/1/messages
+GET {{baseUrl}}/api/chat/{{chatId}}/messages
 Authorization: Bearer {{accessToken}}
 
 ### Logout with cookies
