@@ -1180,7 +1180,7 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(10).await;
     let user1 = &users[0];
 
-    let auth_user = Extension(AuthUser {
+    let _auth_user = Extension(AuthUser {
       id: user1.id,
       fullname: user1.fullname.clone(),
       email: user1.email.clone(),
