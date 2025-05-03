@@ -12,13 +12,8 @@ use std::{fmt, ops::Deref};
 
 use anyhow::Context as _;
 use axum::{
-  Json, Router,
-  error_handling::HandleErrorLayer,
-  extract::{Path, rejection::JsonRejection},
-  http::{Method, StatusCode, Uri},
-  middleware::from_fn_with_state,
-  response::{IntoResponse, Response},
-  routing::{delete, get, patch, post},
+  Router,
+  routing::{get, patch, post},
 };
 pub use config::AppConfig;
 use dashmap::DashMap;
@@ -57,7 +52,7 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
     .route("/signup", post(signup_handler))
     .route(
       "/refresh",
-      post(|state, cookies, headers| refresh_token_handler(state, cookies, headers)),
+      post(|state, cookies, headers, auth_user| refresh_token_handler(state, cookies, headers, auth_user)),
     )
     .with_token_refresh(&state);
 

@@ -1,13 +1,6 @@
 use axum::body::Body;
 use axum::http::Request;
-use axum::{
-  Extension,
-  extract::State,
-  http::StatusCode,
-  middleware::Next,
-  response::{IntoResponse, Response},
-};
-use tower::BoxError;
+use axum::{extract::State, http::StatusCode, middleware::Next, response::Response};
 use tracing::{debug, warn};
 
 use crate::{AppState, models::AuthUser, utils::token::TokenValidator};
@@ -77,10 +70,12 @@ mod tests {
   use super::*;
   use crate::setup_test_users;
   use anyhow::Result;
-  use axum::{Router, body::Body, middleware::from_fn_with_state, routing::get};
+  use axum::{
+    Router, body::Body, middleware::from_fn_with_state, response::IntoResponse, routing::get,
+  };
   use tower::ServiceExt;
 
-  async fn handler(_req: Request) -> impl IntoResponse {
+  async fn handler(_req: Request<Body>) -> impl IntoResponse {
     (StatusCode::OK, "OK")
   }
 

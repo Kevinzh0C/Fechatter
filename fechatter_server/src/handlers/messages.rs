@@ -32,11 +32,10 @@ pub(crate) async fn send_message_handler(
 
 pub(crate) async fn list_messages_handler(
   State(state): State<AppState>,
-  Extension(user): Extension<AuthUser>,
   Path(chat_id): Path<i64>,
   Query(query): Query<ListMessage>,
 ) -> Result<impl IntoResponse, AppError> {
-  let messages = state.list_messages(query, chat_id).await?;
+  let messages: Vec<crate::models::Message> = state.list_messages(query, chat_id).await?;
 
   Ok((StatusCode::OK, Json(messages)))
 }
@@ -837,7 +836,6 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(2).await;
     let user = &users[0];
 
-    // 创建AuthUser扩展
     let auth_user = Extension(AuthUser {
       id: user.id,
       fullname: user.fullname.clone(),
@@ -854,8 +852,7 @@ mod tests {
       limit: 10,
     };
 
-    let result =
-      list_messages_handler(State(state.clone()), auth_user, Path(chat_id), Query(query)).await;
+    let result = list_messages_handler(State(state.clone()), Path(chat_id), Query(query)).await;
 
     assert!(result.is_ok());
 
@@ -1154,7 +1151,6 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(10).await;
     let user1 = &users[0];
 
-    // 创建AuthUser扩展
     let auth_user = Extension(AuthUser {
       id: user1.id,
       fullname: user1.fullname.clone(),
@@ -1226,14 +1222,9 @@ mod tests {
         limit: PAGE_SIZE,
       };
 
-      let result = list_messages_handler(
-        State(state.clone()),
-        auth_user.clone(),
-        Path(chat.id),
-        Query(query.clone()),
-      )
-      .await
-      .expect("Failed to list messages");
+      let result = list_messages_handler(State(state.clone()), Path(chat.id), Query(query.clone()))
+        .await
+        .expect("Failed to list messages");
 
       let response = result.into_response();
       assert_eq!(response.status(), StatusCode::OK);

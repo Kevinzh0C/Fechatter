@@ -10,12 +10,7 @@ pub use chat::verify_chat_membership_middleware;
 pub use token_refresh::refresh_token_middleware;
 pub use workspace::{WorkspaceContext, with_workspace_context};
 
-use axum::{
-  Router,
-  http::{Request, Response, header::HeaderName},
-  middleware::from_fn_with_state,
-};
-use hyper::body::Body;
+use axum::{Router, middleware::from_fn_with_state};
 
 // Middleware ordering traits for better type safety
 pub trait WithAuth {}

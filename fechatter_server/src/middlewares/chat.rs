@@ -20,7 +20,6 @@ pub async fn verify_chat_membership_middleware(
 ) -> Response {
   let (mut parts, body) = req.into_parts();
 
-  // 获取聊天ID
   let chat_id = match Path::<i64>::from_request_parts(&mut parts, &state).await {
     Ok(path) => {
       debug!("Found chat_id in path: {}", path.0);
@@ -41,9 +40,16 @@ pub async fn verify_chat_membership_middleware(
             id
           } else if segments.len() >= 1 {
             // If second segment is not ID, try first segment (e.g. /123/...)
-            let potential_id = segments[0].parse::<i64>().unwrap_or(0);
-            debug!("Using first segment as chat_id: {}", potential_id);
-            potential_id
+            match segments[0].parse::<i64>() {
+              Ok(id) => {
+                debug!("Using first segment as chat_id: {}", id);
+                id
+              }
+              Err(_) => {
+                error!("Invalid chat ID in path");
+                return (StatusCode::BAD_REQUEST, "Invalid chat ID").into_response();
+              }
+            }
           } else {
             // No ID found, return error
             error!("Missing chat ID in path");
@@ -62,7 +68,6 @@ pub async fn verify_chat_membership_middleware(
     }
   };
 
-  // 尝试提取用户信息
   let user = match Extension::<AuthUser>::from_request_parts(&mut parts, &state).await {
     Ok(Extension(user)) => {
       debug!("Found AuthUser extension: user_id={}", user.id);
@@ -110,7 +115,10 @@ pub async fn verify_chat_membership_middleware(
 
       return (
         StatusCode::UNAUTHORIZED,
-        "Authentication required. Make sure you provide a valid Bearer token.",
+        format!(
+          "Authentication required for chat {}. Make sure you provide a valid Bearer token or the auth middleware is properly configured.",
+          chat_id
+        ),
       )
         .into_response();
     }
@@ -118,7 +126,6 @@ pub async fn verify_chat_membership_middleware(
 
   debug!("Checking if user {} is member of chat {}", user.id, chat_id);
 
-  // 验证用户是否是聊天成员
   match ensure_user_is_chat_member(&state.pool, chat_id, user.id).await {
     Ok(true) => {
       debug!(
