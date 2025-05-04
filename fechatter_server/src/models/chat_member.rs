@@ -102,6 +102,22 @@ async fn ensure_user_is_chat_creator(
   Ok(())
 }
 
+
+pub async fn ensure_user_is_chat_member(
+  pool: &PgPool,
+  chat_id: i64,
+  user_id: i64,
+) -> Result<bool, AppError> {
+  let member_check = CreateChatMember { chat_id, user_id };
+  if !member_exists_in_chat(pool, &member_check).await? {
+    return Err(AppError::ChatPermissionError(format!(
+      "User {} is not a member of chat {} and cannot perform this action",
+      user_id, chat_id
+    )));
+  }
+  Ok(true)
+}
+
 pub async fn add_chat_members(
   state: &AppState,
   chat_id: i64,

@@ -1,5 +1,10 @@
 use crate::models::AuthUser;
+<<<<<<< HEAD
 use crate::services::{AuthServiceTrait, auth_service::AuthService};
+=======
+use crate::services::AuthServiceTrait;
+use crate::services::auth_service::AuthService;
+>>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
 use crate::utils::jwt::ACCESS_TOKEN_EXPIRATION;
 use crate::{AppState, ErrorOutput, SigninUser, error::AppError, models::CreateUser};
 use axum::{
@@ -92,8 +97,12 @@ pub(crate) async fn signin_handler(
     .and_then(|h| h.to_str().ok())
     .map(String::from);
 
+<<<<<<< HEAD
   let auth_service: Box<dyn AuthServiceTrait> =
     state.service_provider.create_service::<AuthService>();
+=======
+  let auth_service = AuthService::new(&state.service_provider);
+>>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
   match auth_service
     .signin(&payload, user_agent, ip_address)
     .await?
@@ -125,11 +134,53 @@ pub(crate) async fn refresh_token_handler(
   State(state): State<AppState>,
   headers: HeaderMap,
   cookies: CookieJar,
+  auth_user: Option<Extension<AuthUser>>,
 ) -> Result<impl IntoResponse, AppError> {
+  if let Some(Extension(user)) = auth_user {
+    
+    let auth_service = AuthService::new(&state.service_provider);
+    let user_agent = headers
+      .get("user-agent")
+      .and_then(|h| h.to_str().ok())
+      .map(String::from);
+
+    let ip_address = headers
+      .get("x-forwarded-for")
+      .and_then(|h| h.to_str().ok())
+      .map(String::from);
+    
+    let user_model = crate::models::User {
+      id: user.id,
+      fullname: user.fullname.clone(),
+      email: user.email.clone(),
+      password_hash: Some("".to_string()), // Not needed for token generation
+      status: user.status,
+      created_at: user.created_at,
+      workspace_id: user.workspace_id,
+    };
+    
+    let tokens = auth_service.generate_auth_tokens(&user_model, user_agent, ip_address).await?;
+    
+    let mut response_headers = HeaderMap::new();
+    set_refresh_token_cookie(
+      &mut response_headers,
+      &tokens.refresh_token.token,
+      &tokens.refresh_token.expires_at,
+    )?;
+    let body = Json(AuthResponse {
+      access_token: tokens.access_token,
+      expires_in: ACCESS_TOKEN_EXPIRATION,
+      refresh_token: Some(tokens.refresh_token.token),
+    });
+    
+    return Ok((StatusCode::OK, response_headers, body).into_response());
+  }
+  
   let user_agent = headers
     .get("user-agent")
     .and_then(|h| h.to_str().ok())
     .map(String::from);
+
   let ip_address = headers
     .get("x-forwarded-for")
     .and_then(|h| h.to_str().ok())
@@ -172,8 +223,12 @@ pub(crate) async fn refresh_token_handler(
     }
   };
 
+<<<<<<< HEAD
   let auth_service: Box<dyn AuthServiceTrait> =
     state.service_provider.create_service::<AuthService>();
+=======
+  let auth_service = AuthService::new(&state.service_provider);
+>>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
   match auth_service
     .refresh_token(&refresh_token_str, user_agent, ip_address)
     .await
@@ -185,7 +240,6 @@ pub(crate) async fn refresh_token_handler(
         &tokens.refresh_token.token,
         &tokens.refresh_token.expires_at,
       )?;
-
       let body = Json(AuthResponse {
         access_token: tokens.access_token,
         expires_in: ACCESS_TOKEN_EXPIRATION,
@@ -219,8 +273,12 @@ pub(crate) async fn logout_handler(
   let mut response_headers = HeaderMap::new();
   clear_refresh_token_cookie(&mut response_headers)?;
 
+<<<<<<< HEAD
   let auth_service: Box<dyn AuthServiceTrait> =
     state.service_provider.create_service::<AuthService>();
+=======
+  let auth_service = AuthService::new(&state.service_provider);
+>>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
 
   // First try to get refresh token from cookie
   let refresh_token_str = if let Some(cookie) = cookies.get("refresh_token") {
@@ -231,7 +289,7 @@ pub(crate) async fn logout_handler(
     None
   };
 
-  // If not found in cookie, try to get from Authorization header
+  // If not in cookie, try to get from Authorization header
   if refresh_token_str.is_none() {
     if let Some(auth_header) = headers.get("Authorization") {
       if let Ok(auth_value) = auth_header.to_str() {
@@ -265,8 +323,12 @@ pub(crate) async fn logout_all_handler(
   // Clear refresh_token cookie
   clear_refresh_token_cookie(&mut response_headers)?;
 
+<<<<<<< HEAD
   let auth_service: Box<dyn AuthServiceTrait> =
     state.service_provider.create_service::<AuthService>();
+=======
+  let auth_service = AuthService::new(&state.service_provider);
+>>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
   let user_id = _auth_user.id;
 
   // Try to get refresh token from cookie
@@ -346,7 +408,7 @@ mod tests {
       workspace: "Acme".to_string(),
     };
 
-    // 首先为handler创建一个临时函数
+    // First create a temporary function for handler
     let test_handler = |state, payload| async {
       signup_handler(State(state), HeaderMap::new(), Json(payload)).await
     };
@@ -427,8 +489,12 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
 
+<<<<<<< HEAD
     let auth_service: Box<dyn AuthServiceTrait> =
       state.service_provider.create_service::<AuthService>();
+=======
+    let auth_service = AuthService::new(&state.service_provider);
+>>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
     let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
 
     let mut jar = CookieJar::new();
@@ -438,7 +504,7 @@ mod tests {
     ));
 
     let test_handler =
-      |state, jar| async { refresh_token_handler(State(state), HeaderMap::new(), jar).await };
+      |state, jar| async { refresh_token_handler(State(state), HeaderMap::new(), jar, None).await };
 
     let auth_response = assert_handler_success!(
       test_handler(state.clone(), jar),
@@ -457,7 +523,7 @@ mod tests {
     let (_tdb, state, _users) = setup_test_users!(1).await;
 
     let test_handler =
-      |state, jar| async { refresh_token_handler(State(state), HeaderMap::new(), jar).await };
+      |state, jar| async { refresh_token_handler(State(state), HeaderMap::new(), jar, None).await };
 
     let response = test_handler(state, CookieJar::new()).await?.into_response();
 
@@ -477,7 +543,7 @@ mod tests {
     jar = jar.add(Cookie::new("refresh_token", "invalid_token"));
 
     let test_handler =
-      |state, jar| async { refresh_token_handler(State(state), HeaderMap::new(), jar).await };
+      |state, jar| async { refresh_token_handler(State(state), HeaderMap::new(), jar, None).await };
 
     let response = test_handler(state, jar).await;
 
@@ -500,8 +566,12 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
 
+<<<<<<< HEAD
     let auth_service: Box<dyn AuthServiceTrait> =
       state.service_provider.create_service::<AuthService>();
+=======
+    let auth_service = AuthService::new(&state.service_provider);
+>>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
     let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
 
     let mut jar = CookieJar::new();
@@ -536,7 +606,7 @@ mod tests {
     jar2 = jar2.add(Cookie::new("refresh_token", tokens.refresh_token.token));
 
     let test_refresh =
-      |state, jar| async { refresh_token_handler(State(state), HeaderMap::new(), jar).await };
+      |state, jar| async { refresh_token_handler(State(state), HeaderMap::new(), jar, None).await };
 
     let refresh_response = test_refresh(state.clone(), jar2).await;
 

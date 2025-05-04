@@ -1,6 +1,12 @@
+<<<<<<< HEAD
 pub(crate) mod jwt;
 pub(crate) mod test_utils;
 pub(crate) mod token;
+=======
+pub mod jwt;
+pub mod test_utils;
+pub mod token;
+>>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
 
 #[macro_export]
 macro_rules! auth_user {

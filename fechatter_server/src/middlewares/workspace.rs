@@ -25,6 +25,7 @@ impl WorkspaceContext {
 }
 
 /// Middleware to ensure user is a member of the specified workspace
+#[allow(unused)]
 pub async fn ensure_workspace_member(
   State(_state): State<AppState>,
   Extension(auth_user): Extension<AuthUser>,

@@ -7,9 +7,13 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 pub mod auth_service;
+<<<<<<< HEAD
 mod service_provider;
 mod workspace_service;
 
+=======
+pub mod service_provider;
+>>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
 pub use service_provider::ServiceProvider;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,3 +1,4 @@
+#[cfg(test)]
 #[macro_export]
 macro_rules! setup_test_users {
   ($num_users:expr) => {{
@@ -44,6 +45,7 @@ macro_rules! setup_test_users {
   }};
 }
 
+#[cfg(test)]
 #[macro_export]
 macro_rules! create_new_test_chat {
     ($state:expr, $creator:expr, $chat_type:expr, $members:expr, $name:expr $(, $desc:expr)?) => {{
@@ -65,7 +67,7 @@ macro_rules! create_new_test_chat {
     }};
 }
 
-// Macro to assert handler success and deserialize response
+#[cfg(test)]
 #[macro_export]
 macro_rules! assert_handler_success {
   ($handler_call:expr, $expected_status:expr, $response_type:ty) => {{
@@ -107,7 +109,7 @@ macro_rules! assert_handler_success {
   }};
 }
 
-// Macro to assert handler failure with a specific AppError variant
+#[cfg(test)]
 #[macro_export]
 macro_rules! assert_handler_error {
     ($handler_call:expr, $expected_error:pat $(if $guard:expr)?) => {{
@@ -122,7 +124,7 @@ macro_rules! assert_handler_error {
     }};
 }
 
-// Macro to assert the number of chats listed for a user
+#[cfg(test)]
 #[macro_export]
 macro_rules! assert_chat_list_count {
   ($state:expr, $auth_user:expr, $expected_count:expr) => {{
@@ -146,7 +148,7 @@ macro_rules! assert_chat_list_count {
   }};
 }
 
-// Macro to assert the number of members in a specific chat
+#[cfg(test)]
 #[macro_export]
 macro_rules! assert_chat_member_count {
   ($state:expr, $auth_user:expr, $chat_id:expr, $expected_count:expr) => {{

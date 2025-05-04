@@ -1,10 +1,11 @@
-mod config;
-mod error;
-mod handlers;
-mod middlewares;
-mod models;
-mod services;
-mod utils;
+pub mod config;
+pub mod error;
+pub mod handlers;
+pub mod middlewares;
+pub mod models;
+pub mod services;
+pub mod tests;
+pub mod utils;
 
 use std::sync::Arc;
 use std::{fmt, ops::Deref};
@@ -16,23 +17,31 @@ use axum::{
 };
 pub use config::AppConfig;
 use dashmap::DashMap;
+use services::ServiceProvider;
 use sqlx::PgPool;
 use tokio::fs;
 use tokio::time::Instant;
-use utils::jwt::TokenManager;
+pub use utils::jwt::TokenManager;
 
 pub use error::{AppError, ErrorOutput};
 use handlers::*;
+<<<<<<< HEAD
 use middlewares::{RouterExt, SetLayer};
 pub use models::{ChatSidebar, CreateUser, SigninUser, User};
 use services::ServiceProvider;
+=======
+pub use middlewares::{RouterExt, SetAuthLayer, SetLayer, WorkspaceContext};
+pub use models::{ChatSidebar, ChatUser, CreateUser, SigninUser, User, UserStatus, Workspace};
+pub use services::{AuthServiceTrait, auth_service::AuthService};
+pub use utils::*;
+>>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
 
 #[derive(Debug, Clone)]
-pub(crate) struct AppState {
+pub struct AppState {
   inner: Arc<AppStateInner>,
 }
 
-pub(crate) struct AppStateInner {
+pub struct AppStateInner {
   pub(crate) config: AppConfig,
   pub(crate) token_manager: TokenManager,
   pub(crate) pool: PgPool,
@@ -49,34 +58,31 @@ pub async fn get_router(config: AppConfig) -> Result<Router<AppState>, AppError>
     .route("/signup", post(signup_handler))
     .route(
       "/refresh",
-      post(|state, cookies, headers| refresh_token_handler(state, cookies, headers)),
+      post(|state, cookies, headers, auth_user| refresh_token_handler(state, cookies, headers, auth_user)),
     )
-    .with_middlewares(state.clone())
-    .with_token_refresh()
-    .build();
+    .with_token_refresh(&state);
 
-  // Protected routes - authentication required
-  let protected_routes = Router::new()
+  // Basic auth routes - only requires authentication
+  let auth_routes = Router::new()
     .route("/upload", post(upload_handler))
     .route("/files/{ws_id}/{*path}", get(file_handler))
     .route("/fix-files/{ws_id}", post(fix_file_storage_handler))
     .route("/users", get(list_all_workspace_users_handler))
-    .route(
-      "/logout",
-      post(|state, cookies, headers, auth_user| logout_handler(state, cookies, headers, auth_user)),
-    )
-    .route(
-      "/logout_all",
-      post(|state, cookies, headers, auth_user| {
-        logout_all_handler(state, cookies, headers, auth_user)
-      }),
-    )
-    .route(
-      "/chat",
-      get(list_chats_handler)
-        .post(create_chat_handler)
-        .delete(delete_chat_handler),
-    )
+    .route("/logout", post(logout_handler))
+    .route("/logout_all", post(logout_all_handler))
+    .with_token_refresh(&state)
+    .with_auth(&state);
+
+  // Chat create routes - need workspace context
+  let chat_create_routes = Router::new()
+    .route("/chat", post(create_chat_handler))
+    .route("/chat", get(list_chats_handler))
+    .with_workspace(&state)
+    .with_auth(&state)
+    .with_token_refresh(&state);
+
+  // Chat manage routes - need chat membership verification
+  let chat_manage_routes = Router::new()
     .route(
       "/chat/{id}",
       patch(update_chat_handler).delete(delete_chat_handler),
@@ -95,34 +101,28 @@ pub async fn get_router(config: AppConfig) -> Result<Router<AppState>, AppError>
       "/chat/{id}/messages",
       get(list_messages_handler).post(send_message_handler),
     )
-    .with_middlewares(state.clone())
-    .with_token_refresh()
-    .with_auth()
-    .build();
+    .with_chat_membership(&state)
+    .with_workspace(&state)
+    .with_auth(&state)
+    .with_token_refresh(&state);
 
-  // 使用工作区中间件的路由
-  let workspace_routes = Router::new()
-    .route(
-      "/workspace/users",
-      get(list_workspace_users_with_middleware),
-    )
-    .with_middlewares(state.clone())
-    .with_token_refresh()
-    .with_auth()
-    .with_workspace()
-    .build();
+  // Merge all routes
+  let protected_api = Router::new()
+    .merge(auth_routes)
+    .merge(chat_create_routes)
+    .merge(chat_manage_routes);
 
-  let api = Router::new()
-    .merge(public_routes)
-    .merge(protected_routes)
-    .merge(workspace_routes);
+  let api = Router::new().merge(public_routes).merge(protected_api);
 
-  // Create main app with all middleware
   let app = Router::new()
     .route("/", get(index_handler))
     .nest("/api", api)
+<<<<<<< HEAD
     .layer(axum::extract::Extension(state))
     .set_layer();
+=======
+    .with_state(state);
+>>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
 
   Ok(app)
 }
