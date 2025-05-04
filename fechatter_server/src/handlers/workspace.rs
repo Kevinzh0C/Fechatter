@@ -17,6 +17,7 @@ pub async fn list_all_workspace_users_handler(
   Ok(Json(users))
 }
 
+#[allow(unused)]
 pub async fn list_workspace_users_with_middleware(
   State(state): State<AppState>,
   Extension(ctx): Extension<WorkspaceContext>,
@@ -25,6 +26,7 @@ pub async fn list_workspace_users_with_middleware(
   Ok(Json(users))
 }
 
+#[allow(unused)]
 pub async fn get_workspace_by_id(
   State(state): State<AppState>,
   Path(id): Path<i64>,

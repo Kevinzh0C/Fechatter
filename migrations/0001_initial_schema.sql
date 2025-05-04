@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS messages (
     chat_id BIGSERIAL NOT NULL REFERENCES chats(id),
     sender_id BIGINT NOT NULL REFERENCES users(id),
     content TEXT,
-    files TEXT[],
+    files TEXT[] DEFAULT '{}',
     created_at timestamp DEFAULT CURRENT_TIMESTAMP
 );
 

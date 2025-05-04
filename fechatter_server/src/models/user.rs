@@ -188,6 +188,7 @@ fn hashed_password(password: &str) -> Result<String, AppError> {
   Ok(password_hash)
 }
 
+#[allow(unused)]
 fn verify_password(password: &str, password_hash: &str) -> Result<bool, AppError> {
   let argon2 = Argon2::default();
   let parsed_hash = PasswordHash::new(password_hash)?;

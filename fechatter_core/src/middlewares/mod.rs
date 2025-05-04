@@ -1,7 +1,6 @@
 mod bearer_auth;
 mod builder;
-mod request_id;
-mod server_time;
+mod chat;
 mod token_refresh;
 mod workspace;
 

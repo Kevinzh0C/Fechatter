@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use chrono::Utc;
+use sqlx::Acquire;
 use tracing::{error, info, warn};
 
 use crate::{
@@ -240,12 +241,146 @@ impl<'a> AuthServiceTrait for AuthService<'a> {
     Ok((access_token, refresh_token_data))
   }
 
+<<<<<<< HEAD
   async fn create_user(&self, _payload: &CreateUser) -> Result<User, AppError> {
     unimplemented!("create_user not implemented in this example")
   }
 
   async fn authenticate(&self, _payload: &SigninUser) -> Result<Option<User>, AppError> {
     unimplemented!("authenticate not implemented in this example")
+=======
+  async fn create_user(&self, payload: &CreateUser) -> Result<User, AppError> {
+    let mut tx = self.provider.pool().begin().await?;
+
+    let conn = tx.acquire().await?;
+
+    let mut is_new_workspace = false;
+    let workspace =
+      match crate::models::Workspace::find_by_name(&payload.workspace, &mut *conn).await? {
+        Some(workspace) => {
+          if workspace.owner_id == 0 {
+            is_new_workspace = true;
+          }
+          workspace
+        }
+        None => {
+          is_new_workspace = true;
+          sqlx::query_as::<_, crate::models::Workspace>(
+            r#"
+          INSERT INTO workspaces (name, owner_id)
+          VALUES ($1, 0)
+          RETURNING id, name, owner_id, created_at
+          "#,
+          )
+          .bind(&payload.workspace)
+          .fetch_one(&mut *conn)
+          .await?
+        }
+      };
+
+    let password_to_hash = payload.password.clone();
+    let password_hash = tokio::task::spawn_blocking(move || {
+      use argon2::{
+        Argon2,
+        password_hash::{PasswordHasher, SaltString, rand_core::OsRng},
+      };
+
+      let salt = SaltString::generate(&mut OsRng);
+      let argon2 = Argon2::default();
+
+      argon2
+        .hash_password(password_to_hash.as_bytes(), &salt)
+        .map(|hash| hash.to_string())
+        .map_err(|e| anyhow::anyhow!("Password hashing error: {}", e))
+    })
+    .await
+    .map_err(|e| AppError::AnyError(anyhow::anyhow!("Task join error: {}", e)))?
+    .map_err(|e| AppError::AnyError(e))?;
+
+    let user = sqlx::query_as::<_, User>(
+      r#"
+      INSERT INTO users (workspace_id, email, fullname, password_hash) 
+      VALUES ($1, $2, $3, $4) 
+      RETURNING id, fullname, email, status, created_at, workspace_id, password_hash
+      "#,
+    )
+    .bind(workspace.id)
+    .bind(&payload.email)
+    .bind(&payload.fullname)
+    .bind(password_hash)
+    .fetch_one(&mut *conn)
+    .await
+    .map_err(|e| {
+      if let Some(db_err) = e.as_database_error() {
+        if db_err.is_unique_violation() {
+          AppError::UserAlreadyExists(payload.email.clone())
+        } else {
+          e.into()
+        }
+      } else {
+        e.into()
+      }
+    })?;
+
+    if is_new_workspace {
+      let res = sqlx::query("UPDATE workspaces SET owner_id = $1 WHERE id = $2")
+        .bind(user.id)
+        .bind(workspace.id)
+        .execute(&mut *conn)
+        .await?;
+
+      if res.rows_affected() == 0 {
+        return Err(AppError::NotFound(vec![payload.workspace.clone()]));
+      }
+    }
+
+    tx.commit().await?;
+
+    Ok(user)
+  }
+
+  async fn authenticate(&self, payload: &SigninUser) -> Result<Option<User>, AppError> {
+    let user = sqlx::query_as::<_, User>(
+      "SELECT id, fullname, email, password_hash, status, created_at, workspace_id FROM users WHERE email = $1",
+    )
+    .bind(&payload.email)
+    .fetch_optional(self.provider.pool())
+    .await?;
+
+    match user {
+      Some(mut user) => {
+        let password_hash = match std::mem::take(&mut user.password_hash) {
+          Some(h) => h,
+          None => return Ok(None), // User has no password hash, so it's not authenticated
+        };
+
+        let password_to_check = payload.password.clone();
+
+        let is_valid = tokio::task::spawn_blocking(move || {
+          use argon2::{Argon2, PasswordHash, PasswordVerifier};
+
+          let argon2 = Argon2::default();
+          let parsed_hash = match PasswordHash::new(&password_hash) {
+            Ok(hash) => hash,
+            Err(_) => return false,
+          };
+
+          argon2
+            .verify_password(password_to_check.as_bytes(), &parsed_hash)
+            .is_ok()
+        })
+        .await
+        .map_err(|e| AppError::AnyError(anyhow::anyhow!("Task join error: {}", e)))?;
+
+        if is_valid {
+          Ok(Some(user))
+        } else {
+          Ok(None) // Password is invalid, so it's not authenticated
+        }
+      }
+      None => Ok(None), // User not found, so it's not authenticated
+    }
+>>>>>>> 19b2301 (refactor: middleware refresh_token & auth cleanup (#20))
   }
 }
 
@@ -358,6 +493,10 @@ mod tests {
     };
 
     let result = auth_service.signup(&create_user_payload, None, None).await;
+
+    if let Err(ref e) = result {
+      println!("Signup error: {:?}", e);
+    }
 
     assert!(result.is_ok());
     let tokens = result.unwrap();

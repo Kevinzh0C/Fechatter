@@ -1,5 +1,5 @@
 [workspace]
-members = ["fechatter_core", "fechatter_server", "notify_server"]
+members = ["fechatter_core", "fechatter_server", "notify_server", "fechatter_tests"]
 resolver = "2"
 
 [workspace.dependencies]

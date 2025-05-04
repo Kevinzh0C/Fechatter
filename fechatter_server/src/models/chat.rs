@@ -290,7 +290,11 @@ impl AppState {
       )));
     }
 
-    let chat = sqlx::query_as::<_, Chat>(
+    if let Some(ref name) = payload.name {
+      validate_chat_name(name)?;
+    }
+
+    let chat_result = sqlx::query_as::<_, Chat>(
     "UPDATE chats
      SET
        chat_name = COALESCE($1, chat_name),
@@ -1257,7 +1261,6 @@ mod tests {
     let user2 = &users[1];
     let user3 = &users[2];
 
-    // 创建第一个聊天
     let chat_name = "Unique Test Chat";
     let members = vec![user2.id, user3.id];
     let first_chat = state
@@ -1297,14 +1300,72 @@ mod tests {
 
     Ok(())
   }
+
+  #[tokio::test]
+  async fn update_chat_with_existing_name_should_fail() -> Result<()> {
+    let (_tdb, state, users) = setup_test_users!(3).await;
+    let user1 = &users[0];
+    let user2 = &users[1];
+    let user3 = &users[2];
+
+    let first_chat_name = "First Chat Name";
+    state
+      .create_new_chat(
+        user1.id,
+        first_chat_name,
+        ChatType::Group,
+        Some(vec![user2.id, user3.id]),
+        Some("First chat description"),
+        user1.workspace_id,
+      )
+      .await?;
+
+
+    let second_chat_name = "Second Chat Name";
+    let second_chat = state
+      .create_new_chat(
+        user1.id,
+        second_chat_name,
+        ChatType::Group,
+        Some(vec![user2.id, user3.id]),
+        Some("Second chat description"),
+        user1.workspace_id,
+      )
+      .await?;
+
+    let update_result = state
+      .update_chat(
+        second_chat.id,
+        user1.id,
+        UpdateChat {
+          name: Some(first_chat_name.to_string()),
+          description: None,
+        },
+      )
+      .await;
+
+    match update_result {
+      Err(AppError::ChatPermissionError(error_message)) => {
+        let expected_error = format!(
+          "Cannot update chat to '{}', this name is already in use",
+          first_chat_name
+        );
+        assert_eq!(error_message, expected_error);
+      }
+      Ok(_) => panic!("Expected chat update to fail, but it succeeded."),
+      Err(e) => panic!("Expected ChatPermissionError, but got {:?}", e),
+    }
+
+    Ok(())
+  }
 }
 
 #[cfg(test)]
-mod process_chat_members_data_driven_test {
+mod process_chat_members_data_driven_tests {
   use super::*;
   use crate::AppError;
   use crate::models::ChatType;
-  use anyhow::Result;
+  use anyhow::Result; 
 
   const CREATOR_ID: i64 = 1;
   const USER_2: i64 = 2;

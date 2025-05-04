@@ -17,6 +17,7 @@ Content-Type: application/json
 @accessToken = {{signup.response.body.$.access_token}}
 @refreshToken = {{signup.response.body.$.refresh_token}}
 
+
 ### signup (second user)
 # @name signup2
 POST {{baseUrl}}/api/signup
@@ -59,7 +60,7 @@ Content-Type: application/json
 # @name refreshWithCookie
 POST {{baseUrl}}/api/refresh
 Content-Type: application/json
-Cookie: refresh_token={{refreshToken}}
+Cookie: refresh_token={{loginRefreshToken}}
 
 ### signin
 # @name login
@@ -107,7 +108,7 @@ Content-Type: application/json
 
 ### list chats
 GET {{baseUrl}}/api/chat
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{loginAccessToken}}
 
 ### create chat
 # @name createChat
@@ -204,8 +205,8 @@ Authorization: Bearer {{accessToken}}
 }
 
 ### list messages
-GET {{baseUrl}}/api/chat/1/messages
-Authorization: Bearer {{accessToken}}
+GET {{baseUrl}}/api/chat/{{chatId}}/messages
+Authorization: Bearer {{loginAccessToken}}
 
 ### Logout with cookies
 POST {{baseUrl}}/api/logout
