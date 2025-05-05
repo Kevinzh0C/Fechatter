@@ -8,70 +8,45 @@ use argon2::{
   password_hash::{PasswordHasher, SaltString, rand_core::OsRng},
 };
 
-use crate::{AppError, AppState};
-use crate::models::{ChatUser, User, UserStatus, Workspace};
+use crate::{
+  error::CoreError,
+  models::{ChatUser, DatabaseModel, User, UserStatus, Workspace},
+  state::WithDbPool,
+};
 
 use super::{CreateUser, SigninUser};
 
-impl AppState {
-  /// Check if a user with the given email exists in the database.
-  pub async fn email_user_exists(
-    &self,
-    email: &str,
-    pool: &PgPool,
-  ) -> Result<Option<Self>, AppError> {
-    let user = sqlx::query_as::<_, User>(
-      "SELECT id, fullname, email, status, created_at, workspace_id FROM users WHERE email = $1",
-    )
-    .bind(email)
-    .fetch_optional(pool)
-    .await?;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthUser {
+  pub id: i64,
+  pub fullname: String,
+  pub email: String,
+  pub status: UserStatus,
+  pub created_at: chrono::DateTime<chrono::Utc>,
+  pub workspace_id: i64,
+}
 
-    Ok(user)
-  }
+impl DatabaseModel for User {
+  type CreateType = CreateUser;
+  type UpdateType = (); // No update method currently defined
+  type IdType = i64;
 
-  pub async fn validate_users_exists_by_ids(
-    &self,
-    ids: &[i64],
-    pool: &PgPool,
-  ) -> Result<(), AppError> {
-    if ids.is_empty() {
-      return Ok(());
-    }
-
-    let missing_ids = sqlx::query_scalar!(
-      r#"
-      SELECT id FROM UNNEST($1::bigint[]) AS ids(id)
-      WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = ids.id)
-      "#,
-      ids
-    )
-    .fetch_all(pool)
-    .await?;
-
-    if !missing_ids.is_empty() {
-      let missing_ids_str = missing_ids
-        .iter()
-        .map(|id| id.unwrap().to_string())
-        .collect::<Vec<String>>();
-      return Err(AppError::NotFound(missing_ids_str));
-    }
-
-    Ok(())
-  }
-
-  /// Create a new user in the database.
-  pub async fn create(
-    &self,
-    input: &CreateUser,
-    pool: &PgPool,
-  ) -> Result<Self, AppError> {
-    let mut tx = pool.begin().await?;
-
-    let conn = tx.acquire().await?;
+  async fn create<S: WithDbPool>(input: &Self::CreateType, state: &S) -> Result<Self, CoreError> {
+    let pool = state.db_pool();
+    let mut tx = pool.begin().await.map_err(CoreError::Database)?;
+    let mut conn = tx.acquire().await.map_err(CoreError::Database)?;
 
     let mut is_new_workspace = false;
-    let workspace = match Workspace::find_by_name(&input.workspace, &mut *conn).await? {
+    let workspace = match sqlx::query_as::<_, Workspace>(
+      r#"
+      SELECT * FROM workspaces WHERE name = $1
+      "#,
+    )
+    .bind(&input.workspace)
+    .fetch_optional(&mut *conn)
+    .await
+    .map_err(CoreError::Database)?
+    {
       Some(workspace) => {
         if workspace.owner_id == 0 {
           is_new_workspace = true;
@@ -89,7 +64,8 @@ impl AppState {
         )
         .bind(&input.workspace)
         .fetch_one(&mut *conn)
-        .await?
+        .await
+        .map_err(CoreError::Database)?
       }
     };
 
@@ -111,12 +87,12 @@ impl AppState {
     .map_err(|e| {
       if let Some(db_err) = e.as_database_error() {
         if db_err.is_unique_violation() {
-          AppError::UserAlreadyExists(input.email.clone())
+          CoreError::Conflict(format!("User with email {} already exists", input.email))
         } else {
-          e.into()
+          CoreError::Database(e)
         }
       } else {
-        e.into()
+        CoreError::Database(e)
       }
     })?;
 
@@ -125,31 +101,112 @@ impl AppState {
         .bind(user.id)
         .bind(workspace.id)
         .execute(&mut *conn)
-        .await?;
+        .await
+        .map_err(CoreError::Database)?;
 
       if res.rows_affected() == 0 {
-        return Err(AppError::NotFound(vec![input.workspace.clone()]));
+        return Err(CoreError::NotFound(format!(
+          "Workspace {} not found",
+          input.workspace
+        )));
       }
     }
 
-    tx.commit().await?;
+    tx.commit().await.map_err(CoreError::Database)?;
 
     Ok(user)
   }
 
+  async fn find_by_id<S: WithDbPool + Sync>(
+    id: Self::IdType,
+    state: &S,
+  ) -> Result<Option<Self>, CoreError> {
+    let user = sqlx::query_as::<_, User>(
+      "SELECT id, fullname, email, password_hash, status, created_at, workspace_id FROM users WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_optional(state.db_pool())
+    .await
+    .map_err(CoreError::Database)?;
+
+    Ok(user)
+  }
+
+  async fn update<S: WithDbPool + Sync>(
+    _id: Self::IdType,
+    _input: &Self::UpdateType,
+    _state: &S,
+  ) -> Result<Self, CoreError> {
+    Err(CoreError::Internal(anyhow::anyhow!(
+      "User update not implemented"
+    )))
+  }
+}
+
+impl User {
+  /// Check if a user with the given email exists in the database.
+  pub async fn email_user_exists<S: WithDbPool + Sync>(
+    email: &str,
+    state: &S,
+  ) -> Result<Option<Self>, CoreError> {
+    let user = sqlx::query_as::<_, User>(
+      "SELECT id, fullname, email, status, created_at, workspace_id FROM users WHERE email = $1",
+    )
+    .bind(email)
+    .fetch_optional(state.db_pool())
+    .await
+    .map_err(CoreError::Database)?;
+
+    Ok(user)
+  }
+
+  pub async fn validate_users_exists_by_ids<S: WithDbPool + Sync>(
+    ids: &[i64],
+    state: &S,
+  ) -> Result<(), CoreError> {
+    if ids.is_empty() {
+      return Ok(());
+    }
+
+    let missing_ids = sqlx::query_scalar!(
+      r#"
+      SELECT id FROM UNNEST($1::bigint[]) AS ids(id)
+      WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = ids.id)
+      "#,
+      ids
+    )
+    .fetch_all(state.db_pool())
+    .await
+    .map_err(CoreError::Database)?;
+
+    if !missing_ids.is_empty() {
+      let missing_ids_str = missing_ids
+        .iter()
+        .map(|id| id.unwrap().to_string())
+        .collect::<Vec<String>>()
+        .join(", ");
+      return Err(CoreError::NotFound(format!(
+        "Users not found: {}",
+        missing_ids_str
+      )));
+    }
+
+    Ok(())
+  }
+
   /// Authenticate a user with email and password.
   /// Returns the user if authentication is successful.
-  pub async fn authenticate(
-    &self,
+  pub async fn authenticate<S: WithDbPool + Sync>(
     input: &SigninUser,
-    pool: &PgPool,
-  ) -> Result<Option<Self>, AppError> {
+    state: &S,
+  ) -> Result<Option<Self>, CoreError> {
     let user = sqlx::query_as::<_, User>(
       "SELECT id, fullname, email, password_hash, status, created_at, workspace_id FROM users WHERE email = $1",
     )
     .bind(&input.email)
-    .fetch_optional(pool)
-    .await?;
+    .fetch_optional(state.db_pool())
+    .await
+    .map_err(CoreError::Database)?;
 
     match user {
       Some(mut user) => {
@@ -168,25 +225,9 @@ impl AppState {
       None => Ok(None), // User not found, so it's not authenticated
     }
   }
-
-  /// Find a user by their ID
-  pub async fn find_by_id(
-    &self,
-    id: i64,
-    pool: &PgPool,
-  ) -> Result<Option<Self>, AppError> {
-    let user = sqlx::query_as::<_, User>(
-      "SELECT id, fullname, email, password_hash, status, created_at, workspace_id FROM users WHERE id = $1",
-    )
-    .bind(id)
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(user)
-  }
 }
 
-fn hashed_password(password: &str) -> Result<String, AppError> {
+fn hashed_password(password: &str) -> Result<String, CoreError> {
   let salt = SaltString::generate(OsRng);
 
   // Argon2 with default params (Argon2id v19)
@@ -194,15 +235,16 @@ fn hashed_password(password: &str) -> Result<String, AppError> {
 
   // Hash password to PHC string ($argon2id$v=19$...)
   let password_hash = argon2
-    .hash_password(password.as_bytes(), &salt)?
+    .hash_password(password.as_bytes(), &salt)
+    .map_err(|e| CoreError::Internal(e.into()))?
     .to_string();
 
   Ok(password_hash)
 }
 
-fn verify_password(password: &str, password_hash: &str) -> Result<bool, AppError> {
+fn verify_password(password: &str, password_hash: &str) -> Result<bool, CoreError> {
   let argon2 = Argon2::default();
-  let parsed_hash = PasswordHash::new(password_hash)?;
+  let parsed_hash = PasswordHash::new(password_hash).map_err(|e| CoreError::Internal(e.into()))?;
 
   let is_valid = argon2
     .verify_password(password.as_bytes(), &parsed_hash)
@@ -210,20 +252,6 @@ fn verify_password(password: &str, password_hash: &str) -> Result<bool, AppError
 
   Ok(is_valid)
 }
-
-impl AppState {
-  #[allow(dead_code)]
-  pub async fn fetch_all_users(
-    &self,
-    pool: &PgPool,
-  ) -> Result<Vec<Self>, AppError> {
-    let users = Workspace::fetch_all_users(self, pool).await?;
-
-    Ok(users)
-  }
-}
-
-
 
 #[cfg(test)]
 mod tests {
@@ -243,17 +271,17 @@ mod tests {
 
   #[tokio::test]
   async fn create_user_should_work() -> Result<()> {
-    let (_tdb, state, _users) = setup_test_users!(0).await;
+    let (_tdb, state, _users) = setup_test_users!(0);
     let pool = &state.pool;
 
     let input = CreateUser::new("Alice", "alice1@acme.test", "Acme", "hunter4332");
-    let user = User::create(&input, pool).await?;
+    let user = User::create(&input, &state).await?;
 
     assert_eq!(user.email, "alice1@acme.test");
     assert_eq!(user.fullname, "Alice");
     assert!(user.id > 0);
 
-    let user_check = User::email_user_exists(&input.email, pool).await?;
+    let user_check = User::email_user_exists(&input.email, &state).await?;
     assert!(user_check.is_some());
     let user_check_unwrapped = user_check.unwrap();
     assert_eq!(user_check_unwrapped.email, input.email);
@@ -261,7 +289,7 @@ mod tests {
 
     let signin_user = SigninUser::new(&input.email, &input.password);
 
-    let auth_result = User::authenticate(&signin_user, pool).await?;
+    let auth_result = User::authenticate(&signin_user, &state).await?;
     assert!(auth_result.is_some());
     let auth_user_unwrapped = auth_result.unwrap();
     assert_eq!(auth_user_unwrapped.email, input.email);
@@ -272,14 +300,14 @@ mod tests {
 
   #[tokio::test]
   async fn create_duplicate_user_should_fail() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1).await;
+    let (_tdb, state, users) = setup_test_users!(1);
     let pool = &state.pool;
     let user1 = users.into_iter().next().unwrap();
 
     let duplicate_input = CreateUser::new("Another Alice", &user1.email, "acme", "hunter4332");
     let result = User::create(&duplicate_input, pool).await;
     match result {
-      Err(AppError::UserAlreadyExists(email)) => {
+      Err(CoreError::Conflict(email)) => {
         assert_eq!(email, user1.email);
       }
       _ => panic!("Expected UserAlreadyExists error"),

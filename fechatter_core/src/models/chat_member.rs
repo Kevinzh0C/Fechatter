@@ -7,20 +7,46 @@ use sqlx::Transaction;
 use sqlx::postgres::PgRow;
 use tracing::{error, info, warn};
 
-use super::{Chat, ChatMember, ChatType};
-use crate::{AppError, AppState};
+use super::{Chat, ChatMember, ChatSidebar, ChatType};
+use crate::{
+  TryFromRow,
+  error::CoreError,
+  state::{WithCache, WithDbPool},
+};
 
 impl TryFrom<PgRow> for ChatMember {
-  type Error = ();
+  type Error = CoreError;
 
   fn try_from(row: PgRow) -> Result<Self, Self::Error> {
     Ok(ChatMember {
-      chat_id: row.try_get("chat_id").context("Missing chat_id")?,
-      user_id: row.try_get("user_id").context("Missing user_id")?,
-      joined_at: row.try_get("joined_at").context("Missing joined_at")?,
+      chat_id: row
+        .try_get("chat_id")
+        .map_err(|e| CoreError::Validation(format!("Missing chat_id: {}", e)))?,
+      user_id: row
+        .try_get("user_id")
+        .map_err(|e| CoreError::Validation(format!("Missing user_id: {}", e)))?,
+      joined_at: row
+        .try_get("joined_at")
+        .map_err(|e| CoreError::Validation(format!("Missing joined_at: {}", e)))?,
     })
   }
 }
+
+// impl TryFromRow<PgRow> for ChatMember {
+//   fn try_from_row(row: &PgRow) -> Result<Self, CoreError> {
+//     Ok(ChatMember {
+//       chat_id: row
+//         .try_get("chat_id")
+//         .map_err(|e| CoreError::Validation(format!("Missing chat_id: {}", e)))?,
+//       user_id: row
+//         .try_get("user_id")
+//         .map_err(|e| CoreError::Validation(format!("Missing user_id: {}", e)))?,
+//       joined_at: row
+//         .try_get("joined_at")
+//         .map_err(|e| CoreError::Validation(format!("Missing joined_at: {}", e)))?,
+//     })
+//   }
+// }
 
 fn member_insert_query(with_conflict_handling: bool) -> &'static str {
   if with_conflict_handling {
@@ -39,7 +65,7 @@ pub async fn execute_member_insert(
   member: &CreateChatMember,
   tx: &mut Transaction<'_, Postgres>,
   with_conflict_handling: bool,
-) -> Result<Option<ChatMember>, AppError> {
+) -> Result<Option<ChatMember>, CoreError> {
   let query = member_insert_query(with_conflict_handling);
 
   let row_opt = sqlx::query(query)
@@ -64,16 +90,19 @@ pub async fn execute_member_insert(
 }
 
 #[allow(unused)]
-pub async fn add_single_member(
-  state: &AppState,
+pub async fn add_single_member<S>(
+  state: &S,
   chat_id: i64,
   user_id: i64,
   member_id: i64,
-) -> Result<ChatMember, AppError> {
+) -> Result<ChatMember, CoreError>
+where
+  S: WithDbPool + WithCache<i64, Vec<ChatSidebar>> + Clone + Send + Sync + 'static,
+{
   let added_members = add_chat_members(state, chat_id, user_id, vec![member_id]).await?;
 
   added_members.into_iter().next().ok_or_else(|| {
-    AppError::ChatValidationError(format!(
+    CoreError::ChatValidationError(format!(
       "User {} might already be a member of chat {} or could not be added.",
       member_id, chat_id
     ))
@@ -84,7 +113,7 @@ async fn ensure_user_is_chat_creator(
   pool: &PgPool,
   chat_id: i64,
   user_id: i64,
-) -> Result<(), AppError> {
+) -> Result<(), CoreError> {
   let creator_check = CreateChatMember { chat_id, user_id };
   if !is_creator_in_chat(pool, &creator_check).await? {
     // Check if the chat exists before returning permission error
@@ -92,9 +121,9 @@ async fn ensure_user_is_chat_creator(
       .bind(chat_id)
       .fetch_optional(pool)
       .await?
-      .ok_or(AppError::NotFound(vec![chat_id.to_string()]))?;
+      .ok_or(CoreError::NotFound(format!("Chat {} not found", chat_id)))?;
 
-    return Err(AppError::ChatPermissionError(format!(
+    return Err(CoreError::Unauthorized(format!(
       "User {} is not the creator of chat {} and cannot perform this action", // If chat exists but user is not creator, return PermissionError
       user_id, chat_id
     )));
@@ -102,18 +131,21 @@ async fn ensure_user_is_chat_creator(
   Ok(())
 }
 
-pub async fn add_chat_members(
-  state: &AppState,
+pub async fn add_chat_members<S>(
+  state: &S,
   chat_id: i64,
   user_id: i64,
   member_ids: Vec<i64>,
-) -> Result<Vec<ChatMember>, AppError> {
+) -> Result<Vec<ChatMember>, CoreError>
+where
+  S: WithDbPool + WithCache<i64, Vec<ChatSidebar>> + Clone + Send + Sync + 'static,
+{
   if member_ids.is_empty() {
     info!("No members to add to chat_id {}", chat_id);
     return Ok(Vec::new());
   }
 
-  ensure_user_is_chat_creator(&state.pool, chat_id, user_id).await?;
+  ensure_user_is_chat_creator(state.db_pool(), chat_id, user_id).await?;
 
   let added_members = sqlx::query_as!(
     ChatMember,
@@ -127,7 +159,7 @@ pub async fn add_chat_members(
     chat_id,
     &member_ids
   )
-  .fetch_all(&state.pool)
+  .fetch_all(state.db_pool())
   .await
   .map_err(|e: sqlx::Error| {
     error!(
@@ -139,7 +171,7 @@ pub async fn add_chat_members(
 
   if !added_members.is_empty() {
     for member in &added_members {
-      state.chat_list_cache.remove(&member.user_id);
+      state.remove_from_cache(&member.user_id);
       info!(
         "Invalidated chat list cache for added user {}",
         member.user_id
@@ -155,7 +187,7 @@ pub(crate) async fn insert_chat_members_relation(
   chat_id: i64,
   chat_members: &[i64],
   tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-) -> Result<(), AppError> {
+) -> Result<(), CoreError> {
   for &user_id in chat_members {
     let member = CreateChatMember { chat_id, user_id };
     execute_member_insert(&member, tx, false).await?;
@@ -163,12 +195,15 @@ pub(crate) async fn insert_chat_members_relation(
   Ok(())
 }
 
-pub async fn remove_group_chat_members(
-  state: &AppState,
+pub async fn remove_group_chat_members<S>(
+  state: &S,
   chat_id: i64,
   user_id: i64,
   target_member_ids: Vec<i64>,
-) -> Result<bool, AppError> {
+) -> Result<bool, CoreError>
+where
+  S: WithDbPool + WithCache<i64, Vec<ChatSidebar>> + Clone + Send + Sync + 'static,
+{
   if target_member_ids.is_empty() {
     info!("No members specified for removal from chat_id {}", chat_id);
     return Ok(false);
@@ -181,12 +216,12 @@ pub async fn remove_group_chat_members(
     r#"SELECT created_by, type AS "chat_type: ChatType" FROM chats WHERE id = $1"#,
     chat_id
   )
-  .fetch_optional(&state.pool)
+  .fetch_optional(state.db_pool())
   .await?;
 
   let (created_by, chat_type) = match chat_info {
     Some(info) => (info.created_by, info.chat_type),
-    None => return Err(AppError::NotFound(vec![chat_id.to_string()])), // Chat not found
+    None => return Err(CoreError::NotFound(format!("Chat {} not found", chat_id))), // Chat not found
   };
 
   // 2. Fetch current member count
@@ -194,20 +229,20 @@ pub async fn remove_group_chat_members(
     "SELECT COUNT(*) FROM chat_members_relation WHERE chat_id = $1",
     chat_id
   )
-  .fetch_one(&state.pool)
+  .fetch_one(state.db_pool())
   .await?
   .unwrap_or(0); // COUNT should always return a row, handle Option just in case
 
   // --- Type Check ---
   if chat_type != ChatType::Group {
-    return Err(AppError::ChatValidationError(
+    return Err(CoreError::ChatValidationError(
       "This operation is only valid for group chats.".to_string(),
     ));
   }
 
   // --- Permission Check: Only Creator ---
   if created_by != user_id {
-    return Err(AppError::ChatPermissionError(format!(
+    return Err(CoreError::ChatPermissionError(format!(
       "User {} is not the creator of group chat {} and cannot remove members",
       user_id, chat_id
     )));
@@ -220,7 +255,7 @@ pub async fn remove_group_chat_members(
     chat_id,
     &target_member_ids
   )
-  .fetch_all(&state.pool)
+  .fetch_all(state.db_pool())
   .await?;
 
   if actual_members_to_remove.is_empty() {
@@ -239,7 +274,7 @@ pub async fn remove_group_chat_members(
       chat_id,
       current_member_count
     );
-    return Err(AppError::ChatValidationError(
+    return Err(CoreError::ChatValidationError(
       "Cannot remove the last member(s) of a group chat.".to_string(), // More specific error
     ));
   }
@@ -254,7 +289,7 @@ pub async fn remove_group_chat_members(
     chat_id,
     &actual_members_to_remove // Use the filtered list of actual members
   )
-  .fetch_all(&state.pool) // Fetch all returned user_ids
+  .fetch_all(state.db_pool()) // Fetch all returned user_ids
   .await
   .map_err(|e: sqlx::Error| {
     error!("Database error batch deleting members from chat {}: {:?}", chat_id, e);
@@ -267,7 +302,7 @@ pub async fn remove_group_chat_members(
   if rows_affected > 0 {
     for &removed_user_id in &deleted_ids {
       // Iterate only over actually deleted IDs
-      state.chat_list_cache.remove(&removed_user_id);
+      state.remove_from_cache(&removed_user_id);
       info!(
         "Invalidated chat list cache for removed user {}",
         removed_user_id
@@ -283,7 +318,7 @@ pub async fn remove_group_chat_members(
   Ok(rows_affected > 0) // <--- Return the actual count
 }
 
-pub async fn list_chat_members(pool: &PgPool, chat_id: i64) -> Result<Vec<ChatMember>, AppError> {
+pub async fn list_chat_members(pool: &PgPool, chat_id: i64) -> Result<Vec<ChatMember>, CoreError> {
   let rows = sqlx::query!(
     r#"
     SELECT 
@@ -321,7 +356,7 @@ pub async fn list_chat_members(pool: &PgPool, chat_id: i64) -> Result<Vec<ChatMe
 pub async fn member_exists_in_chat(
   pool: &PgPool,
   member: &CreateChatMember,
-) -> Result<bool, AppError> {
+) -> Result<bool, CoreError> {
   let result = sqlx::query!(
     r#"
     SELECT EXISTS(
@@ -353,7 +388,7 @@ pub async fn member_exists_in_chat(
 pub async fn is_creator_in_chat(
   pool: &PgPool,
   member: &CreateChatMember,
-) -> Result<bool, AppError> {
+) -> Result<bool, CoreError> {
   let result = sqlx::query!(
     r#"
     SELECT EXISTS(
@@ -370,7 +405,7 @@ pub async fn is_creator_in_chat(
 }
 
 #[allow(unused)]
-pub async fn count_members(pool: &PgPool, chat_id: i64) -> Result<i64, AppError> {
+pub async fn count_members(pool: &PgPool, chat_id: i64) -> Result<i64, CoreError> {
   let result = sqlx::query!(
     r#"
     SELECT COUNT(*) as "count!"
@@ -386,7 +421,7 @@ pub async fn count_members(pool: &PgPool, chat_id: i64) -> Result<i64, AppError>
 }
 
 #[allow(unused)]
-pub async fn get_chat_type(pool: &PgPool, chat_id: i64) -> Result<ChatType, AppError> {
+pub async fn get_chat_type(pool: &PgPool, chat_id: i64) -> Result<ChatType, CoreError> {
   let result = sqlx::query_as::<_, Chat>("SELECT type as chat_type FROM chats WHERE id = $1")
     .bind(chat_id)
     .fetch_one(pool)
@@ -396,13 +431,16 @@ pub async fn get_chat_type(pool: &PgPool, chat_id: i64) -> Result<ChatType, AppE
 }
 
 #[allow(unused)]
-pub async fn transfer_chat_ownership(
-  state: &AppState,
+pub async fn transfer_chat_ownership<S>(
+  state: &S,
   chat_id: i64,
   from_user_id: i64,
   to_user_id: i64,
-) -> Result<bool, AppError> {
-  let mut tx = state.pool.begin().await?;
+) -> Result<bool, CoreError>
+where
+  S: WithDbPool + WithCache<i64, Vec<ChatSidebar>> + Clone + Send + Sync + 'static,
+{
+  let mut tx = state.db_pool().begin().await?;
 
   // Fetch chat details, including members for potential invalidation
   let chat = sqlx::query_as::<_, Chat>(
@@ -416,18 +454,18 @@ pub async fn transfer_chat_ownership(
   .bind(chat_id)
   .fetch_optional(&mut *tx)
   .await?
-  .ok_or(AppError::NotFound(vec![chat_id.to_string()]))?;
+  .ok_or(CoreError::NotFound(format!("Chat {} not found", chat_id)))?;
 
   if chat.chat_type != ChatType::Group {
     tx.rollback().await?;
-    return Err(AppError::ChatValidationError(
+    return Err(CoreError::ChatValidationError(
       "Only group chats can be transferred".to_string(),
     ));
   }
 
   if chat.created_by != from_user_id {
     tx.rollback().await?;
-    return Err(AppError::ChatPermissionError(
+    return Err(CoreError::ChatPermissionError(
       "Only the creator can transfer ownership".to_string(),
     ));
   }
@@ -435,7 +473,7 @@ pub async fn transfer_chat_ownership(
   // Check if the target user is already a member using the fetched members
   if !chat.chat_members.contains(&to_user_id) {
     tx.rollback().await?; // Rollback before returning error
-    return Err(AppError::ChatValidationError(
+    return Err(CoreError::ChatValidationError(
       "Target user must be a chat member to receive ownership".to_string(),
     ));
   }
@@ -456,7 +494,7 @@ pub async fn transfer_chat_ownership(
 
   if rows_affected == 0 {
     tx.rollback().await?;
-    return Err(AppError::ChatPermissionError(format!(
+    return Err(CoreError::ChatPermissionError(format!(
       "Failed to update chat ownership for chat_id {}: 0 rows affected, possibly due to concurrent modification or deletion after lock acquisition.",
       chat_id
     )));
@@ -467,7 +505,7 @@ pub async fn transfer_chat_ownership(
   // --- Cache Invalidation ---
   // Invalidate cache for all members of the chat, as ownership change might affect visibility/sorting
   for &member_id in &chat.chat_members {
-    state.chat_list_cache.remove(&member_id);
+    state.remove_from_cache(&member_id);
     info!(
       "Invalidated chat list cache for user {} due to ownership transfer of chat {}",
       member_id, chat_id
@@ -492,11 +530,14 @@ pub struct CreateChatMember {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{models::create_new_chat, setup_test_users};
+  use crate::{
+    models::{DatabaseModel, create_new_chat},
+    setup_test_users,
+  };
 
   #[tokio::test]
   async fn transfer_chat_ownership_should_work() -> anyhow::Result<()> {
-    let (_tdb, state, users) = setup_test_users!(3).await;
+    let (_tdb, state, users) = setup_test_users!(3);
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];
@@ -555,7 +596,7 @@ mod tests {
 
   #[tokio::test]
   async fn is_creator_in_chat_should_work() -> anyhow::Result<()> {
-    let (_tdb, state, users) = setup_test_users!(3).await; // Use named guard
+    let (_tdb, state, users) = setup_test_users!(3); // Use named guard
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];
@@ -600,7 +641,7 @@ mod tests {
 
   #[tokio::test]
   async fn member_exists_in_chat_should_work() -> anyhow::Result<()> {
-    let (_tdb, state, users) = setup_test_users!(3).await; // Use named guard
+    let (_tdb, state, users) = setup_test_users!(3); // Use named guard
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];
@@ -664,7 +705,7 @@ mod tests {
 
   #[tokio::test]
   async fn add_and_remove_chat_members_should_work() -> anyhow::Result<()> {
-    let (_tdb, state, users) = setup_test_users!(5).await; // Use named guard
+    let (_tdb, state, users) = setup_test_users!(5); // Use named guard
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];
@@ -749,7 +790,7 @@ mod tests {
 
   #[tokio::test]
   async fn list_chat_members_should_work() -> anyhow::Result<()> {
-    let (_tdb, state, users) = setup_test_users!(3).await;
+    let (_tdb, state, users) = setup_test_users!(3);
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];

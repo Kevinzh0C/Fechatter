@@ -1,6 +1,4 @@
 use crate::models::AuthUser;
-use crate::services::auth_service::AuthService;
-use crate::utils::jwt::ACCESS_TOKEN_EXPIRATION;
 use crate::{AppState, ErrorOutput, SigninUser, error::AppError, models::CreateUser};
 use axum::{
   Extension, Json,
@@ -9,6 +7,8 @@ use axum::{
   response::IntoResponse,
 };
 use axum_extra::extract::cookie::CookieJar;
+use fechatter_core::services::auth_service::AuthService;
+use fechatter_core::utils::jwt::ACCESS_TOKEN_EXPIRATION;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
@@ -57,7 +57,7 @@ pub(crate) async fn signup_handler(
     .and_then(|h| h.to_str().ok())
     .map(String::from);
 
-  let auth_service = AuthService::new(&state.pool, &state.token_manager);
+  let auth_service = AuthService::new(state.clone());
   let tokens = auth_service
     .signup(&payload, user_agent, ip_address)
     .await?;
@@ -92,7 +92,7 @@ pub(crate) async fn signin_handler(
     .and_then(|h| h.to_str().ok())
     .map(String::from);
 
-  let auth_service = AuthService::new(&state.pool, &state.token_manager);
+  let auth_service = AuthService::new(state.clone());
   match auth_service
     .signin(&payload, user_agent, ip_address)
     .await?
@@ -171,7 +171,7 @@ pub(crate) async fn refresh_token_handler(
     }
   };
 
-  let auth_service = AuthService::new(&state.pool, &state.token_manager);
+  let auth_service = AuthService::new(state.clone());
   match auth_service
     .refresh_token(&refresh_token_str, user_agent, ip_address)
     .await
@@ -192,19 +192,21 @@ pub(crate) async fn refresh_token_handler(
 
       Ok((StatusCode::OK, headers, body).into_response())
     }
-    Err(AppError::InvalidInput(msg)) => {
-      let mut headers = HeaderMap::new();
-      clear_refresh_token_cookie(&mut headers)?;
-      Ok(
-        (
-          StatusCode::UNAUTHORIZED,
-          headers,
-          Json(ErrorOutput::new(msg)),
+    Err(e) => match e {
+      fechatter_core::CoreError::Validation(msg) => {
+        let mut headers = HeaderMap::new();
+        clear_refresh_token_cookie(&mut headers)?;
+        Ok(
+          (
+            StatusCode::UNAUTHORIZED,
+            headers,
+            Json(ErrorOutput::new(msg)),
+          )
+            .into_response(),
         )
-          .into_response(),
-      )
-    }
-    Err(e) => Err(e),
+      }
+      _ => Err(AppError::from(e)),
+    },
   }
 }
 
@@ -217,7 +219,7 @@ pub(crate) async fn logout_handler(
   let mut response_headers = HeaderMap::new();
   clear_refresh_token_cookie(&mut response_headers)?;
 
-  let auth_service = AuthService::new(&state.pool, &state.token_manager);
+  let auth_service = AuthService::new(state.clone());
 
   // 首先尝试从cookie中获取刷新令牌
   let refresh_token_str = if let Some(cookie) = cookies.get("refresh_token") {
@@ -262,7 +264,7 @@ pub(crate) async fn logout_all_handler(
   // Clear refresh_token cookie
   clear_refresh_token_cookie(&mut response_headers)?;
 
-  let auth_service = AuthService::new(&state.pool, &state.token_manager);
+  let auth_service = AuthService::new(state.clone());
   let user_id = _auth_user.id;
 
   // Try to get refresh token from cookie
@@ -286,7 +288,6 @@ pub(crate) async fn logout_all_handler(
     None => None,
   };
 
-  
   match auth_service.logout_all(user_id).await {
     Ok(_) => {
       info!("All sessions for user {} revoked successfully", user_id);
@@ -424,7 +425,7 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
 
-    let auth_service = AuthService::new(&state.pool, &state.token_manager);
+    let auth_service = AuthService::new(state.clone());
     let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
 
     let mut jar = CookieJar::new();
@@ -493,7 +494,7 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
 
-    let auth_service = AuthService::new(&state.pool, &state.token_manager);
+    let auth_service = AuthService::new(state.clone());
     let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
 
     let mut jar = CookieJar::new();

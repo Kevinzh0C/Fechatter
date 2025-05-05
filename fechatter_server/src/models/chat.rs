@@ -6,15 +6,16 @@ use tokio::time::Instant;
 
 use crate::{AppError, AppState, models::ChatType};
 
-use super::{Chat, CreateChatMember, User, insert_chat_members_relation, is_creator_in_chat};
-
+use super::User;
+use crate::models::Chat;
+use fechatter_core::chat::ChatSidebar as CoreChatSidebar;
 const CHAT_LIST_CACHE_TTL: Duration = Duration::from_secs(30);
 
 /// Retrieves a list of chat sidebars for a specific user
 pub async fn list_chats_of_user(
   state: &AppState,
   user_id: i64,
-) -> Result<Arc<Vec<ChatSidebar>>, AppError> {
+) -> Result<Arc<Vec<CoreChatSidebar>>, AppError> {
   if let Some(entry) = state.chat_list_cache.get(&user_id) {
     let (cached_chats, timestamp) = entry.value();
     if timestamp.elapsed() < CHAT_LIST_CACHE_TTL {
@@ -39,9 +40,9 @@ pub async fn list_chats_of_user(
 async fn fetch_chat_list_from_db(
   pool: &PgPool,
   user_id: i64,
-) -> Result<Vec<ChatSidebar>, AppError> {
+) -> Result<Vec<CoreChatSidebar>, AppError> {
   let chats = sqlx::query_as!(
-    ChatSidebar,
+    CoreChatSidebar,
     r#"SELECT
       id,
       chat_name as name,
@@ -56,7 +57,7 @@ async fn fetch_chat_list_from_db(
   .map(|rows| {
     rows
       .into_iter()
-      .map(|row: ChatSidebar| ChatSidebar {
+      .map(|row: CoreChatSidebar| CoreChatSidebar {
         id: row.id,
         name: row.name,
         chat_type: row.chat_type,
@@ -143,7 +144,7 @@ async fn insert_chat_record(
 ) -> Result<Chat, sqlx::Error> {
   let query = "INSERT INTO chats (chat_name, type, chat_members, description, created_by, workspace_id)
      VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING id, chat_name as name, type as chat_type, chat_members, 
+     RETURNING id, chat_name as name, type as chat_type, chat_members,
                COALESCE(description, '') as description, created_by, created_at, updated_at, workspace_id";
 
   let chat = sqlx::query_as::<_, Chat>(query)
@@ -163,7 +164,7 @@ async fn insert_chat_record(
 pub async fn fetch_all_chats(workspace_id: i64, pool: &PgPool) -> Result<Vec<Chat>, AppError> {
   let chats = sqlx::query_as::<_, Chat>(
     r#"
-      SELECT 
+      SELECT
         id,
         workspace_id,
         chat_name as name,
@@ -224,7 +225,7 @@ pub async fn create_new_chat(
   })?;
 
   let chat_id = chat.id;
-  insert_chat_members_relation(chat_id, &chat_members, &mut tx).await?;
+  crate::models::chat_member::insert_chat_members_relation(chat_id, &chat_members, &mut tx).await?;
 
   tx.commit().await?;
 
@@ -241,8 +242,9 @@ pub async fn update_chat(
   user_id: i64,
   payload: UpdateChat,
 ) -> Result<Chat, AppError> {
-  let creator = CreateChatMember { chat_id, user_id };
-  let is_creator = is_creator_in_chat(&state.pool, &creator).await?;
+  // Use the server's CreateChatMember type for is_creator_in_chat
+  let creator = crate::models::ServerCreateChatMember { chat_id, user_id };
+  let is_creator = crate::models::chat_member::is_creator_in_chat(&state.pool, &creator).await?;
 
   if !is_creator {
     return Err(AppError::ChatPermissionError(format!(
@@ -258,7 +260,7 @@ pub async fn update_chat(
        description = COALESCE($2, description),
        updated_at = NOW()
      WHERE id = $3
-     RETURNING id, chat_name as name, type as chat_type, chat_members, 
+     RETURNING id, chat_name as name, type as chat_type, chat_members,
                COALESCE(description, '') as description, created_by, created_at, updated_at, workspace_id",
   )
   .bind(&payload.name)
@@ -370,6 +372,7 @@ pub struct UpdateChat {
 #[cfg(test)]
 mod tests {
   use super::*;
+
   use crate::models::{add_chat_members, remove_group_chat_members};
   use crate::setup_test_users;
   use anyhow::Result;

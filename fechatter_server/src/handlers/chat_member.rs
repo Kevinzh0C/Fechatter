@@ -10,15 +10,15 @@ use tracing::info;
 use crate::{
   AppError, AppState,
   models::{
-    AuthUser,
-    ChatMember,
-    CreateChatMember,
-    add_chat_members,
-    list_chat_members,
-    // add_single_member,
-    member_exists_in_chat,
-    remove_group_chat_members,
-    transfer_chat_ownership,
+    AuthUser, ChatMember, ServerCreateChatMember as CreateChatMember,
+    chat_member::{
+      add_chat_members,
+      list_chat_members,
+      // add_single_member,
+      member_exists_in_chat,
+      remove_group_chat_members,
+      transfer_chat_ownership,
+    },
   },
 };
 
@@ -128,9 +128,10 @@ mod tests {
   use super::*;
   use crate::models::{ChatMember, ChatType};
   use crate::{
-    assert_chat_member_count, assert_handler_error, assert_handler_success, auth_user,
+    assert_chat_member_count, assert_handler_error, assert_handler_success,
     create_new_test_chat, setup_test_users,
   };
+  use fechatter_core::auth_user;
   use anyhow::Result;
   use axum::{Json, extract::Path, http::StatusCode, response::IntoResponse};
 

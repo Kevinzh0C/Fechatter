@@ -1,9 +1,14 @@
-use crate::{User, UserStatus};
-use crate::{AppError, config::AuthConfig};
+use crate::{UserStatus, error::CoreError, models::User};
 use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AuthConfig {
+  pub sk: String,
+  pub pk: String,
+}
 
 const JWT_ISSUER: &str = "fechatter-server";
 const JWT_AUDIENCE: &str = "fechatter-web";
@@ -32,10 +37,19 @@ pub struct UserClaims {
   pub created_at: DateTime<Utc>,
 }
 
+#[derive(Clone)]
 pub struct TokenManager {
   encoding_key: EncodingKey,
   decoding_key: DecodingKey,
   validation: Validation,
+}
+
+impl std::fmt::Debug for TokenManager {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("TokenManager")
+      .field("validation", &self.validation)
+      .finish_non_exhaustive()
+  }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -90,7 +104,7 @@ impl RefreshToken {
     user_agent: Option<String>,
     ip_address: Option<String>,
     pool: &PgPool,
-  ) -> Result<Self, AppError> {
+  ) -> Result<Self, CoreError> {
     let now = Utc::now();
     let expires_at = now + Duration::seconds(REFRESH_TOKEN_EXPIRATION as i64);
     let absolute_expires_at = now + Duration::seconds(REFRESH_TOKEN_MAX_LIFETIME as i64);
@@ -115,7 +129,7 @@ impl RefreshToken {
     Ok(refresh_token)
   }
 
-  pub async fn find_by_token(token: &str, pool: &PgPool) -> Result<Option<Self>, AppError> {
+  pub async fn find_by_token(token: &str, pool: &PgPool) -> Result<Option<Self>, CoreError> {
     let token_hash = sha256_hash(token);
 
     let refresh_token = sqlx::query_as::<_, RefreshToken>(
@@ -132,7 +146,7 @@ impl RefreshToken {
     Ok(refresh_token)
   }
 
-  pub async fn revoke(&self, pool: &PgPool) -> Result<(), AppError> {
+  pub async fn revoke(&self, pool: &PgPool) -> Result<(), CoreError> {
     sqlx::query(
       r#"
       UPDATE refresh_tokens
@@ -153,7 +167,7 @@ impl RefreshToken {
   /// - Responding to suspicious activity
   /// - Logout from all devices
   #[allow(dead_code)]
-  pub async fn revoke_all_for_user(user_id: i64, pool: &PgPool) -> Result<(), AppError> {
+  pub async fn revoke_all_for_user(user_id: i64, pool: &PgPool) -> Result<(), CoreError> {
     sqlx::query(
       r#"
       UPDATE refresh_tokens
@@ -174,7 +188,7 @@ impl RefreshToken {
     user_agent: Option<String>,
     ip_address: Option<String>,
     pool: &PgPool,
-  ) -> Result<Self, AppError> {
+  ) -> Result<Self, CoreError> {
     let now = Utc::now();
     let new_expires_at = now + Duration::seconds(REFRESH_TOKEN_EXPIRATION as i64);
     let absolute_expires_at = self.absolute_expires_at; // Keep the same absolute expiry
@@ -238,7 +252,7 @@ impl Claims {
 }
 
 impl TokenManager {
-  pub fn from_config(auth: &AuthConfig) -> Result<Self, AppError> {
+  pub fn from_config(auth: &AuthConfig) -> Result<Self, CoreError> {
     let mut validation = Validation::new(Algorithm::EdDSA);
     validation.leeway = JWT_LEEWAY;
     validation.reject_tokens_expiring_in_less_than = 300;
@@ -259,7 +273,7 @@ impl TokenManager {
     })
   }
 
-  pub fn generate_token(&self, user: &User) -> Result<String, AppError> {
+  pub fn generate_token(&self, user: &User) -> Result<String, CoreError> {
     let claims = Claims::new(user);
     let header = Header::new(Algorithm::EdDSA);
     let token = encode(&header, &claims, &self.encoding_key)?;
@@ -273,7 +287,7 @@ impl TokenManager {
     user_agent: Option<String>,
     ip_address: Option<String>,
     pool: &PgPool,
-  ) -> Result<AuthTokens, AppError> {
+  ) -> Result<AuthTokens, CoreError> {
     let access_token = self.generate_token(user)?;
     let refresh_token = generate_refresh_token();
 
@@ -292,7 +306,7 @@ impl TokenManager {
     })
   }
 
-  pub fn verify_token(&self, token: &str) -> Result<UserClaims, AppError> {
+  pub fn verify_token(&self, token: &str) -> Result<UserClaims, CoreError> {
     let token_data = decode::<Claims>(token, &self.decoding_key, &self.validation)?;
     let user_claims = UserClaims {
       id: token_data.claims.user.id,
@@ -310,7 +324,23 @@ impl TokenManager {
 #[cfg(test)]
 mod tests {
 
-  use crate::{AppConfig, UserStatus, setup_test_users};
+  use crate::{DatabaseModel, UserStatus, setup_test_users};
+
+  #[derive(Clone, Debug)]
+  struct AppConfig {
+    auth: AuthConfig,
+  }
+
+  impl AppConfig {
+    fn load() -> Result<Self, anyhow::Error> {
+      Ok(Self {
+        auth: AuthConfig {
+          sk: "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF\n-----END PRIVATE KEY-----".to_string(),
+          pk: "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAHrnbu7wEfAP9cGBOAHHwmH4Wsot1ciXBHmCRcXLBUUQ=\n-----END PUBLIC KEY-----".to_string(),
+        },
+      })
+    }
+  }
 
   use super::*;
   use anyhow::Result;
@@ -348,7 +378,7 @@ mod tests {
 
   #[tokio::test]
   async fn refresh_token_create_and_find_works() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1).await;
+    let (_tdb, state, users) = setup_test_users!(1);
     let user = &users[0];
 
     let token_str = generate_refresh_token();
@@ -375,7 +405,7 @@ mod tests {
 
   #[tokio::test]
   async fn refresh_token_revoke_works() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1).await;
+    let (_tdb, state, users) = setup_test_users!(1);
     let user = &users[0];
 
     let token_str = generate_refresh_token();
@@ -393,7 +423,7 @@ mod tests {
 
   #[tokio::test]
   async fn refresh_token_replace_works() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1).await;
+    let (_tdb, state, users) = setup_test_users!(1);
     let user = &users[0];
 
     let token_str = generate_refresh_token();
@@ -416,7 +446,7 @@ mod tests {
 
   #[tokio::test]
   async fn refresh_token_revoke_all_for_user_works() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1).await;
+    let (_tdb, state, users) = setup_test_users!(1);
     let user = &users[0];
 
     let token_str1 = generate_refresh_token();

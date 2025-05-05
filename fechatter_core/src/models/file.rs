@@ -3,7 +3,7 @@ use std::{
   str::FromStr,
 };
 
-use crate::{AppError, models::ChatFile};
+use crate::{error::CoreError, models::ChatFile};
 use tracing::{info, warn};
 
 use sha1::{Digest, Sha1};
@@ -48,15 +48,13 @@ impl ChatFile {
 }
 
 impl FromStr for ChatFile {
-  type Err = AppError;
+  type Err = CoreError;
 
   fn from_str(s: &str) -> Result<Self, Self::Err> {
     info!("[TRACE] ChatFile::from_str parsing: {}", s);
     let Some(s) = s.strip_prefix("/files/") else {
       warn!("[TRACE] Invalid path prefix: {}", s);
-      return Err(AppError::ChatFileError(
-        "Invaild chat file path".to_string(),
-      ));
+      return Err(CoreError::Validation("Invalid chat file path".to_string()));
     };
     info!("[TRACE] Stripped prefix, remaining: {}", s);
 
@@ -68,14 +66,12 @@ impl FromStr for ChatFile {
     if parts.len() != 4 {
       warn!("[TRACE] Invalid parts length: {}", parts.len());
       warn!("[TRACE] Expected format: /files/<workspace_id>/<part1>/<part2>/<part3>.<ext>");
-      return Err(AppError::ChatFileError(
-        "Invalid chat file path".to_string(),
-      ));
+      return Err(CoreError::Validation("Invalid chat file path".to_string()));
     }
 
     let Ok(ws_id) = parts[0].parse::<i64>() else {
       warn!("[TRACE] Invalid workspace id: {}", parts[0]);
-      return Err(AppError::ChatFileError(format!(
+      return Err(CoreError::Validation(format!(
         "Invalid workspace id: {}",
         parts[0]
       )));
@@ -85,7 +81,7 @@ impl FromStr for ChatFile {
     let Some((part3, ext)) = parts[3].split_once('.') else {
       warn!("[TRACE] Invalid file name format: {}", parts[3]);
       warn!("[TRACE] Expected format: <part3>.<ext>");
-      return Err(AppError::ChatFileError(format!(
+      return Err(CoreError::Validation(format!(
         "Invalid file name {}",
         parts[3]
       )));

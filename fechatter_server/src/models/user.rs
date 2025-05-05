@@ -17,7 +17,7 @@ impl AppState {
     &self,
     email: &str,
     pool: &PgPool,
-  ) -> Result<Option<Self>, AppError> {
+  ) -> Result<Option<User>, AppError> {
     let user = sqlx::query_as::<_, User>(
       "SELECT id, fullname, email, status, created_at, workspace_id FROM users WHERE email = $1",
     )
@@ -61,15 +61,15 @@ impl AppState {
   /// Create a new user in the database.
   pub async fn create(
     &self,
-    input: &CreateUser,
+    input: &fechatter_core::CreateUser,
     pool: &PgPool,
-  ) -> Result<Self, AppError> {
+  ) -> Result<User, AppError> {
     let mut tx = pool.begin().await?;
 
     let conn = tx.acquire().await?;
 
     let mut is_new_workspace = false;
-    let workspace = match Workspace::find_by_name(&input.workspace, &mut *conn).await? {
+    let workspace = match Workspace::find_by_name(&input.workspace, pool).await? {
       Some(workspace) => {
         if workspace.owner_id == 0 {
           is_new_workspace = true;
@@ -95,8 +95,8 @@ impl AppState {
 
     let user = sqlx::query_as::<_, User>(
       r#"
-      INSERT INTO users (workspace_id, email, fullname, password_hash) 
-      VALUES ($1, $2, $3, $4) 
+      INSERT INTO users (workspace_id, email, fullname, password_hash)
+      VALUES ($1, $2, $3, $4)
       RETURNING id, fullname, email, status, created_at, workspace_id, password_hash
       "#,
     )
@@ -139,9 +139,9 @@ impl AppState {
   /// Returns the user if authentication is successful.
   pub async fn authenticate(
     &self,
-    input: &SigninUser,
+    input: &fechatter_core::SigninUser,
     pool: &PgPool,
-  ) -> Result<Option<Self>, AppError> {
+  ) -> Result<Option<User>, AppError> {
     let user = sqlx::query_as::<_, User>(
       "SELECT id, fullname, email, password_hash, status, created_at, workspace_id FROM users WHERE email = $1",
     )
@@ -168,11 +168,7 @@ impl AppState {
   }
 
   /// Find a user by their ID
-  pub async fn find_by_id(
-    &self,
-    id: i64,
-    pool: &PgPool,
-  ) -> Result<Option<Self>, AppError> {
+  pub async fn find_user_by_id(&self, id: i64, pool: &PgPool) -> Result<Option<User>, AppError> {
     let user = sqlx::query_as::<_, User>(
       "SELECT id, fullname, email, password_hash, status, created_at, workspace_id FROM users WHERE id = $1",
     )
@@ -211,23 +207,30 @@ fn verify_password(password: &str, password_hash: &str) -> Result<bool, AppError
 
 impl AppState {
   #[allow(dead_code)]
-  pub async fn fetch_all_users(
-    &self,
-    pool: &PgPool,
-  ) -> Result<Vec<Self>, AppError> {
-    let users = Workspace::fetch_all_users(self, pool).await?;
+  pub async fn get_users_in_workspace(&self, pool: &PgPool) -> Result<Vec<User>, AppError> {
+    let workspace_id = sqlx::query_scalar::<_, i64>("SELECT workspace_id FROM users LIMIT 1")
+      .fetch_optional(pool)
+      .await?
+      .unwrap_or(0);
+
+    let users = sqlx::query_as::<_, User>(
+      "SELECT id, fullname, email, status, created_at, workspace_id FROM users WHERE workspace_id = $1"
+    )
+    .bind(workspace_id)
+    .fetch_all(pool)
+    .await?;
 
     Ok(users)
   }
 }
-
-
 
 #[cfg(test)]
 mod tests {
   use super::*;
   use crate::setup_test_users;
   use anyhow::Result;
+  use fechatter_core::{CreateUser, DatabaseModel, SigninUser};
+  use crate::error::AppError;
 
   #[test]
   fn hashed_password_should_work() -> Result<()> {
@@ -277,8 +280,12 @@ mod tests {
     let duplicate_input = CreateUser::new("Another Alice", &user1.email, "acme", "hunter4332");
     let result = User::create(&duplicate_input, pool).await;
     match result {
-      Err(AppError::UserAlreadyExists(email)) => {
-        assert_eq!(email, user1.email);
+      Err(e) => {
+        if let AppError::UserAlreadyExists(email) = e {
+          assert_eq!(email, user1.email);
+        } else {
+          panic!("Expected UserAlreadyExists error, got {:?}", e);
+        }
       }
       _ => panic!("Expected UserAlreadyExists error"),
     }

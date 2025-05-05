@@ -1,42 +1,41 @@
-use anyhow::Result;
+use anyhow;
 use chrono::Utc;
 use sqlx::PgPool;
 use tracing::{error, info, warn};
 
 use crate::{
-  AppError,
+  error::CoreError,
+  models::{CreateUser, DatabaseModel, SigninUser, User},
+  state::{WithDbPool, WithTokenManager},
   utils::jwt::{AuthTokens, RefreshToken, RefreshTokenData, TokenManager, generate_refresh_token},
-  {CreateUser, SigninUser, User},
 };
 
-pub struct AuthService<'a> {
-  pool: &'a PgPool,
-  token_manager: &'a TokenManager,
+pub struct AuthService<S> {
+  state: S,
 }
 
-impl<'a> AuthService<'a> {
-  pub fn new(pool: &'a PgPool, token_manager: &'a TokenManager) -> Self {
-    Self {
-      pool,
-      token_manager,
-    }
+impl<S> AuthService<S>
+where
+  S: WithDbPool + WithTokenManager + Sync,
+{
+  pub fn new(state: S) -> Self {
+    Self { state }
   }
 
-  pub async fn signup<Err>(
+  pub async fn signup(
     &self,
     payload: &CreateUser,
     user_agent: Option<String>,
     ip_address: Option<String>,
-  ) -> Result<AuthTokens, Err
-    where
-      Err: From<AppError>,
-  {
-    let user = User::create(payload, self.pool).await?;
+  ) -> Result<AuthTokens, CoreError> {
+    let user = User::create(payload, &self.state).await?;
 
     let tokens = self
-      .token_manager
-      .generate_auth_tokens(&user, user_agent, ip_address, self.pool)
-      .await?;
+      .state
+      .token_manager()
+      .generate_auth_tokens(&user, user_agent, ip_address, self.state.db_pool())
+      .await
+      .map_err(|e| CoreError::Internal(e.into()))?;
 
     info!("User signed up successfully: {}", user.email);
     Ok(tokens)
@@ -48,13 +47,20 @@ impl<'a> AuthService<'a> {
     payload: &SigninUser,
     user_agent: Option<String>,
     ip_address: Option<String>,
-  ) -> Result<Option<AuthTokens>, AppError> {
-    match User::authenticate(payload, self.pool).await? {
+  ) -> Result<Option<AuthTokens>, CoreError> {
+    match User::authenticate(payload, &self.state).await? {
       Some(user) => {
         let tokens = self
-          .token_manager
-          .generate_auth_tokens(&user, user_agent.clone(), ip_address.clone(), self.pool)
-          .await?;
+          .state
+          .token_manager()
+          .generate_auth_tokens(
+            &user,
+            user_agent.clone(),
+            ip_address.clone(),
+            self.state.db_pool(),
+          )
+          .await
+          .map_err(|e| CoreError::Internal(e.into()))?;
 
         info!(
           "User signed in successfully: {} from {} with agent {}",
@@ -77,7 +83,7 @@ impl<'a> AuthService<'a> {
     refresh_token_str: &str,
     user_agent: Option<String>,
     ip_address: Option<String>,
-  ) -> Result<AuthTokens, AppError> {
+  ) -> Result<AuthTokens, CoreError> {
     // Find and validate refresh token
     let token_record = self.validate_refresh_token(refresh_token_str).await?;
 
@@ -89,7 +95,7 @@ impl<'a> AuthService<'a> {
             "Security check failed: token has user agent but current request has none for user_id: {}",
             token_record.user_id
           );
-          return Err(AppError::InvalidInput(
+          return Err(CoreError::Validation(
             "Security validation failed for token".to_string(),
           ));
         }
@@ -98,7 +104,7 @@ impl<'a> AuthService<'a> {
             "Possible token theft attempt: token user_agent doesn't match current request for user_id: {}",
             token_record.user_id
           );
-          return Err(AppError::InvalidInput(
+          return Err(CoreError::Validation(
             "Security validation failed for token".to_string(),
           ));
         }
@@ -122,9 +128,15 @@ impl<'a> AuthService<'a> {
   }
 
   /// Handle user logout, revoke refresh token
-  pub async fn logout(&self, refresh_token_str: &str) -> Result<(), AppError> {
-    if let Some(token_record) = RefreshToken::find_by_token(refresh_token_str, self.pool).await? {
-      token_record.revoke(self.pool).await?;
+  pub async fn logout(&self, refresh_token_str: &str) -> Result<(), CoreError> {
+    if let Some(token_record) = RefreshToken::find_by_token(refresh_token_str, self.state.db_pool())
+      .await
+      .map_err(|e| CoreError::Internal(e.into()))?
+    {
+      token_record
+        .revoke(self.state.db_pool())
+        .await
+        .map_err(|e| CoreError::Internal(e.into()))?;
       info!("Refresh token revoked for user: {}", token_record.user_id);
     } else {
       info!("Logout attempt with non-existent or expired refresh token.");
@@ -133,18 +145,21 @@ impl<'a> AuthService<'a> {
   }
 
   /// logout all sessions by user_id
-  pub async fn logout_all(&self, user_id: i64) -> Result<(), AppError> {
-    RefreshToken::revoke_all_for_user(user_id, self.pool).await?;
+  pub async fn logout_all(&self, user_id: i64) -> Result<(), CoreError> {
+    RefreshToken::revoke_all_for_user(user_id, self.state.db_pool())
+      .await
+      .map_err(|e| CoreError::Internal(e.into()))?;
     info!("All sessions revoked for user: {}", user_id);
     Ok(())
   }
 
-  async fn validate_refresh_token(&self, token_str: &str) -> Result<RefreshToken, AppError> {
-    let token_record = RefreshToken::find_by_token(token_str, self.pool)
-      .await?
+  async fn validate_refresh_token(&self, token_str: &str) -> Result<RefreshToken, CoreError> {
+    let token_record = RefreshToken::find_by_token(token_str, self.state.db_pool())
+      .await
+      .map_err(|e| CoreError::Internal(e.into()))?
       .ok_or_else(|| {
         info!("Refresh token not found or expired");
-        AppError::InvalidInput("Invalid or expired refresh token".to_string())
+        CoreError::Validation("Invalid or expired refresh token".to_string())
       })?;
 
     // Check if token has expired
@@ -155,7 +170,7 @@ impl<'a> AuthService<'a> {
         token_record.expires_at,
         Utc::now()
       );
-      return Err(AppError::InvalidInput(
+      return Err(CoreError::Validation(
         "Invalid or expired refresh token".to_string(),
       ));
     }
@@ -166,7 +181,7 @@ impl<'a> AuthService<'a> {
         "Attempt to use revoked refresh token for user: {}",
         token_record.user_id
       );
-      return Err(AppError::InvalidInput(
+      return Err(CoreError::Validation(
         "Invalid or revoked refresh token".to_string(),
       ));
     }
@@ -175,15 +190,15 @@ impl<'a> AuthService<'a> {
   }
 
   /// Find user by token
-  async fn find_user_by_token(&self, token: &RefreshToken) -> Result<User, AppError> {
-    User::find_by_id(token.user_id, self.pool)
+  async fn find_user_by_token(&self, token: &RefreshToken) -> Result<User, CoreError> {
+    User::find_by_id(token.user_id, &self.state)
       .await?
       .ok_or_else(|| {
         error!(
           "User not found for valid refresh token: user_id {}",
           token.user_id
         );
-        AppError::NotFound(vec!["User linked to refresh token not found".to_string()])
+        CoreError::NotFound(format!("User linked to refresh token not found"))
       })
   }
 
@@ -194,7 +209,7 @@ impl<'a> AuthService<'a> {
     user: &User,
     current_user_agent: Option<String>,
     current_ip_address: Option<String>,
-  ) -> Result<(String, RefreshTokenData), AppError> {
+  ) -> Result<(String, RefreshTokenData), CoreError> {
     // Generate new refresh and access tokens
     let new_refresh_token_str = generate_refresh_token();
 
@@ -204,11 +219,21 @@ impl<'a> AuthService<'a> {
 
     // Replace old token
     let new_token_db_record = old_token
-      .replace(&new_refresh_token_str, user_agent, ip_address, self.pool)
-      .await?;
+      .replace(
+        &new_refresh_token_str,
+        user_agent,
+        ip_address,
+        self.state.db_pool(),
+      )
+      .await
+      .map_err(|e| CoreError::Internal(e.into()))?;
 
     // Generate new access token
-    let access_token = self.token_manager.generate_token(user)?;
+    let access_token = self
+      .state
+      .token_manager()
+      .generate_token(user)
+      .map_err(|e| CoreError::Internal(e.into()))?;
 
     // Create refresh token data
     let refresh_token_data = RefreshTokenData {
@@ -227,11 +252,13 @@ impl<'a> AuthService<'a> {
     user: &User,
     user_agent: Option<String>,
     ip_address: Option<String>,
-  ) -> Result<AuthTokens, AppError> {
+  ) -> Result<AuthTokens, CoreError> {
     self
-      .token_manager
-      .generate_auth_tokens(user, user_agent, ip_address, self.pool)
+      .state
+      .token_manager()
+      .generate_auth_tokens(user, user_agent, ip_address, self.state.db_pool())
       .await
+      .map_err(|e| CoreError::Internal(e.into()))
   }
 }
 
@@ -240,19 +267,47 @@ mod tests {
   use std::time::Duration;
 
   use super::*;
-  use crate::setup_test_users;
+  use crate::{
+    setup_test_users,
+    state::{WithDbPool, WithTokenManager},
+  };
   use anyhow::Result;
   use tokio::time::sleep;
 
+  #[derive(Clone)]
+  struct TestState {
+    pool: PgPool,
+    token_manager: TokenManager,
+  }
+
+  impl WithDbPool for TestState {
+    fn db_pool(&self) -> &PgPool {
+      &self.pool
+    }
+  }
+
+  impl WithTokenManager for TestState {
+    fn token_manager(&self) -> &TokenManager {
+      &self.token_manager
+    }
+  }
+
   #[tokio::test]
   async fn refresh_token_service_should_work() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1).await;
+    let (_tdb, state, users) = setup_test_users!(1);
     let user = &users[0];
-    let auth_service = AuthService::new(&state.pool, &state.token_manager);
 
-    let initial_tokens = auth_service
-      .token_manager
-      .generate_auth_tokens(user, None, None, &state.pool)
+    // Create test state that implements required traits
+    let test_state = TestState {
+      pool: state.pool.clone(),
+      token_manager: state.token_manager.clone(),
+    };
+
+    let auth_service = AuthService::new(test_state.clone());
+
+    let initial_tokens = test_state
+      .token_manager()
+      .generate_auth_tokens(user, None, None, test_state.db_pool())
       .await?;
 
     sleep(Duration::from_secs(1)).await;
@@ -272,17 +327,23 @@ mod tests {
 
   #[tokio::test]
   async fn refresh_token_service_should_fail_with_invalid_token() -> Result<()> {
-    let (_tdb, state, _users) = setup_test_users!(1).await;
-    let auth_service = AuthService::new(&state.pool, &state.token_manager);
+    let (_tdb, state, _users) = setup_test_users!(1);
+
+    let test_state = TestState {
+      pool: state.pool.clone(),
+      token_manager: state.token_manager.clone(),
+    };
+
+    let auth_service = AuthService::new(test_state);
 
     let result = auth_service
       .refresh_token("invalid_token", None, None)
       .await;
 
     assert!(result.is_err());
-    if let Err(AppError::InvalidInput(_)) = result {
+    if let Err(CoreError::Validation(_)) = result {
     } else {
-      panic!("Expected InvalidInput error");
+      panic!("Expected validation error");
     }
 
     Ok(())
@@ -290,13 +351,19 @@ mod tests {
 
   #[tokio::test]
   async fn logout_service_should_revoke_token() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1).await;
+    let (_tdb, state, users) = setup_test_users!(1);
     let user = &users[0];
-    let auth_service = AuthService::new(&state.pool, &state.token_manager);
 
-    let tokens = auth_service
-      .token_manager
-      .generate_auth_tokens(user, None, None, &state.pool)
+    let test_state = TestState {
+      pool: state.pool.clone(),
+      token_manager: state.token_manager.clone(),
+    };
+
+    let auth_service = AuthService::new(test_state.clone());
+
+    let tokens = test_state
+      .token_manager()
+      .generate_auth_tokens(user, None, None, test_state.db_pool())
       .await?;
 
     auth_service.logout(&tokens.refresh_token.token).await?;
@@ -312,13 +379,19 @@ mod tests {
 
   #[tokio::test]
   async fn refresh_token_can_only_be_used_once() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1).await;
+    let (_tdb, state, users) = setup_test_users!(1);
     let user = &users[0];
-    let auth_service = AuthService::new(&state.pool, &state.token_manager);
 
-    let initial_tokens = auth_service
-      .token_manager
-      .generate_auth_tokens(user, None, None, &state.pool)
+    let test_state = TestState {
+      pool: state.pool.clone(),
+      token_manager: state.token_manager.clone(),
+    };
+
+    let auth_service = AuthService::new(test_state.clone());
+
+    let initial_tokens = test_state
+      .token_manager()
+      .generate_auth_tokens(user, None, None, test_state.db_pool())
       .await?;
 
     let new_tokens = auth_service
@@ -342,8 +415,14 @@ mod tests {
 
   #[tokio::test]
   async fn signup_service_should_create_user_and_tokens() -> Result<()> {
-    let (_tdb, state, _) = setup_test_users!(0).await; // Setup DB, no initial users needed
-    let auth_service = AuthService::new(&state.pool, &state.token_manager);
+    let (_tdb, state, _) = setup_test_users!(0); // Setup DB, no initial users needed
+
+    let test_state = TestState {
+      pool: state.pool.clone(),
+      token_manager: state.token_manager.clone(),
+    };
+
+    let auth_service = AuthService::new(test_state.clone());
 
     let create_user_payload = CreateUser {
       workspace: "Acme".to_string(), // Use workspace (String) instead of workspace_id
@@ -360,7 +439,7 @@ mod tests {
     assert!(!tokens.refresh_token.token.is_empty());
 
     // Optional: Verify user exists in DB
-    let user_check = User::email_user_exists("newuser@test.com", &state.pool).await?;
+    let user_check = User::email_user_exists("newuser@test.com", &test_state).await?;
     assert!(user_check.is_some());
     assert_eq!(user_check.unwrap().fullname, "New User");
 
@@ -369,9 +448,15 @@ mod tests {
 
   #[tokio::test]
   async fn signin_service_should_return_tokens_for_valid_credentials() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1).await; // Setup with one user
+    let (_tdb, state, users) = setup_test_users!(1); // Setup with one user
     let user = &users[0];
-    let auth_service = AuthService::new(&state.pool, &state.token_manager);
+
+    let test_state = TestState {
+      pool: state.pool.clone(),
+      token_manager: state.token_manager.clone(),
+    };
+
+    let auth_service = AuthService::new(test_state.clone());
 
     let signin_payload = SigninUser {
       email: user.email.clone(),
@@ -390,16 +475,22 @@ mod tests {
 
   #[tokio::test]
   async fn test_user_agent_consistency_check() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1).await;
+    let (_tdb, state, users) = setup_test_users!(1);
     let user = &users[0];
-    let auth_service = AuthService::new(&state.pool, &state.token_manager);
+
+    let test_state = TestState {
+      pool: state.pool.clone(),
+      token_manager: state.token_manager.clone(),
+    };
+
+    let auth_service = AuthService::new(test_state.clone());
 
     // Create token with specific user agent
     let original_agent = Some("Chrome Browser".to_string());
 
-    let tokens = auth_service
-      .token_manager
-      .generate_auth_tokens(user, original_agent.clone(), None, &state.pool)
+    let tokens = test_state
+      .token_manager()
+      .generate_auth_tokens(user, original_agent.clone(), None, test_state.db_pool())
       .await?;
 
     // Try to refresh with different user agent should fail
@@ -409,7 +500,7 @@ mod tests {
       .await;
 
     assert!(refresh_result.is_err());
-    if let Err(AppError::InvalidInput(msg)) = refresh_result {
+    if let Err(CoreError::Validation(msg)) = refresh_result {
       assert!(msg.contains("Security validation failed"));
     } else {
       panic!("Expected security validation error");
@@ -427,16 +518,22 @@ mod tests {
 
   #[tokio::test]
   async fn test_missing_user_agent_fails_when_token_has_one() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1).await;
+    let (_tdb, state, users) = setup_test_users!(1);
     let user = &users[0];
-    let auth_service = AuthService::new(&state.pool, &state.token_manager);
+
+    let test_state = TestState {
+      pool: state.pool.clone(),
+      token_manager: state.token_manager.clone(),
+    };
+
+    let auth_service = AuthService::new(test_state.clone());
 
     // Create token with specific user agent
     let original_agent = Some("Chrome Browser".to_string());
 
-    let tokens = auth_service
-      .token_manager
-      .generate_auth_tokens(user, original_agent, None, &state.pool)
+    let tokens = test_state
+      .token_manager()
+      .generate_auth_tokens(user, original_agent, None, test_state.db_pool())
       .await?;
 
     // Try to refresh without providing a user agent should fail
@@ -445,7 +542,7 @@ mod tests {
       .await;
 
     assert!(refresh_result.is_err());
-    if let Err(AppError::InvalidInput(msg)) = refresh_result {
+    if let Err(CoreError::Validation(msg)) = refresh_result {
       assert!(msg.contains("Security validation failed"));
     } else {
       panic!("Expected security validation error");
@@ -456,9 +553,15 @@ mod tests {
 
   #[tokio::test]
   async fn logout_all_sessions_should_work() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(1).await;
+    let (_tdb, state, users) = setup_test_users!(1);
     let user = &users[0];
-    let auth_service = AuthService::new(&state.pool, &state.token_manager);
+
+    let test_state = TestState {
+      pool: state.pool.clone(),
+      token_manager: state.token_manager.clone(),
+    };
+
+    let auth_service = AuthService::new(test_state.clone());
 
     // Create multiple tokens
     let token1 = auth_service.generate_auth_tokens(user, None, None).await?;

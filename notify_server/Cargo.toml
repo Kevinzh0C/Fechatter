@@ -19,4 +19,5 @@ serde_yaml = { workspace = true }
 futures = { workspace = true }
 axum-extra = { workspace = true }
 tokio-stream = { workspace = true }
+dashmap = { version = "5.5.3" }
 fechatter_core = { workspace = true }

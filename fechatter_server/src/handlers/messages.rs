@@ -1,6 +1,6 @@
 use crate::{
   AppError, AppState,
-  models::{AuthUser, ChatFile, CreateMessage, ListMessage},
+  models::{AuthUser, ChatFile},
 };
 use axum::{
   body::Body,
@@ -8,6 +8,7 @@ use axum::{
   http::{StatusCode, header},
   response::{IntoResponse, Json, Response},
 };
+use fechatter_core::{CreateMessage, DatabaseModel, ListMessage};
 
 use bytes::Bytes;
 use futures::{StreamExt, TryStreamExt, stream::BoxStream};
@@ -26,7 +27,14 @@ pub(crate) async fn send_message_handler(
   Path(chat_id): Path<i64>,
   Json(message): Json<CreateMessage>,
 ) -> Result<impl IntoResponse, AppError> {
-  let message = state.create_message(message, chat_id, user.id).await?;
+  // Convert core CreateMessage to server CreateMessage
+  let server_message = crate::models::ServerCreateMessage {
+    content: message.content,
+    files: message.files,
+  };
+  let message = state
+    .create_message(server_message, chat_id, user.id)
+    .await?;
 
   Ok((StatusCode::CREATED, Json(message)))
 }
@@ -36,7 +44,12 @@ pub(crate) async fn list_messages_handler(
   Path(chat_id): Path<i64>,
   Query(query): Query<ListMessage>,
 ) -> Result<impl IntoResponse, AppError> {
-  let messages = state.list_messages(query, chat_id).await?;
+  // Convert core ListMessage to server ListMessage
+  let server_query = crate::models::ServerListMessage {
+    limit: query.limit,
+    last_id: query.last_id,
+  };
+  let messages = state.list_messages(server_query, chat_id).await?;
 
   Ok((StatusCode::OK, Json(messages)))
 }
@@ -253,9 +266,7 @@ fn check_file_size(size: usize, filename: &str, max_size: usize) -> Result<(), A
   if size > max_size {
     return Err(AppError::InvalidInput(format!(
       "File '{}' too large: {} bytes (max: {} bytes)",
-      filename,
-      size,
-      max_size
+      filename, size, max_size
     )));
   }
   Ok(())
@@ -340,8 +351,7 @@ async fn stream_to_temp_file<'a>(
 
       return Err(AppError::InvalidInput(format!(
         "File '{}' too large: exceeds {} bytes limit",
-        filename,
-        max_file_size
+        filename, max_file_size
       )));
     }
 
@@ -438,9 +448,7 @@ async fn save_file_to_storage(
   // Need to canonicalize the *parent* of the final path if it doesn't exist yet.
   let parent_dir = final_path
     .parent()
-    .ok_or_else(|| AppError::InvalidInput(format!(
-      "Invalid final path structure"
-    )))?;
+    .ok_or_else(|| AppError::InvalidInput(format!("Invalid final path structure")))?;
 
   // Ensure parent directory exists *before* canonicalization checks involving final_path itself
   fs::create_dir_all(parent_dir).await?;
@@ -540,10 +548,7 @@ pub(crate) async fn upload_handler(
     Ok(Some(f)) => Some(f),
     Ok(None) => None,
     Err(e) => {
-      return Err(AppError::ChatFileError(format!(
-        "Multipart error: {}",
-        e
-      )));
+      return Err(AppError::ChatFileError(format!("Multipart error: {}", e)));
     }
   } {
     let original_filename = match field.file_name() {
@@ -605,8 +610,7 @@ pub(crate) async fn fix_file_storage_handler(
   if user.workspace_id != ws_id {
     return Err(AppError::ChatPermissionError(format!(
       "User {} does not have access to workspace {}",
-      user.id,
-      ws_id
+      user.id, ws_id
     )));
   }
 
@@ -793,11 +797,11 @@ mod tests {
     });
 
     // Create a chat with 3 members
-    let chat = crate::models::create_new_chat(
+    let chat = fechatter_core::models::chat::create_new_chat(
       &state,
       user1.id,
       "Test Chat",
-      crate::models::ChatType::Group,
+      fechatter_core::ChatType::Group,
       Some(vec![user1.id, user2.id, user3.id]), // Include user3
       Some("Test chat for sending messages"),
       user1.workspace_id,
@@ -1152,11 +1156,11 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(10).await;
     let user1 = &users[0];
 
-    let chat = crate::models::create_new_chat(
+    let chat = fechatter_core::models::chat::create_new_chat(
       &state,
       user1.id,
       "Large Message Test",
-      crate::models::ChatType::Group,
+      fechatter_core::ChatType::Group,
       Some(users.iter().map(|u| u.id).collect()),
       Some("Chat for testing large message volumes"),
       user1.workspace_id,
@@ -1175,7 +1179,7 @@ mod tests {
     for i in 0..MESSAGE_COUNT {
       let sender = &users[i % users.len()];
 
-      let message_payload = CreateMessage {
+      let message_payload = crate::models::ServerCreateMessage {
         content: format!("Test message #{} from {}", i, sender.fullname),
         files: vec![],
       };

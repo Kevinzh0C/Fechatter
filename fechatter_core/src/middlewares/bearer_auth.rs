@@ -11,15 +11,17 @@ use axum_extra::{
 };
 use tracing::warn;
 
-use crate::{AuthUser, middlewares::TokenVerifier};
+use crate::{TokenVerifier, models::AuthUser};
+use axum::body::Body;
 
 pub async fn verify_token_middleware<T>(
   State(state): State<T>,
-  req: Request,
+  req: Request<Body>,
   next: Next,
 ) -> Response
 where
   T: TokenVerifier + Clone + Send + Sync + 'static,
+  AuthUser: From<T::Claims>,
 {
   let (mut parts, body) = req.into_parts();
   let token =
@@ -34,26 +36,22 @@ where
 
   match state.verify_token(&token) {
     Ok(claims) => {
-      let user = AuthUser {
-        id: claims.id,
-        fullname: claims.fullname,
-        email: claims.email,
-        status: claims.status,
-        created_at: claims.created_at,
-        workspace_id: claims.workspace_id,
-      };
+      let user: AuthUser = claims.into();
       let mut req = Request::from_parts(parts, body);
       req.extensions_mut().insert(user);
       next.run(req).await
     }
-    Err(e) => (StatusCode::UNAUTHORIZED, e.to_string()).into_response(),
+    Err(e) => (StatusCode::UNAUTHORIZED, format!("{:?}", e)).into_response(),
   }
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{jwt::{TokenManager, UserClaims}, setup_test_users};
+  use crate::{
+    jwt::{TokenManager, UserClaims},
+    setup_test_users,
+  };
   use anyhow::Result;
   use axum::{Router, body::Body, middleware::from_fn_with_state, routing::get};
   use std::sync::Arc;
@@ -69,10 +67,15 @@ mod tests {
   }
 
   impl TokenVerifier for Appstate {
-    type Error = ();
+    type Claims = UserClaims;
+    type Error = anyhow::Error;
 
     fn verify_token(&self, token: &str) -> Result<UserClaims, Self::Error> {
-      self.inner.token_manager.verify_token(token)
+      self
+        .inner
+        .token_manager
+        .verify_token(token)
+        .map_err(|e| anyhow::anyhow!("{:?}", e))
     }
   }
 
@@ -82,25 +85,43 @@ mod tests {
 
   #[tokio::test]
   async fn verify_token_middleware_should_work() -> Result<()> {
-    
-    let token_manager: TokenManager = TokenManager {
-      encoding_key: EncodingKey::new(b"secret"),
-      decoding_key: DecodingKey::new(b"secret"),
-      validation: Validation::default(),
-    }
+    use crate::models::User;
+    use crate::utils::jwt::AuthConfig;
 
+    let auth_config = AuthConfig {
+      sk: "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF\n-----END PRIVATE KEY-----".to_string(),
+      pk: "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAHrnbu7wEfAP9cGBOAHHwmH4Wsot1ciXBHmCRcXLBUUQ=\n-----END PUBLIC KEY-----".to_string(),
+    };
+
+    let token_manager = TokenManager::from_config(&auth_config)?;
 
     let state = Appstate {
-      inner: Arc::new(AppstateInner {
-        token_manager,
-      }),
+      inner: Arc::new(AppstateInner { token_manager }),
+    };
+
+    let user = User {
+      id: 1,
+      fullname: "Test User".to_string(),
+      email: "test@example.com".to_string(),
+      password_hash: Some("".to_string()),
+      status: crate::models::UserStatus::Active,
+      created_at: chrono::Utc::now(),
+      workspace_id: 1,
     };
 
     let app = Router::new()
       .route("/api", get(handler))
-      .layer(from_fn_with_state(state.clone(), verify_token_middleware::<Appstate>));
+      .layer(from_fn_with_state(
+        state.clone(),
+        verify_token_middleware::<Appstate>,
+      ));
 
-    let token = state.token_manager.generate_token(&user1)?;
+    let token = state
+      .inner
+      .token_manager
+      .generate_token(&user)
+      .map_err(|_| anyhow::anyhow!("Failed to generate token"))?;
+
     let req = Request::builder()
       .uri("/api")
       .header("Authorization", format!("Bearer {}", token))

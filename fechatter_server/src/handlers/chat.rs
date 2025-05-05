@@ -10,9 +10,12 @@ use tracing::info;
 use crate::{
   AppError, AppState,
   models::{
-    AuthUser, CreateChat, UpdateChat, create_new_chat, delete_chat, list_chats_of_user, update_chat,
+    AuthUser,
+    chat::{CreateChat, UpdateChat, create_new_chat, delete_chat, list_chats_of_user, update_chat},
   },
 };
+
+use fechatter_core::Chat;
 
 pub(crate) async fn list_chats_handler(
   State(state): State<AppState>,
@@ -74,7 +77,9 @@ pub(crate) async fn delete_chat_handler(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::models::{Chat, ChatType, CreateChat, UpdateChat};
+  use crate::models::{Chat, ChatType};
+
+  use crate::models::chat::{CreateChat, UpdateChat};
   use crate::{
     assert_chat_list_count, assert_handler_error, assert_handler_success, auth_user,
     create_new_test_chat, setup_test_users,

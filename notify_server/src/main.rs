@@ -1,5 +1,6 @@
 use anyhow::Result;
-use notify_server::{get_router, set_up_pg_listener};
+use fechatter_core::utils::jwt::AuthConfig;
+use notify_server::{app_state::NotifyState, get_router, set_up_pg_listener};
 use tokio::net::TcpListener;
 use tracing::{info, level_filters::LevelFilter};
 use tracing_subscriber::{
@@ -19,7 +20,16 @@ async fn main() -> Result<()> {
 
   set_up_pg_listener().await?;
 
-  let app = get_router();
+  let auth_config = AuthConfig {
+    sk: "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF\n-----END PRIVATE KEY-----".to_string(),
+    pk: "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAHrnbu7wEfAP9cGBOAHHwmH4Wsot1ciXBHmCRcXLBUUQ=\n-----END PUBLIC KEY-----".to_string(),
+  };
+
+  // Initialize notify state
+  let db_url = "postgres://postgres:postgres@localhost:5432/fechatter";
+  let state = NotifyState::new(db_url, &auth_config).await?;
+
+  let app = get_router(state);
   let listener = TcpListener::bind(&addr).await?;
 
   info!("Listening on: {}", addr);

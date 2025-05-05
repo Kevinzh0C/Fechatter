@@ -1,10 +1,16 @@
+pub mod app_state;
 mod sse;
 
 use anyhow::Result;
+use app_state::NotifyState;
 use axum::{
   Router,
   response::{Html, IntoResponse},
   routing::get,
+};
+use fechatter_core::{
+  models::{Chat, ChatMember, Message},
+  state::WithDbPool,
 };
 use futures::StreamExt;
 use sqlx::postgres::PgListener;
@@ -20,11 +26,15 @@ pub enum Event {
   NewMessage(Message),
 }
 
-
-pub fn get_router() -> Router {
+pub fn get_router(state: NotifyState) -> Router {
+  let state_clone = state.clone();
   Router::new()
     .route("/", get(index_handler))
-    .route("/events", get(sse_handler))
+    .route(
+      "/events",
+      get(move |req| sse_handler(state_clone.clone(), req)),
+    )
+    .with_state(state)
 }
 
 async fn index_handler() -> impl IntoResponse {

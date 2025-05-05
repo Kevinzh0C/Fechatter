@@ -6,32 +6,29 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
+use fechatter_core::error::{CoreError, ErrorMapper};
 use thiserror::Error;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ErrorOutput {
+  pub code: u16,
   pub error: String,
 }
 
 #[derive(Error, Debug)]
-pub enum AppError {
-  #[error("user already exists: {0}")]
-  UserAlreadyExists(String),
-
-  #[error("workspace already exists: {0}")]
-  WorkspaceAlreadyExists(String),
-
-  #[error("Not Found: {}", .0.join(", "))]
-  NotFound(Vec<String>),
-
-  #[error("chat already exists: {0}")]
-  ChatAlreadyExists(String),
+#[non_exhaustive]
+pub enum AppError{
+  #[error("sqlx error: {0}")]
+  SqlxError(#[from] sqlx::Error),
 
   #[error("invalid input: {0}")]
   InvalidInput(String),
 
-  #[error("sqlx error: {0}")]
-  SqlxError(#[from] sqlx::Error),
+  #[error("Not Found: {}", .0.join(", "))]
+  NotFound(Vec<String>),
+
+  #[error("conflict: {0}")]
+  Conflict(String),
 
   #[error("io error: {0}")]
   IOError(#[from] std::io::Error),
@@ -39,14 +36,26 @@ pub enum AppError {
   #[error("password hash error: {0}")]
   PasswordHashError(#[from] argon2::password_hash::Error),
 
-  #[error("jwt error: {0}")]
+  #[error("database error: {0}")]
   JwtError(#[from] jsonwebtoken::errors::Error),
 
-  #[error("general error: {0}")]
+  #[error("unauthorized: {0}")]
+  Unauthorized(String),
+
+  #[error("internal error: {0}")]
   AnyError(#[from] anyhow::Error),
 
   #[error("http header error: {0}")]
   HttpHeaderError(#[from] axum::http::header::InvalidHeaderValue),
+
+  #[error("user already exists: {0}")]
+  UserAlreadyExists(String),
+
+  #[error("workspace already exists: {0}")]
+  WorkspaceAlreadyExists(String),
+
+  #[error("chat already exists: {0}")]
+  ChatAlreadyExists(String),
 
   #[error("chat validation error: {0}")]
   ChatValidationError(String),
@@ -58,17 +67,31 @@ pub enum AppError {
   ChatFileError(String),
 }
 
-impl ErrorOutput {
-  pub fn new(error: impl Into<String>) -> Self {
-    Self {
-      error: error.into(),
+impl ErrorMapper for AppError {
+  type Error = Self;
+
+  fn map_error(error: CoreError) -> Self::Error {
+    match error {
+      CoreError::Database(e) => AppError::SqlxError(e),
+      CoreError::Validation(msg) => AppError::InvalidInput(msg),
+      CoreError::NotFound(msg) => AppError::NotFound(vec![msg]),
+      CoreError::Conflict(msg) => AppError::ChatAlreadyExists(msg),
+      CoreError::Authentication(e) => AppError::JwtError(e),
+      CoreError::Unauthorized(msg) => AppError::ChatPermissionError(msg),
+      CoreError::Internal(e) => AppError::AnyError(e),
     }
+  }
+}
+
+impl From<CoreError> for AppError {
+  fn from(error: CoreError) -> Self {
+    Self::map_error(error)
   }
 }
 
 impl IntoResponse for AppError {
   fn into_response(self) -> Response<Body> {
-    let status_code = match &self {
+    let status = match &self {
       AppError::UserAlreadyExists(_) => StatusCode::CONFLICT,
       AppError::NotFound(_) => StatusCode::NOT_FOUND,
       AppError::SqlxError(_) => StatusCode::INTERNAL_SERVER_ERROR,
@@ -81,10 +104,17 @@ impl IntoResponse for AppError {
       AppError::ChatPermissionError(_) => StatusCode::FORBIDDEN,
       AppError::WorkspaceAlreadyExists(_) => StatusCode::CONFLICT,
       AppError::InvalidInput(_) => StatusCode::BAD_REQUEST,
+      AppError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
+      AppError::Conflict(_) => StatusCode::CONFLICT,
       AppError::IOError(_) => StatusCode::INTERNAL_SERVER_ERROR,
       AppError::ChatFileError(_) => StatusCode::NOT_FOUND,
     };
 
-    (status_code, Json(ErrorOutput::new(self.to_string()))).into_response()
+    let code = status.as_u16();
+    let body = Json(ErrorOutput {
+      code,
+      error: self.to_string(),
+    });
+    (status, body).into_response()
   }
 }

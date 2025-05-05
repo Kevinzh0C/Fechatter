@@ -498,6 +498,19 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
+version = "5.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "978747c1d849a7d2ee5e8adc0159961c48fb7e5db2f06af6723b80123bb53856"
+dependencies = [
+ "cfg-if",
+ "hashbrown 0.14.5",
+ "lock_api",
+ "once_cell",
+ "parking_lot_core",
+]
+
+[[package]]
+name = "dashmap"
 version = "6.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5041cc499144891f3790297212f32a74fb938e5136a14943f338ef9e0ae276cf"
@@ -638,7 +651,7 @@ dependencies = [
  "axum-extra",
  "bytes",
  "chrono",
- "dashmap",
+ "dashmap 6.1.0",
  "dotenv",
  "fechatter_core",
  "futures",
@@ -683,9 +696,11 @@ dependencies = [
  "jsonwebtoken",
  "rand 0.9.1",
  "serde",
+ "serde_yaml",
  "sha1",
  "sha2",
  "sqlx",
+ "thiserror",
  "tokio",
  "tower",
  "tower-http",
@@ -1444,6 +1459,7 @@ dependencies = [
  "anyhow",
  "axum",
  "axum-extra",
+ "dashmap 5.5.3",
  "fechatter_core",
  "futures",
  "serde",

@@ -1,19 +1,20 @@
 use super::ChatFile;
-use super::Message;
 use crate::AppError;
 use crate::AppState;
+use fechatter_core::Message;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+use crate::models::ChatType;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreateMessage {
+pub struct ServerCreateMessage {
   pub content: String,
   #[serde(default)]
   pub files: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ListMessage {
+pub struct ServerListMessage {
   #[serde(default)]
   pub last_id: Option<i64>,
   #[serde(default)]
@@ -23,7 +24,7 @@ pub struct ListMessage {
 impl AppState {
   pub async fn create_message(
     &self,
-    input: CreateMessage,
+    input: ServerCreateMessage,
     chat_id: i64,
     user_id: i64,
   ) -> Result<Message, AppError> {
@@ -48,8 +49,8 @@ impl AppState {
     }
 
     let message = sqlx::query_as::<_, Message>(
-      r#"INSERT INTO messages (chat_id, sender_id, content, files) 
-        VALUES ($1, $2, $3, $4) 
+      r#"INSERT INTO messages (chat_id, sender_id, content, files)
+        VALUES ($1, $2, $3, $4)
         RETURNING id, chat_id, sender_id, content, files, created_at::timestamptz"#,
     )
     .bind(chat_id)
@@ -64,7 +65,7 @@ impl AppState {
 
   pub async fn list_messages(
     &self,
-    input: ListMessage,
+    input: ServerListMessage,
     chat_id: i64,
   ) -> Result<Vec<Message>, AppError> {
     let last_id = input.last_id.unwrap_or(i64::MAX);
@@ -98,6 +99,8 @@ impl AppState {
 mod tests {
   use super::*;
   use anyhow::Result;
+  use crate::models::chat::create_new_chat;
+
 
   #[allow(unused)]
   async fn upload_dummy_file(state: &AppState) -> Result<String> {
@@ -122,18 +125,18 @@ mod tests {
     let user3 = &users[2];
 
     // Create a chat first
-    let chat = crate::models::create_new_chat(
+    let chat = create_new_chat(
       &state,
       user1.id,
       "Test Chat",
-      crate::models::ChatType::Group,
+      ChatType::Group,
       Some(vec![user1.id, user2.id, user3.id]),
       Some("Test chat for messages"),
       user1.workspace_id,
     )
     .await?;
 
-    let message_payload1 = CreateMessage {
+    let message_payload1 = ServerCreateMessage {
       content: "test".to_string(),
       files: vec![],
     };
@@ -154,7 +157,7 @@ mod tests {
     // Create test file in workspace 1
     let url = upload_dummy_file(&state).await?;
 
-    let message_payload2 = CreateMessage {
+    let message_payload2 = ServerCreateMessage {
       content: "test".to_string(),
       files: vec![url],
     };
@@ -168,7 +171,7 @@ mod tests {
 
     // Test file-only message (with empty content)
     let url = upload_dummy_file(&state).await?;
-    let message_payload3 = CreateMessage {
+    let message_payload3 = ServerCreateMessage {
       content: "".to_string(),
       files: vec![url],
     };
@@ -194,11 +197,11 @@ mod tests {
     let user1 = &users[0];
 
     // Create a chat first
-    let chat = crate::models::create_new_chat(
+    let chat = create_new_chat(
       &state,
       user1.id,
       "Test Chat",
-      crate::models::ChatType::Group,
+      ChatType::Group,
       Some(users.iter().map(|u| u.id).collect()),
       Some("Test chat for messages"),
       user1.workspace_id,
@@ -207,7 +210,7 @@ mod tests {
 
     let mut messages_payload = Vec::with_capacity(10);
     for _i in 0..10 {
-      let m = CreateMessage {
+      let m = ServerCreateMessage {
         content: "test".to_string(),
         files: vec![],
       };
@@ -225,7 +228,7 @@ mod tests {
     }
 
     // Use the highest message ID + 1 as last_id to ensure we get all messages
-    let input = ListMessage {
+    let input = ServerListMessage {
       last_id: Some(message_ids.iter().max().unwrap() + 1),
       limit: 10,
     };

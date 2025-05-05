@@ -1,23 +1,45 @@
-mod chat;
-mod chat_member;
-mod file;
-mod message;
-mod user;
-mod workspace;
+pub mod chat;
+pub mod chat_member;
+pub mod file;
+pub mod message;
+pub mod user;
+pub mod workspace;
 
-use serde::{Deserialize, Serialize};
+use std::future::Future;
+
+use crate::error::CoreError;
+use crate::state::WithDbPool;
+
+pub trait DatabaseModel: Sized {
+  type CreateType;
+  type UpdateType;
+  type IdType;
+
+  fn create<S: WithDbPool + Sync>(
+    input: &Self::CreateType,
+    state: &S,
+  ) -> impl Future<Output = Result<Self, CoreError>> + Send;
+
+  fn find_by_id<S: WithDbPool + Sync>(
+    id: Self::IdType,
+    state: &S,
+  ) -> impl Future<Output = Result<Option<Self>, CoreError>> + Send;
+
+  fn update<S: WithDbPool + Sync>(
+    id: Self::IdType,
+    input: &Self::UpdateType,
+    state: &S,
+  ) -> impl Future<Output = Result<Self, CoreError>> + Send;
+}
 
 pub use chat::*;
 pub use chat_member::*;
 pub use message::*;
-pub use user::{AuthUser, CreateUser, SigninUser};
-
-
+pub use user::*;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-
 
 #[derive(Debug, Serialize, Deserialize, sqlx::Type, Clone, Copy, PartialEq, Eq)]
 #[sqlx(type_name = "user_status", rename_all = "lowercase")]
@@ -56,6 +78,21 @@ pub struct AuthUser {
   pub workspace_id: i64,
 }
 
+use crate::utils::jwt::UserClaims;
+
+impl From<UserClaims> for AuthUser {
+  fn from(claims: UserClaims) -> Self {
+    Self {
+      id: claims.id,
+      fullname: claims.fullname,
+      email: claims.email,
+      status: claims.status,
+      created_at: claims.created_at,
+      workspace_id: claims.workspace_id,
+    }
+  }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateUser {
   pub fullname: String,
@@ -64,7 +101,6 @@ pub struct CreateUser {
   pub password: String,
 }
 
-#[cfg(test)]
 impl CreateUser {
   pub fn new(fullname: &str, email: &str, workspace: &str, password: &str) -> Self {
     Self {
@@ -82,7 +118,6 @@ pub struct SigninUser {
   pub password: String,
 }
 
-#[cfg(test)]
 impl SigninUser {
   pub fn new(email: &str, password: &str) -> Self {
     Self {
@@ -155,13 +190,9 @@ pub struct ChatMember {
   pub joined_at: DateTime<Utc>,
 }
 
-
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatFile {
   pub workspace_id: i64,
   pub ext: String, // extract from the uploaded filename
   pub hash: String,
 }
-
-

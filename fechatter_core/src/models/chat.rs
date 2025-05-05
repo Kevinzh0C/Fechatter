@@ -4,34 +4,43 @@ use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, prelude::FromRow};
 use tokio::time::Instant;
 
-use crate::{AppError, AppState, models::ChatType};
+use crate::{
+  error::CoreError,
+  models::ChatType,
+  state::{WithCache, WithDbPool},
+};
 
 use super::{Chat, CreateChatMember, User, insert_chat_members_relation, is_creator_in_chat};
 
 const CHAT_LIST_CACHE_TTL: Duration = Duration::from_secs(30);
 
 /// Retrieves a list of chat sidebars for a specific user
-pub async fn list_chats_of_user(
-  state: &AppState,
+pub async fn list_chats_of_user<S>(
+  state: &S,
   user_id: i64,
-) -> Result<Arc<Vec<ChatSidebar>>, AppError> {
-  if let Some(entry) = state.chat_list_cache.get(&user_id) {
-    let (cached_chats, timestamp) = entry.value();
+) -> Result<Arc<Vec<ChatSidebar>>, CoreError>
+where
+  S: WithDbPool + WithCache<i64, (Arc<Vec<ChatSidebar>>, Instant)> + Sync,
+{
+  if let Some(cached_entry) = state.get_from_cache(&user_id) {
+    let (cached_chats, timestamp) = cached_entry;
     if timestamp.elapsed() < CHAT_LIST_CACHE_TTL {
       return Ok(cached_chats.clone());
     }
   }
 
   // If no valid cache exists, fetch the chat list from the database
-  let chats = fetch_chat_list_from_db(&state.pool, user_id).await?;
+  let chats = fetch_chat_list_from_db(state.db_pool(), user_id).await?;
 
   // Create an Arc to allow shared ownership of the chat list
   let chats_arc = Arc::new(chats);
 
   // Update the cache with the new chat list and current timestamp
-  state
-    .chat_list_cache
-    .insert(user_id, (chats_arc.clone(), Instant::now()));
+  state.insert_into_cache(
+    user_id,
+    (chats_arc.clone(), Instant::now()),
+    CHAT_LIST_CACHE_TTL.as_secs(),
+  );
 
   Ok(chats_arc)
 }
@@ -39,7 +48,7 @@ pub async fn list_chats_of_user(
 async fn fetch_chat_list_from_db(
   pool: &PgPool,
   user_id: i64,
-) -> Result<Vec<ChatSidebar>, AppError> {
+) -> Result<Vec<ChatSidebar>, CoreError> {
   let chats = sqlx::query_as!(
     ChatSidebar,
     r#"SELECT
@@ -67,13 +76,13 @@ async fn fetch_chat_list_from_db(
   Ok(chats)
 }
 
-fn validate_chat_name(name: &str) -> Result<(), AppError> {
+fn validate_chat_name(name: &str) -> Result<(), CoreError> {
   if name.trim().is_empty() {
-    Err(AppError::ChatValidationError(
+    Err(CoreError::ChatValidationError(
       "Chat name cannot be empty".to_string(),
     ))
   } else if name.len() > 128 {
-    Err(AppError::ChatValidationError(
+    Err(CoreError::ChatValidationError(
       "Chat name cannot be longer than 128 characters".to_string(),
     ))
   } else {
@@ -85,19 +94,19 @@ fn process_chat_members(
   chat_type: &ChatType,
   creator_id: i64,
   target_members: Option<&Vec<i64>>,
-) -> Result<Vec<i64>, AppError> {
+) -> Result<Vec<i64>, CoreError> {
   match chat_type {
     ChatType::Single => match target_members {
       Some(members) if members.len() == 1 => {
         let target_id = members[0];
         if target_id == creator_id {
-          return Err(AppError::ChatValidationError(
+          return Err(CoreError::ChatValidationError(
             "Single chat must have exactly one member".to_string(),
           ));
         }
         Ok(vec![creator_id, target_id])
       }
-      _ => Err(AppError::ChatValidationError(
+      _ => Err(CoreError::ChatValidationError(
         "Invalid single chat members".to_string(),
       )),
     },
@@ -111,7 +120,7 @@ fn process_chat_members(
         }
       }
       if result.len() < 3 {
-        return Err(AppError::ChatValidationError(
+        return Err(CoreError::ChatValidationError(
           "Group chat must have at least three members".to_string(),
         ));
       }
@@ -160,7 +169,7 @@ async fn insert_chat_record(
 }
 
 #[allow(dead_code)]
-pub async fn fetch_all_chats(workspace_id: i64, pool: &PgPool) -> Result<Vec<Chat>, AppError> {
+pub async fn fetch_all_chats(workspace_id: i64, pool: &PgPool) -> Result<Vec<Chat>, CoreError> {
   let chats = sqlx::query_as::<_, Chat>(
     r#"
       SELECT 
@@ -184,22 +193,25 @@ pub async fn fetch_all_chats(workspace_id: i64, pool: &PgPool) -> Result<Vec<Cha
   Ok(chats)
 }
 
-pub async fn create_new_chat(
-  state: &AppState,
+pub async fn create_new_chat<S>(
+  state: &S,
   creator_id: i64,
   name: &str,
   chat_type: ChatType,
   target_members: Option<Vec<i64>>,
   description: Option<&str>,
   workspace_id: i64,
-) -> Result<Chat, AppError> {
+) -> Result<Chat, CoreError>
+where
+  S: WithDbPool + WithCache<i64, (Arc<Vec<ChatSidebar>>, Instant)> + Sync,
+{
   validate_chat_name(name)?;
 
   let chat_members = process_chat_members(&chat_type, creator_id, target_members.as_ref())?;
 
-  User::validate_users_exists_by_ids(&chat_members, &state.pool).await?;
+  User::validate_users_exists_by_ids(&chat_members, state.db_pool()).await?;
 
-  let mut tx = state.pool.begin().await?;
+  let mut tx = state.db_pool().begin().await?;
 
   let chat = insert_chat_record(
     &mut tx,
@@ -214,7 +226,7 @@ pub async fn create_new_chat(
   .map_err(|e| {
     if let Some(db_error) = e.as_database_error() {
       if db_error.is_unique_violation() {
-        AppError::ChatAlreadyExists(format!("Chat {} already exists", name))
+        CoreError::Conflict(format!("Chat {} already exists", name))
       } else {
         e.into()
       }
@@ -229,23 +241,26 @@ pub async fn create_new_chat(
   tx.commit().await?;
 
   for &member in &chat_members {
-    state.chat_list_cache.remove(&member);
+    state.remove_from_cache(&member);
   }
 
   Ok(chat)
 }
 
-pub async fn update_chat(
-  state: &AppState,
+pub async fn update_chat<S>(
+  state: &S,
   chat_id: i64,
   user_id: i64,
   payload: UpdateChat,
-) -> Result<Chat, AppError> {
+) -> Result<Chat, CoreError>
+where
+  S: WithDbPool + WithCache<i64, (Arc<Vec<ChatSidebar>>, Instant)> + Sync,
+{
   let creator = CreateChatMember { chat_id, user_id };
-  let is_creator = is_creator_in_chat(&state.pool, &creator).await?;
+  let is_creator = is_creator_in_chat(state.db_pool(), &creator).await?;
 
   if !is_creator {
-    return Err(AppError::ChatPermissionError(format!(
+    return Err(CoreError::ChatPermissionError(format!(
       "User {} is not the creator of chat {}",
       user_id, chat_id
     )));
@@ -264,12 +279,12 @@ pub async fn update_chat(
   .bind(&payload.name)
   .bind(&payload.description)
   .bind(chat_id)
-  .fetch_one(&state.pool)
+  .fetch_one(state.db_pool())
   .await?;
 
   if payload.name.is_some() || payload.description.is_some() {
     for &member_id in &chat.chat_members {
-      state.chat_list_cache.remove(&member_id);
+      state.remove_from_cache(&member_id);
     }
   }
 
@@ -280,17 +295,17 @@ async fn delete_chat_transactional(
   tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
   chat_id: i64,
   user_id: i64,
-) -> Result<Vec<i64>, AppError> {
+) -> Result<Vec<i64>, CoreError> {
   let chat_info = sqlx::query!(
     "SELECT chat_members, created_by FROM chats WHERE id = $1 FOR UPDATE",
     chat_id
   )
   .fetch_optional(&mut **tx)
   .await?
-  .ok_or(AppError::NotFound(vec![chat_id.to_string()]))?;
+  .ok_or(CoreError::NotFound(format!("Chat {} not found", chat_id)))?;
 
   if chat_info.created_by != user_id {
-    return Err(AppError::ChatPermissionError(format!(
+    return Err(CoreError::ChatPermissionError(format!(
       "User {} is not the creator of chat {}",
       user_id, chat_id
     )));
@@ -308,14 +323,17 @@ async fn delete_chat_transactional(
     .await?;
 
   if result.rows_affected() == 0 {
-    return Err(AppError::NotFound(vec![chat_id.to_string()]));
+    return Err(CoreError::NotFound(format!("Chat {} not found", chat_id)));
   }
 
   Ok(chat_info.chat_members)
 }
 
-pub async fn delete_chat(state: &AppState, chat_id: i64, user_id: i64) -> Result<bool, AppError> {
-  let mut tx = state.pool.begin().await?;
+pub async fn delete_chat<S>(state: &S, chat_id: i64, user_id: i64) -> Result<bool, CoreError>
+where
+  S: WithDbPool + WithCache<i64, (Arc<Vec<ChatSidebar>>, Instant)> + Sync,
+{
+  let mut tx = state.db_pool().begin().await?;
 
   let members_to_invalidate = match delete_chat_transactional(&mut tx, chat_id, user_id).await {
     Ok(members) => members,
@@ -328,7 +346,7 @@ pub async fn delete_chat(state: &AppState, chat_id: i64, user_id: i64) -> Result
   tx.commit().await?;
 
   for &member in &members_to_invalidate {
-    state.chat_list_cache.remove(&member);
+    state.remove_from_cache(&member);
   }
 
   Ok(true)
@@ -370,13 +388,13 @@ pub struct UpdateChat {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::models::{add_chat_members, remove_group_chat_members};
+  use crate::models::{DatabaseModel, add_chat_members, remove_group_chat_members};
   use crate::setup_test_users;
   use anyhow::Result;
 
   #[tokio::test]
   async fn create_and_list_chats_should_work() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(3).await;
+    let (_tdb, state, users) = setup_test_users!(3);
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];
@@ -472,7 +490,7 @@ mod tests {
 
   #[tokio::test]
   async fn update_and_delete_chat_should_work() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(3).await;
+    let (_tdb, state, users) = setup_test_users!(3);
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];
@@ -551,7 +569,7 @@ mod tests {
 
   #[tokio::test]
   async fn chat_creation_edge_cases_should_test() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(4).await;
+    let (_tdb, state, users) = setup_test_users!(4);
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];
@@ -795,7 +813,7 @@ mod tests {
 
   #[tokio::test]
   async fn realistic_chat_scenarios_should_work() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(5).await;
+    let (_tdb, state, users) = setup_test_users!(5);
     // let _pool = &state.pool;
     let user1 = &users[0]; // Alice
     let user2 = &users[1]; // Bob
@@ -871,7 +889,7 @@ mod tests {
 
   #[tokio::test]
   async fn complex_chat_scenarios_should_expose_logic_holes() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(8).await;
+    let (_tdb, state, users) = setup_test_users!(8);
     // let _pool = &state.pool;
     let user1 = &users[0]; // Alice
     let user2 = &users[1]; // Bob
@@ -1212,7 +1230,7 @@ mod tests {
 
   #[tokio::test]
   async fn create_duplicate_chat_should_fail() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(3).await;
+    let (_tdb, state, users) = setup_test_users!(3);
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];
@@ -1247,7 +1265,7 @@ mod tests {
 
     // Verify creation fails and returns the correct error
     match result {
-      Err(AppError::ChatAlreadyExists(error_message)) => {
+      Err(CoreError::Conflict(error_message)) => {
         let expected_error_message = format!("Chat {} already exists", chat_name);
         assert_eq!(error_message, expected_error_message);
       }
@@ -1262,7 +1280,7 @@ mod tests {
 #[cfg(test)]
 mod process_chat_members_data_driven_test {
   use super::*;
-  use crate::AppError;
+  use crate::error::CoreError;
   use crate::models::ChatType;
   use anyhow::Result;
 
@@ -1387,7 +1405,7 @@ mod process_chat_members_data_driven_test {
           );
         }
         // Case 2: Both Err - Compare error messages
-        (Err(AppError::ChatValidationError(actual_msg)), Err(expected_msg)) => {
+        (Err(CoreError::ChatValidationError(actual_msg)), Err(expected_msg)) => {
           assert_eq!(
             actual_msg, expected_msg,
             "Mismatch in ERR case: {}",

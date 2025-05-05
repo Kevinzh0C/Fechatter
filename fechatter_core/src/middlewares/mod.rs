@@ -2,10 +2,7 @@ mod bearer_auth;
 mod request_id;
 mod server_time;
 
-use axum::{
-  Router,
-  middleware::{from_fn, from_fn_with_state},
-};
+use axum::{Router, middleware::from_fn};
 
 use tower::ServiceBuilder;
 use tower_http::{
@@ -15,19 +12,19 @@ use tower_http::{
 };
 use tracing::Level;
 
-use crate::AuthUser;
+use crate::models::AuthUser;
 
 pub(crate) use self::bearer_auth::verify_token_middleware;
 pub(crate) use self::request_id::request_id_middleware;
 pub(crate) use self::server_time::ServerTimeLayer;
-
 
 pub const REQUEST_ID_HEADER: &str = "x-request-id";
 pub const SERVER_TIME_HEADER: &str = "x-server-time";
 
 pub trait TokenVerifier {
   type Error: std::fmt::Debug;
-  fn verify_token(&self, token: &str) -> Result<AuthUser, Self::Error>;
+  type Claims;
+  fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error>;
 }
 
 /// Apply common middleware to a router
@@ -60,15 +57,11 @@ where
 }
 
 /// Apply authentication middleware to a router
-pub trait SetAuthLayer {
-  fn set_auth_layer(self, state: AppState) -> Self;
-}
-
-impl<S> SetAuthLayer for Router<S>
+pub fn with_auth_layer<S, T>(router: Router<S>, state: T) -> Router<S>
 where
   S: Clone + Send + Sync + 'static,
+  T: TokenVerifier + Clone + Send + Sync + 'static,
+  AuthUser: From<T::Claims>,
 {
-  fn set_auth_layer(self, state: AppState) -> Self {
-    self.layer(from_fn_with_state(state, verify_token_middleware))
-  }
+  router
 }

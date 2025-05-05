@@ -2,6 +2,8 @@
 macro_rules! setup_test_users {
   ($num_users:expr) => {{
     async {
+      use fechatter_core::DatabaseModel;
+
       let config = $crate::AppConfig::load().expect("Failed to load config");
       let (tdb, state) = $crate::AppState::test_new(config)
         .await
@@ -33,8 +35,10 @@ macro_rules! setup_test_users {
         let email = format!("{}{}@acme.test", email_name_part, i + 1);
         let password = "password";
         let workspace = "Acme";
-        let user_payload = $crate::models::CreateUser::new(&fullname, &email, &workspace, password);
-        let user = $crate::models::User::create(&user_payload, &state.pool)
+
+        let user_payload = fechatter_core::CreateUser::new(&fullname, &email, workspace, password);
+
+        let user = fechatter_core::User::create(&user_payload, &state)
           .await
           .expect(&format!("Failed to create user {}", fullname));
         users.push(user);
@@ -53,7 +57,7 @@ macro_rules! create_new_test_chat {
             // Handle optional description
             let description_opt: Option<&str> = None $(.or(Some($desc)))?;
 
-            $crate::models::create_new_chat(
+            fechatter_core::models::chat::create_new_chat(
                 &$state,
                 $creator.id,
                 $name,
@@ -134,7 +138,7 @@ macro_rules! assert_chat_list_count {
         axum::extract::Extension($auth_user.clone())
       ),
       axum::http::StatusCode::OK,
-      Vec<$crate::models::ChatSidebar> // Expecting Vec<ChatSidebar>
+      Vec<fechatter_core::models::chat::ChatSidebar> // Using CoreChatSidebar
     );
     assert_eq!(
       chats.len(),
@@ -158,7 +162,7 @@ macro_rules! assert_chat_member_count {
         axum::extract::Path($chat_id)
       ),
       axum::http::StatusCode::OK,
-      Vec<$crate::models::ChatMember> // Expecting Vec<ChatMember>
+      Vec<fechatter_core::ChatMember> // Using core ChatMember
     );
     assert_eq!(
       members.len(),

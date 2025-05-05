@@ -1,4 +1,3 @@
-use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use sqlx::Postgres;
@@ -7,29 +6,28 @@ use sqlx::Transaction;
 use sqlx::postgres::PgRow;
 use tracing::{error, info, warn};
 
-use super::{Chat, ChatMember, ChatType};
+use super::ChatType;
 use crate::{AppError, AppState};
+use fechatter_core::{Chat, ChatMember};
 
-impl TryFrom<PgRow> for ChatMember {
-  type Error = AppError;
-
-  fn try_from(row: PgRow) -> Result<Self, Self::Error> {
-    Ok(ChatMember {
-      chat_id: row.try_get("chat_id").context("Missing chat_id")?,
-      user_id: row.try_get("user_id").context("Missing user_id")?,
-      joined_at: row.try_get("joined_at").context("Missing joined_at")?,
-    })
-  }
+pub fn chat_member_from_row(row: &PgRow) -> Result<ChatMember, AppError> {
+  Ok(ChatMember {
+    chat_id: row.try_get("chat_id").map_err(|e| AppError::SqlxError(e))?,
+    user_id: row.try_get("user_id").map_err(|e| AppError::SqlxError(e))?,
+    joined_at: row
+      .try_get("joined_at")
+      .map_err(|e| AppError::SqlxError(e))?,
+  })
 }
 
 fn member_insert_query(with_conflict_handling: bool) -> &'static str {
   if with_conflict_handling {
-    "INSERT INTO chat_members_relation (chat_id, user_id) 
-       VALUES ($1, $2) 
+    "INSERT INTO chat_members_relation (chat_id, user_id)
+       VALUES ($1, $2)
        ON CONFLICT (chat_id, user_id) DO NOTHING
        RETURNING chat_id, user_id, joined_at"
   } else {
-    "INSERT INTO chat_members_relation (chat_id, user_id) 
+    "INSERT INTO chat_members_relation (chat_id, user_id)
        VALUES ($1, $2)
        RETURNING chat_id, user_id, joined_at"
   }
@@ -56,7 +54,7 @@ pub async fn execute_member_insert(
     })?;
 
   if let Some(row) = row_opt {
-    let member = ChatMember::try_from(row)?;
+    let member = chat_member_from_row(&row)?;
     Ok(Some(member))
   } else {
     Ok(None)
@@ -286,11 +284,11 @@ pub async fn remove_group_chat_members(
 pub async fn list_chat_members(pool: &PgPool, chat_id: i64) -> Result<Vec<ChatMember>, AppError> {
   let rows = sqlx::query!(
     r#"
-    SELECT 
-      chat_id, 
-      user_id, 
-      joined_at 
-    FROM chat_members_relation 
+    SELECT
+      chat_id,
+      user_id,
+      joined_at
+    FROM chat_members_relation
     WHERE chat_id = $1
     ORDER BY joined_at ASC
     "#,
@@ -325,7 +323,7 @@ pub async fn member_exists_in_chat(
   let result = sqlx::query!(
     r#"
     SELECT EXISTS(
-      SELECT 1 FROM chat_members_relation 
+      SELECT 1 FROM chat_members_relation
       WHERE user_id = $1 AND chat_id = $2
     ) as "exists!"
     "#,
@@ -406,7 +404,7 @@ pub async fn transfer_chat_ownership(
 
   // Fetch chat details, including members for potential invalidation
   let chat = sqlx::query_as::<_, Chat>(
-    "SELECT id, created_by, type as chat_type, chat_members, 
+    "SELECT id, created_by, type as chat_type, chat_members,
      chat_name as name, COALESCE(description, '') as description,
      created_at, updated_at, workspace_id
      FROM chats
@@ -443,7 +441,7 @@ pub async fn transfer_chat_ownership(
   // Update the creator
   let rows_affected = sqlx::query!(
     r#"
-    UPDATE chats 
+    UPDATE chats
     SET created_by = $1
     WHERE id = $2
     "#,
@@ -492,7 +490,7 @@ pub struct CreateChatMember {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{models::create_new_chat, setup_test_users};
+  use crate::{models::chat::create_new_chat, setup_test_users};
 
   #[tokio::test]
   async fn transfer_chat_ownership_should_work() -> anyhow::Result<()> {

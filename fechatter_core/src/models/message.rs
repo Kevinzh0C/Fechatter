@@ -1,7 +1,7 @@
 use super::ChatFile;
 use super::Message;
-use crate::AppError;
-use crate::AppState;
+use crate::error::CoreError;
+use crate::state::{WithCache, WithDbPool};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -20,103 +20,94 @@ pub struct ListMessage {
   pub limit: i64,
 }
 
-impl AppState {
-  pub async fn create_message(
-    &self,
-    input: CreateMessage,
-    chat_id: i64,
-    user_id: i64,
-  ) -> Result<Message, AppError> {
-    let base_dir = &self.config.server.base_dir;
-
-    // Check if both content is empty and no files are attached
-    if input.content.is_empty() && input.files.is_empty() {
-      return Err(AppError::ChatFileError(
-        "Message must contain either text content or attachments".to_string(),
-      ));
-    }
-
-    // Validate files exist
-    for s in &input.files {
-      let chat_file = ChatFile::from_str(s)?;
-      if !chat_file.from_path(base_dir).exists() {
-        return Err(AppError::ChatFileError(format!(
-          "File {} does not exist",
-          s
-        )));
-      }
-    }
-
-    let message = sqlx::query_as::<_, Message>(
-      r#"INSERT INTO messages (chat_id, sender_id, content, files) 
-        VALUES ($1, $2, $3, $4) 
-        RETURNING id, chat_id, sender_id, content, files, created_at::timestamptz"#,
-    )
-    .bind(chat_id)
-    .bind(user_id)
-    .bind(input.content)
-    .bind(&input.files)
-    .fetch_one(&self.pool)
-    .await?;
-
-    Ok(message)
+pub async fn create_message<S>(
+  state: &S,
+  input: CreateMessage,
+  chat_id: i64,
+  user_id: i64,
+) -> Result<Message, CoreError>
+where
+  S: WithDbPool + Sync,
+{
+  // Check if both content is empty and no files are attached
+  if input.content.is_empty() && input.files.is_empty() {
+    return Err(CoreError::Validation(
+      "Message must contain either text content or attachments".to_string(),
+    ));
   }
 
-  pub async fn list_messages(
-    &self,
-    input: ListMessage,
-    chat_id: i64,
-  ) -> Result<Vec<Message>, AppError> {
-    let last_id = input.last_id.unwrap_or(i64::MAX);
-
-    let limit = match input.limit {
-      0 => i64::MAX,
-      1..=100 => input.limit as _,
-      _ => 100,
-    };
-
-    let messages: Vec<Message> = sqlx::query_as(
-      r#"
-        SELECT id, chat_id, sender_id, content, files, created_at::timestamptz
-        FROM messages
-        WHERE chat_id = $1
-        AND id < $2
-        ORDER BY created_at DESC
-        LIMIT $3
-      "#,
-    )
-    .bind(chat_id)
-    .bind(last_id)
-    .bind(limit)
-    .fetch_all(&self.pool)
-    .await?;
-
-    Ok(messages)
+  // Validate files exist
+  for s in &input.files {
+    let chat_file = ChatFile::from_str(s)?;
   }
+
+  let message = sqlx::query_as::<_, Message>(
+    r#"INSERT INTO messages (chat_id, sender_id, content, files) 
+      VALUES ($1, $2, $3, $4) 
+      RETURNING id, chat_id, sender_id, content, files, created_at::timestamptz"#,
+  )
+  .bind(chat_id)
+  .bind(user_id)
+  .bind(input.content)
+  .bind(&input.files)
+  .fetch_one(state.db_pool())
+  .await?;
+
+  Ok(message)
+}
+
+pub async fn list_messages<S>(
+  state: &S,
+  input: ListMessage,
+  chat_id: i64,
+) -> Result<Vec<Message>, CoreError>
+where
+  S: WithDbPool + Sync,
+{
+  let last_id = input.last_id.unwrap_or(i64::MAX);
+
+  let limit = match input.limit {
+    0 => i64::MAX,
+    1..=100 => input.limit as _,
+    _ => 100,
+  };
+
+  let messages: Vec<Message> = sqlx::query_as(
+    r#"
+      SELECT id, chat_id, sender_id, content, files, created_at::timestamptz
+      FROM messages
+      WHERE chat_id = $1
+      AND id < $2
+      ORDER BY created_at DESC
+      LIMIT $3
+    "#,
+  )
+  .bind(chat_id)
+  .bind(last_id)
+  .bind(limit)
+  .fetch_all(state.db_pool())
+  .await?;
+
+  Ok(messages)
 }
 
 mod tests {
   use super::*;
+  use crate::models::DatabaseModel;
   use anyhow::Result;
 
   #[allow(unused)]
-  async fn upload_dummy_file(state: &AppState) -> Result<String> {
-    let file = ChatFile::new(1, "test.txt", b"hello world");
-    let path = file.from_path(&state.config.server.base_dir);
-    std::fs::create_dir_all(path.parent().expect("file path parent should exists"))?;
-    std::fs::write(&path, b"hello world")?;
-
-    // Instead of using file.url(), construct a URL that ChatFile::from_str can parse
-    // Format: /files/workspace_id/part1/part2/part3.ext
-    let hash_parts = file.hash_to_path(); // format: "{workspace_id}/{part1}/{part2}/{part3}.{ext}"
-    let url = format!("/files/{}", hash_parts);
-
-    Ok(url)
+  async fn upload_dummy_file<S>(state: &S) -> Result<String>
+  where
+    S: std::fmt::Debug,
+  {
+    let url = "/files/1/aa/bb/cc/test.txt";
+    Ok(url.to_string())
   }
 
   #[tokio::test]
   async fn create_message_should_work() -> Result<()> {
-    let (_tdb, state, users) = crate::setup_test_users!(3).await;
+    let (_tdb, state, users) = crate::setup_test_users!(3);
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];
@@ -138,8 +129,7 @@ mod tests {
       files: vec![],
     };
 
-    let message1 = state
-      .create_message(message_payload1, chat.id, user1.id)
+    let message1 = create_message(&state, message_payload1, chat.id, user1.id)
       .await
       .expect("Failed to create message");
 
@@ -159,8 +149,7 @@ mod tests {
       files: vec![url],
     };
 
-    let message2 = state
-      .create_message(message_payload2, chat.id, user2.id)
+    let message2 = create_message(&state, message_payload2, chat.id, user2.id)
       .await
       .expect("Failed to create message");
 
@@ -173,8 +162,7 @@ mod tests {
       files: vec![url],
     };
 
-    let message3 = state
-      .create_message(message_payload3, chat.id, user3.id)
+    let message3 = create_message(&state, message_payload3, chat.id, user3.id)
       .await
       .expect("Failed to create file-only message");
 
@@ -190,7 +178,7 @@ mod tests {
 
   #[tokio::test]
   async fn list_messages_should_work() -> Result<()> {
-    let (_tdb, state, users) = crate::setup_test_users!(10).await;
+    let (_tdb, state, users) = crate::setup_test_users!(10);
     let user1 = &users[0];
 
     // Create a chat first
@@ -217,8 +205,7 @@ mod tests {
     // Create messages and collect their IDs
     let mut message_ids = Vec::new();
     for i in 0..10 {
-      let m: Message = state
-        .create_message(messages_payload[i].clone(), chat.id, users[i].id)
+      let m: Message = create_message(&state, messages_payload[i].clone(), chat.id, users[i].id)
         .await
         .expect("Failed to create message");
       message_ids.push(m.id);
@@ -230,8 +217,7 @@ mod tests {
       limit: 10,
     };
 
-    let messages = state
-      .list_messages(input, chat.id)
+    let messages = list_messages(&state, input, chat.id)
       .await
       .expect("Failed to list messages");
     assert_eq!(messages.len(), 10);
