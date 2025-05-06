@@ -58,12 +58,8 @@ use services::ServiceProvider;
 =======
 pub use middlewares::{RouterExt, SetAuthLayer, SetLayer, WorkspaceContext};
 pub use models::{ChatSidebar, ChatUser, CreateUser, SigninUser, User, UserStatus, Workspace};
-pub use services::{AuthServiceTrait, auth_service::AuthService};
-pub use utils::*;
-
-use middlewares::{RouterExt, SetLayer};
-pub use models::{ChatSidebar, CreateUser, SigninUser, User};
 use services::ServiceProvider;
+pub use services::{AuthServiceTrait, auth_service::AuthService};
 
 #[derive(Debug, Clone)]
 pub struct AppState {
@@ -246,12 +242,8 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
   let app = Router::new()
     .route("/", get(index_handler))
     .nest("/api", api)
-<<<<<<< HEAD
+    .set_layer()
     .with_state(state);
-=======
-    .layer(axum::extract::Extension(state))
-    .set_layer();
->>>>>>> eef9927 (fix: resolve linting and type errors)
 
   Ok(app)
 }

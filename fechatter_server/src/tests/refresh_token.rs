@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod refresh_token_tests {
-  use crate::setup_test_users;
-  use crate::token::TokenValidator as _;
   use crate::{
     models::{SigninUser, UserStatus},
     services::AuthServiceTrait,
+    setup_test_users,
+    utils::token::TokenValidator,
   };
   use anyhow::Result;
   use std::sync::Arc;
@@ -28,7 +28,7 @@ mod refresh_token_tests {
       let token_clone = refresh_token.clone();
       let sem = sem_clone.clone();
 
-      let handle: tokio::task::JoinHandle<_> = tokio::spawn(async move {
+      let handle = tokio::spawn(async move {
         let _permit = sem.acquire().await.unwrap();
         let service: Box<dyn AuthServiceTrait> = service_provider.create_service();
         service.refresh_token(&token_clone, None, None).await

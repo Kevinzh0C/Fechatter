@@ -11,16 +11,7 @@ use axum::{
 use tracing::{debug, warn};
 
 use crate::{
-  AppState,
-  models::AuthUser,
-  services::AuthServiceTrait,
-  utils::{jwt::RefreshTokenData, token::TokenValidator},
-  AppError, AppState,
-  AppState,
-  services::{AuthServiceTrait, auth_service::AuthService},
-  utils::jwt::RefreshTokenData,
-  utils::jwt::RefreshTokenData,
-  utils::{jwt::RefreshTokenData, token::TokenValidator},
+  models::AuthUser, services::AuthServiceTrait, utils::{jwt::RefreshTokenData, token::TokenValidator}, AppState
 };
 
 const AUTH_HEADER: &str = "Authorization";
@@ -100,7 +91,7 @@ pub async fn refresh_token_middleware(
   let auth_service: Box<dyn AuthServiceTrait> = state.service_provider.create_service();
 
   let auth_service: Box<dyn AuthServiceTrait> =
-    state.service_provider.create_service::<AuthService>();
+    state.service_provider.create_service();
 
   // Try to refresh the token
   match auth_service

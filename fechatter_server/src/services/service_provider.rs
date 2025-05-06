@@ -29,13 +29,7 @@ impl ServiceProvider {
     T::create(self)
   }
 
-
   pub fn create_service(&self) -> Box<dyn crate::services::AuthServiceTrait + '_> {
-
-  /// 创建特定类型的服务使用特征对象
-  pub fn create_service<T: 'static + Send + Sync>(
-    &self,
-  ) -> Box<dyn crate::services::AuthServiceTrait + '_>
     Box::new(crate::services::auth_service::AuthService::new(self))
   }
 }
@@ -46,7 +40,8 @@ pub trait ServiceFactory {
   fn create(provider: &ServiceProvider) -> Self::Service;
 }
 
-#[macro_export]
+pub trait ServiceMarker {}
+
 macro_rules! define_service {
     (
         $service_name:ident,
@@ -62,7 +57,7 @@ macro_rules! define_service {
         }
 
 
-        // 实现服务工厂
+        // Implement service factory
         impl $crate::services::service_provider::ServiceFactory for $marker {
             type Service = $service_name;
 

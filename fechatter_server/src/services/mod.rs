@@ -10,9 +10,6 @@ pub mod auth_service;
 
 pub mod service_provider;
 
-mod service_provider;
-mod workspace_service;
-
 pub use service_provider::ServiceProvider;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

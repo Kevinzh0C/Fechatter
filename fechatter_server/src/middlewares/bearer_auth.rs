@@ -3,7 +3,6 @@ use axum::http::Request;
 use axum::{extract::State, http::StatusCode, middleware::Next, response::Response};
 use tracing::{debug, warn};
 
-
 use crate::{AppState, models::AuthUser, utils::token::TokenValidator};
 
 use axum_extra::{

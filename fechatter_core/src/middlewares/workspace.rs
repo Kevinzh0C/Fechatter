@@ -3,9 +3,6 @@ use axum::extract::{Extension, Path, State};
 use axum::http::Request;
 
 use axum::{http::StatusCode, middleware::Next, response::Response};
-use axum::{http::StatusCode, middleware::Next, response::Response};
-
-use axum::{http::StatusCode, middleware::Next, response::Response};
 use std::sync::Arc;
 
 use crate::{

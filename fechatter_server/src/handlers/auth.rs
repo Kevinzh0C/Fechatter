@@ -95,8 +95,7 @@ pub(crate) async fn signin_handler(
 
   let auth_service = AuthService::new(&state.service_provider);
 
-  let auth_service: Box<dyn AuthServiceTrait> =
-    state.service_provider.create_service::<AuthService>();
+  let auth_service: Box<dyn AuthServiceTrait> = state.service_provider.create_service();
   match auth_service
     .signin(&payload, user_agent, ip_address)
     .await?
@@ -220,8 +219,7 @@ pub(crate) async fn refresh_token_handler(
 
   let auth_service = AuthService::new(&state.service_provider);
 
-  let auth_service: Box<dyn AuthServiceTrait> =
-    state.service_provider.create_service::<AuthService>();
+  let auth_service: Box<dyn AuthServiceTrait> = state.service_provider.create_service();
   match auth_service
     .refresh_token(&refresh_token_str, user_agent, ip_address)
     .await
@@ -273,8 +271,7 @@ pub(crate) async fn logout_handler(
 
   let auth_service = AuthService::new(&state.service_provider);
 
-  let auth_service: Box<dyn AuthServiceTrait> =
-    state.service_provider.create_service::<AuthService>();
+  let auth_service: Box<dyn AuthServiceTrait> = state.service_provider.create_service();
 
   // First try to get refresh token from cookie
   let refresh_token_str = if let Some(cookie) = cookies.get("refresh_token") {
@@ -321,8 +318,7 @@ pub(crate) async fn logout_all_handler(
 
   let auth_service = AuthService::new(&state.service_provider);
 
-  let auth_service: Box<dyn AuthServiceTrait> =
-    state.service_provider.create_service::<AuthService>();
+  let auth_service: Box<dyn AuthServiceTrait> = state.service_provider.create_service();
 
   let user_id = _auth_user.id;
 
@@ -490,8 +486,7 @@ mod tests {
 
     let auth_service = AuthService::new(&state.service_provider);
 
-    let auth_service: Box<dyn AuthServiceTrait> =
-      state.service_provider.create_service::<AuthService>();
+    let auth_service: Box<dyn AuthServiceTrait> = state.service_provider.create_service();
 
     let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
 
