@@ -67,7 +67,7 @@ where
     }
   }
 
-  /// 构建路由器，仅应用令牌刷新
+  /// Build router with only token refresh applied
   pub fn build(self) -> Router<S> {
     self.router
   }
@@ -138,30 +138,9 @@ where
     }
   }
 
-<<<<<<< HEAD
+  /// Build router with auth and refresh applied
   pub fn build(self) -> Router<S> {
-=======
-  /// 构建路由器，应用了认证和刷新
-<<<<<<< HEAD
-<<<<<<< HEAD
-  pub fn build(self) -> Router {
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> e1f38b1 (refactor: middleware refresh_token & auth cleanup)
     self.router
-=======
-    self.router.into_make_service()
->>>>>>> 66199ca (fix: resolve linting and type errors)
-=======
-    self.router.into_service()
->>>>>>> 8cdd2c3 (fix: use into_service() instead of into_make_service())
-=======
-  pub fn build(self) -> Router<()> {
-=======
-  pub fn build(self) -> Router<S> {
->>>>>>> f71d19c (fix: update return type in builder.rs to Router<S>)
-    self.router
->>>>>>> d9d11d9 (fix: update return type in builder.rs)
   }
 }
 
@@ -170,36 +149,9 @@ impl<S> MiddlewareBuilder<S, WithoutAuth, WithRefresh, WithoutWorkspace, Without
 where
   S: Clone + Send + Sync + 'static,
 {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-  pub fn with_auth(
-    self,
-  ) -> MiddlewareBuilder<S, WithAuth, WithRefresh, WithoutWorkspace, WithoutChatMembership> {
-    let router = self.router.layer(from_fn_with_state(
-      self.state.clone(),
-      verify_token_middleware,
-    ));
-
-    MiddlewareBuilder {
-      router,
-      state: self.state,
-      _auth_marker: PhantomData,
-      _refresh_marker: PhantomData,
-      _workspace_marker: PhantomData,
-      _chat_membership_marker: PhantomData,
-    }
-  }
-
-=======
-  /// 构建路由器，应用了认证、刷新和工作区上下文
->>>>>>> f71d19c (fix: update return type in builder.rs to Router<S>)
+  /// Build router with auth and refresh applied
   pub fn build(self) -> Router<S> {
     self.router
-<<<<<<< HEAD
-=======
   }
 }
 
@@ -339,7 +291,7 @@ where
   S: Clone + Send + Sync + 'static,
 {
   /// 构建路由器，应用了认证、刷新和工作区上下文
-  pub fn build(self) -> Router<()> {
+  pub fn build(self) -> Router<S> {
     self.router
   }
 }

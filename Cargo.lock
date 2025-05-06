@@ -682,6 +682,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "fechatter_core"
+version = "0.1.0"
+
+[[package]]
 name = "fechatter_tests"
 version = "0.1.0"
 

@@ -241,7 +241,7 @@ impl<'a> AuthServiceTrait for AuthService<'a> {
     Ok((access_token, refresh_token_data))
   }
 
-<<<<<<< HEAD
+
   async fn create_user(&self, payload: &CreateUser) -> Result<User, AppError> {
     let mut tx = self.provider.pool().begin().await?;
 

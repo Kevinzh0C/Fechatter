@@ -3,18 +3,7 @@ use axum::http::Request;
 use axum::{extract::State, http::StatusCode, middleware::Next, response::Response};
 use tracing::{debug, warn};
 
-
 use crate::{AppState, models::AuthUser, utils::token::TokenValidator};
-
-use axum_extra::{
-  TypedHeader,
-  headers::{Authorization, authorization::Bearer},
-};
-use tracing::warn;
-
-use crate::AppState;
-use crate::models::AuthUser;
-use crate::utils::token::TokenValidator;
 
 /// Get authentication from Bearer token and add user to request context
 pub async fn verify_token_middleware(

@@ -28,12 +28,8 @@ use handlers::*;
 
 pub use middlewares::{RouterExt, SetAuthLayer, SetLayer, WorkspaceContext};
 pub use models::{ChatSidebar, ChatUser, CreateUser, SigninUser, User, UserStatus, Workspace};
-pub use services::{AuthServiceTrait, auth_service::AuthService};
-pub use utils::*;
-
-use middlewares::{RouterExt, SetLayer};
-pub use models::{ChatSidebar, CreateUser, SigninUser, User};
 use services::ServiceProvider;
+pub use services::{AuthServiceTrait, auth_service::AuthService};
 
 #[derive(Debug, Clone)]
 pub struct AppState {
@@ -48,7 +44,7 @@ pub struct AppStateInner {
   pub(crate) service_provider: ServiceProvider,
 }
 
-pub async fn get_router(config: AppConfig) -> Result<Router<AppState>, AppError> {
+pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
   let state = AppState::try_new(config).await?;
 
   // Public routes - no authentication required but apply token refresh
@@ -118,12 +114,8 @@ pub async fn get_router(config: AppConfig) -> Result<Router<AppState>, AppError>
   let app = Router::new()
     .route("/", get(index_handler))
     .nest("/api", api)
-<<<<<<< HEAD
+    .set_layer()
     .with_state(state);
-=======
-    .layer(axum::extract::Extension(state))
-    .set_layer();
->>>>>>> eef9927 (fix: resolve linting and type errors)
 
   Ok(app)
 }
