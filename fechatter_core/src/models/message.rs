@@ -25,13 +25,13 @@ pub trait MessageRepository: Send + Sync {
     input: &CreateMessage,
     chat_id: i64,
     user_id: i64,
-  ) -> impl Future<Output = Result<Message, CoreError>> + Send;
+  ) -> std::pin::Pin<Box<dyn Future<Output = Result<Message, CoreError>> + Send>>;
 
   fn list_messages(
     &self,
     input: &ListMessage,
     chat_id: i64,
-  ) -> impl Future<Output = Result<Vec<Message>, CoreError>> + Send;
+  ) -> std::pin::Pin<Box<dyn Future<Output = Result<Vec<Message>, CoreError>> + Send>>;
 }
 
 // Public validate function that doesn't require database access

@@ -6,6 +6,7 @@ pub mod user;
 pub mod workspace;
 
 pub use crate::error::CoreError;
+pub use jwt::UserClaims;
 
 pub use chat::*;
 pub use chat_member::*;

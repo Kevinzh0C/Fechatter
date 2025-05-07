@@ -75,20 +75,20 @@ pub trait TokenService: Send + Sync {
     &self,
     user_claims: &UserClaims,
     auth_context: Option<AuthContext>,
-  ) -> impl std::future::Future<Output = Result<AuthTokens, CoreError>> + Send;
+  ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<AuthTokens, CoreError>> + Send>>;
 }
 
 pub trait RefreshTokenRepository: Send + Sync {
-  async fn find_by_token(&self, token: &str) -> Result<Option<RefreshToken>, CoreError>;
-  async fn replace(
+  fn find_by_token(&self, token: &str) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<RefreshToken>, CoreError>> + Send>>;
+  fn replace(
     &self,
     id: i64,
     new_token: &str,
     user_agent: Option<String>,
     ip_address: Option<String>,
-  ) -> Result<RefreshToken, CoreError>;
-  async fn revoke(&self, id: i64) -> Result<(), CoreError>;
-  async fn revoke_all_for_user(&self, user_id: i64) -> Result<(), CoreError>;
+  ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<RefreshToken, CoreError>> + Send>>;
+  fn revoke(&self, id: i64) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CoreError>> + Send>>;
+  fn revoke_all_for_user(&self, user_id: i64) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CoreError>> + Send>>;
 }
 
 pub trait RefreshTokenService: Send + Sync {

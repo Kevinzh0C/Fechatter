@@ -1,9 +1,18 @@
 use crate::{
   error::CoreError,
-  jwt::{AuthTokens, RefreshTokenRepository, UserClaims},
+  jwt::{AuthTokens, RefreshTokenData, RefreshTokenRepository, RefreshToken, UserClaims},
   models::{CreateUser, SigninUser},
   services::AuthContext,
 };
+use uuid::Uuid;
+
+// Define RefreshTokenInfo as an alias for RefreshToken
+type RefreshTokenInfo = RefreshToken;
+
+// Function to generate a refresh token
+fn generate_refresh_token() -> String {
+    Uuid::new_v4().to_string()
+}
 
 // Define interfaces for the dependencies
 pub trait TokenService: Send + Sync {
@@ -13,7 +22,7 @@ pub trait TokenService: Send + Sync {
     &self,
     user_claims: &UserClaims,
     auth_context: Option<AuthContext>,
-  ) -> impl std::future::Future<Output = Result<AuthTokens, CoreError>> + Send;
+  ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<AuthTokens, CoreError>> + Send>>;
 }
 
 // Core service that orchestrates the business logic without DB operations
@@ -157,7 +166,7 @@ where
     // Create auth tokens response
     let auth_tokens = AuthTokens {
       access_token,
-      refresh_token: crate::utils::jwt::RefreshTokenData {
+      refresh_token: RefreshTokenData {
         token: new_token,
         expires_at: new_token_record.expires_at,
         absolute_expires_at: new_token_record.absolute_expires_at,

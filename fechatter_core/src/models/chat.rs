@@ -28,34 +28,34 @@ impl CreateChat {
 }
 
 pub trait ChatRepository: Send + Sync {
-  fn create(&self, input: &CreateChat) -> impl Future<Output = Result<Chat, CoreError>> + Send;
+  fn create(&self, input: &CreateChat) -> std::pin::Pin<Box<dyn Future<Output = Result<Chat, CoreError>> + Send>>;
 
-  fn find_by_id(&self, id: i64) -> impl Future<Output = Result<Option<Chat>, CoreError>> + Send;
+  fn find_by_id(&self, id: i64) -> std::pin::Pin<Box<dyn Future<Output = Result<Option<Chat>, CoreError>> + Send>>;
 
   fn get_sidebar_for_user(
     &self,
     user_id: i64,
-  ) -> impl Future<Output = Result<Vec<ChatSidebar>, CoreError>> + Send;
+  ) -> std::pin::Pin<Box<dyn Future<Output = Result<Vec<ChatSidebar>, CoreError>> + Send>>;
 
   fn update_chat_name(
     &self,
     chat_id: i64,
     user_id: i64,
     new_name: &str,
-  ) -> impl Future<Output = Result<Chat, CoreError>> + Send;
+  ) -> std::pin::Pin<Box<dyn Future<Output = Result<Chat, CoreError>> + Send>>;
 
   fn update_chat_description(
     &self,
     chat_id: i64,
     user_id: i64,
     new_description: &str,
-  ) -> impl Future<Output = Result<Chat, CoreError>> + Send;
+  ) -> std::pin::Pin<Box<dyn Future<Output = Result<Chat, CoreError>> + Send>>;
 
   fn delete_chat(
     &self,
     chat_id: i64,
     user_id: i64,
-  ) -> impl Future<Output = Result<bool, CoreError>> + Send;
+  ) -> std::pin::Pin<Box<dyn Future<Output = Result<bool, CoreError>> + Send>>;
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
