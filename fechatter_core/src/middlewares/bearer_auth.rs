@@ -1,4 +1,5 @@
 use axum::{
+  body::Body,
   extract::{FromRequestParts, Request, State},
   http::StatusCode,
   middleware::Next,
@@ -12,8 +13,14 @@ use axum_extra::{
 use tracing::warn;
 
 use crate::{TokenVerifier, models::AuthUser};
-use axum::body::Body;
 
+/// Validate a `Bearer {token}` header, insert an `AuthUser` extension and either
+/// continue the chain or return **401**.
+///
+/// Generic `T` is any application state that implements
+/// [`TokenVerifier`](crate::middlewares::TokenVerifier).  The function is intended to be
+/// wrapped via `axum::middleware::from_fn_with_state` and therefore matches the
+/// signature expected by that helper.
 pub async fn verify_token_middleware<T>(
   State(state): State<T>,
   req: Request<Body>,
@@ -47,13 +54,13 @@ where
 
 #[cfg(test)]
 mod tests {
+  use crate::{UserClaims, jwt::TokenManager};
+
   use super::*;
-  use crate::{
-    jwt::{TokenManager, UserClaims},
-    setup_test_users,
-  };
+
   use anyhow::Result;
   use axum::{Router, body::Body, middleware::from_fn_with_state, routing::get};
+
   use std::sync::Arc;
   use tower::ServiceExt;
 
@@ -85,20 +92,125 @@ mod tests {
 
   #[tokio::test]
   async fn verify_token_middleware_should_work() -> Result<()> {
+    use crate::error::CoreError;
+    use crate::jwt::{TokenConfigProvider, TokenManager};
     use crate::models::User;
-    use crate::utils::jwt::AuthConfig;
+    use crate::models::jwt::{
+      RefreshToken, RefreshTokenRepository, ReplaceTokenPayload, StoreTokenPayload,
+    };
+    use chrono::Utc;
+    use std::future::Future;
+    use std::pin::Pin;
+    use std::sync::Arc;
+
+    // 创建一个简单化的mock RefreshTokenRepository
+    struct MockRefreshTokenRepository;
+
+    impl RefreshTokenRepository for MockRefreshTokenRepository {
+      fn find_by_token(
+        &self,
+        _raw_token: &str,
+      ) -> Pin<Box<dyn Future<Output = Result<Option<RefreshToken>, CoreError>> + Send>> {
+        Box::pin(async { Ok(None) })
+      }
+
+      fn replace(
+        &self,
+        _payload: ReplaceTokenPayload,
+      ) -> Pin<Box<dyn Future<Output = Result<RefreshToken, CoreError>> + Send>> {
+        Box::pin(async { Err(CoreError::Internal(anyhow::anyhow!("Not implemented"))) })
+      }
+
+      fn revoke(
+        &self,
+        _token_id: i64,
+      ) -> Pin<Box<dyn Future<Output = Result<(), CoreError>> + Send>> {
+        Box::pin(async { Ok(()) })
+      }
+
+      fn revoke_all_for_user(
+        &self,
+        _user_id: i64,
+      ) -> Pin<Box<dyn Future<Output = Result<(), CoreError>> + Send>> {
+        Box::pin(async { Ok(()) })
+      }
+
+      fn store_new_token(
+        &self,
+        _payload: StoreTokenPayload,
+      ) -> Pin<Box<dyn Future<Output = Result<RefreshToken, CoreError>> + Send>> {
+        Box::pin(async {
+          Ok(RefreshToken {
+            id: 1,
+            user_id: 1,
+            token_hash: "test_hash".to_string(),
+            expires_at: Utc::now() + chrono::Duration::hours(1),
+            issued_at: Utc::now(),
+            revoked: false,
+            replaced_by: None,
+            user_agent: None,
+            ip_address: None,
+            absolute_expires_at: Utc::now() + chrono::Duration::days(30),
+          })
+        })
+      }
+    }
+
+    // 定义测试需要的常量
+    const JWT_LEEWAY: u64 = 60;
+    const JWT_AUDIENCE: &str = "fechatter-web";
+    const JWT_ISSUER: &str = "fechatter-server";
+
+    // 测试用TokenConfig - 使用与文件中读取的密钥
+    struct AuthConfig {
+      sk: String,
+      pk: String,
+    }
+
+    impl TokenConfigProvider for AuthConfig {
+      fn get_encoding_key_pem(&self) -> &str {
+        &self.sk
+      }
+      fn get_decoding_key_pem(&self) -> &str {
+        &self.pk
+      }
+      fn get_jwt_leeway(&self) -> u64 {
+        JWT_LEEWAY
+      }
+      fn get_jwt_audience(&self) -> Option<&str> {
+        Some(JWT_AUDIENCE)
+      }
+      fn get_jwt_issuer(&self) -> Option<&str> {
+        Some(JWT_ISSUER)
+      }
+    }
+
+    // Intelligently detect key file locations
+    let (encoding_path, decoding_path) = crate::middlewares::find_key_files();
 
     let auth_config = AuthConfig {
-      sk: "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF\n-----END PRIVATE KEY-----".to_string(),
-      pk: "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAHrnbu7wEfAP9cGBOAHHwmH4Wsot1ciXBHmCRcXLBUUQ=\n-----END PUBLIC KEY-----".to_string(),
+      sk: std::fs::read_to_string(encoding_path)?,
+      pk: std::fs::read_to_string(decoding_path)?,
     };
 
-    let token_manager = TokenManager::from_config(&auth_config)?;
+    // 使用mock仓库
+    let refresh_token_repository = Arc::new(MockRefreshTokenRepository);
 
+    // 创建TokenManager实例用于测试
+    let token_manager = match TokenManager::from_config(&auth_config, refresh_token_repository) {
+      Ok(tm) => tm,
+      Err(e) => {
+        eprintln!("Failed to create TokenManager: {:?}", e);
+        return Err(anyhow::anyhow!("Failed to create TokenManager: {:?}", e));
+      }
+    };
+
+    // 创建测试应用状态
     let state = Appstate {
       inner: Arc::new(AppstateInner { token_manager }),
     };
 
+    // 创建测试用户
     let user = User {
       id: 1,
       fullname: "Test User".to_string(),
@@ -109,6 +221,7 @@ mod tests {
       workspace_id: 1,
     };
 
+    // 设置测试路由
     let app = Router::new()
       .route("/api", get(handler))
       .layer(from_fn_with_state(
@@ -116,18 +229,42 @@ mod tests {
         verify_token_middleware::<Appstate>,
       ));
 
-    let token = state
-      .inner
-      .token_manager
-      .generate_token(&user)
-      .map_err(|_| anyhow::anyhow!("Failed to generate token"))?;
+    // 生成JWT令牌
+    let token = match state.inner.token_manager.generate_token(&user) {
+      Ok(t) => {
+        println!("Successfully generated token: {}", t);
+        t
+      }
+      Err(e) => {
+        eprintln!("Failed to generate token: {:?}", e);
+        return Err(anyhow::anyhow!("Failed to generate token: {:?}", e));
+      }
+    };
 
+    // 验证令牌是否有效
+    match state.inner.token_manager.verify_token(&token) {
+      Ok(claims) => println!(
+        "✅ Token verification succeeded! Claims user id: {}",
+        claims.id
+      ),
+      Err(e) => {
+        eprintln!("❌ Token verification failed: {:?}", e);
+        // 不要在这里返回错误，继续测试请求处理
+      }
+    }
+
+    // 执行带有Authorization头的测试请求
     let req = Request::builder()
       .uri("/api")
       .header("Authorization", format!("Bearer {}", token))
       .body(Body::empty())?;
 
+    println!("Sending request with Authorization: Bearer {}", token);
+
     let response = app.oneshot(req).await.unwrap();
+    println!("Response status: {:?}", response.status());
+
+    // 验证响应状态为200 OK
     assert_eq!(response.status(), StatusCode::OK);
 
     Ok(())

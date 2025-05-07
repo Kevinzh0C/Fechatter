@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-futures = { workspace = true }
+futures   ={ workspace = true }
 argon2 = { workspace = true }
 chrono = { workspace = true }
 serde = { workspace = true }
@@ -24,6 +24,9 @@ hex = { workspace = true }
 rand = { workspace = true }
 uuid = { workspace = true }
 thiserror = { workspace = true }
+fechatter_macro = { path = "../fechatter_macro" }
+async-trait = "0.1"
+base64 = { version = "0.22.1", features = ["default"] }
 
 [dev-dependencies]
-mockall = "0.12.1"
+mockall = "0.13.1"

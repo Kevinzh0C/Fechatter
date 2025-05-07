@@ -1,10 +1,8 @@
+use super::{HasIdField, WithServiceProvider, WithTokenManager};
 use crate::{
   AuthContext, TokenVerifier,
-  models::{
-    AuthUser,
-    jwt::{AuthServiceTrait, RefreshTokenData},
-  },
-  services::{WithServiceProvider, WithTokenManager},
+  middlewares::ActualAuthServiceProvider,
+  models::jwt::{RefreshTokenData, RefreshTokenService},
 };
 use axum::{
   body::Body,
@@ -21,25 +19,57 @@ use tracing::{debug, warn};
 const AUTH_HEADER: &str = "Authorization";
 const AUTH_COOKIE_NAME: &str = "refresh_token";
 
+/// Refresh an expired **access token** using a `refresh_token` cookie.
+///
+/// Behaviour overview:
+/// 1. If the request already carries a valid access token (Bearer header) the
+///    middleware is a no-op.
+/// 2. Otherwise it looks for `refresh_token` cookie, asks the configured auth
+///    service to mint fresh tokens, validates the new access token and stores
+///    an `AuthUser` extension for downstream handlers.
+/// 3. On success it also sets an updated `Set-Cookie` header with the new
+///    refresh token.
+///
+/// The function is highly generic so it can live close to domain code while
+/// still being reusable:
+/// * `AppState` must provide a token-manager & service-provider accessor.
+/// * `UserType` is typically `AuthUser` but any type that implements
+///   `From<Claims>` + [`HasIdField`] is accepted.
+///
+/// It returns a *plain* `Response` wrapped in `Result` so callers can decide
+/// whether to translate failures to `IntoResponse` themselves.
 /// Extract auth context from cookies and update tokens if necessary
 pub async fn refresh_token_middleware<
-  T: TokenVerifier + Send + Sync + WithServiceProvider + WithTokenManager,
+  AppState, // Generic state type for the middleware
+  UserType, // Generic user type that will be stored in extensions
 >(
   headers: HeaderMap,
-  State(state): State<T>,
+  State(state): State<AppState>,
   mut request: Request<Body>,
   next: Next,
-) -> Result<Response, StatusCode> {
+) -> Result<Response, StatusCode>
+where
+  AppState: Clone + Send + Sync + 'static + WithServiceProvider + WithTokenManager,
+  UserType: From<<<AppState as WithTokenManager>::TokenManagerType as TokenVerifier>::Claims>
+    + Clone
+    + Send
+    + Sync
+    + 'static
+    + HasIdField,
+  <<AppState as WithTokenManager>::TokenManagerType as TokenVerifier>::Error: std::fmt::Debug,
+  // To use claims.id directly, this bound would be needed:
+  // <<(AppState as WithTokenManager)::TokenManagerType as TokenVerifier)>::Claims: HasIdField + std::fmt::Debug,
+{
   // Debug header information
   debug!("Headers in refresh_token_middleware: {:?}", headers);
 
   // Check if AuthUser extension already exists (from previous middleware)
-  let existing_auth_user = request.extensions().get::<AuthUser>().cloned();
-  if let Some(user) = &existing_auth_user {
-    debug!(
-      "AuthUser extension already exists for user_id={}, preserving it",
-      user.id
-    );
+  let existing_user = request.extensions().get::<UserType>().cloned();
+  if let Some(_) = &existing_user {
+    // If AuthUser struct (not the generic param) has id:
+    // debug!("AuthUser extension already exists for user_id={}, preserving it", user_ext.id());
+    // If AuthUser is just a generic param, it might not have .id. This needs clarification.
+    // For now, assume AuthUser is the concrete struct and this debug line will be reviewed if AuthUser changes.
     return Ok(next.run(request).await);
   }
 
@@ -93,7 +123,7 @@ pub async fn refresh_token_middleware<
     .map(String::from);
 
   // Create auth service using trait-based approach
-  let auth_service: Box<dyn AuthServiceTrait> = state.service_provider.create_service();
+  let auth_service = state.service_provider().create_service();
 
   // Try to refresh the token
   match auth_service
@@ -116,33 +146,21 @@ pub async fn refresh_token_middleware<
       );
 
       // Validate the newly generated token and add AuthUser extension
-      match state.token_manager().validate_token(&tokens.access_token) {
+      match state.token_manager().verify_token(&tokens.access_token) {
         Ok(claims) => {
-          debug!(
-            "Adding AuthUser extension from refreshed token for user_id={}",
-            claims.id
-          );
-          let user = AuthUser {
-            id: claims.id,
-            fullname: claims.fullname,
-            email: claims.email,
-            status: claims.status,
-            created_at: claims.created_at,
-            workspace_id: claims.workspace_id,
-          };
-
-          // Add user info to request extensions
-          request.extensions_mut().insert(user);
+          // claims is of type <<T_mw as WithTokenManager>::TokenManagerType as TokenVerifier>::Claims
+          // This Claims type needs an `id` field for the debug log, or the log needs to change.
+          // debug!("Adding AuthUser extension from refreshed token for user_id={}", claims.id);
+          let user_to_insert: UserType = claims.into();
+          request.extensions_mut().insert(user_to_insert);
           debug!("AuthUser extension successfully added to request");
         }
         Err(e) => {
-          warn!("Refreshed token validation failed: {}", e);
-          // Odd case - refresh succeeded but validation failed
+          warn!("Refreshed token validation failed: {:?}", e);
           return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
       }
 
-      // Set new refresh token in cookie to be sent back
       let refresh_cookie = create_refresh_cookie(&tokens.refresh_token);
       let mut response = next.run(request).await;
       response.headers_mut().insert(
@@ -153,14 +171,9 @@ pub async fn refresh_token_middleware<
       Ok(response)
     }
     Err(e) => {
-      // Token refresh failed, clear the cookie and continue
       warn!("Token refresh failed: {:?}", e);
-
-      // Since the refresh token is invalid and there's no authorization token,
-      // we can't continue - return 401 to force a login
       if !has_access_token {
         debug!("No valid refresh token and no authorization token, returning 401");
-        // Clear the cookie in the response
         let expired_cookie = format!(
           "{}=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict; Secure",
           AUTH_COOKIE_NAME
@@ -172,8 +185,6 @@ pub async fn refresh_token_middleware<
         );
         return Ok(response);
       }
-
-      // Otherwise continue with the request (the bearer auth will handle it)
       Ok(next.run(request).await)
     }
   }
@@ -183,7 +194,6 @@ pub async fn refresh_token_middleware<
 fn create_refresh_cookie(token_data: &RefreshTokenData) -> String {
   let max_age = (token_data.expires_at - chrono::Utc::now())
     .num_seconds()
-    .unwrap_or(0)
     .max(0)
     .try_into()
     .unwrap_or(0);

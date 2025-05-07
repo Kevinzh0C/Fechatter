@@ -1,4 +1,6 @@
 pub mod auth_service;
+pub mod service_provider;
+pub mod mock;
 
 #[derive(Debug, Clone)]
 pub struct AuthContext {

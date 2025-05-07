@@ -44,19 +44,6 @@ pub struct ChatUser {
   pub email: String,
 }
 
-impl From<UserClaims> for AuthUser {
-  fn from(claims: UserClaims) -> Self {
-    Self {
-      id: claims.id,
-      fullname: claims.fullname,
-      email: claims.email,
-      status: claims.status,
-      created_at: claims.created_at,
-      workspace_id: claims.workspace_id,
-    }
-  }
-}
-
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow, PartialEq, Eq, Clone)]
 pub struct Workspace {
   pub id: i64,

@@ -102,3 +102,19 @@ mod tests {
     Ok(())
   }
 }
+
+// Add the From<UserClaims> for AuthUser implementation
+use crate::models::jwt::UserClaims; // Adjust path if UserClaims is located elsewhere
+
+impl From<UserClaims> for AuthUser {
+  fn from(claims: UserClaims) -> Self {
+    AuthUser {
+      id: claims.id,
+      fullname: claims.fullname,
+      email: claims.email,
+      status: claims.status,
+      created_at: claims.created_at,
+      workspace_id: claims.workspace_id,
+    }
+  }
+}

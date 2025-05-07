@@ -4,7 +4,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum AppError {
   #[error("database error: {0}")]
-  SqlxError(#[from] sqlx::Error),
+  SqlxError(sqlx::Error),
 
   #[error("validation error: {0}")]
   ChatValidationError(String),
@@ -28,7 +28,7 @@ pub enum AppError {
 #[derive(Error, Debug)]
 pub enum CoreError {
   #[error("database error: {0}")]
-  Database(#[from] sqlx::Error),
+  Database(sqlx::Error),
 
   #[error("validation error: {0}")]
   Validation(String),
@@ -40,13 +40,13 @@ pub enum CoreError {
   Conflict(String),
 
   #[error("authentication error: {0}")]
-  Authentication(#[from] jsonwebtoken::errors::Error),
+  Authentication(jsonwebtoken::errors::Error),
 
   #[error("unauthorized: {0}")]
   Unauthorized(String),
 
   #[error("internal error: {0}")]
-  Internal(#[from] anyhow::Error),
+  Internal(anyhow::Error),
 }
 
 pub trait ErrorMapper {

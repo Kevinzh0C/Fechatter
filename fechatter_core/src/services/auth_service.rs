@@ -1,9 +1,14 @@
 use crate::{
   error::CoreError,
-  jwt::{AuthTokens, RefreshTokenData, RefreshTokenRepository, RefreshToken, UserClaims},
-  models::{CreateUser, SigninUser},
+  jwt::{
+    AuthTokens, RefreshToken, RefreshTokenData, RefreshTokenRepository, ReplaceTokenPayload,
+    UserClaims,
+  },
+  models::{CreateUser, SigninUser, user::UserRepository},
   services::AuthContext,
 };
+use chrono::Utc;
+
 use uuid::Uuid;
 
 // Define RefreshTokenInfo as an alias for RefreshToken
@@ -11,7 +16,7 @@ type RefreshTokenInfo = RefreshToken;
 
 // Function to generate a refresh token
 fn generate_refresh_token() -> String {
-    Uuid::new_v4().to_string()
+  Uuid::new_v4().to_string()
 }
 
 // Define interfaces for the dependencies
@@ -51,10 +56,7 @@ where
     payload: &CreateUser,
     auth_context: Option<AuthContext>,
   ) -> Result<AuthTokens, CoreError> {
-    // Create user
     let user = self.user_repository.create(payload).await?;
-
-    // Generate user claims
     let user_claims = UserClaims {
       id: user.id,
       workspace_id: user.workspace_id,
@@ -63,13 +65,10 @@ where
       status: user.status,
       created_at: user.created_at,
     };
-
-    // Generate tokens
     let tokens = self
       .token_service
       .generate_auth_tokens(&user_claims, auth_context)
       .await?;
-
     Ok(tokens)
   }
 
@@ -88,7 +87,6 @@ where
           status: user.status,
           created_at: user.created_at,
         };
-
         let tokens = self
           .token_service
           .generate_auth_tokens(&user_claims, auth_context)
@@ -104,11 +102,9 @@ where
     refresh_token_str: &str,
     auth_context: Option<AuthContext>,
   ) -> Result<AuthTokens, CoreError> {
-    // Find and validate refresh token
     let token_record = self.validate_refresh_token(refresh_token_str).await?;
 
     if let Some(saved_agent) = &token_record.user_agent {
-      // If token has saved user agent, require user agent in request
       if let Some(ctx) = &auth_context {
         match &ctx.user_agent {
           None => {
@@ -121,7 +117,7 @@ where
               "Security validation failed for token".to_string(),
             ));
           }
-          _ => {} // User agent matches, continue
+          _ => {}
         }
       } else {
         return Err(CoreError::Validation(
@@ -130,14 +126,12 @@ where
       }
     }
 
-    // Find associated user
     let user = self
       .user_repository
       .find_by_id(token_record.user_id)
       .await?
       .ok_or_else(|| CoreError::NotFound(format!("User linked to refresh token not found")))?;
 
-    // Create user claims
     let user_claims = UserClaims {
       id: user.id,
       workspace_id: user.workspace_id,
@@ -147,33 +141,41 @@ where
       created_at: user.created_at,
     };
 
-    // Generate new refresh token
-    let new_token = generate_refresh_token();
+    let new_raw_token = generate_refresh_token();
 
-    // Get auth context details
     let user_agent = auth_context.as_ref().and_then(|ctx| ctx.user_agent.clone());
     let ip_address = auth_context.as_ref().and_then(|ctx| ctx.ip_address.clone());
 
-    // Replace the old token with the new one
+    let now = Utc::now();
+    let new_expires_at =
+      now + chrono::Duration::seconds(crate::models::jwt::REFRESH_TOKEN_EXPIRATION as i64);
+    let new_absolute_expires_at =
+      now + chrono::Duration::seconds(crate::models::jwt::REFRESH_TOKEN_MAX_LIFETIME as i64);
+
+    let replace_payload = ReplaceTokenPayload {
+      old_token_id: token_record.id,
+      new_raw_token: &new_raw_token,
+      new_expires_at,
+      new_absolute_expires_at,
+      user_agent,
+      ip_address,
+    };
+
     let new_token_record = self
       .refresh_token_repository
-      .replace(token_record.id, &new_token, user_agent, ip_address)
+      .replace(replace_payload)
       .await?;
 
-    // Generate new access token
     let access_token = self.token_service.generate_token(&user_claims)?;
 
-    // Create auth tokens response
-    let auth_tokens = AuthTokens {
+    Ok(AuthTokens {
       access_token,
       refresh_token: RefreshTokenData {
-        token: new_token,
+        token: new_raw_token,
         expires_at: new_token_record.expires_at,
         absolute_expires_at: new_token_record.absolute_expires_at,
       },
-    };
-
-    Ok(auth_tokens)
+    })
   }
 
   pub async fn logout(&self, refresh_token_str: &str) -> Result<(), CoreError> {
@@ -204,23 +206,16 @@ where
       .find_by_token(token_str)
       .await?
       .ok_or_else(|| CoreError::Validation("Invalid or expired refresh token".to_string()))?;
-
-    // Check if token has expired
     if token_record.expires_at < chrono::Utc::now() {
       return Err(CoreError::Validation(
         "Invalid or expired refresh token".to_string(),
       ));
     }
-
-    // Check if token has been revoked
     if token_record.revoked {
       return Err(CoreError::Validation(
         "Invalid or revoked refresh token".to_string(),
       ));
     }
-
     Ok(token_record)
   }
 }
-
-use crate::models::user::UserRepository;

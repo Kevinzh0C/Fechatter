@@ -1,4 +1,13 @@
-use crate::{TokenManager, models::jwt::AuthServiceTrait, services::DefaultAuthService};
+use crate::error::CoreError;
+use crate::jwt::TokenManager;
+use crate::middlewares::{
+  ActualAuthServiceProvider, TokenVerifier, WithServiceProvider, WithTokenManager,
+};
+use crate::models::jwt::{
+  AuthServiceTrait, AuthTokens, LogoutService, RefreshTokenService, SigninService, SignupService,
+  UserClaims,
+};
+use anyhow::anyhow;
 use sqlx::PgPool;
 use std::sync::Arc;
 
@@ -28,13 +37,38 @@ impl ServiceProvider {
   pub fn create<T: ServiceFactory>(&self) -> T::Service {
     T::create(self)
   }
+}
 
-  pub fn create_service(&self) -> Box<dyn AuthServiceTrait + '_> {
-    Box::new(DefaultAuthService::new(
-      self.pool.clone(),
-      self.token_manager.clone(),
-      self.pool.clone(),
-    ))
+impl TokenVerifier for ServiceProvider {
+  type Claims = UserClaims;
+  type Error = CoreError;
+
+  fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error> {
+    self.token_manager.verify_token(token)
+  }
+}
+
+impl WithTokenManager for ServiceProvider {
+  type TokenManagerType = TokenManager;
+
+  fn token_manager(&self) -> &Self::TokenManagerType {
+    &self.token_manager
+  }
+}
+
+impl WithServiceProvider for ServiceProvider {
+  type ServiceProviderType = Self;
+
+  fn service_provider(&self) -> &Self::ServiceProviderType {
+    self
+  }
+}
+
+impl ActualAuthServiceProvider for ServiceProvider {
+  type AuthService = DummyAuthService;
+
+  fn create_service(&self) -> Self::AuthService {
+    DummyAuthService
   }
 }
 
@@ -77,3 +111,60 @@ macro_rules! define_service {
         }
     };
 }
+
+#[derive(Clone)]
+pub struct DummyAuthService;
+
+// Implement each trait with placeholder logic returning an error. These implementations are
+// only meant to satisfy the compiler during the ongoing refactor.
+
+use futures::Future;
+use std::pin::Pin;
+
+impl RefreshTokenService for DummyAuthService {
+  fn refresh_token(
+    &self,
+    _refresh_token: &str,
+    _auth_context: Option<crate::services::AuthContext>,
+  ) -> Pin<Box<dyn Future<Output = Result<AuthTokens, CoreError>> + Send>> {
+    Box::pin(async move { Err(CoreError::Internal(anyhow!("Not implemented"))) })
+  }
+}
+
+impl SignupService for DummyAuthService {
+  fn signup(
+    &self,
+    _payload: &crate::models::CreateUser,
+    _auth_context: Option<crate::services::AuthContext>,
+  ) -> Pin<Box<dyn Future<Output = Result<AuthTokens, CoreError>> + Send>> {
+    Box::pin(async move { Err(CoreError::Internal(anyhow!("Not implemented"))) })
+  }
+}
+
+impl SigninService for DummyAuthService {
+  fn signin(
+    &self,
+    _payload: &crate::models::SigninUser,
+    _auth_context: Option<crate::services::AuthContext>,
+  ) -> Pin<Box<dyn Future<Output = Result<Option<AuthTokens>, CoreError>> + Send>> {
+    Box::pin(async move { Err(CoreError::Internal(anyhow!("Not implemented"))) })
+  }
+}
+
+impl LogoutService for DummyAuthService {
+  fn logout(
+    &self,
+    _refresh_token: &str,
+  ) -> Pin<Box<dyn Future<Output = Result<(), CoreError>> + Send>> {
+    Box::pin(async move { Err(CoreError::Internal(anyhow!("Not implemented"))) })
+  }
+
+  fn logout_all(
+    &self,
+    _user_id: i64,
+  ) -> Pin<Box<dyn Future<Output = Result<(), CoreError>> + Send>> {
+    Box::pin(async move { Err(CoreError::Internal(anyhow!("Not implemented"))) })
+  }
+}
+
+impl AuthServiceTrait for DummyAuthService {}
