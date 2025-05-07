@@ -11,11 +11,7 @@ pub struct AppConfig {
   // ...
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct AuthConfig {
-  pub pk: String,
-  pub sk: String,
-}
+pub use fechatter_core::models::jwt::AuthConfig;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ServerConfig {

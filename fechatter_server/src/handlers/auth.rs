@@ -1,6 +1,5 @@
 use crate::models::AuthUser;
 use crate::services::auth_service::AuthService;
-use crate::utils::jwt::ACCESS_TOKEN_EXPIRATION;
 use crate::{AppState, ErrorOutput, SigninUser, error::AppError, models::CreateUser};
 use axum::{
   Extension, Json,
@@ -9,6 +8,8 @@ use axum::{
   response::IntoResponse,
 };
 use axum_extra::extract::cookie::CookieJar;
+
+use fechatter_core::models::jwt::ACCESS_TOKEN_EXPIRATION;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
@@ -92,7 +93,9 @@ pub(crate) async fn signin_handler(
     .and_then(|h| h.to_str().ok())
     .map(String::from);
 
-  let auth_service = AuthService::new(&state.pool, &state.token_manager);
+  let auth_service = AuthService::new(state.clone());
+
+  let auth_service: Box<dyn AuthServiceTrait> = Box::new(AuthService::new(state.clone()));
   match auth_service
     .signin(&payload, user_agent, ip_address)
     .await?
@@ -125,6 +128,46 @@ pub(crate) async fn refresh_token_handler(
   headers: HeaderMap,
   cookies: CookieJar,
 ) -> Result<impl IntoResponse, AppError> {
+  if let Some(Extension(user)) = auth_user {
+    let auth_service = AuthService::new(state.clone());
+    let user_agent = headers
+      .get("user-agent")
+      .and_then(|h| h.to_str().ok())
+      .map(String::from);
+
+    let ip_address = headers
+      .get("x-forwarded-for")
+      .and_then(|h| h.to_str().ok())
+      .map(String::from);
+
+    let user_model = crate::models::User {
+      id: user.id,
+      fullname: user.fullname.clone(),
+      email: user.email.clone(),
+      password_hash: Some("".to_string()), // Not needed for token generation
+      status: user.status,
+      created_at: user.created_at,
+      workspace_id: user.workspace_id,
+    };
+
+    let tokens = auth_service
+      .generate_auth_tokens(&user_model, user_agent, ip_address)
+      .await?;
+
+    let mut response_headers = HeaderMap::new();
+    set_refresh_token_cookie(
+      &mut response_headers,
+      &tokens.refresh_token.token,
+      &tokens.refresh_token.expires_at,
+    )?;
+    let body = Json(AuthResponse {
+      access_token: tokens.access_token,
+      expires_in: ACCESS_TOKEN_EXPIRATION,
+      refresh_token: Some(tokens.refresh_token.token),
+    });
+
+    return Ok((StatusCode::OK, response_headers, body).into_response());
+  }
   let user_agent = headers
     .get("user-agent")
     .and_then(|h| h.to_str().ok())
@@ -217,9 +260,11 @@ pub(crate) async fn logout_handler(
   let mut response_headers = HeaderMap::new();
   clear_refresh_token_cookie(&mut response_headers)?;
 
-  let auth_service = AuthService::new(&state.pool, &state.token_manager);
+  let auth_service = AuthService::new(state.clone());
 
-  // 首先尝试从cookie中获取刷新令牌
+  let auth_service: Box<dyn AuthServiceTrait> = Box::new(AuthService::new(state.clone()));
+
+  // First try to get refresh token from cookie
   let refresh_token_str = if let Some(cookie) = cookies.get("refresh_token") {
     let token = cookie.value().to_string();
     let _ = auth_service.logout(&token).await;
@@ -262,7 +307,9 @@ pub(crate) async fn logout_all_handler(
   // Clear refresh_token cookie
   clear_refresh_token_cookie(&mut response_headers)?;
 
-  let auth_service = AuthService::new(&state.pool, &state.token_manager);
+  let auth_service = AuthService::new(state.clone());
+
+  let auth_service: Box<dyn AuthServiceTrait> = Box::new(AuthService::new(state.clone()));
   let user_id = _auth_user.id;
 
   // Try to get refresh token from cookie
@@ -424,7 +471,7 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
 
-    let auth_service = AuthService::new(&state.pool, &state.token_manager);
+    let auth_service: Box<dyn AuthServiceTrait> = Box::new(AuthService::new(state.clone()));
     let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
 
     let mut jar = CookieJar::new();

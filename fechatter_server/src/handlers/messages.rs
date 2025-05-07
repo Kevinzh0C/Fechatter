@@ -253,9 +253,7 @@ fn check_file_size(size: usize, filename: &str, max_size: usize) -> Result<(), A
   if size > max_size {
     return Err(AppError::InvalidInput(format!(
       "File '{}' too large: {} bytes (max: {} bytes)",
-      filename,
-      size,
-      max_size
+      filename, size, max_size
     )));
   }
   Ok(())

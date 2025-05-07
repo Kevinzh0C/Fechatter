@@ -176,7 +176,7 @@ impl Workspace {
 
   pub async fn fetch_all_users_with_pool(
     workspace_id: i64,
-    pool: &PgPool,
+    pool: &sqlx::PgPool,
   ) -> Result<Vec<ChatUser>, AppError> {
     Self::fetch_all_users(workspace_id, pool).await
   }

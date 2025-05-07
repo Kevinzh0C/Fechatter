@@ -9,16 +9,21 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
-pub use chat::*;
-pub use chat_member::*;
-pub use message::*;
-pub use user::{AuthUser, CreateUser, SigninUser};
+pub use chat_member::CreateChatMember as ServerCreateChatMember;
+pub use message::{ServerCreateMessage, ServerListMessage};
 
-#[derive(Debug, Serialize, Deserialize, sqlx::Type, Clone, Copy, PartialEq, Eq)]
-#[sqlx(type_name = "user_status", rename_all = "lowercase")]
-pub enum UserStatus {
-  Suspended,
-  Active,
+pub use fechatter_core::{AuthUser, Chat, ChatMember, ChatType, CreateUser, User};
+
+pub use fechatter_core::models::*;
+
+use crate::AppState;
+use fechatter_core::{
+  error::CoreError,
+  models::jwt::{AuthTokens, UserClaims, generate_refresh_token},
+};
+
+pub struct AuthService {
+  state: AppState,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow, PartialEq, Eq, Clone)]
@@ -97,11 +102,16 @@ pub struct Message {
   pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ChatMember {
-  pub chat_id: i64,
-  pub user_id: i64,
-  pub joined_at: DateTime<Utc>,
+    // Return tokens
+    Ok(AuthTokens {
+      access_token,
+      refresh_token: fechatter_core::models::jwt::RefreshTokenData {
+        token: refresh_token,
+        expires_at,
+        absolute_expires_at,
+      },
+    })
+  }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

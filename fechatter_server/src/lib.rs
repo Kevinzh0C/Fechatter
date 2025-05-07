@@ -16,15 +16,49 @@ use axum::{
 };
 pub use config::AppConfig;
 use dashmap::DashMap;
+use fechatter_core::models::jwt::{TokenManager, UserClaims};
 use sqlx::PgPool;
 use tokio::fs;
 use tokio::time::Instant;
 use utils::jwt::TokenManager;
 
-pub use error::{AppError, ErrorOutput};
+use crate::error::{AppError, ErrorOutput};
+pub use error::{AppError as ErrorAppError, ErrorOutput as ErrorOutputType};
+use fechatter_core::models::chat::ChatSidebar;
+pub use fechatter_core::{CreateUser, SigninUser, User};
 use handlers::*;
-use middlewares::{SetAuthLayer, SetLayer};
-pub use models::{ChatSidebar, CreateUser, SigninUser, User};
+// Define the trait locally since it's not in fechatter_core
+#[allow(unused)]
+trait TokenVerifier {
+  type Error;
+  type Claims;
+
+  fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error>;
+}
+
+// Define the cache trait locally
+#[allow(unused)]
+trait WithCache<K, V> {
+  fn get_from_cache(&self, key: &K) -> Option<V>;
+  fn insert_into_cache(&self, key: K, value: V, ttl_seconds: u64);
+  fn remove_from_cache(&self, key: &K);
+}
+
+// Define the pool trait locally
+#[allow(unused)]
+trait WithDbPool {
+  fn db_pool(&self) -> &PgPool;
+}
+
+// Define the token manager trait locally
+#[allow(unused)]
+trait WithTokenManager {
+  fn token_manager(&self) -> &TokenManager;
+}
+pub use middlewares::RouterExt;
+pub use models::{ChatUser, UserStatus, Workspace};
+pub use services::auth_service::AuthService;
+pub use fechatter_core::models::jwt::AuthServiceTrait;
 
 #[derive(Debug, Clone)]
 pub(crate) struct AppState {
@@ -38,6 +72,53 @@ pub(crate) struct AppStateInner {
   pub(crate) chat_list_cache: DashMap<i64, (Arc<Vec<ChatSidebar>>, Instant)>,
 }
 
+impl TokenVerifier for AppState {
+  type Error = AppError;
+  type Claims = UserClaims;
+
+  fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error> {
+    self
+      .inner
+      .token_manager
+      .verify_token(token)
+      .map_err(AppError::from)
+  }
+}
+
+impl WithDbPool for AppState {
+  fn db_pool(&self) -> &PgPool {
+    &self.inner.pool
+  }
+}
+
+impl WithTokenManager for AppState {
+  fn token_manager(&self) -> &TokenManager {
+    &self.inner.token_manager
+  }
+}
+
+impl WithCache<i64, (Arc<Vec<ChatSidebar>>, Instant)> for AppState {
+  fn get_from_cache(&self, key: &i64) -> Option<(Arc<Vec<ChatSidebar>>, Instant)> {
+    if let Some(entry) = self.inner.chat_list_cache.get(key) {
+      let (chats, created_at) = &*entry;
+      return Some((Arc::clone(chats), *created_at));
+    }
+    None
+  }
+
+  fn insert_into_cache(
+    &self,
+    key: i64,
+    value: (Arc<Vec<ChatSidebar>>, Instant),
+    _ttl_seconds: u64,
+  ) {
+    self.inner.chat_list_cache.insert(key, value);
+  }
+
+  fn remove_from_cache(&self, key: &i64) {
+    self.inner.chat_list_cache.remove(key);
+  }
+}
 pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
   let state = AppState::try_new(config).await?;
 

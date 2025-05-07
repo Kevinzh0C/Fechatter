@@ -1,12 +1,11 @@
-use anyhow::Result;
-use chrono::Utc;
-use sqlx::PgPool;
-use tracing::{error, info, warn};
-
-use crate::{
-  AppError,
-  models::{CreateUser, SigninUser, User},
-  utils::jwt::{AuthTokens, RefreshToken, RefreshTokenData, TokenManager, generate_refresh_token},
+use fechatter_core::{
+  error::CoreError,
+  models::{CreateUser, SigninUser, user::UserRepository},
+  services::AuthContext,
+  models::jwt::{
+    AuthTokens, RefreshTokenInfo, RefreshTokenRepository, UserClaims, generate_refresh_token,
+    AuthServiceTrait, TokenService
+  },
 };
 
 pub struct AuthService<'a> {
@@ -207,11 +206,14 @@ impl<'a> AuthService<'a> {
     // Generate new access token
     let access_token = self.token_manager.generate_token(user)?;
 
-    // Create refresh token data
-    let refresh_token_data = RefreshTokenData {
-      token: new_refresh_token_str,
-      expires_at: new_token_db_record.expires_at,
-      absolute_expires_at: new_token_db_record.absolute_expires_at,
+    // Create auth tokens response
+    let auth_tokens = AuthTokens {
+      access_token,
+      refresh_token: fechatter_core::models::jwt::RefreshTokenData {
+        token: new_token,
+        expires_at: new_token_record.expires_at,
+        absolute_expires_at: new_token_record.absolute_expires_at,
+      },
     };
 
     Ok((access_token, refresh_token_data))
