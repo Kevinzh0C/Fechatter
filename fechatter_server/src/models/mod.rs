@@ -102,17 +102,7 @@ pub struct Message {
   pub created_at: DateTime<Utc>,
 }
 
-    // Return tokens
-    Ok(AuthTokens {
-      access_token,
-      refresh_token: fechatter_core::models::jwt::RefreshTokenData {
-        token: refresh_token,
-        expires_at,
-        absolute_expires_at,
-      },
-    })
-  }
-}
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatFile {
