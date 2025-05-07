@@ -2,6 +2,30 @@ use sqlx::postgres::PgRow;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+pub enum AppError {
+  #[error("database error: {0}")]
+  SqlxError(#[from] sqlx::Error),
+
+  #[error("validation error: {0}")]
+  ChatValidationError(String),
+
+  #[error("not found: {0:?}")]
+  NotFound(Vec<String>),
+
+  #[error("chat already exists: {0}")]
+  ChatAlreadyExists(String),
+
+  #[error("chat permission error: {0}")]
+  ChatPermissionError(String),
+
+  #[error("chat file error: {0}")]
+  ChatFileError(String),
+
+  #[error("invalid input: {0}")]
+  InvalidInput(String),
+}
+
+#[derive(Error, Debug)]
 pub enum CoreError {
   #[error("database error: {0}")]
   Database(#[from] sqlx::Error),
@@ -23,8 +47,6 @@ pub enum CoreError {
 
   #[error("internal error: {0}")]
   Internal(#[from] anyhow::Error),
-
-
 }
 
 pub trait ErrorMapper {

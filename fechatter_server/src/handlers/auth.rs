@@ -58,7 +58,7 @@ pub(crate) async fn signup_handler(
     .and_then(|h| h.to_str().ok())
     .map(String::from);
 
-  let auth_service = AuthService::new(&state.service_provider);
+  let auth_service = AuthService::new(state.clone());
   let tokens = auth_service
     .signup(&payload, user_agent, ip_address)
     .await?;
@@ -217,9 +217,7 @@ pub(crate) async fn refresh_token_handler(
     }
   };
 
-  let auth_service = AuthService::new(&state.service_provider);
-
-  let auth_service: Box<dyn AuthServiceTrait> = state.service_provider.create_service();
+  let auth_service = AuthService::new(state.clone());
   match auth_service
     .refresh_token(&refresh_token_str, user_agent, ip_address)
     .await
@@ -559,7 +557,7 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
 
-    let auth_service = AuthService::new(&state.service_provider);
+    let auth_service = AuthService::new(state.clone());
     let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
 
     let mut jar = CookieJar::new();

@@ -23,6 +23,14 @@ pub enum Event {
   NewMessage(Message),
 }
 
+
+pub enum Event {
+  NewChat(Chat),
+  AddToChat(ChatMember),
+  RemoveFromChat(ChatMember),
+  NewMessage(Message),
+}
+
 pub fn get_router(state: NotifyState) -> Router {
   let state_clone = state.clone();
   Router::new()

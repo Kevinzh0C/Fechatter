@@ -1,6 +1,6 @@
 pub mod jwt;
 pub mod test_utils;
-pub  mod token;
+pub mod token;
 
 #[macro_export]
 macro_rules! auth_user {

@@ -1,3 +1,4 @@
+use crate::{AppError, AppState};
 use std::{
   path::{Path, PathBuf},
   str::FromStr,
@@ -47,7 +48,6 @@ impl ChatFile {
     path
   }
 }
-
 impl FromStr for ChatFile {
   type Err = AppError;
 

@@ -1,11 +1,11 @@
 mod config;
 mod error;
 mod handlers;
-
+mod middlewares;
 mod models;
+mod utils;
 
-mod test_utils;
-
+mod services;
 use std::sync::Arc;
 use std::{fmt, ops::Deref};
 
@@ -23,6 +23,7 @@ use tokio::time::Instant;
 use crate::error::{AppError, ErrorOutput};
 pub use error::{AppError as ErrorAppError, ErrorOutput as ErrorOutputType};
 use fechatter_core::models::chat::ChatSidebar;
+use fechatter_core::services::WithServiceProvider;
 pub use fechatter_core::{CreateUser, SigninUser, User};
 use handlers::*;
 
@@ -71,7 +72,6 @@ pub struct AppStateInner {
   pub(crate) token_manager: TokenManager,
   pub(crate) pool: PgPool,
   pub(crate) chat_list_cache: DashMap<i64, (Arc<Vec<ChatSidebar>>, Instant)>,
-  pub(crate) service_provider: ServiceProvider,
 }
 
 impl TokenVerifier for AppState {
@@ -167,6 +167,12 @@ impl WithCache<i64, (Arc<Vec<ChatSidebar>>, Instant)> for AppState {
 
   fn remove_from_cache(&self, key: &i64) {
     self.inner.chat_list_cache.remove(key);
+  }
+}
+
+impl WithServiceProvider for AppState {
+  fn service_provider(&self) -> &fechatter_core::services::ServiceProvider {
+    &self.inner.service_provider
   }
 }
 
@@ -242,7 +248,6 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
   let app = Router::new()
     .route("/", get(index_handler))
     .nest("/api", api)
-    .set_layer()
     .with_state(state);
 
   Ok(app)
@@ -276,7 +281,6 @@ impl AppState {
       token_manager,
       pool,
       chat_list_cache,
-      service_provider,
     };
 
     Ok(Self {
@@ -310,7 +314,6 @@ impl AppState {
       token_manager,
       pool,
       chat_list_cache,
-      service_provider,
     };
 
     Ok((

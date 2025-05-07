@@ -118,6 +118,12 @@ impl From<CoreError> for AppError {
   }
 }
 
+impl From<CoreError> for AppError {
+  fn from(error: CoreError) -> Self {
+    Self::map_error(error)
+  }
+}
+
 impl IntoResponse for AppError {
   fn into_response(self) -> Response<Body> {
     let status = match &self {

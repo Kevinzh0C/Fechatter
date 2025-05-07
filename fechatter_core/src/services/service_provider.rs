@@ -1,4 +1,4 @@
-use crate::utils::jwt::TokenManager;
+use crate::{TokenManager, models::jwt::AuthServiceTrait, services::DefaultAuthService};
 use sqlx::PgPool;
 use std::sync::Arc;
 
@@ -29,8 +29,12 @@ impl ServiceProvider {
     T::create(self)
   }
 
-  pub fn create_service(&self) -> Box<dyn crate::services::AuthServiceTrait + '_> {
-    Box::new(crate::services::auth_service::AuthService::new(self))
+  pub fn create_service(&self) -> Box<dyn AuthServiceTrait + '_> {
+    Box::new(DefaultAuthService::new(
+      self.pool.clone(),
+      self.token_manager.clone(),
+      self.pool.clone(),
+    ))
   }
 }
 
@@ -42,6 +46,7 @@ pub trait ServiceFactory {
 
 pub trait ServiceMarker {}
 
+#[macro_export]
 macro_rules! define_service {
     (
         $service_name:ident,

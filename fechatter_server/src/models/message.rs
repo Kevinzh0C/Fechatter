@@ -1,6 +1,7 @@
 use super::ChatFile;
 use crate::AppError;
 use crate::AppState;
+use crate::models::ChatType;
 use fechatter_core::{Message, error::CoreError, models::CreateMessage};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -120,6 +121,7 @@ mod tests {
   use super::*;
   use crate::models::ChatFile;
   use crate::models::ChatType;
+  use crate::models::chat::create_new_chat;
   use crate::models::chat::create_new_chat;
   use crate::setup_test_users;
   use anyhow::Result;

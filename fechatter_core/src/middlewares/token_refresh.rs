@@ -1,3 +1,11 @@
+use crate::{
+  AuthContext, TokenVerifier,
+  models::{
+    AuthUser,
+    jwt::{AuthServiceTrait, RefreshTokenData},
+  },
+  services::{WithServiceProvider, WithTokenManager},
+};
 use axum::{
   body::Body,
   extract::State,
@@ -10,17 +18,15 @@ use axum::{
 };
 use tracing::{debug, warn};
 
-use crate::{
-  models::AuthUser, services::AuthServiceTrait, utils::{jwt::RefreshTokenData, token::TokenValidator}, AppState
-};
-
 const AUTH_HEADER: &str = "Authorization";
 const AUTH_COOKIE_NAME: &str = "refresh_token";
 
 /// Extract auth context from cookies and update tokens if necessary
-pub async fn refresh_token_middleware(
+pub async fn refresh_token_middleware<
+  T: TokenVerifier + Send + Sync + WithServiceProvider + WithTokenManager,
+>(
   headers: HeaderMap,
-  State(state): State<AppState>,
+  State(state): State<T>,
   mut request: Request<Body>,
   next: Next,
 ) -> Result<Response, StatusCode> {
@@ -87,15 +93,17 @@ pub async fn refresh_token_middleware(
     .map(String::from);
 
   // Create auth service using trait-based approach
-
   let auth_service: Box<dyn AuthServiceTrait> = state.service_provider.create_service();
-
-  let auth_service: Box<dyn AuthServiceTrait> =
-    state.service_provider.create_service();
 
   // Try to refresh the token
   match auth_service
-    .refresh_token(&refresh_token, user_agent, ip_address)
+    .refresh_token(
+      &refresh_token,
+      Some(AuthContext {
+        user_agent,
+        ip_address,
+      }),
+    )
     .await
   {
     Ok(tokens) => {
@@ -108,7 +116,7 @@ pub async fn refresh_token_middleware(
       );
 
       // Validate the newly generated token and add AuthUser extension
-      match state.token_manager.validate_token(&tokens.access_token) {
+      match state.token_manager().validate_token(&tokens.access_token) {
         Ok(claims) => {
           debug!(
             "Adding AuthUser extension from refreshed token for user_id={}",
@@ -175,7 +183,10 @@ pub async fn refresh_token_middleware(
 fn create_refresh_cookie(token_data: &RefreshTokenData) -> String {
   let max_age = (token_data.expires_at - chrono::Utc::now())
     .num_seconds()
-    .max(0) as usize;
+    .unwrap_or(0)
+    .max(0)
+    .try_into()
+    .unwrap_or(0);
 
   // Set HTTP-only cookie with secure flag
   format!(

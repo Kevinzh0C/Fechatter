@@ -100,7 +100,6 @@ async fn ensure_user_is_chat_creator(
   Ok(())
 }
 
-
 pub async fn ensure_user_is_chat_member(
   pool: &PgPool,
   chat_id: i64,
@@ -506,7 +505,7 @@ pub struct CreateChatMember {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::setup_test_users;
+  use crate::{models::chat::create_new_chat, setup_test_users};
 
   #[tokio::test]
   async fn transfer_chat_ownership_should_work() -> anyhow::Result<()> {

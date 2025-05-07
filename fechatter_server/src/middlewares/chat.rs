@@ -5,46 +5,37 @@ use axum::{
   middleware::Next,
   response::{IntoResponse, Response},
 };
-use tracing::{debug, error, info};
+use tracing::{error, info};
 
 use crate::{
-  AppError, AppState,
-  models::{AuthUser, ensure_user_is_chat_member},
-  utils::token::TokenValidator,
+  TokenVerifier, WithDbPool, error::AppError, models::AuthUser, state::WithTokenManager,
 };
 
-pub async fn verify_chat_membership_middleware(
-  State(state): State<AppState>,
+pub async fn verify_chat_membership_middleware<
+  T: TokenVerifier + Send + Sync + WithTokenManager + WithDbPool,
+>(
+  State(state): State<T>,
   req: Request,
   next: Next,
 ) -> Response {
   let (mut parts, body) = req.into_parts();
 
   let chat_id = match Path::<i64>::from_request_parts(&mut parts, &state).await {
-    Ok(path) => {
-      debug!("Found chat_id in path: {}", path.0);
-      path.0
-    }
+    Ok(path) => path.0,
     Err(_) => {
-      debug!("Failed to extract chat_id from path, trying to parse from URI segments");
       if let Some(path_and_query) = parts.uri.path_and_query() {
         let path = path_and_query.path();
-        debug!("Path: {}", path);
+
         let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
-        debug!("Path segments: {:?}", segments);
 
         if segments.len() >= 2 {
           // Try second segment as ID (e.g. /chat/123/...)
           if let Ok(id) = segments[1].parse::<i64>() {
-            debug!("Using second segment as chat_id: {}", id);
             id
           } else if segments.len() >= 1 {
             // If second segment is not ID, try first segment (e.g. /123/...)
             match segments[0].parse::<i64>() {
-              Ok(id) => {
-                debug!("Using first segment as chat_id: {}", id);
-                id
-              }
+              Ok(id) => id,
               Err(_) => {
                 error!("Invalid chat ID in path");
                 return (StatusCode::BAD_REQUEST, "Invalid chat ID").into_response();
@@ -69,22 +60,17 @@ pub async fn verify_chat_membership_middleware(
   };
 
   let user = match Extension::<AuthUser>::from_request_parts(&mut parts, &state).await {
-    Ok(Extension(user)) => {
-      debug!("Found AuthUser extension: user_id={}", user.id);
-      user
-    }
+    Ok(Extension(user)) => user,
     Err(e) => {
       // Extended error handling and debugging
       error!(
         "Failed to extract AuthUser extension: {}. This usually means the auth middleware didn't run or the token was invalid.",
         e
       );
-      debug!("Request headers: {:?}", parts.headers);
 
       // Check for Authorization header to provide better error message
       if let Some(auth_header) = parts.headers.get("Authorization") {
         if let Ok(auth_str) = auth_header.to_str() {
-          debug!("Authorization header present: {}", auth_str);
           if auth_str.starts_with("Bearer ") {
             // Token exists but AuthUser extension is missing
             error!(
@@ -110,7 +96,6 @@ pub async fn verify_chat_membership_middleware(
           }
         }
       } else {
-        debug!("No Authorization header found in request");
       }
 
       return (
@@ -124,14 +109,8 @@ pub async fn verify_chat_membership_middleware(
     }
   };
 
-  debug!("Checking if user {} is member of chat {}", user.id, chat_id);
-
   match ensure_user_is_chat_member(&state.pool, chat_id, user.id).await {
     Ok(true) => {
-      debug!(
-        "User {} is a member of chat {}, proceeding",
-        user.id, chat_id
-      );
       let req = Request::from_parts(parts, body);
       next.run(req).await
     }

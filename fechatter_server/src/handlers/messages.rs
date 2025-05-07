@@ -892,7 +892,8 @@ mod tests {
       status: user.status,
       created_at: user.created_at,
     });
-    let result = list_messages_handler(State(state.clone()), auth_user, Path(chat.id), Query(query)).await;
+    let result =
+      list_messages_handler(State(state.clone()), auth_user, Path(chat.id), Query(query)).await;
 
     assert!(result.is_ok());
 
@@ -1191,26 +1192,17 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(10).await;
     let user1 = &users[0];
 
-    let _auth_user = Extension(AuthUser {
-      id: user1.id,
-      fullname: user1.fullname.clone(),
-      email: user1.email.clone(),
-      status: user1.status,
-      created_at: user1.created_at,
-      workspace_id: user1.workspace_id,
-    });
-
-    let chat = state
-      .create_new_chat(
-        user1.id,
-        "Large Message Test",
-        crate::models::ChatType::Group,
-        Some(users.iter().map(|u| u.id).collect()),
-        Some("Chat for testing large message volumes"),
-        user1.workspace_id,
-      )
-      .await
-      .expect("Failed to create chat");
+    let chat = create_new_chat(
+      &state,
+      user1.id,
+      "Large Message Test",
+      fechatter_core::ChatType::Group,
+      Some(users.iter().map(|u| u.id).collect()),
+      Some("Chat for testing large message volumes"),
+      user1.workspace_id,
+    )
+    .await
+    .expect("Failed to create chat");
 
     info!("Created test chat successfully, ID: {}", chat.id);
 
@@ -1270,9 +1262,14 @@ mod tests {
         status: user1.status,
         created_at: user1.created_at,
       });
-      let result = list_messages_handler(State(state.clone()), auth_user, Path(chat.id), Query(query.clone()))
-        .await
-        .expect("Failed to list messages");
+      let result = list_messages_handler(
+        State(state.clone()),
+        auth_user,
+        Path(chat.id),
+        Query(query.clone()),
+      )
+      .await
+      .expect("Failed to list messages");
 
       let response = result.into_response();
       assert_eq!(response.status(), StatusCode::OK);

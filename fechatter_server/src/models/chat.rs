@@ -6,8 +6,8 @@ use tokio::time::Instant;
 
 use crate::{AppError, AppState, models::ChatType};
 
-use super::{Chat, CreateChatMember, insert_chat_members_relation, is_creator_in_chat};
-
+use crate::models::Chat;
+use fechatter_core::chat::ChatSidebar as CoreChatSidebar;
 const CHAT_LIST_CACHE_TTL: Duration = Duration::from_secs(30);
 
 /// Retrieves a list of chat sidebars for a specific user
@@ -199,102 +199,79 @@ pub async fn fetch_all_chats(workspace_id: i64, pool: &PgPool) -> Result<Vec<Cha
   Ok(chats)
 }
 
-impl AppState {
-  /// Retrieves a list of chat sidebars for a specific user
-  pub async fn list_chats_of_user(&self, user_id: i64) -> Result<Arc<Vec<ChatSidebar>>, AppError> {
-    if let Some(entry) = self.chat_list_cache.get(&user_id) {
-      let (cached_chats, timestamp) = entry.value();
-      if timestamp.elapsed() < CHAT_LIST_CACHE_TTL {
-        return Ok(cached_chats.clone());
-      }
-    }
+pub async fn create_new_chat(
+  &self,
+  creator_id: i64,
+  name: &str,
+  chat_type: ChatType,
+  target_members: Option<Vec<i64>>,
+  description: Option<&str>,
+  workspace_id: i64,
+) -> Result<Chat, AppError> {
+  validate_chat_name(name)?;
 
-    // If no valid cache exists, fetch the chat list from the database
-    let chats = fetch_chat_list_from_db(&self.pool, user_id).await?;
+  let chat_members = process_chat_members(&chat_type, creator_id, target_members.as_ref())?;
 
-    // Create an Arc to allow shared ownership of the chat list
-    let chats_arc = Arc::new(chats);
+  self.validate_users_exists_by_ids(&chat_members).await?;
 
-    // Update the cache with the new chat list and current timestamp
-    self
-      .chat_list_cache
-      .insert(user_id, (chats_arc.clone(), Instant::now()));
+  let mut tx = self.pool.begin().await?;
 
-    Ok(chats_arc)
-  }
-
-  pub async fn create_new_chat(
-    &self,
-    creator_id: i64,
-    name: &str,
-    chat_type: ChatType,
-    target_members: Option<Vec<i64>>,
-    description: Option<&str>,
-    workspace_id: i64,
-  ) -> Result<Chat, AppError> {
-    validate_chat_name(name)?;
-
-    let chat_members = process_chat_members(&chat_type, creator_id, target_members.as_ref())?;
-
-    self.validate_users_exists_by_ids(&chat_members).await?;
-
-    let mut tx = self.pool.begin().await?;
-
-    let chat = insert_chat_record(
-      &mut tx,
-      name,
-      &chat_type,
-      &chat_members,
-      description.unwrap_or(""),
-      creator_id,
-      workspace_id,
-    )
-    .await
-    .map_err(|e| {
-      if let Some(db_error) = e.as_database_error() {
-        if db_error.is_unique_violation() {
-          AppError::ChatAlreadyExists(format!("Chat {} already exists", name))
-        } else {
-          e.into()
-        }
+  let chat = insert_chat_record(
+    &mut tx,
+    name,
+    &chat_type,
+    &chat_members,
+    description.unwrap_or(""),
+    creator_id,
+    workspace_id,
+  )
+  .await
+  .map_err(|e| {
+    if let Some(db_error) = e.as_database_error() {
+      if db_error.is_unique_violation() {
+        AppError::ChatAlreadyExists(format!("Chat {} already exists", name))
       } else {
         e.into()
       }
-    })?;
-
-    let chat_id = chat.id;
-    insert_chat_members_relation(chat_id, &chat_members, &mut tx).await?;
-
-    tx.commit().await?;
-
-    for &member in &chat_members {
-      self.chat_list_cache.remove(&member);
+    } else {
+      e.into()
     }
+  })?;
 
-    Ok(chat)
+  let chat_id = chat.id;
+  crate::models::chat_member::insert_chat_members_relation(chat_id, &chat_members, &mut tx).await?;
+
+  tx.commit().await?;
+
+  for &member in &chat_members {
+    self.chat_list_cache.remove(&member);
   }
 
-  pub async fn update_chat(
-    &self,
-    chat_id: i64,
-    user_id: i64,
-    payload: UpdateChat,
-  ) -> Result<Chat, AppError> {
-    let creator = CreateChatMember { chat_id, user_id };
-    let is_creator = is_creator_in_chat(&self.pool, &creator).await?;
+  Ok(chat)
+}
 
-    if !is_creator {
-      return Err(AppError::ChatPermissionError(format!(
-        "User {} is not the creator of chat {}",
-        user_id, chat_id
-      )));
-    }
+pub async fn update_chat(
+  state: &AppState,
+  chat_id: i64,
+  user_id: i64,
+  payload: UpdateChat,
+) -> Result<Chat, AppError> {
+  // Use the server's CreateChatMember type for is_creator_in_chat
+  let creator = crate::models::ServerCreateChatMember { chat_id, user_id };
+  let is_creator = crate::models::chat_member::is_creator_in_chat(&state.pool, &creator).await?;
 
-    if let Some(ref name) = payload.name {
-      validate_chat_name(name)?;
-    }
+  if !is_creator {
+    return Err(AppError::ChatPermissionError(format!(
+      "User {} is not the creator of chat {}",
+      user_id, chat_id
+    )));
+  }
 
-    let chat_result = sqlx::query_as::<_, Chat>(
+  if let Some(ref name) = payload.name {
+    validate_chat_name(name)?;
+  }
+
+  let chat_result = sqlx::query_as::<_, Chat>(
     "UPDATE chats
      SET
        chat_name = COALESCE($1, chat_name),
@@ -310,34 +287,33 @@ impl AppState {
   .fetch_one(&self.pool)
   .await?;
 
-    if payload.name.is_some() || payload.description.is_some() {
-      for &member_id in &chat.chat_members {
-        self.chat_list_cache.remove(&member_id);
-      }
+  if payload.name.is_some() || payload.description.is_some() {
+    for &member_id in &chat_result.chat_members {
+      state.chat_list_cache.remove(&member_id);
     }
-
-    Ok(chat)
   }
 
-  pub async fn delete_chat(&self, chat_id: i64, user_id: i64) -> Result<bool, AppError> {
-    let mut tx = self.pool.begin().await?;
+  Ok(chat_result)
+}
 
-    let members_to_invalidate = match delete_chat_transactional(&mut tx, chat_id, user_id).await {
-      Ok(members) => members,
-      Err(e) => {
-        let _ = tx.rollback().await;
-        return Err(e);
-      }
-    };
+pub async fn delete_chat(&self, chat_id: i64, user_id: i64) -> Result<bool, AppError> {
+  let mut tx = self.pool.begin().await?;
 
-    tx.commit().await?;
-
-    for &member in &members_to_invalidate {
-      self.chat_list_cache.remove(&member);
+  let members_to_invalidate = match delete_chat_transactional(&mut tx, chat_id, user_id).await {
+    Ok(members) => members,
+    Err(e) => {
+      let _ = tx.rollback().await;
+      return Err(e);
     }
+  };
 
-    Ok(true)
+  tx.commit().await?;
+
+  for &member in &members_to_invalidate {
+    self.chat_list_cache.remove(&member);
   }
+
+  Ok(true)
 }
 
 async fn delete_chat_transactional(
@@ -415,7 +391,10 @@ pub struct UpdateChat {
 mod tests {
   use super::*;
 
-  use crate::{models::chat_member::{add_chat_members, remove_group_chat_members}, setup_test_users};
+  use crate::{
+    models::chat_member::{add_chat_members, remove_group_chat_members},
+    setup_test_users,
+  };
   use anyhow::Result;
 
   #[tokio::test]
@@ -1320,7 +1299,6 @@ mod tests {
       )
       .await?;
 
-
     let second_chat_name = "Second Chat Name";
     let second_chat = state
       .create_new_chat(
@@ -1365,7 +1343,7 @@ mod process_chat_members_data_driven_tests {
   use super::*;
   use crate::AppError;
   use crate::models::ChatType;
-  use anyhow::Result; 
+  use anyhow::Result;
 
   const CREATOR_ID: i64 = 1;
   const USER_2: i64 = 2;

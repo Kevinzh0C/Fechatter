@@ -9,7 +9,10 @@ use tracing::info;
 
 use crate::{
   AppError, AppState,
-  models::{AuthUser, CreateChat, UpdateChat},
+  models::{
+    AuthUser,
+    chat::{CreateChat, UpdateChat, create_new_chat, delete_chat, list_chats_of_user, update_chat},
+  },
 };
 
 pub(crate) async fn list_chats_handler(
