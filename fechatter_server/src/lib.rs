@@ -3,6 +3,7 @@ mod error;
 mod handlers;
 mod middlewares;
 mod models;
+mod tests;
 mod utils;
 
 mod services;
@@ -55,10 +56,9 @@ trait WithDbPool {
 trait WithTokenManager {
   fn token_manager(&self) -> &TokenManager;
 }
-use services::ServiceProvider;
-=======
 pub use middlewares::{RouterExt, SetAuthLayer, SetLayer, WorkspaceContext};
 pub use models::{ChatSidebar, ChatUser, CreateUser, SigninUser, User, UserStatus, Workspace};
+use services::ServiceProvider;
 use services::ServiceProvider;
 pub use services::{AuthServiceTrait, auth_service::AuthService};
 
@@ -231,7 +231,6 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
       get(list_messages_handler).post(send_message_handler),
     )
     .with_state(state.clone())
-    .with_state(state.clone());
     .with_middlewares(state.clone())
     .with_token_refresh()
     .with_auth()

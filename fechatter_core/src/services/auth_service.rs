@@ -1,10 +1,8 @@
 use crate::{
   error::CoreError,
+  jwt::{AuthTokens, RefreshTokenRepository, UserClaims},
   models::{CreateUser, SigninUser},
   services::AuthContext,
-  utils::jwt::{
-    AuthTokens, RefreshTokenInfo, RefreshTokenRepository, UserClaims, generate_refresh_token,
-  },
 };
 
 // Define interfaces for the dependencies

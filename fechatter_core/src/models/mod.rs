@@ -1,6 +1,6 @@
 pub mod chat;
 pub mod chat_member;
-
+pub mod jwt;
 pub mod message;
 pub mod user;
 pub mod workspace;
@@ -9,7 +9,6 @@ pub use crate::error::CoreError;
 
 pub use chat::*;
 pub use chat_member::*;
-pub use jwt::*;
 pub use message::*;
 pub use user::*;
 pub use workspace::*;
@@ -43,8 +42,6 @@ pub struct ChatUser {
   pub fullname: String,
   pub email: String,
 }
-
-use crate::utils::jwt::UserClaims;
 
 impl From<UserClaims> for AuthUser {
   fn from(claims: UserClaims) -> Self {

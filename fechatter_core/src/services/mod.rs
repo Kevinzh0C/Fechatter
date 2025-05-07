@@ -1,5 +1,3 @@
-use serde::{Deserialize, Serialize};
-
 pub mod auth_service;
 
 #[derive(Debug, Clone)]
@@ -9,9 +7,9 @@ pub struct AuthContext {
 }
 
 use crate::{
+  AuthUser, CreateUser, SigninUser,
   error::CoreError,
-  models::{AuthUser, CreateUser, SigninUser},
-  utils::jwt::{AuthTokens, UserClaims},
+  jwt::{AuthTokens, UserClaims},
 };
 
 pub trait AuthService: Send + Sync {
