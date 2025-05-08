@@ -7,14 +7,8 @@ use axum::{
 
 use tracing::info;
 
-use crate::{
-  AppError, AppState,
-  models::{
-    AuthUser,
-    chat::{CreateChat, UpdateChat, create_new_chat, delete_chat, list_chats_of_user, update_chat},
-  },
-};
-
+use crate::{AppError, AppState, models::AuthUser};
+use fechatter_core::{CreateChat, UpdateChat};
 pub(crate) async fn list_chats_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
@@ -34,8 +28,8 @@ pub(crate) async fn create_chat_handler(
       user.id,
       &payload.name,
       payload.chat_type,
-      Some(payload.chat_members),
-      Some(&payload.description),
+      payload.members,
+      Some(payload.description.as_deref().unwrap_or("")),
       user.workspace_id,
     )
     .await?;
@@ -77,15 +71,13 @@ mod tests {
   use super::*;
   use crate::models::{Chat, ChatType};
 
-  use crate::models::chat::{CreateChat, UpdateChat};
   use crate::{
-    assert_chat_list_count, assert_handler_error, assert_handler_success, create_new_test_chat,
-    setup_test_users,
+    assert_chat_list_count, assert_handler_error, assert_handler_success, auth_user,
+    create_new_test_chat, setup_test_users,
   };
   use anyhow::Result;
   use axum::{Json, extract::Path, http::StatusCode, response::IntoResponse};
-
-  use fechatter_core::auth_user;
+  use fechatter_core::CreateChat;
 
   #[tokio::test]
   async fn create_chat_handler_should_work() -> Result<()> {
@@ -98,8 +90,10 @@ mod tests {
     let payload = CreateChat {
       name: "Test Group Chat".to_string(),
       chat_type: ChatType::Group,
-      chat_members: vec![user2.id, user3.id], // IDs needed here
-      description: "A test group".to_string(),
+      members: Some(vec![user2.id, user3.id]),
+      description: Some("A test group".to_string()),
+      created_by: user1.id,
+      workspace_id: user1.workspace_id,
     };
 
     let created_chat = assert_handler_success!(
@@ -130,8 +124,10 @@ mod tests {
     let payload = CreateChat {
       name: "Test Single Chat".to_string(),
       chat_type: ChatType::Single,
-      chat_members: vec![user2.id],
-      description: "".to_string(),
+      members: Some(vec![user2.id]),
+      description: Some("".to_string()),
+      created_by: user1.id,
+      workspace_id: user1.workspace_id,
     };
 
     let created_chat = assert_handler_success!(

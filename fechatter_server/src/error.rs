@@ -28,7 +28,7 @@ impl ErrorOutput {
 #[non_exhaustive]
 pub enum AppError {
   #[error("sqlx error: {0}")]
-  SqlxError(#[from] sqlx::Error),
+  SqlxError(sqlx::Error),
 
   #[error("invalid input: {0}")]
   InvalidInput(String),
@@ -40,22 +40,22 @@ pub enum AppError {
   Conflict(String),
 
   #[error("io error: {0}")]
-  IOError(#[from] std::io::Error),
+  IOError(std::io::Error),
 
   #[error("password hash error: {0}")]
-  PasswordHashError(#[from] argon2::password_hash::Error),
+  PasswordHashError(argon2::password_hash::Error),
 
   #[error("database error: {0}")]
-  JwtError(#[from] jsonwebtoken::errors::Error),
+  JwtError(jsonwebtoken::errors::Error),
 
   #[error("unauthorized: {0}")]
   Unauthorized(String),
 
   #[error("internal error: {0}")]
-  AnyError(#[from] anyhow::Error),
+  AnyError(anyhow::Error),
 
   #[error("http header error: {0}")]
-  HttpHeaderError(#[from] axum::http::header::InvalidHeaderValue),
+  HttpHeaderError(axum::http::header::InvalidHeaderValue),
 
   #[error("user already exists: {0}")]
   UserAlreadyExists(String),
@@ -77,50 +77,18 @@ pub enum AppError {
 }
 
 impl ErrorMapper for AppError {
-  type Error = Self;
+  type Error = AppError;
 
   fn map_error(error: CoreError) -> Self::Error {
     match error {
       CoreError::Database(e) => AppError::SqlxError(e),
-      CoreError::Validation(msg) => {
-        if msg.contains("chat") || msg.contains("Chat") {
-          AppError::ChatValidationError(msg)
-        } else {
-          AppError::InvalidInput(msg)
-        }
-      }
-      CoreError::NotFound(msg) => AppError::NotFound(vec![msg]),
-      CoreError::Conflict(msg) => {
-        if msg.contains("User") || msg.contains("email") {
-          AppError::UserAlreadyExists(msg)
-        } else if msg.contains("Workspace") {
-          AppError::WorkspaceAlreadyExists(msg)
-        } else {
-          AppError::ChatAlreadyExists(msg)
-        }
-      }
+      CoreError::Validation(e) => AppError::ChatValidationError(e),
+      CoreError::NotFound(e) => AppError::NotFound(vec![e]),
+      CoreError::Conflict(e) => AppError::Conflict(e),
       CoreError::Authentication(e) => AppError::JwtError(e),
-      CoreError::Unauthorized(msg) => {
-        if msg.contains("chat") || msg.contains("Chat") {
-          AppError::ChatPermissionError(msg)
-        } else {
-          AppError::Unauthorized(msg)
-        }
-      }
+      CoreError::Unauthorized(e) => AppError::Unauthorized(e),
       CoreError::Internal(e) => AppError::AnyError(e),
     }
-  }
-}
-
-impl From<CoreError> for AppError {
-  fn from(error: CoreError) -> Self {
-    Self::map_error(error)
-  }
-}
-
-impl From<CoreError> for AppError {
-  fn from(error: CoreError) -> Self {
-    Self::map_error(error)
   }
 }
 
@@ -151,5 +119,47 @@ impl IntoResponse for AppError {
       error: self.to_string(),
     });
     (status, body).into_response()
+  }
+}
+
+impl From<sqlx::Error> for AppError {
+  fn from(error: sqlx::Error) -> Self {
+    Self::SqlxError(error)
+  }
+}
+
+impl From<std::io::Error> for AppError {
+  fn from(error: std::io::Error) -> Self {
+    Self::IOError(error)
+  }
+}
+
+impl From<argon2::password_hash::Error> for AppError {
+  fn from(error: argon2::password_hash::Error) -> Self {
+    Self::PasswordHashError(error)
+  }
+}
+
+impl From<jsonwebtoken::errors::Error> for AppError {
+  fn from(error: jsonwebtoken::errors::Error) -> Self {
+    Self::JwtError(error)
+  }
+}
+
+impl From<anyhow::Error> for AppError {
+  fn from(error: anyhow::Error) -> Self {
+    Self::AnyError(error)
+  }
+}
+
+impl From<axum::http::header::InvalidHeaderValue> for AppError {
+  fn from(error: axum::http::header::InvalidHeaderValue) -> Self {
+    Self::HttpHeaderError(error)
+  }
+}
+
+impl From<CoreError> for AppError {
+  fn from(error: CoreError) -> Self {
+    Self::map_error(error)
   }
 }

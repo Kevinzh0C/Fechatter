@@ -2,7 +2,11 @@ use axum::body::Body;
 use axum::extract::{Extension, Path, State};
 use axum::http::Request;
 
-use axum::{http::StatusCode, middleware::Next, response::Response};
+use axum::{
+  http::StatusCode,
+  middleware::Next,
+  response::{IntoResponse, Response},
+};
 use std::sync::Arc;
 
 use crate::{
@@ -33,33 +37,34 @@ pub async fn ensure_workspace_member(
   Path(ws_id): Path<i64>,
   request: Request<Body>,
   next: Next,
-) -> Result<Response, StatusCode> {
+) -> Response {
   // Validate user is a member of the workspace
   if auth_user.workspace_id != ws_id {
-    return Err(StatusCode::FORBIDDEN);
+    return StatusCode::FORBIDDEN.into_response();
   }
 
   // Continue processing request
-  Ok(next.run(request).await)
+  next.run(request).await
 }
 
 /// Extract workspace context from the request
 pub async fn with_workspace_context(
-  State(_state): State<AppState>,
+  State(state): State<AppState>,
   Extension(auth_user): Extension<AuthUser>,
   mut request: Request<Body>,
   next: Next,
-) -> Result<Response, StatusCode> {
+) -> Response {
   // Find workspace
-  let workspace = crate::models::Workspace::find_by_id(auth_user.workspace_id, &_state.pool)
-    .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-    .ok_or(StatusCode::NOT_FOUND)?;
+  let workspace = match state.find_by_id_with_pool(auth_user.workspace_id).await {
+    Ok(Some(workspace)) => workspace,
+    Ok(None) => return StatusCode::NOT_FOUND.into_response(),
+    Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+  };
 
   // Add workspace context to request extensions
   let ctx = WorkspaceContext::new(workspace);
   request.extensions_mut().insert(ctx);
 
   // Continue processing request
-  Ok(next.run(request).await)
+  next.run(request).await
 }

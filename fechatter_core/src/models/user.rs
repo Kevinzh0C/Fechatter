@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use argon2::{
@@ -22,27 +23,13 @@ pub struct AuthUser {
   pub workspace_id: i64,
 }
 
+#[async_trait]
 pub trait UserRepository: Send + Sync {
-  fn create(
-    &self,
-    input: &CreateUser,
-  ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<User, CoreError>> + Send>>;
-  fn find_by_id(
-    &self,
-    id: i64,
-  ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<User>, CoreError>> + Send>>;
-  fn email_user_exists(
-    &self,
-    email: &str,
-  ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<User>, CoreError>> + Send>>;
-  fn validate_users_exists_by_ids(
-    &self,
-    ids: &[i64],
-  ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CoreError>> + Send>>;
-  fn authenticate(
-    &self,
-    input: &SigninUser,
-  ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<User>, CoreError>> + Send>>;
+  async fn create(&self, input: &CreateUser) -> Result<User, CoreError>;
+  async fn find_by_id(&self, id: i64) -> Result<Option<User>, CoreError>;
+  async fn email_user_exists(&self, email: &str) -> Result<Option<User>, CoreError>;
+  async fn validate_users_exists_by_ids(&self, ids: &[i64]) -> Result<(), CoreError>;
+  async fn authenticate(&self, input: &SigninUser) -> Result<Option<User>, CoreError>;
 }
 
 /// Utility functions for User model that don't require database access

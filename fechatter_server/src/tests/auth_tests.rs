@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod cookie_refresh_tests {
-  use crate::utils::jwt::{AuthTokens, RefreshTokenData};
+  use crate::models::jwt::{AuthTokens, RefreshTokenData};
   use anyhow::Result;
   use axum::{
     Json,

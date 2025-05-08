@@ -1,5 +1,5 @@
 [workspace]
-members = ["fechatter_core", "fechatter_server", "notify_server", "fechatter_tests"]
+members = ["fechatter_core", "fechatter_server", "notify_server", "fechatter_tests", "fechatter_macro"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -27,7 +27,8 @@ sqlx = { version = "0.8.3", features = [
   "tls-rustls",
   "chrono",
 ] }
-uuid = { version = "1.4", features = ["v7", "serde"] }
+async-trait = "0.1"
+uuid = { version = "1.4", features = ["v4", "v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2.0.12"
 tracing = "0.1"

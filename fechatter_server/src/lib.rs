@@ -16,26 +16,30 @@ use axum::{
 };
 pub use config::AppConfig;
 use dashmap::DashMap;
-use fechatter_core::utils::jwt::{TokenManager, UserClaims};
+use fechatter_core::chat::ChatSidebar;
+use fechatter_core::error::CoreError;
+use fechatter_core::models::jwt::TokenManager;
+use fechatter_core::service_provider::ServiceProvider;
+use fechatter_core::{
+  SigninUser,
+  middlewares::{
+    ActualAuthServiceProvider, TokenVerifier as CoreTokenVerifier, WithServiceProvider,
+    WithTokenManager as CoreWithTokenManager,
+  },
+  models::jwt::{LogoutService, RefreshTokenService, SigninService, SignupService, UserClaims},
+};
 use sqlx::PgPool;
 use tokio::fs;
 use tokio::time::Instant;
+use utils::refresh_token::RefreshTokenAdaptor;
 
 use crate::error::{AppError, ErrorOutput};
+
 pub use error::{AppError as ErrorAppError, ErrorOutput as ErrorOutputType};
-use fechatter_core::models::chat::ChatSidebar;
-use fechatter_core::services::WithServiceProvider;
-pub use fechatter_core::{CreateUser, SigninUser, User};
+use fechatter_core::middlewares::custom_builder::RouterExt as CoreRouterExt;
+
 use handlers::*;
-
-// Define the trait locally since it's not in fechatter_core
-#[allow(unused)]
-trait TokenVerifier {
-  type Error;
-  type Claims;
-
-  fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error>;
-}
+use middlewares::RouterExt;
 
 // Define the cache trait locally
 #[allow(unused)]
@@ -51,17 +55,6 @@ trait WithDbPool {
   fn db_pool(&self) -> &PgPool;
 }
 
-// Define the token manager trait locally
-#[allow(unused)]
-trait WithTokenManager {
-  fn token_manager(&self) -> &TokenManager;
-}
-pub use middlewares::{RouterExt, SetAuthLayer, SetLayer, WorkspaceContext};
-pub use models::{ChatSidebar, ChatUser, CreateUser, SigninUser, User, UserStatus, Workspace};
-use services::ServiceProvider;
-use services::ServiceProvider;
-pub use services::{AuthServiceTrait, auth_service::AuthService};
-
 #[derive(Debug, Clone)]
 pub struct AppState {
   inner: Arc<AppStateInner>,
@@ -69,110 +62,61 @@ pub struct AppState {
 
 pub struct AppStateInner {
   pub(crate) config: AppConfig,
-  pub(crate) token_manager: TokenManager,
-  pub(crate) pool: PgPool,
+  pub(crate) service_provider: ServiceProvider,
   pub(crate) chat_list_cache: DashMap<i64, (Arc<Vec<ChatSidebar>>, Instant)>,
 }
 
-impl TokenVerifier for AppState {
-  type Error = AppError;
+impl CoreTokenVerifier for AppState {
   type Claims = UserClaims;
+  type Error = CoreError;
 
   fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error> {
-    self
-      .inner
-      .token_manager
-      .verify_token(token)
-      .map_err(AppError::from)
+    self.inner.service_provider.verify_token(token)
   }
 }
 
-impl WithDbPool for AppState {
-  fn db_pool(&self) -> &PgPool {
-    &self.inner.pool
-  }
-}
+impl CoreWithTokenManager for AppState {
+  type TokenManagerType = TokenManager;
 
-impl WithTokenManager for AppState {
-  fn token_manager(&self) -> &TokenManager {
-    &self.inner.token_manager
-  }
-}
-
-impl WithCache<i64, (Arc<Vec<ChatSidebar>>, Instant)> for AppState {
-  fn get_from_cache(&self, key: &i64) -> Option<(Arc<Vec<ChatSidebar>>, Instant)> {
-    if let Some(entry) = self.inner.chat_list_cache.get(key) {
-      let (chats, created_at) = &*entry;
-      return Some((Arc::clone(chats), *created_at));
-    }
-    None
-  }
-
-  fn insert_into_cache(
-    &self,
-    key: i64,
-    value: (Arc<Vec<ChatSidebar>>, Instant),
-    _ttl_seconds: u64,
-  ) {
-    self.inner.chat_list_cache.insert(key, value);
-  }
-
-  fn remove_from_cache(&self, key: &i64) {
-    self.inner.chat_list_cache.remove(key);
-  }
-}
-
-impl TokenVerifier for AppState {
-  type Error = AppError;
-  type Claims = UserClaims;
-
-  fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error> {
-    self
-      .inner
-      .token_manager
-      .verify_token(token)
-      .map_err(AppError::from)
-  }
-}
-
-impl WithDbPool for AppState {
-  fn db_pool(&self) -> &PgPool {
-    &self.inner.pool
-  }
-}
-
-impl WithTokenManager for AppState {
-  fn token_manager(&self) -> &TokenManager {
-    &self.inner.token_manager
-  }
-}
-
-impl WithCache<i64, (Arc<Vec<ChatSidebar>>, Instant)> for AppState {
-  fn get_from_cache(&self, key: &i64) -> Option<(Arc<Vec<ChatSidebar>>, Instant)> {
-    if let Some(entry) = self.inner.chat_list_cache.get(key) {
-      let (chats, created_at) = &*entry;
-      return Some((Arc::clone(chats), *created_at));
-    }
-    None
-  }
-
-  fn insert_into_cache(
-    &self,
-    key: i64,
-    value: (Arc<Vec<ChatSidebar>>, Instant),
-    _ttl_seconds: u64,
-  ) {
-    self.inner.chat_list_cache.insert(key, value);
-  }
-
-  fn remove_from_cache(&self, key: &i64) {
-    self.inner.chat_list_cache.remove(key);
+  fn token_manager(&self) -> &Self::TokenManagerType {
+    self.inner.service_provider.token_manager()
   }
 }
 
 impl WithServiceProvider for AppState {
-  fn service_provider(&self) -> &fechatter_core::services::ServiceProvider {
+  type ServiceProviderType = ServiceProvider;
+
+  fn service_provider(&self) -> &Self::ServiceProviderType {
     &self.inner.service_provider
+  }
+}
+
+impl WithDbPool for AppState {
+  fn db_pool(&self) -> &PgPool {
+    self.inner.service_provider.pool()
+  }
+}
+
+impl WithCache<i64, (Arc<Vec<ChatSidebar>>, Instant)> for AppState {
+  fn get_from_cache(&self, key: &i64) -> Option<(Arc<Vec<ChatSidebar>>, Instant)> {
+    if let Some(entry) = self.inner.chat_list_cache.get(key) {
+      let (chats, created_at) = &*entry;
+      return Some((Arc::clone(chats), *created_at));
+    }
+    None
+  }
+
+  fn insert_into_cache(
+    &self,
+    key: i64,
+    value: (Arc<Vec<ChatSidebar>>, Instant),
+    _ttl_seconds: u64,
+  ) {
+    self.inner.chat_list_cache.insert(key, value);
+  }
+
+  fn remove_from_cache(&self, key: &i64) {
+    self.inner.chat_list_cache.remove(key);
   }
 }
 
@@ -180,6 +124,7 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
   let state = AppState::try_new(config).await?;
 
   // Public routes - no authentication required but apply token refresh
+  // Must use direct approach since the builder enforces auth before refresh
   let public_routes = Router::new()
     .route("/signin", post(signin_handler))
     .route("/signup", post(signup_handler))
@@ -189,9 +134,9 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
         refresh_token_handler(state, cookies, headers, auth_user)
       }),
     )
-    .with_token_refresh(&state);
+    .with_refresh(state.clone());
 
-  // Basic auth routes - only requires authentication
+  // Basic auth routes - requires authentication and token refresh
   let auth_routes = Router::new()
     .route("/upload", post(upload_handler))
     .route("/files/{ws_id}/{*path}", get(file_handler))
@@ -199,18 +144,22 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
     .route("/users", get(list_all_workspace_users_handler))
     .route("/logout", post(logout_handler))
     .route("/logout_all", post(logout_all_handler))
-    .with_token_refresh(&state)
-    .with_auth(&state);
+    .with_middlewares(state.clone())
+    .with_auth()
+    .with_token_refresh()
+    .build();
 
-  // Chat create routes - need workspace context
+  // Chat create routes - need auth, refresh, and workspace context
   let chat_create_routes = Router::new()
     .route("/chat", post(create_chat_handler))
     .route("/chat", get(list_chats_handler))
-    .with_workspace(&state)
-    .with_auth(&state)
-    .with_token_refresh(&state);
+    .with_middlewares(state.clone())
+    .with_auth()
+    .with_token_refresh()
+    .with_workspace()
+    .build();
 
-  // Chat manage routes - need chat membership verification
+  // Chat manage routes - need auth, refresh, workspace, and chat membership
   let chat_manage_routes = Router::new()
     .route(
       "/chat/{id}",
@@ -230,10 +179,11 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
       "/chat/{id}/messages",
       get(list_messages_handler).post(send_message_handler),
     )
-    .with_state(state.clone())
     .with_middlewares(state.clone())
-    .with_token_refresh()
     .with_auth()
+    .with_token_refresh()
+    .with_workspace()
+    .with_chat_membership()
     .build();
 
   // Merge all routes
@@ -270,15 +220,24 @@ pub async fn create_pool(db_url: &str) -> Result<sqlx::PgPool, sqlx::Error> {
 impl AppState {
   pub async fn try_new(config: AppConfig) -> Result<Self, AppError> {
     fs::create_dir_all(&config.server.base_dir).await?;
-    let token_manager = TokenManager::from_config(&config.auth)?;
-    let pool = create_pool(&config.server.db_url).await?;
-    let chat_list_cache = DashMap::new();
-    let service_provider = ServiceProvider::new(pool.clone(), token_manager.clone());
 
+    // Create database connection pool
+    let pool = create_pool(&config.server.db_url).await?;
+
+    // Create refresh token adapter and token manager
+    let refresh_token_repo = Arc::new(RefreshTokenAdaptor::new(Arc::new(pool.clone())));
+    let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo)?;
+
+    // Create service provider - centrally manages pool and token_manager
+    let service_provider = ServiceProvider::new(pool, token_manager);
+
+    // Create chat list cache
+    let chat_list_cache = DashMap::new();
+
+    // Create application state
     let state = AppStateInner {
       config,
-      token_manager,
-      pool,
+      service_provider,
       chat_list_cache,
     };
 
@@ -286,10 +245,8 @@ impl AppState {
       inner: Arc::new(state),
     })
   }
-}
 
-#[cfg(test)]
-impl AppState {
+  #[cfg(test)]
   pub async fn test_new() -> Result<(sqlx_db_tester::TestPg, Self), AppError> {
     use sqlx_db_tester::TestPg;
 
@@ -297,7 +254,7 @@ impl AppState {
     fs::create_dir_all(&config.server.base_dir)
       .await
       .map_err(|e| AppError::IOError(e))?;
-    let token_manager = TokenManager::from_config(&config.auth)?;
+
     let post = config.server.db_url.rfind('/').expect("invalid db_url");
     let server_url = &config.server.db_url[..post];
     let tdb = TestPg::new(
@@ -305,13 +262,23 @@ impl AppState {
       std::path::Path::new("../migrations"),
     );
 
+    // Create test database connection pool
     let pool = tdb.get_pool().await;
+
+    // Create refresh token adapter and token manager
+    let refresh_token_repo = Arc::new(RefreshTokenAdaptor::new(Arc::new(pool.clone())));
+    let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo)?;
+
+    // Create service provider - centrally manages pool and token_manager
+    let service_provider = ServiceProvider::new(pool, token_manager);
+
+    // Create chat list cache
     let chat_list_cache = DashMap::new();
-    let service_provider = ServiceProvider::new(pool.clone(), token_manager.clone());
+
+    // Create application state
     let state = AppStateInner {
       config,
-      token_manager,
-      pool,
+      service_provider,
       chat_list_cache,
     };
 
@@ -321,6 +288,73 @@ impl AppState {
         inner: Arc::new(state),
       },
     ))
+  }
+
+  #[inline]
+  pub fn pool(&self) -> &PgPool {
+    self.inner.service_provider.pool()
+  }
+
+  #[inline]
+  pub fn token_manager(&self) -> &TokenManager {
+    self.inner.service_provider.token_manager()
+  }
+
+  pub async fn signup(
+    &self,
+    payload: &fechatter_core::CreateUser,
+    auth_context: Option<fechatter_core::services::AuthContext>,
+  ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
+    self
+      .inner
+      .service_provider
+      .create_service()
+      .signup(payload, auth_context)
+      .await
+  }
+
+  pub async fn signin(
+    &self,
+    payload: &fechatter_core::SigninUser,
+    auth_context: Option<fechatter_core::services::AuthContext>,
+  ) -> Result<Option<fechatter_core::AuthTokens>, fechatter_core::error::CoreError> {
+    self
+      .inner
+      .service_provider
+      .create_service()
+      .signin(payload, auth_context)
+      .await
+  }
+
+  pub async fn refresh_token(
+    &self,
+    refresh_token: &str,
+    auth_context: Option<fechatter_core::services::AuthContext>,
+  ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
+    self
+      .inner
+      .service_provider
+      .create_service()
+      .refresh_token(refresh_token, auth_context)
+      .await
+  }
+
+  pub async fn logout(&self, refresh_token: &str) -> Result<(), fechatter_core::error::CoreError> {
+    self
+      .inner
+      .service_provider
+      .create_service()
+      .logout(refresh_token)
+      .await
+  }
+
+  pub async fn logout_all(&self, user_id: i64) -> Result<(), fechatter_core::error::CoreError> {
+    self
+      .inner
+      .service_provider
+      .create_service()
+      .logout_all(user_id)
+      .await
   }
 }
 

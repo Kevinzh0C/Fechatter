@@ -7,20 +7,17 @@ use axum::{
 };
 use tracing::{error, info};
 
-use crate::{
-  TokenVerifier, WithDbPool, error::AppError, models::AuthUser, state::WithTokenManager,
-};
+use crate::{AppState, error::AppError, models::AuthUser};
+use fechatter_core::middlewares::TokenVerifier;
 
-pub async fn verify_chat_membership_middleware<
-  T: TokenVerifier + Send + Sync + WithTokenManager + WithDbPool,
->(
-  State(state): State<T>,
+pub async fn verify_chat_membership_middleware(
+  state: AppState,
   req: Request,
   next: Next,
 ) -> Response {
   let (mut parts, body) = req.into_parts();
 
-  let chat_id = match Path::<i64>::from_request_parts(&mut parts, &state).await {
+  let chat_id = match Path::<i64>::from_request_parts(&mut parts, &State(state.clone())).await {
     Ok(path) => path.0,
     Err(_) => {
       if let Some(path_and_query) = parts.uri.path_and_query() {
@@ -59,7 +56,9 @@ pub async fn verify_chat_membership_middleware<
     }
   };
 
-  let user = match Extension::<AuthUser>::from_request_parts(&mut parts, &state).await {
+  let user = match Extension::<AuthUser>::from_request_parts(&mut parts, &State(state.clone()))
+    .await
+  {
     Ok(Extension(user)) => user,
     Err(e) => {
       // Extended error handling and debugging
@@ -79,7 +78,12 @@ pub async fn verify_chat_membership_middleware<
 
             // Try to validate token directly to see if it's valid
             if let Some(token) = auth_str.strip_prefix("Bearer ") {
-              match state.token_manager.validate_token(token) {
+              match state
+                .inner
+                .service_provider
+                .token_manager()
+                .verify_token(token)
+              {
                 Ok(claims) => {
                   // Token is valid but AuthUser extension wasn't added
                   error!(
@@ -109,7 +113,7 @@ pub async fn verify_chat_membership_middleware<
     }
   };
 
-  match ensure_user_is_chat_member(&state.pool, chat_id, user.id).await {
+  match state.ensure_user_is_chat_member(chat_id, user.id).await {
     Ok(true) => {
       let req = Request::from_parts(parts, body);
       next.run(req).await

@@ -1,4 +1,3 @@
-pub mod app_state;
 mod sse;
 
 use anyhow::Result;
@@ -16,15 +15,7 @@ use tracing::info;
 
 const INDEX_HTML: &str = include_str!("../index.html");
 
-pub enum Event {
-  NewChat(Chat),
-  AddToChat(ChatMember),
-  RemoveFromChat(ChatMember),
-  NewMessage(Message),
-}
-
-
-pub enum Event {
+pub enum NotifyEvent {
   NewChat(Chat),
   AddToChat(ChatMember),
   RemoveFromChat(ChatMember),

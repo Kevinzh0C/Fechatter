@@ -1,29 +1,96 @@
-use axum::{Router, middleware::from_fn_with_state};
+use axum::{Router, middleware::from_fn};
 use std::marker::PhantomData;
 
-use super::{
-  bearer_auth::verify_token_middleware, token_refresh::refresh_token_middleware,
-  verify_chat_membership_middleware, workspace::with_workspace_context,
-};
-
-// Type state markers
+// 本地定义类型状态标记，而不是导入
+// 认证状态标记
 pub struct WithoutAuth;
 pub struct WithAuth;
+
+// 令牌刷新状态标记
 pub struct WithoutRefresh;
 pub struct WithRefresh;
+
+// 服务器特定的工作区和聊天成员资格状态标记
 pub struct WithoutWorkspace;
 pub struct WithWorkspace;
 pub struct WithoutChatMembership;
 pub struct WithChatMembership;
 
-/// Middleware builder that uses type state pattern to ensure correct middleware installation order
+// 导入所需的中间件函数
+use super::{chat::verify_chat_membership_middleware, workspace::with_workspace_context};
+use crate::AppState;
+use axum::body::Body;
+use axum::extract::{Extension, Request, State};
+use axum::http::StatusCode;
+use axum::middleware::Next;
+use axum::response::IntoResponse;
+use fechatter_core::jwt::TokenManager;
+use fechatter_core::middlewares::custom_builder::{add_auth_middleware, add_refresh_middleware};
+use fechatter_core::middlewares::{
+  ActualAuthServiceProvider, TokenVerifier, WithServiceProvider, WithTokenManager,
+};
+use fechatter_core::models::AuthUser;
+use fechatter_core::models::jwt::UserClaims;
+
+/// Helper function to add workspace middleware to a router following the same pattern as core middleware functions
+pub fn add_workspace_middleware<S>(router: Router<S>, state: AppState) -> Router<S>
+where
+  S: Clone + Send + Sync + 'static,
+{
+  // The from_fn middleware expects a function that returns Future<Output = Response>
+  router.layer(from_fn(move |req: Request<Body>, next: Next| {
+    let state_clone = state.clone();
+
+    // We must extract Extension<AuthUser> from the request directly,
+    // as it's added by the auth middleware
+    async move {
+      let extension = req.extensions().get::<AuthUser>().cloned();
+
+      if let Some(auth_user) = extension {
+        // Pass auth_user as Extension
+        with_workspace_context(State(state_clone), Extension(auth_user), req, next).await
+      } else {
+        // Auth user extension is missing, return 401
+        // Return a Response directly
+        StatusCode::UNAUTHORIZED.into_response()
+      }
+    }
+  }))
+}
+
+/// Helper function to add chat membership middleware to a router following the same pattern as core middleware functions
+pub fn add_chat_membership_middleware<S>(router: Router<S>, state: AppState) -> Router<S>
+where
+  S: Clone + Send + Sync + 'static,
+{
+  // The from_fn middleware expects a function that returns Future<Output = Response>
+  router.layer(from_fn(move |req: Request<Body>, next: Next| {
+    let state_clone = state.clone();
+
+    // Pass the AppState directly, not wrapped in State
+    async move {
+      // First, verify that user is authenticated (safety check)
+      let extension = req.extensions().get::<AuthUser>().cloned();
+
+      if let Some(_auth_user) = extension {
+        // AuthUser exists, proceed with chat membership check
+        verify_chat_membership_middleware(state_clone, req, next).await
+      } else {
+        // Auth user extension is missing, return 401
+        StatusCode::UNAUTHORIZED.into_response()
+      }
+    }
+  }))
+}
+
+/// Middleware builder for the server, handling Auth, Refresh, Workspace, and ChatMembership states.
 pub struct MiddlewareBuilder<
   S,
   T,
-  AuthState = WithoutAuth,
-  RefreshState = WithoutRefresh,
-  WorkspaceState = WithoutWorkspace,
-  ChatMembershipState = WithoutChatMembership,
+  AuthState = WithoutAuth,                     // Uses core's auth states
+  RefreshState = WithoutRefresh,               // Uses core's refresh states
+  WorkspaceState = WithoutWorkspace,           // Server's own workspace states
+  ChatMembershipState = WithoutChatMembership, // Server's own chat membership states
 > {
   router: Router<S>,
   state: T,
@@ -33,11 +100,22 @@ pub struct MiddlewareBuilder<
   _chat_membership_marker: PhantomData<ChatMembershipState>,
 }
 
+// Initial state: No middleware applied
 impl<S, T>
   MiddlewareBuilder<S, T, WithoutAuth, WithoutRefresh, WithoutWorkspace, WithoutChatMembership>
 where
   S: Clone + Send + Sync + 'static,
-  T: Clone + Send + Sync + 'static,
+  T: TokenVerifier<Claims = UserClaims>
+    + WithTokenManager<TokenManagerType = TokenManager>
+    + WithServiceProvider
+    + Clone
+    + Send
+    + Sync
+    + 'static,
+  <T as TokenVerifier>::Error: Send + 'static,
+  <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
+  AuthUser: From<UserClaims>,
+  T: Into<AppState>,
 {
   pub fn new(router: Router<S>, state: T) -> Self {
     Self {
@@ -50,15 +128,12 @@ where
     }
   }
 
-  // Allow directly adding auth before token refresh
   pub fn with_auth(
     self,
   ) -> MiddlewareBuilder<S, T, WithAuth, WithoutRefresh, WithoutWorkspace, WithoutChatMembership>
   {
-    let router = self.router.layer(from_fn_with_state(
-      self.state.clone(),
-      verify_token_middleware,
-    ));
+    // Use the core library's function to add auth middleware
+    let router = add_auth_middleware(self.router, self.state.clone());
 
     MiddlewareBuilder {
       router,
@@ -70,53 +145,37 @@ where
     }
   }
 
-  /// Build router with only token refresh applied
+  // NOTE: with_token_refresh is intentionally not provided here
+  // to ensure that authentication is applied before token refresh,
+  // as the core refresh middleware might depend on AuthUser extensions
+
   pub fn build(self) -> Router<S> {
     self.router
   }
 }
 
-// For backwards compatibility, allow token refresh first if needed
-impl<S, T>
-  MiddlewareBuilder<S, T, WithoutAuth, WithoutRefresh, WithoutWorkspace, WithoutChatMembership>
-where
-  S: Clone + Send + Sync + 'static,
-  T: Clone + Send + Sync + 'static,
-{
-  pub fn with_token_refresh(
-    self,
-  ) -> MiddlewareBuilder<S, T, WithoutAuth, WithRefresh, WithoutWorkspace, WithoutChatMembership>
-  {
-    let router = self.router.layer(from_fn_with_state(
-      self.state.clone(),
-      refresh_token_middleware,
-    ));
-
-    MiddlewareBuilder {
-      router,
-      state: self.state,
-      _auth_marker: PhantomData,
-      _refresh_marker: PhantomData,
-      _workspace_marker: PhantomData,
-      _chat_membership_marker: PhantomData,
-    }
-  }
-}
-
-// Allow adding token refresh after auth
+// State: Auth applied, No Refresh, No Workspace, No ChatMembership
 impl<S, T>
   MiddlewareBuilder<S, T, WithAuth, WithoutRefresh, WithoutWorkspace, WithoutChatMembership>
 where
   S: Clone + Send + Sync + 'static,
-  T: Clone + Send + Sync + 'static,
+  T: TokenVerifier<Claims = UserClaims>
+    + WithTokenManager<TokenManagerType = TokenManager>
+    + WithServiceProvider
+    + Clone
+    + Send
+    + Sync
+    + 'static,
+  <T as TokenVerifier>::Error: Send + 'static,
+  <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
+  AuthUser: From<UserClaims>,
+  T: Into<AppState>,
 {
   pub fn with_token_refresh(
     self,
   ) -> MiddlewareBuilder<S, T, WithAuth, WithRefresh, WithoutWorkspace, WithoutChatMembership> {
-    let router = self.router.layer(from_fn_with_state(
-      self.state.clone(),
-      refresh_token_middleware,
-    ));
+    // Use the core library's function to add refresh middleware
+    let router = add_refresh_middleware(self.router, self.state.clone());
 
     MiddlewareBuilder {
       router,
@@ -131,10 +190,11 @@ where
   pub fn with_workspace(
     self,
   ) -> MiddlewareBuilder<S, T, WithAuth, WithoutRefresh, WithWorkspace, WithoutChatMembership> {
-    let router = self.router.layer(from_fn_with_state(
-      self.state.clone(),
-      with_workspace_context,
-    ));
+    // Convert state to AppState and apply workspace middleware
+    let app_state = Into::<AppState>::into(self.state.clone());
+
+    // Use our helper function to add workspace middleware
+    let router = add_workspace_middleware(self.router, app_state);
 
     MiddlewareBuilder {
       router,
@@ -146,38 +206,38 @@ where
     }
   }
 
-  /// Build router with auth and refresh applied
   pub fn build(self) -> Router<S> {
     self.router
   }
 }
 
-// Token refresh can be added first (for backwards compatibility)
-impl<S, T>
-  MiddlewareBuilder<S, T, WithoutAuth, WithRefresh, WithoutWorkspace, WithoutChatMembership>
-where
-  S: Clone + Send + Sync + 'static,
-  T: Clone + Send + Sync + 'static,
-{
-  /// Build router with auth and refresh applied
-  pub fn build(self) -> Router<S> {
-    self.router
-  }
-}
+// NOTE: The WithoutAuth+WithRefresh state is intentionally NOT implemented
+// because we now require Auth before Refresh to ensure type safety
 
-// Allow adding workspace context after adding token refresh
+// State: Auth, Refresh applied, No Workspace, No ChatMembership
 impl<S, T> MiddlewareBuilder<S, T, WithAuth, WithRefresh, WithoutWorkspace, WithoutChatMembership>
 where
   S: Clone + Send + Sync + 'static,
-  T: Clone + Send + Sync + 'static,
+  T: TokenVerifier<Claims = UserClaims>
+    + WithTokenManager<TokenManagerType = TokenManager>
+    + WithServiceProvider
+    + Clone
+    + Send
+    + Sync
+    + 'static,
+  <T as TokenVerifier>::Error: Send + 'static,
+  <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
+  AuthUser: From<UserClaims>,
+  T: Into<AppState>,
 {
   pub fn with_workspace(
     self,
   ) -> MiddlewareBuilder<S, T, WithAuth, WithRefresh, WithWorkspace, WithoutChatMembership> {
-    let router = self.router.layer(from_fn_with_state(
-      self.state.clone(),
-      with_workspace_context,
-    ));
+    // Convert state to AppState and apply workspace middleware
+    let app_state = Into::<AppState>::into(self.state.clone());
+
+    // Use our helper function to add workspace middleware
+    let router = add_workspace_middleware(self.router, app_state);
 
     MiddlewareBuilder {
       router,
@@ -194,19 +254,27 @@ where
   }
 }
 
-// Add workspace after auth without token refresh
+// State: Auth, No Refresh, Workspace applied, No ChatMembership
 impl<S, T> MiddlewareBuilder<S, T, WithAuth, WithoutRefresh, WithWorkspace, WithoutChatMembership>
 where
   S: Clone + Send + Sync + 'static,
-  T: Clone + Send + Sync + 'static,
+  T: TokenVerifier<Claims = UserClaims>
+    + WithTokenManager<TokenManagerType = TokenManager>
+    + WithServiceProvider
+    + Clone
+    + Send
+    + Sync
+    + 'static,
+  <T as TokenVerifier>::Error: Send + 'static,
+  <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
+  AuthUser: From<UserClaims>,
+  T: Into<AppState>,
 {
   pub fn with_token_refresh(
     self,
   ) -> MiddlewareBuilder<S, T, WithAuth, WithRefresh, WithWorkspace, WithoutChatMembership> {
-    let router = self.router.layer(from_fn_with_state(
-      self.state.clone(),
-      refresh_token_middleware,
-    ));
+    // Use the core library's function to add refresh middleware
+    let router = add_refresh_middleware(self.router, self.state.clone());
 
     MiddlewareBuilder {
       router,
@@ -221,10 +289,11 @@ where
   pub fn with_chat_membership(
     self,
   ) -> MiddlewareBuilder<S, T, WithAuth, WithoutRefresh, WithWorkspace, WithChatMembership> {
-    let router = self.router.layer(from_fn_with_state(
-      self.state.clone(),
-      verify_chat_membership_middleware,
-    ));
+    // Convert state to AppState and apply chat membership middleware
+    let app_state = Into::<AppState>::into(self.state.clone());
+
+    // Use our helper function to add chat membership middleware
+    let router = add_chat_membership_middleware(self.router, app_state);
 
     MiddlewareBuilder {
       router,
@@ -241,19 +310,30 @@ where
   }
 }
 
-// Add chat membership after auth and workspace with token refresh
+// State: Auth, Refresh, Workspace applied, No ChatMembership
 impl<S, T> MiddlewareBuilder<S, T, WithAuth, WithRefresh, WithWorkspace, WithoutChatMembership>
 where
   S: Clone + Send + Sync + 'static,
-  T: Clone + Send + Sync + 'static,
+  T: TokenVerifier<Claims = UserClaims>
+    + WithTokenManager<TokenManagerType = TokenManager>
+    + WithServiceProvider
+    + Clone
+    + Send
+    + Sync
+    + 'static,
+  <T as TokenVerifier>::Error: Send + 'static,
+  <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
+  AuthUser: From<UserClaims>,
+  T: Into<AppState>,
 {
   pub fn with_chat_membership(
     self,
   ) -> MiddlewareBuilder<S, T, WithAuth, WithRefresh, WithWorkspace, WithChatMembership> {
-    let router = self.router.layer(from_fn_with_state(
-      self.state.clone(),
-      verify_chat_membership_middleware,
-    ));
+    // Convert state to AppState and apply chat membership middleware
+    let app_state = Into::<AppState>::into(self.state.clone());
+
+    // Use our helper function to add chat membership middleware
+    let router = add_chat_membership_middleware(self.router, app_state);
 
     MiddlewareBuilder {
       router,
@@ -270,19 +350,27 @@ where
   }
 }
 
-// Allow adding token refresh after workspace
+// State: Auth, No Refresh, Workspace, ChatMembership applied (Final state for this path)
 impl<S, T> MiddlewareBuilder<S, T, WithAuth, WithoutRefresh, WithWorkspace, WithChatMembership>
 where
   S: Clone + Send + Sync + 'static,
-  T: Clone + Send + Sync + 'static,
+  T: TokenVerifier<Claims = UserClaims>
+    + WithTokenManager<TokenManagerType = TokenManager>
+    + WithServiceProvider
+    + Clone
+    + Send
+    + Sync
+    + 'static,
+  <T as TokenVerifier>::Error: Send + 'static,
+  <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
+  AuthUser: From<UserClaims>,
+  T: Into<AppState>,
 {
   pub fn with_token_refresh(
     self,
   ) -> MiddlewareBuilder<S, T, WithAuth, WithRefresh, WithWorkspace, WithChatMembership> {
-    let router = self.router.layer(from_fn_with_state(
-      self.state.clone(),
-      refresh_token_middleware,
-    ));
+    // Use the core library's function to add refresh middleware
+    let router = add_refresh_middleware(self.router, self.state.clone());
 
     MiddlewareBuilder {
       router,
@@ -299,18 +387,28 @@ where
   }
 }
 
-// Final builder with all middleware
+// Final builder state with all possible middleware applied
 impl<S, T> MiddlewareBuilder<S, T, WithAuth, WithRefresh, WithWorkspace, WithChatMembership>
 where
   S: Clone + Send + Sync + 'static,
-  T: Clone + Send + Sync + 'static,
+  T: TokenVerifier<Claims = UserClaims>
+    + WithTokenManager<TokenManagerType = TokenManager>
+    + WithServiceProvider
+    + Clone
+    + Send
+    + Sync
+    + 'static,
+  <T as TokenVerifier>::Error: Send + 'static,
+  <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
+  AuthUser: From<UserClaims>,
+  T: Into<AppState>,
 {
-  /// 构建路由器，应用了认证、刷新和工作区上下文
   pub fn build(self) -> Router<S> {
     self.router
   }
 }
 
+// RouterExt trait for the server's MiddlewareBuilder
 pub trait RouterExt<S, T> {
   fn with_middlewares(
     self,
@@ -320,8 +418,22 @@ pub trait RouterExt<S, T> {
 
 impl<S, T> RouterExt<S, T> for Router<S>
 where
+  // Base router constraints
   S: Clone + Send + Sync + 'static,
-  T: Clone + Send + Sync + 'static,
+  // Token and service provider constraints
+  T: TokenVerifier<Claims = UserClaims>
+    + WithTokenManager<TokenManagerType = TokenManager>
+    + WithServiceProvider
+    + Into<AppState>
+    + Clone
+    + Send
+    + Sync
+    + 'static,
+  // Associated type constraints
+  <T as TokenVerifier>::Error: Send + 'static,
+  <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
+  // User claims mapping
+  AuthUser: From<UserClaims>,
 {
   fn with_middlewares(
     self,

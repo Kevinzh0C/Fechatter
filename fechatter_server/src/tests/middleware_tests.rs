@@ -1,29 +1,48 @@
 #[cfg(test)]
 mod token_refresh_tests {
-  use crate::{
-    setup_test_users,
-    services::AuthServiceTrait,
-    utils::token::TokenValidator,
-  };
+  use crate::setup_test_users;
   use anyhow::Result;
+  use fechatter_core::middlewares::{ActualAuthServiceProvider, WithServiceProvider};
+
+  use fechatter_core::{RefreshTokenService, TokenService};
 
   #[tokio::test]
   async fn test_refresh_token_cookie_mechanism() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
-    let auth_service: Box<dyn AuthServiceTrait> = state.service_provider.create_service();
+    let auth_service = state.service_provider().create_service();
 
-    let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
+    // Generate tokens using TokenService directly
+    let user_claims = fechatter_core::UserClaims {
+      id: user.id,
+      workspace_id: user.workspace_id,
+      fullname: user.fullname.clone(),
+      email: user.email.clone(),
+      status: user.status,
+      created_at: user.created_at,
+    };
+
+    let tokens = state
+      .service_provider()
+      .token_manager()
+      .generate_auth_tokens(&user_claims, None, None)
+      .await?;
+
     let refresh_token = tokens.refresh_token.token.clone();
-    
+
     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
-    let new_tokens = auth_service.refresh_token(&refresh_token, None, None).await?;
+    // Use the trait method for refresh
+    let new_tokens =
+      RefreshTokenService::refresh_token(&auth_service, &refresh_token, None).await?;
 
     assert_ne!(tokens.access_token, new_tokens.access_token);
     assert_ne!(tokens.refresh_token.token, new_tokens.refresh_token.token);
 
-    let claims = state.token_manager.validate_token(&new_tokens.access_token)?;
+    let claims = state
+      .service_provider()
+      .token_manager()
+      .verify_token(&new_tokens.access_token)?;
     assert_eq!(claims.id, user.id);
     assert_eq!(claims.email, user.email);
 
@@ -34,11 +53,27 @@ mod token_refresh_tests {
   async fn test_auth_middleware_order() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
-    let auth_service: Box<dyn AuthServiceTrait> = state.service_provider.create_service();
 
-    let tokens = auth_service.generate_auth_tokens(user, None, None).await?;
-    
-    let claims = state.token_manager.validate_token(&tokens.access_token)?;
+    // Generate tokens using TokenService directly
+    let user_claims = fechatter_core::UserClaims {
+      id: user.id,
+      workspace_id: user.workspace_id,
+      fullname: user.fullname.clone(),
+      email: user.email.clone(),
+      status: user.status,
+      created_at: user.created_at,
+    };
+
+    let tokens = state
+      .service_provider()
+      .token_manager()
+      .generate_auth_tokens(&user_claims, None, None)
+      .await?;
+
+    let claims = state
+      .service_provider()
+      .token_manager()
+      .verify_token(&tokens.access_token)?;
     assert_eq!(claims.id, user.id);
     assert_eq!(claims.email, user.email);
 
@@ -48,15 +83,13 @@ mod token_refresh_tests {
 
 #[cfg(test)]
 mod list_messages_auth_tests {
+  use crate::setup_test_users;
   use crate::{
     handlers::list_messages_handler,
-    models::{AuthUser, ListMessage, ChatType},
-  };
-  use crate::setup_test_users;
-  use axum::{
-    extract::{Extension, Path, Query, State},
+    models::{AuthUser, ChatType, ListMessage},
   };
   use anyhow::Result;
+  use axum::extract::{Extension, Path, Query, State};
 
   #[tokio::test]
   async fn test_list_messages_requires_chat_membership() -> Result<()> {
@@ -95,11 +128,12 @@ mod list_messages_auth_tests {
       State(state.clone()),
       non_member_auth,
       Path(chat.id),
-      Query(query)
-    ).await;
+      Query(query),
+    )
+    .await;
 
     assert!(result.is_err());
-    
+
     if let Err(err) = result {
       assert!(matches!(err, crate::AppError::ChatPermissionError(_)));
     }
@@ -143,8 +177,9 @@ mod list_messages_auth_tests {
       State(state.clone()),
       member_auth,
       Path(chat.id),
-      Query(query)
-    ).await;
+      Query(query),
+    )
+    .await;
 
     assert!(result.is_ok());
 

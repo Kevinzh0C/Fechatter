@@ -1,30 +1,14 @@
 use super::ChatFile;
 use crate::AppError;
 use crate::AppState;
-use crate::models::ChatType;
-use fechatter_core::{Message, error::CoreError, models::CreateMessage};
-use serde::{Deserialize, Serialize};
+
+use fechatter_core::{Message, error::CoreError, models::CreateMessage, models::ListMessage};
 use std::str::FromStr;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServerCreateMessage {
-  pub content: String,
-  #[serde(default)]
-  pub files: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServerListMessage {
-  #[serde(default)]
-  pub last_id: Option<i64>,
-  #[serde(default)]
-  pub limit: i64,
-}
 
 impl AppState {
   pub async fn create_message(
     &self,
-    input: ServerCreateMessage,
+    input: CreateMessage,
     chat_id: i64,
     user_id: i64,
   ) -> Result<Message, AppError> {
@@ -57,7 +41,7 @@ impl AppState {
     .bind(user_id)
     .bind(input.content)
     .bind(&input.files)
-    .fetch_one(&self.pool)
+    .fetch_one(self.pool())
     .await?;
 
     Ok(message)
@@ -65,7 +49,7 @@ impl AppState {
 
   pub async fn list_messages(
     &self,
-    input: ServerListMessage,
+    input: ListMessage,
     chat_id: i64,
   ) -> Result<Vec<Message>, AppError> {
     let last_id = input.last_id.unwrap_or(i64::MAX);
@@ -89,7 +73,7 @@ impl AppState {
     .bind(chat_id)
     .bind(last_id)
     .bind(limit)
-    .fetch_all(&self.pool)
+    .fetch_all(self.pool())
     .await?;
 
     Ok(messages)
@@ -120,9 +104,6 @@ pub fn validate_message(input: &CreateMessage) -> Result<(), CoreError> {
 mod tests {
   use super::*;
   use crate::models::ChatFile;
-  use crate::models::ChatType;
-  use crate::models::chat::create_new_chat;
-  use crate::models::chat::create_new_chat;
   use crate::setup_test_users;
   use anyhow::Result;
 
@@ -143,7 +124,7 @@ mod tests {
 
   #[tokio::test]
   async fn create_message_should_work() -> Result<()> {
-    let (_tdb, state, users) = crate::setup_test_users!(3).await;
+    let (_tdb, state, users) = setup_test_users!(3).await;
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];
@@ -160,7 +141,7 @@ mod tests {
       )
       .await?;
 
-    let message_payload1 = ServerCreateMessage {
+    let message_payload1 = CreateMessage {
       content: "test".to_string(),
       files: vec![],
     };
@@ -181,7 +162,7 @@ mod tests {
     // Create test file in workspace 1
     let url = upload_dummy_file(&state).await?;
 
-    let message_payload2 = ServerCreateMessage {
+    let message_payload2 = CreateMessage {
       content: "test".to_string(),
       files: vec![url],
     };
@@ -195,7 +176,7 @@ mod tests {
 
     // Test file-only message (with empty content)
     let url = upload_dummy_file(&state).await?;
-    let message_payload3 = ServerCreateMessage {
+    let message_payload3 = CreateMessage {
       content: "".to_string(),
       files: vec![url],
     };
@@ -234,7 +215,7 @@ mod tests {
 
     let mut messages_payload = Vec::with_capacity(10);
     for _i in 0..10 {
-      let m = ServerCreateMessage {
+      let m = CreateMessage {
         content: "test".to_string(),
         files: vec![],
       };
@@ -252,7 +233,7 @@ mod tests {
     }
 
     // Use the highest message ID + 1 as last_id to ensure we get all messages
-    let input = ServerListMessage {
+    let input = ListMessage {
       last_id: Some(message_ids.iter().max().unwrap() + 1),
       limit: 10,
     };

@@ -664,7 +664,7 @@ where
   }
 }
 
-/// 为测试创建一个RefreshTokenData实例
+/// Create a RefreshTokenData instance for testing
 #[cfg(test)]
 fn create_test_refresh_token_data() -> crate::models::jwt::RefreshTokenData {
   let now = chrono::Utc::now();
@@ -677,10 +677,10 @@ fn create_test_refresh_token_data() -> crate::models::jwt::RefreshTokenData {
   }
 }
 
-/// 为测试创建一个访问令牌，模拟实际JWT格式
+/// Create an access token for testing, simulating actual JWT format
 #[cfg(test)]
 fn create_test_access_token() -> String {
-  // 创建一个类似JWT格式的令牌，包含头部、负载和签名部分
+  // Create a token similar to JWT format, with header, payload and signature parts
   use base64::{Engine, engine::general_purpose::STANDARD};
 
   let header = STANDARD.encode(r#"{"alg":"HS256","typ":"JWT"}"#);
@@ -698,6 +698,7 @@ fn create_test_access_token() -> String {
 mod tests {
   use super::*;
   use crate::error::CoreError;
+  use async_trait::async_trait;
   use axum::{
     Router,
     body::{self, Body},
@@ -713,9 +714,9 @@ mod tests {
   use tower::ServiceExt;
   use uuid::Uuid;
 
-  // ===== 测试工具和框架 =====
+  // ===== Test Tools and Framework =====
 
-  // 追踪中间件调用顺序的结构体
+  // Structure for tracking middleware call order
   #[derive(Clone, Default)]
   struct MiddlewareTracker {
     auth_called: Arc<Mutex<bool>>,
@@ -755,12 +756,12 @@ mod tests {
 
       match (auth_time, refresh_time) {
         (Some(auth), Some(refresh)) => auth < refresh,
-        _ => false, // 如果任一中间件未被调用，返回false
+        _ => false, // If either middleware wasn't called, return false
       }
     }
   }
 
-  // 模拟Token验证器
+  // Mock Token Verifier
   #[derive(Clone)]
   struct MockTokenVerifier {
     tracker: MiddlewareTracker,
@@ -770,7 +771,7 @@ mod tests {
     token_behavior: Arc<Mutex<TokenBehavior>>,
   }
 
-  // 令牌行为模拟
+  // Token behavior simulation
   #[derive(Debug, Clone, Copy)]
   enum TokenBehavior {
     Valid,
@@ -810,10 +811,10 @@ mod tests {
     type Error = CoreError;
 
     fn verify_token(&self, _token: &str) -> Result<Self::Claims, Self::Error> {
-      // 标记认证中间件已被调用
+      // Mark that auth middleware was called
       self.tracker.mark_auth_called();
 
-      // 检查是否应该失败
+      // Check if should fail
       if *self.should_fail.lock().unwrap() {
         if let Some(error) = *self.fail_with_error.lock().unwrap() {
           return Err(CoreError::Unauthorized(error.to_string()));
@@ -823,7 +824,7 @@ mod tests {
         ));
       }
 
-      // 根据设置的令牌行为执行不同操作
+      // Execute different operations based on token behavior
       match *self.token_behavior.lock().unwrap() {
         TokenBehavior::Valid => Ok(UserClaims {
           id: 1,
@@ -840,10 +841,10 @@ mod tests {
           panic!("Unexpected error during token verification")
         }
         TokenBehavior::Random => {
-          // 模拟伪失效token - 随机返回有效或过期
+          // Simulate pseudo-invalid token - randomly return valid or expired
           let random_num = rand::random::<u8>() % 2;
           if random_num == 0 {
-            // 返回有效token
+            // Return valid token
             Ok(UserClaims {
               id: 1,
               email: "test@example.com".to_string(),
@@ -853,7 +854,7 @@ mod tests {
               created_at: Utc::now(),
             })
           } else {
-            // 返回过期token错误
+            // Return expired token error
             Err(CoreError::Unauthorized("Token expired".to_string()))
           }
         }
@@ -861,7 +862,7 @@ mod tests {
     }
   }
 
-  // 模拟令牌管理器
+  // Mock Token Manager
   #[derive(Clone)]
   struct MockTokenManager {
     tracker: MiddlewareTracker,
@@ -953,77 +954,56 @@ mod tests {
   }
 
   // 实现所需的服务特征
+  #[async_trait]
   impl crate::models::jwt::RefreshTokenService for MockAuthService {
-    fn refresh_token(
+    async fn refresh_token(
       &self,
       _refresh_token: &str,
       _auth_context: Option<crate::services::AuthContext>,
-    ) -> std::pin::Pin<
-      Box<
-        dyn std::future::Future<Output = Result<crate::models::jwt::AuthTokens, CoreError>> + Send,
-      >,
-    > {
-      Box::pin(async move {
-        Ok(crate::models::jwt::AuthTokens {
-          access_token: create_test_access_token(),
-          refresh_token: create_test_refresh_token_data(),
-        })
+    ) -> Result<crate::models::jwt::AuthTokens, CoreError> {
+      Ok(crate::models::jwt::AuthTokens {
+        access_token: create_test_access_token(),
+        refresh_token: create_test_refresh_token_data(),
       })
     }
   }
 
+  #[async_trait]
   impl crate::models::jwt::SignupService for MockAuthService {
-    fn signup(
+    async fn signup(
       &self,
       _payload: &crate::models::CreateUser,
       _auth_context: Option<crate::services::AuthContext>,
-    ) -> std::pin::Pin<
-      Box<
-        dyn std::future::Future<Output = Result<crate::models::jwt::AuthTokens, CoreError>> + Send,
-      >,
-    > {
-      Box::pin(async move {
-        Ok(crate::models::jwt::AuthTokens {
-          access_token: create_test_access_token(),
-          refresh_token: create_test_refresh_token_data(),
-        })
+    ) -> Result<crate::models::jwt::AuthTokens, CoreError> {
+      Ok(crate::models::jwt::AuthTokens {
+        access_token: create_test_access_token(),
+        refresh_token: create_test_refresh_token_data(),
       })
     }
   }
 
+  #[async_trait]
   impl crate::models::jwt::SigninService for MockAuthService {
-    fn signin(
+    async fn signin(
       &self,
       _payload: &crate::models::SigninUser,
       _auth_context: Option<crate::services::AuthContext>,
-    ) -> std::pin::Pin<
-      Box<
-        dyn std::future::Future<Output = Result<Option<crate::models::jwt::AuthTokens>, CoreError>>
-          + Send,
-      >,
-    > {
-      Box::pin(async move {
-        Ok(Some(crate::models::jwt::AuthTokens {
-          access_token: create_test_access_token(),
-          refresh_token: create_test_refresh_token_data(),
-        }))
-      })
+    ) -> Result<Option<crate::models::jwt::AuthTokens>, CoreError> {
+      Ok(Some(crate::models::jwt::AuthTokens {
+        access_token: create_test_access_token(),
+        refresh_token: create_test_refresh_token_data(),
+      }))
     }
   }
 
+  #[async_trait]
   impl crate::models::jwt::LogoutService for MockAuthService {
-    fn logout(
-      &self,
-      _token: &str,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CoreError>> + Send>> {
-      Box::pin(async move { Ok(()) })
+    async fn logout(&self, _token: &str) -> Result<(), CoreError> {
+      Ok(())
     }
 
-    fn logout_all(
-      &self,
-      _user_id: i64,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CoreError>> + Send>> {
-      Box::pin(async move { Ok(()) })
+    async fn logout_all(&self, _user_id: i64) -> Result<(), CoreError> {
+      Ok(())
     }
   }
 
@@ -1530,7 +1510,7 @@ mod tests {
       .route("/test", get(test_handler))
       .route(
         "/refresh",
-        get(|_req: Request<Body>| async {
+        get(|Extension(_user): Extension<AuthUser>| async move {
           let token_id = Uuid::new_v4().to_string();
           let token = format!("new_token_{}", token_id);
 
@@ -1601,8 +1581,8 @@ mod tests {
       .route("/test", get(test_handler))
       .route(
         "/secured",
-        get(|Extension(user): Extension<AuthUser>| async move {
-          format!("Secured data for user {}", user.id)
+        get(|Extension(_user): Extension<AuthUser>| async move {
+          format!("Secured data for user {}", 1)
         }),
       )
       .with_auth(app_state);

@@ -28,9 +28,15 @@ impl CreateChat {
 }
 
 pub trait ChatRepository: Send + Sync {
-  fn create(&self, input: &CreateChat) -> std::pin::Pin<Box<dyn Future<Output = Result<Chat, CoreError>> + Send>>;
+  fn create(
+    &self,
+    input: &CreateChat,
+  ) -> std::pin::Pin<Box<dyn Future<Output = Result<Chat, CoreError>> + Send>>;
 
-  fn find_by_id(&self, id: i64) -> std::pin::Pin<Box<dyn Future<Output = Result<Option<Chat>, CoreError>> + Send>>;
+  fn find_by_id(
+    &self,
+    id: i64,
+  ) -> std::pin::Pin<Box<dyn Future<Output = Result<Option<Chat>, CoreError>> + Send>>;
 
   fn get_sidebar_for_user(
     &self,

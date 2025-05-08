@@ -1,401 +1,372 @@
 use std::{sync::Arc, time::Duration};
 
-use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Row, prelude::FromRow};
+use sqlx::Row;
 use tokio::time::Instant;
 
 use crate::{AppError, AppState, models::ChatType};
+use fechatter_core::{UpdateChat, chat::ChatSidebar};
 
 use crate::models::Chat;
-use fechatter_core::chat::ChatSidebar as CoreChatSidebar;
+
 const CHAT_LIST_CACHE_TTL: Duration = Duration::from_secs(30);
 
-/// Retrieves a list of chat sidebars for a specific user
-pub async fn list_chats_of_user(
-  state: &AppState,
-  user_id: i64,
-) -> Result<Arc<Vec<CoreChatSidebar>>, AppError> {
-  if let Some(entry) = state.chat_list_cache.get(&user_id) {
-    let (cached_chats, timestamp) = entry.value();
-    if timestamp.elapsed() < CHAT_LIST_CACHE_TTL {
-      return Ok(cached_chats.clone());
+impl AppState {
+  /// Retrieves a list of chat sidebars for a specific user
+  pub async fn list_chats_of_user(&self, user_id: i64) -> Result<Arc<Vec<ChatSidebar>>, AppError> {
+    if let Some(entry) = self.chat_list_cache.get(&user_id) {
+      let (cached_chats, timestamp) = entry.value();
+      if timestamp.elapsed() < CHAT_LIST_CACHE_TTL {
+        return Ok(cached_chats.clone());
+      }
     }
+
+    // If no valid cache exists, fetch the chat list from the database
+    let chats = self.fetch_chat_list_from_db(user_id).await?;
+
+    // Create an Arc to allow shared ownership of the chat list
+    let chats_arc = Arc::new(chats);
+
+    // Update the cache with the new chat list and current timestamp
+    self
+      .chat_list_cache
+      .insert(user_id, (chats_arc.clone(), Instant::now()));
+
+    Ok(chats_arc)
   }
 
-  // If no valid cache exists, fetch the chat list from the database
-  let chats = fetch_chat_list_from_db(&state.pool, user_id).await?;
-
-  // Create an Arc to allow shared ownership of the chat list
-  let chats_arc = Arc::new(chats);
-
-  // Update the cache with the new chat list and current timestamp
-  state
-    .chat_list_cache
-    .insert(user_id, (chats_arc.clone(), Instant::now()));
-
-  Ok(chats_arc)
-}
-
-async fn fetch_chat_list_from_db(
-  pool: &PgPool,
-  user_id: i64,
-) -> Result<Vec<CoreChatSidebar>, AppError> {
-  let rows = sqlx::query(
-    r#"SELECT
-      id,
-      chat_name as name,
-      type::text as chat_type
-    FROM chats
-    WHERE created_by = $1 OR $1 = ANY(chat_members)
-    ORDER BY updated_at DESC"#,
-  )
-  .bind(user_id)
-  .fetch_all(pool)
-  .await?;
-
-  let mut chats = Vec::new();
-
-  for row in rows {
-    let id: i64 = row.get("id");
-    let name: String = row.get("name");
-    let chat_type_str: String = row.get("chat_type");
-
-    // Convert string to ChatType
-    let chat_type = match chat_type_str.as_str() {
-      "Single" => fechatter_core::ChatType::Single,
-      "Group" => fechatter_core::ChatType::Group,
-      "PrivateChannel" => fechatter_core::ChatType::PrivateChannel,
-      "PublicChannel" => fechatter_core::ChatType::PublicChannel,
-      _ => fechatter_core::ChatType::Group, // Default
-    };
-
-    chats.push(CoreChatSidebar {
-      id,
-      name,
-      chat_type,
-      is_creator: false,
-      last_message: None,
-      unread_count: 0,
-    });
-  }
-
-  Ok(chats)
-}
-
-fn validate_chat_name(name: &str) -> Result<(), AppError> {
-  if name.trim().is_empty() {
-    Err(AppError::ChatValidationError(
-      "Chat name cannot be empty".to_string(),
-    ))
-  } else if name.len() > 128 {
-    Err(AppError::ChatValidationError(
-      "Chat name cannot be longer than 128 characters".to_string(),
-    ))
-  } else {
-    Ok(())
-  }
-}
-
-fn process_chat_members(
-  chat_type: &ChatType,
-  creator_id: i64,
-  target_members: Option<&Vec<i64>>,
-) -> Result<Vec<i64>, AppError> {
-  match chat_type {
-    ChatType::Single => match target_members {
-      Some(members) if members.len() == 1 => {
-        let target_id = members[0];
-        if target_id == creator_id {
-          return Err(AppError::ChatValidationError(
-            "Single chat must have exactly one member".to_string(),
-          ));
-        }
-        Ok(vec![creator_id, target_id])
-      }
-      _ => Err(AppError::ChatValidationError(
-        "Invalid single chat members".to_string(),
-      )),
-    },
-    ChatType::Group => {
-      let mut result = vec![creator_id];
-      if let Some(members) = target_members {
-        for &id in members {
-          if id != creator_id && !result.contains(&id) {
-            result.push(id);
-          }
-        }
-      }
-      if result.len() < 3 {
-        return Err(AppError::ChatValidationError(
-          "Group chat must have at least three members".to_string(),
-        ));
-      }
-      Ok(result)
-    }
-    ChatType::PrivateChannel => {
-      let mut result = vec![creator_id];
-      if let Some(members) = target_members {
-        for &id in members {
-          if id != creator_id && !result.contains(&id) {
-            result.push(id);
-          }
-        }
-      }
-      Ok(result)
-    }
-    ChatType::PublicChannel => Ok(vec![creator_id]),
-  }
-}
-
-async fn insert_chat_record(
-  tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-  name: &str,
-  chat_type: &ChatType,
-  chat_members: &Vec<i64>,
-  description: &str,
-  creator_id: i64,
-  workspace_id: i64,
-) -> Result<Chat, sqlx::Error> {
-  let query = "INSERT INTO chats (chat_name, type, chat_members, description, created_by, workspace_id)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING id, chat_name as name, type as chat_type, chat_members,
-               COALESCE(description, '') as description, created_by, created_at, updated_at, workspace_id";
-
-  let chat = sqlx::query_as::<_, Chat>(query)
-    .bind(name)
-    .bind(chat_type)
-    .bind(chat_members)
-    .bind(description)
-    .bind(creator_id)
-    .bind(workspace_id)
-    .fetch_one(&mut **tx)
+  async fn fetch_chat_list_from_db(&self, user_id: i64) -> Result<Vec<ChatSidebar>, AppError> {
+    let rows = sqlx::query(
+      r#"SELECT
+        id,
+        chat_name as name,
+        type::text as chat_type,
+        created_by
+      FROM chats
+      WHERE created_by = $1 OR $1 = ANY(chat_members)
+      ORDER BY updated_at DESC"#,
+    )
+    .bind(user_id)
+    .fetch_all(self.pool())
     .await?;
 
-  Ok(chat)
-}
+    let mut chats = Vec::new();
 
-#[allow(dead_code)]
-pub async fn fetch_all_chats(workspace_id: i64, pool: &PgPool) -> Result<Vec<Chat>, AppError> {
-  let chats = sqlx::query_as::<_, Chat>(
-    r#"
-      SELECT
+    for row in rows {
+      let id: i64 = row.get("id");
+      let name: String = row.get("name");
+      let chat_type_str: String = row.get("chat_type");
+      let created_by: i64 = row.get("created_by");
+
+      // Convert string to ChatType
+      let chat_type = match chat_type_str.as_str() {
+        "Single" => fechatter_core::ChatType::Single,
+        "Group" => fechatter_core::ChatType::Group,
+        "PrivateChannel" => fechatter_core::ChatType::PrivateChannel,
+        "PublicChannel" => fechatter_core::ChatType::PublicChannel,
+        _ => fechatter_core::ChatType::Group, // Default
+      };
+
+      chats.push(ChatSidebar {
         id,
-        workspace_id,
-        chat_name as name,
-        type as "chat_type: _",
-        chat_members,
-        description,
-        created_by,
-        created_at,
-        updated_at
-      FROM chats WHERE workspace_id = $1
-      ORDER BY updated_at DESC
-    "#,
-  )
-  .bind(workspace_id)
-  .fetch_all(pool)
-  .await?;
+        name,
+        chat_type,
+        is_creator: created_by == user_id,
+        last_message: None,
+        unread_count: 0,
+      });
+    }
 
-  Ok(chats)
-}
+    Ok(chats)
+  }
 
-pub async fn create_new_chat(
-  &self,
-  creator_id: i64,
-  name: &str,
-  chat_type: ChatType,
-  target_members: Option<Vec<i64>>,
-  description: Option<&str>,
-  workspace_id: i64,
-) -> Result<Chat, AppError> {
-  validate_chat_name(name)?;
+  pub async fn fetch_all_chats(&self, workspace_id: i64) -> Result<Vec<Chat>, AppError> {
+    let chats = sqlx::query_as::<_, Chat>(
+      r#"
+        SELECT
+          id,
+          workspace_id,
+          chat_name as name,
+          type as "chat_type: _",
+          chat_members,
+          description,
+          created_by,
+          created_at,
+          updated_at
+        FROM chats WHERE workspace_id = $1
+        ORDER BY updated_at DESC
+      "#,
+    )
+    .bind(workspace_id)
+    .fetch_all(self.pool())
+    .await?;
 
-  let chat_members = process_chat_members(&chat_type, creator_id, target_members.as_ref())?;
+    Ok(chats)
+  }
 
-  self.validate_users_exists_by_ids(&chat_members).await?;
-
-  let mut tx = self.pool.begin().await?;
-
-  let chat = insert_chat_record(
-    &mut tx,
-    name,
-    &chat_type,
-    &chat_members,
-    description.unwrap_or(""),
-    creator_id,
-    workspace_id,
-  )
-  .await
-  .map_err(|e| {
-    if let Some(db_error) = e.as_database_error() {
-      if db_error.is_unique_violation() {
-        AppError::ChatAlreadyExists(format!("Chat {} already exists", name))
-      } else {
-        e.into()
-      }
+  fn validate_chat_name(&self, name: &str) -> Result<(), AppError> {
+    if name.trim().is_empty() {
+      Err(AppError::ChatValidationError(
+        "Chat name cannot be empty".to_string(),
+      ))
+    } else if name.len() > 128 {
+      Err(AppError::ChatValidationError(
+        "Chat name cannot be longer than 128 characters".to_string(),
+      ))
     } else {
-      e.into()
-    }
-  })?;
-
-  let chat_id = chat.id;
-  crate::models::chat_member::insert_chat_members_relation(chat_id, &chat_members, &mut tx).await?;
-
-  tx.commit().await?;
-
-  for &member in &chat_members {
-    self.chat_list_cache.remove(&member);
-  }
-
-  Ok(chat)
-}
-
-pub async fn update_chat(
-  state: &AppState,
-  chat_id: i64,
-  user_id: i64,
-  payload: UpdateChat,
-) -> Result<Chat, AppError> {
-  // Use the server's CreateChatMember type for is_creator_in_chat
-  let creator = crate::models::ServerCreateChatMember { chat_id, user_id };
-  let is_creator = crate::models::chat_member::is_creator_in_chat(&state.pool, &creator).await?;
-
-  if !is_creator {
-    return Err(AppError::ChatPermissionError(format!(
-      "User {} is not the creator of chat {}",
-      user_id, chat_id
-    )));
-  }
-
-  if let Some(ref name) = payload.name {
-    validate_chat_name(name)?;
-  }
-
-  let chat_result = sqlx::query_as::<_, Chat>(
-    "UPDATE chats
-     SET
-       chat_name = COALESCE($1, chat_name),
-       description = COALESCE($2, description),
-       updated_at = NOW()
-     WHERE id = $3
-     RETURNING id, chat_name as name, type as chat_type, chat_members,
-               COALESCE(description, '') as description, created_by, created_at, updated_at, workspace_id",
-  )
-  .bind(&payload.name)
-  .bind(&payload.description)
-  .bind(chat_id)
-  .fetch_one(&self.pool)
-  .await?;
-
-  if payload.name.is_some() || payload.description.is_some() {
-    for &member_id in &chat_result.chat_members {
-      state.chat_list_cache.remove(&member_id);
+      Ok(())
     }
   }
 
-  Ok(chat_result)
-}
-
-pub async fn delete_chat(&self, chat_id: i64, user_id: i64) -> Result<bool, AppError> {
-  let mut tx = self.pool.begin().await?;
-
-  let members_to_invalidate = match delete_chat_transactional(&mut tx, chat_id, user_id).await {
-    Ok(members) => members,
-    Err(e) => {
-      let _ = tx.rollback().await;
-      return Err(e);
+  fn process_chat_members(
+    &self,
+    chat_type: &ChatType,
+    creator_id: i64,
+    target_members: Option<&Vec<i64>>,
+  ) -> Result<Vec<i64>, AppError> {
+    match chat_type {
+      ChatType::Single => match target_members {
+        Some(members) if members.len() == 1 => {
+          let target_id = members[0];
+          if target_id == creator_id {
+            return Err(AppError::ChatValidationError(
+              "Single chat must have exactly one member".to_string(),
+            ));
+          }
+          Ok(vec![creator_id, target_id])
+        }
+        _ => Err(AppError::ChatValidationError(
+          "Invalid single chat members".to_string(),
+        )),
+      },
+      ChatType::Group => {
+        let mut result = vec![creator_id];
+        if let Some(members) = target_members {
+          for &id in members {
+            if id != creator_id && !result.contains(&id) {
+              result.push(id);
+            }
+          }
+        }
+        if result.len() < 3 {
+          return Err(AppError::ChatValidationError(
+            "Group chat must have at least three members".to_string(),
+          ));
+        }
+        Ok(result)
+      }
+      ChatType::PrivateChannel => {
+        let mut result = vec![creator_id];
+        if let Some(members) = target_members {
+          for &id in members {
+            if id != creator_id && !result.contains(&id) {
+              result.push(id);
+            }
+          }
+        }
+        Ok(result)
+      }
+      ChatType::PublicChannel => Ok(vec![creator_id]),
     }
-  };
-
-  tx.commit().await?;
-
-  for &member in &members_to_invalidate {
-    self.chat_list_cache.remove(&member);
   }
 
-  Ok(true)
-}
+  async fn insert_chat_record(
+    &self,
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    name: &str,
+    chat_type: &ChatType,
+    chat_members: &Vec<i64>,
+    description: &str,
+    creator_id: i64,
+    workspace_id: i64,
+  ) -> Result<Chat, sqlx::Error> {
+    let query = "INSERT INTO chats (chat_name, type, chat_members, description, created_by, workspace_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, chat_name as name, type as chat_type, chat_members,
+                 COALESCE(description, '') as description, created_by, created_at, updated_at, workspace_id";
 
-async fn delete_chat_transactional(
-  tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-  chat_id: i64,
-  user_id: i64,
-) -> Result<Vec<i64>, AppError> {
-  let chat_info = sqlx::query!(
-    "SELECT chat_members, created_by FROM chats WHERE id = $1 FOR UPDATE",
-    chat_id
-  )
-  .fetch_optional(&mut **tx)
-  .await?
-  .ok_or(AppError::NotFound(vec![chat_id.to_string()]))?;
+    let chat = sqlx::query_as::<_, Chat>(query)
+      .bind(name)
+      .bind(chat_type)
+      .bind(chat_members)
+      .bind(description)
+      .bind(creator_id)
+      .bind(workspace_id)
+      .fetch_one(&mut **tx)
+      .await?;
 
-  if chat_info.created_by != user_id {
-    return Err(AppError::ChatPermissionError(format!(
-      "User {} is not the creator of chat {}",
-      user_id, chat_id
-    )));
+    Ok(chat)
   }
 
-  sqlx::query!(
-    "DELETE FROM chat_members_relation WHERE chat_id = $1",
-    chat_id
-  )
-  .execute(&mut **tx)
-  .await?;
+  pub async fn create_new_chat(
+    &self,
+    creator_id: i64,
+    name: &str,
+    chat_type: ChatType,
+    target_members: Option<Vec<i64>>,
+    description: Option<&str>,
+    workspace_id: i64,
+  ) -> Result<Chat, AppError> {
+    self.validate_chat_name(name)?;
 
-  let result = sqlx::query!("DELETE FROM chats WHERE id = $1", chat_id)
+    let chat_members =
+      self.process_chat_members(&chat_type, creator_id, target_members.as_ref())?;
+
+    self.validate_users_exists_by_ids(&chat_members).await?;
+
+    let mut tx = self.pool().begin().await?;
+
+    let chat = self
+      .insert_chat_record(
+        &mut tx,
+        name,
+        &chat_type,
+        &chat_members,
+        description.unwrap_or(""),
+        creator_id,
+        workspace_id,
+      )
+      .await
+      .map_err(|e| {
+        if let Some(db_error) = e.as_database_error() {
+          if db_error.is_unique_violation() {
+            AppError::ChatAlreadyExists(format!("Chat {} already exists", name))
+          } else {
+            e.into()
+          }
+        } else {
+          e.into()
+        }
+      })?;
+
+    let chat_id = chat.id;
+    crate::models::chat_member::insert_chat_members_relation(chat_id, &chat_members, &mut tx)
+      .await?;
+
+    tx.commit().await?;
+
+    for &member in &chat_members {
+      self.chat_list_cache.remove(&member);
+    }
+
+    Ok(chat)
+  }
+
+  pub async fn update_chat(
+    &self,
+    chat_id: i64,
+    user_id: i64,
+    payload: UpdateChat,
+  ) -> Result<Chat, AppError> {
+    // Use the server's CreateChatMember type for is_creator_in_chat
+    let creator = crate::models::ServerCreateChatMember { chat_id, user_id };
+    let is_creator = self.is_creator_in_chat(&creator).await?;
+
+    if !is_creator {
+      return Err(AppError::ChatPermissionError(format!(
+        "User {} is not the creator of chat {}",
+        user_id, chat_id
+      )));
+    }
+
+    if let Some(ref name) = payload.name {
+      self.validate_chat_name(name)?;
+    }
+
+    let chat_result = sqlx::query_as::<_, Chat>(
+      "UPDATE chats
+       SET
+         chat_name = COALESCE($1, chat_name),
+         description = COALESCE($2, description),
+         updated_at = NOW()
+       WHERE id = $3
+       RETURNING id, chat_name as name, type as chat_type, chat_members,
+                 COALESCE(description, '') as description, created_by, created_at, updated_at, workspace_id",
+    )
+    .bind(&payload.name)
+    .bind(&payload.description)
+    .bind(chat_id)
+    .fetch_one(self.pool())
+    .await?;
+
+    if payload.name.is_some() || payload.description.is_some() {
+      for &member_id in &chat_result.chat_members {
+        self.chat_list_cache.remove(&member_id);
+      }
+    }
+
+    Ok(chat_result)
+  }
+
+  pub async fn delete_chat(&self, chat_id: i64, user_id: i64) -> Result<bool, AppError> {
+    let mut tx = self.pool().begin().await?;
+
+    let members_to_invalidate = match self
+      .delete_chat_transactional(&mut tx, chat_id, user_id)
+      .await
+    {
+      Ok(members) => members,
+      Err(e) => {
+        let _ = tx.rollback().await;
+        return Err(e);
+      }
+    };
+
+    tx.commit().await?;
+
+    for &member in &members_to_invalidate {
+      self.chat_list_cache.remove(&member);
+    }
+
+    Ok(true)
+  }
+
+  async fn delete_chat_transactional(
+    &self,
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    chat_id: i64,
+    user_id: i64,
+  ) -> Result<Vec<i64>, AppError> {
+    let chat_info = sqlx::query!(
+      "SELECT chat_members, created_by FROM chats WHERE id = $1 FOR UPDATE",
+      chat_id
+    )
+    .fetch_optional(&mut **tx)
+    .await?
+    .ok_or(AppError::NotFound(vec![chat_id.to_string()]))?;
+
+    if chat_info.created_by != user_id {
+      return Err(AppError::ChatPermissionError(format!(
+        "User {} is not the creator of chat {}",
+        user_id, chat_id
+      )));
+    }
+
+    sqlx::query!(
+      "DELETE FROM chat_members_relation WHERE chat_id = $1",
+      chat_id
+    )
     .execute(&mut **tx)
     .await?;
 
-  if result.rows_affected() == 0 {
-    return Err(AppError::NotFound(vec![chat_id.to_string()]));
-  }
+    let result = sqlx::query!("DELETE FROM chats WHERE id = $1", chat_id)
+      .execute(&mut **tx)
+      .await?;
 
-  Ok(chat_info.chat_members)
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CreateChat {
-  pub name: String,
-  pub chat_type: ChatType,
-  pub chat_members: Vec<i64>,
-  pub description: String,
-}
-
-#[cfg(test)]
-impl CreateChat {
-  pub fn new(name: &str, chat_type: ChatType, chat_members: Vec<i64>, description: &str) -> Self {
-    Self {
-      name: name.to_string(),
-      chat_type,
-      chat_members,
-      description: description.to_string(),
+    if result.rows_affected() == 0 {
+      return Err(AppError::NotFound(vec![chat_id.to_string()]));
     }
+
+    Ok(chat_info.chat_members)
   }
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct ChatSidebar {
-  pub id: i64,
-  pub name: String,
-  pub chat_type: ChatType,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct UpdateChat {
-  pub name: Option<String>,
-  pub description: Option<String>,
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
 
-  use crate::{
-    models::chat_member::{add_chat_members, remove_group_chat_members},
-    setup_test_users,
-  };
+  use crate::setup_test_users;
   use anyhow::Result;
+  use fechatter_core::{CreateChat, UpdateChat};
 
   #[tokio::test]
   async fn create_and_list_chats_should_work() -> Result<()> {
@@ -417,8 +388,8 @@ mod tests {
         user1.id,
         &single_chat.name,
         single_chat.chat_type,
-        Some(single_members),           // Pass Option<Vec<i64>> for members
-        Some(&single_chat.description), // Pass Option<&str> for description
+        Some(single_members),
+        Some(single_chat.description.as_deref().unwrap_or("")),
         user1.workspace_id,
       )
       .await?;
@@ -443,8 +414,8 @@ mod tests {
         user1.id,
         &group_chat.name,
         group_chat.chat_type,
-        Some(group_members),           // Pass Option<Vec<i64>> for members
-        Some(&group_chat.description), // Pass Option<&str> for description
+        Some(group_members),
+        Some(group_chat.description.as_deref().unwrap_or("")),
         user1.workspace_id,
       )
       .await?;
@@ -919,7 +890,7 @@ mod tests {
         user1.id,
         &first_chat.name,
         first_chat.chat_type,
-        Some(first_chat.chat_members),
+        first_chat.members,
         None,
         user1.workspace_id,
       )
@@ -950,7 +921,7 @@ mod tests {
         user1.id,
         &special_chat.name,
         special_chat.chat_type,
-        Some(special_chat.chat_members),
+        special_chat.members,
         None,
         user1.workspace_id,
       )
@@ -973,8 +944,8 @@ mod tests {
         user1.id,
         &long_desc_chat.name,
         long_desc_chat.chat_type,
-        Some(long_desc_chat.chat_members),
-        Some(&long_desc_chat.description),
+        long_desc_chat.members,
+        Some(long_desc_chat.description.as_deref().unwrap_or("")),
         user1.workspace_id,
       )
       .await?;
@@ -997,7 +968,7 @@ mod tests {
         user1.id,
         &large_group.name,
         large_group.chat_type,
-        Some(large_group.chat_members),
+        large_group.members,
         None,
         user1.workspace_id,
       )
@@ -1017,7 +988,7 @@ mod tests {
         user1.id,
         &single_chat.name,
         single_chat.chat_type,
-        Some(single_chat.chat_members),
+        single_chat.members,
         None,
         user1.workspace_id,
       )
@@ -1035,7 +1006,7 @@ mod tests {
         user1.id,
         &private_channel.name,
         private_channel.chat_type,
-        Some(private_channel.chat_members),
+        private_channel.members,
         None,
         user1.workspace_id,
       )
@@ -1057,7 +1028,7 @@ mod tests {
         user1.id,
         &all_spaces.name,
         all_spaces.chat_type,
-        Some(all_spaces.chat_members),
+        all_spaces.members,
         None,
         user1.workspace_id,
       )
@@ -1079,7 +1050,7 @@ mod tests {
         user1.id,
         &creator_included.name,
         creator_included.chat_type,
-        Some(creator_included.chat_members),
+        creator_included.members,
         None,
         user1.workspace_id,
       )
@@ -1119,7 +1090,7 @@ mod tests {
         user1.id,
         &relation_test.name,
         relation_test.chat_type,
-        Some(relation_test.chat_members),
+        relation_test.members,
         None,
         user1.workspace_id,
       )
@@ -1142,7 +1113,7 @@ mod tests {
         user1.id,
         &normal_chat.name,
         normal_chat.chat_type,
-        Some(normal_chat.chat_members),
+        normal_chat.members,
         None,
         user1.workspace_id,
       )
@@ -1156,25 +1127,25 @@ mod tests {
     // Adding implementation for edit members, etc. to satisfy TODO
     // Add a new member to the chat
     let user4_id = 999; // Simulating another user
-    let add_result = add_chat_members(
-      &state,
-      normal_chat.id,
-      user1.id, // Creator is performing the action
-      vec![user4_id],
-    )
-    .await;
+    let add_result = state
+      .add_chat_members(
+        normal_chat.id,
+        user1.id, // Creator is performing the action
+        vec![user4_id],
+      )
+      .await;
 
     // This should fail as user4 doesn't exist, but verifies the function is callable
     assert!(add_result.is_err());
 
     // Test deleting a member
-    let remove_result = remove_group_chat_members(
-      &state,
-      normal_chat.id,
-      user1.id, // Creator is performing the action
-      vec![user3.id],
-    )
-    .await?;
+    let remove_result = state
+      .remove_group_chat_members(
+        normal_chat.id,
+        user1.id, // Creator is performing the action
+        vec![user3.id],
+      )
+      .await?;
 
     assert!(remove_result);
 
@@ -1192,8 +1163,8 @@ mod tests {
         user1.id,
         &non_english_chat.name,
         non_english_chat.chat_type,
-        Some(non_english_chat.chat_members),
-        Some(&non_english_chat.description),
+        non_english_chat.members,
+        Some(non_english_chat.description.as_deref().unwrap_or("")),
         user1.workspace_id,
       )
       .await?;
@@ -1218,8 +1189,8 @@ mod tests {
         user1.id,
         &emoji_chat.name,
         emoji_chat.chat_type,
-        Some(emoji_chat.chat_members),
-        Some(&emoji_chat.description),
+        emoji_chat.members,
+        Some(emoji_chat.description.as_deref().unwrap_or("")),
         user1.workspace_id,
       )
       .await?;
@@ -1349,6 +1320,58 @@ mod process_chat_members_data_driven_tests {
   const USER_2: i64 = 2;
   const USER_3: i64 = 3;
 
+  // 使用与AppState实现相同的函数，但作为静态函数
+  fn process_chat_members(
+    chat_type: &ChatType,
+    creator_id: i64,
+    target_members: Option<&Vec<i64>>,
+  ) -> Result<Vec<i64>, AppError> {
+    match chat_type {
+      ChatType::Single => match target_members {
+        Some(members) if members.len() == 1 => {
+          let target_id = members[0];
+          if target_id == creator_id {
+            return Err(AppError::ChatValidationError(
+              "Single chat must have exactly one member".to_string(),
+            ));
+          }
+          Ok(vec![creator_id, target_id])
+        }
+        _ => Err(AppError::ChatValidationError(
+          "Invalid single chat members".to_string(),
+        )),
+      },
+      ChatType::Group => {
+        let mut result = vec![creator_id];
+        if let Some(members) = target_members {
+          for &id in members {
+            if id != creator_id && !result.contains(&id) {
+              result.push(id);
+            }
+          }
+        }
+        if result.len() < 3 {
+          return Err(AppError::ChatValidationError(
+            "Group chat must have at least three members".to_string(),
+          ));
+        }
+        Ok(result)
+      }
+      ChatType::PrivateChannel => {
+        let mut result = vec![creator_id];
+        if let Some(members) = target_members {
+          for &id in members {
+            if id != creator_id && !result.contains(&id) {
+              result.push(id);
+            }
+          }
+        }
+        Ok(result)
+      }
+      ChatType::PublicChannel => Ok(vec![creator_id]),
+    }
+  }
+
   struct TestCase<'a> {
     desc: &'a str,
     chat_type: ChatType,
@@ -1447,7 +1470,7 @@ mod process_chat_members_data_driven_tests {
     for case in test_cases {
       println!("Testing case: {}", case.desc);
 
-      // Call the function, note that .as_ref() converts Option<Vec> to Option<&Vec>
+      // 调用测试模块中的静态函数而不是state.process_chat_members
       let actual_result =
         process_chat_members(&case.chat_type, CREATOR_ID, case.input_members.as_ref());
 

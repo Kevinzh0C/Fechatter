@@ -20,11 +20,6 @@ async fn main() -> Result<()> {
 
   set_up_pg_listener().await?;
 
-  let auth_config = AuthConfig {
-    sk: "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF\n-----END PRIVATE KEY-----".to_string(),
-    pk: "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAHrnbu7wEfAP9cGBOAHHwmH4Wsot1ciXBHmCRcXLBUUQ=\n-----END PUBLIC KEY-----".to_string(),
-  };
-
   // Initialize notify state
   let db_url = "postgres://postgres:postgres@localhost:5432/fechatter";
   let state = NotifyState::new(db_url, &auth_config).await?;

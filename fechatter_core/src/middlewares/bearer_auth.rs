@@ -14,9 +14,6 @@ use tracing::warn;
 
 use crate::{TokenVerifier, models::AuthUser};
 
-/// Validate a `Bearer {token}` header, insert an `AuthUser` extension and either
-/// continue the chain or return **401**.
-///
 /// Generic `T` is any application state that implements
 /// [`TokenVerifier`](crate::middlewares::TokenVerifier).  The function is intended to be
 /// wrapped via `axum::middleware::from_fn_with_state` and therefore matches the
@@ -29,6 +26,19 @@ pub async fn verify_token_middleware<T>(
 where
   T: TokenVerifier + Clone + Send + Sync + 'static,
   AuthUser: From<T::Claims>,
+{
+  verify_token_middleware_with_user_type::<T, AuthUser>(State(state), req, next).await
+}
+
+/// Version of the middleware that allows specifying the user type
+pub async fn verify_token_middleware_with_user_type<T, U>(
+  State(state): State<T>,
+  req: Request<Body>,
+  next: Next,
+) -> Response
+where
+  T: TokenVerifier + Clone + Send + Sync + 'static,
+  U: From<T::Claims> + Clone + Send + Sync + 'static,
 {
   let (mut parts, body) = req.into_parts();
   let token =
@@ -43,7 +53,7 @@ where
 
   match state.verify_token(&token) {
     Ok(claims) => {
-      let user: AuthUser = claims.into();
+      let user: U = claims.into();
       let mut req = Request::from_parts(parts, body);
       req.extensions_mut().insert(user);
       next.run(req).await
@@ -59,6 +69,7 @@ mod tests {
   use super::*;
 
   use anyhow::Result;
+  use async_trait::async_trait;
   use axum::{Router, body::Body, middleware::from_fn_with_state, routing::get};
 
   use std::sync::Arc;
@@ -99,59 +110,43 @@ mod tests {
       RefreshToken, RefreshTokenRepository, ReplaceTokenPayload, StoreTokenPayload,
     };
     use chrono::Utc;
-    use std::future::Future;
-    use std::pin::Pin;
     use std::sync::Arc;
 
     // 创建一个简单化的mock RefreshTokenRepository
     struct MockRefreshTokenRepository;
 
+    #[async_trait]
     impl RefreshTokenRepository for MockRefreshTokenRepository {
-      fn find_by_token(
-        &self,
-        _raw_token: &str,
-      ) -> Pin<Box<dyn Future<Output = Result<Option<RefreshToken>, CoreError>> + Send>> {
-        Box::pin(async { Ok(None) })
+      async fn find_by_token(&self, _raw_token: &str) -> Result<Option<RefreshToken>, CoreError> {
+        Ok(None)
       }
 
-      fn replace(
-        &self,
-        _payload: ReplaceTokenPayload,
-      ) -> Pin<Box<dyn Future<Output = Result<RefreshToken, CoreError>> + Send>> {
-        Box::pin(async { Err(CoreError::Internal(anyhow::anyhow!("Not implemented"))) })
+      async fn replace(&self, _payload: ReplaceTokenPayload) -> Result<RefreshToken, CoreError> {
+        // Use a static string to avoid lifetime issues
+        static ERROR_MSG: &str = "Not implemented";
+        Err(CoreError::Internal(anyhow::Error::msg(ERROR_MSG)))
       }
 
-      fn revoke(
-        &self,
-        _token_id: i64,
-      ) -> Pin<Box<dyn Future<Output = Result<(), CoreError>> + Send>> {
-        Box::pin(async { Ok(()) })
+      async fn revoke(&self, _token_id: i64) -> Result<(), CoreError> {
+        Ok(())
       }
 
-      fn revoke_all_for_user(
-        &self,
-        _user_id: i64,
-      ) -> Pin<Box<dyn Future<Output = Result<(), CoreError>> + Send>> {
-        Box::pin(async { Ok(()) })
+      async fn revoke_all_for_user(&self, _user_id: i64) -> Result<(), CoreError> {
+        Ok(())
       }
 
-      fn store_new_token(
-        &self,
-        _payload: StoreTokenPayload,
-      ) -> Pin<Box<dyn Future<Output = Result<RefreshToken, CoreError>> + Send>> {
-        Box::pin(async {
-          Ok(RefreshToken {
-            id: 1,
-            user_id: 1,
-            token_hash: "test_hash".to_string(),
-            expires_at: Utc::now() + chrono::Duration::hours(1),
-            issued_at: Utc::now(),
-            revoked: false,
-            replaced_by: None,
-            user_agent: None,
-            ip_address: None,
-            absolute_expires_at: Utc::now() + chrono::Duration::days(30),
-          })
+      async fn create(&self, _payload: StoreTokenPayload) -> Result<RefreshToken, CoreError> {
+        Ok(RefreshToken {
+          id: 1,
+          user_id: 1,
+          token_hash: "test_hash".to_string(),
+          expires_at: Utc::now() + chrono::Duration::hours(1),
+          issued_at: Utc::now(),
+          revoked: false,
+          replaced_by: None,
+          user_agent: None,
+          ip_address: None,
+          absolute_expires_at: Utc::now() + chrono::Duration::days(30),
         })
       }
     }
@@ -230,7 +225,7 @@ mod tests {
       ));
 
     // 生成JWT令牌
-    let token = match state.inner.token_manager.generate_token(&user) {
+    let token = match state.inner.token_manager.generate_token_for_user(&user) {
       Ok(t) => {
         println!("Successfully generated token: {}", t);
         t

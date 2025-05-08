@@ -1,3 +1,6 @@
+use std::sync::Arc;
+
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
@@ -68,7 +71,7 @@ pub struct TokenManager {
   encoding_key: EncodingKey,
   decoding_key: DecodingKey,
   validation: Validation,
-  refresh_token_repo: std::sync::Arc<dyn RefreshTokenRepository + Send + Sync>,
+  refresh_token_repo: Arc<dyn RefreshTokenRepository + Send + Sync>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -84,21 +87,23 @@ pub struct AuthTokens {
   pub refresh_token: RefreshTokenData,
 }
 
+#[async_trait]
 pub trait TokenService: Send + Sync {
   fn generate_token(&self, user_claims: &UserClaims) -> Result<String, CoreError>;
   fn verify_token(&self, token: &str) -> Result<UserClaims, CoreError>;
-  fn generate_auth_tokens(
+  async fn generate_auth_tokens(
     &self,
     user_claims: &UserClaims,
-    auth_context: Option<AuthContext>,
-  ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<AuthTokens, CoreError>> + Send>>;
+    user_agent: Option<String>,
+    ip_address: Option<String>,
+  ) -> Result<AuthTokens, CoreError>;
 }
 
 // Renamed from ReplaceRefreshTokenArgs
 #[derive(Debug)]
-pub struct ReplaceTokenPayload<'a> {
+pub struct ReplaceTokenPayload {
   pub old_token_id: i64,
-  pub new_raw_token: &'a str,
+  pub new_raw_token: String,
   pub new_expires_at: DateTime<Utc>,
   pub new_absolute_expires_at: DateTime<Utc>,
   pub user_agent: Option<String>,
@@ -116,68 +121,48 @@ pub struct StoreTokenPayload {
   pub ip_address: Option<String>,
 }
 
+#[async_trait]
 pub trait RefreshTokenRepository: Send + Sync {
-  fn find_by_token(
-    &self,
-    raw_token: &str,
-  ) -> std::pin::Pin<
-    Box<dyn std::future::Future<Output = Result<Option<RefreshToken>, CoreError>> + Send>,
-  >;
-  fn replace(
-    &self,
-    payload: ReplaceTokenPayload,
-  ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<RefreshToken, CoreError>> + Send>>;
-  fn revoke(
-    &self,
-    token_id: i64,
-  ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CoreError>> + Send>>;
-  fn revoke_all_for_user(
-    &self,
-    user_id: i64,
-  ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CoreError>> + Send>>;
+  async fn find_by_token(&self, raw_token: &str) -> Result<Option<RefreshToken>, CoreError>;
+  async fn replace(&self, payload: ReplaceTokenPayload) -> Result<RefreshToken, CoreError>;
+  async fn revoke(&self, token_id: i64) -> Result<(), CoreError>;
+  async fn revoke_all_for_user(&self, user_id: i64) -> Result<(), CoreError>;
 
-  fn store_new_token(
-    &self,
-    payload: StoreTokenPayload,
-  ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<RefreshToken, CoreError>> + Send>>;
+  async fn create(&self, payload: StoreTokenPayload) -> Result<RefreshToken, CoreError>;
 }
 
+#[async_trait]
 pub trait RefreshTokenService: Send + Sync {
-  fn refresh_token(
+  async fn refresh_token(
     &self,
     refresh_token: &str,
     auth_context: Option<AuthContext>,
-  ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<AuthTokens, CoreError>> + Send>>;
+  ) -> Result<AuthTokens, CoreError>;
 }
 
+#[async_trait]
 pub trait SignupService: Send + Sync {
-  fn signup(
+  async fn signup(
     &self,
     payload: &CreateUser,
     auth_context: Option<AuthContext>,
-  ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<AuthTokens, CoreError>> + Send>>;
+  ) -> Result<AuthTokens, CoreError>;
 }
 
+#[async_trait]
 pub trait SigninService: Send + Sync {
-  fn signin(
+  async fn signin(
     &self,
     payload: &SigninUser,
     auth_context: Option<AuthContext>,
-  ) -> std::pin::Pin<
-    Box<dyn std::future::Future<Output = Result<Option<AuthTokens>, CoreError>> + Send>,
-  >;
+  ) -> Result<Option<AuthTokens>, CoreError>;
 }
 
+#[async_trait]
 pub trait LogoutService: Send + Sync {
-  fn logout(
-    &self,
-    refresh_token: &str,
-  ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CoreError>> + Send>>;
+  async fn logout(&self, refresh_token: &str) -> Result<(), CoreError>;
 
-  fn logout_all(
-    &self,
-    user_id: i64,
-  ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CoreError>> + Send>>;
+  async fn logout_all(&self, user_id: i64) -> Result<(), CoreError>;
 }
 
 pub trait AuthServiceFactory {
@@ -190,6 +175,7 @@ pub trait AuthServiceFactory {
     Self: Sized;
 }
 
+#[async_trait]
 pub trait AuthServiceTrait:
   RefreshTokenService + SignupService + SigninService + LogoutService
 {
@@ -219,7 +205,7 @@ impl Claims {
 impl TokenManager {
   pub fn from_config<C: TokenConfigProvider>(
     config: &C,
-    refresh_token_repo: std::sync::Arc<dyn RefreshTokenRepository + Send + Sync>,
+    refresh_token_repo: Arc<dyn RefreshTokenRepository + Send + Sync>,
   ) -> Result<Self, CoreError> {
     let mut validation = Validation::new(Algorithm::EdDSA);
     validation.leeway = config.get_jwt_leeway();
@@ -246,19 +232,40 @@ impl TokenManager {
     })
   }
 
-  pub fn generate_token(&self, user: &User) -> Result<String, CoreError> {
-    let claims = Claims::new(user);
+  fn create_claims_from_user(&self, user: &User) -> Claims {
+    Claims::new(user)
+  }
+
+  fn create_claims_from_user_claims(&self, user_claims: &UserClaims) -> Claims {
+    Claims {
+      sub: user_claims.id.to_string(),
+      exp: (Utc::now().timestamp() as usize) + ACCESS_TOKEN_EXPIRATION,
+      iat: Utc::now().timestamp() as usize,
+      aud: JWT_AUDIENCE.to_string(),
+      iss: JWT_ISSUER.to_string(),
+      user: user_claims.clone(),
+    }
+  }
+
+  pub fn generate_token_for_user(&self, user: &User) -> Result<String, CoreError> {
+    let claims = self.create_claims_from_user(user);
     let header = Header::new(Algorithm::EdDSA);
     encode(&header, &claims, &self.encoding_key).map_err(|e| CoreError::Validation(e.to_string()))
   }
 
-  pub async fn generate_auth_tokens(
+  pub fn internal_generate_token(&self, user_claims: &UserClaims) -> Result<String, CoreError> {
+    let claims = self.create_claims_from_user_claims(user_claims);
+    let header = Header::new(Algorithm::EdDSA);
+    encode(&header, &claims, &self.encoding_key).map_err(|e| CoreError::Validation(e.to_string()))
+  }
+
+  pub async fn internal_generate_auth_tokens(
     &self,
-    user: &User,
+    user_claims: &UserClaims,
     user_agent: Option<String>,
     ip_address: Option<String>,
   ) -> Result<AuthTokens, CoreError> {
-    let access_token = self.generate_token(user)?;
+    let access_token = self.internal_generate_token(user_claims)?;
     let raw_refresh_token = uuid::Uuid::new_v4().to_string();
 
     let now = Utc::now();
@@ -267,17 +274,14 @@ impl TokenManager {
       now + chrono::Duration::seconds(REFRESH_TOKEN_MAX_LIFETIME as i64);
 
     let store_payload = StoreTokenPayload {
-      user_id: user.id,
+      user_id: user_claims.id,
       raw_token: raw_refresh_token.clone(),
       expires_at: refresh_expires_at,
       absolute_expires_at: refresh_absolute_expires_at,
       user_agent,
       ip_address,
     };
-    let token_record: RefreshToken = self
-      .refresh_token_repo
-      .store_new_token(store_payload)
-      .await?;
+    let token_record: RefreshToken = self.refresh_token_repo.create(store_payload).await?;
 
     let refresh_token_data = RefreshTokenData {
       token: raw_refresh_token,
@@ -291,19 +295,32 @@ impl TokenManager {
     })
   }
 
-  pub fn verify_token(&self, token: &str) -> Result<UserClaims, CoreError> {
+  pub fn internal_verify_token(&self, token: &str) -> Result<UserClaims, CoreError> {
     let token_data = decode::<Claims>(token, &self.decoding_key, &self.validation)
       .map_err(|e| CoreError::Validation(e.to_string()))?;
-    let user_claims = UserClaims {
-      id: token_data.claims.user.id,
-      workspace_id: token_data.claims.user.workspace_id,
-      fullname: token_data.claims.user.fullname,
-      email: token_data.claims.user.email,
-      status: token_data.claims.user.status,
-      created_at: token_data.claims.user.created_at,
-    };
+    Ok(token_data.claims.user)
+  }
+}
 
-    Ok(user_claims)
+#[async_trait]
+impl TokenService for TokenManager {
+  fn generate_token(&self, user_claims: &UserClaims) -> Result<String, CoreError> {
+    self.internal_generate_token(user_claims)
+  }
+
+  fn verify_token(&self, token: &str) -> Result<UserClaims, CoreError> {
+    self.internal_verify_token(token)
+  }
+
+  async fn generate_auth_tokens(
+    &self,
+    user_claims: &UserClaims,
+    user_agent: Option<String>,
+    ip_address: Option<String>,
+  ) -> Result<AuthTokens, CoreError> {
+    self
+      .internal_generate_auth_tokens(user_claims, user_agent, ip_address)
+      .await
   }
 }
 
@@ -312,6 +329,6 @@ impl MwTokenVerifier for TokenManager {
   type Claims = UserClaims;
 
   fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error> {
-    crate::models::jwt::TokenManager::verify_token(self, token)
+    self.internal_verify_token(token)
   }
 }

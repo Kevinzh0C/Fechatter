@@ -1,10 +1,9 @@
-use crate::{AppError, AppState};
+use crate::AppError;
 use std::{
   path::{Path, PathBuf},
   str::FromStr,
 };
 
-use crate::AppError;
 use sha1::{Digest, Sha1};
 
 use super::ChatFile;

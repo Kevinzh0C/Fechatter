@@ -4,16 +4,13 @@ use axum::{
   response::IntoResponse,
 };
 
-use crate::{
-  AppError, AppState,
-  middlewares::WorkspaceContext,
-  models::{AuthUser, Workspace},
-};
+use crate::{AppError, AppState, models::AuthUser};
 
 pub async fn list_all_workspace_users_handler(
   State(state): State<AppState>,
+  Extension(user): Extension<AuthUser>,
 ) -> Result<impl IntoResponse, AppError> {
-  let users = state.get_users_in_workspace(&state.pool).await?;
+  let users = state.get_users_in_workspace(user.workspace_id).await?;
   Ok(Json(users))
 }
 
@@ -29,7 +26,8 @@ pub async fn get_workspace_by_id(
     ));
   }
 
-  let workspace = Workspace::find_by_id(id, &state.pool)
+  let workspace = state
+    .find_by_id_with_pool(id)
     .await?
     .ok_or_else(|| AppError::NotFound(vec![id.to_string()]))?;
 

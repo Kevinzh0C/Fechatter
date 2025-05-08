@@ -1,4 +1,5 @@
 use anyhow::{Result, bail};
+use fechatter_core::models::jwt::TokenConfigProvider;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs::File;
@@ -11,7 +12,11 @@ pub struct AppConfig {
   // ...
 }
 
-pub use fechatter_core::utils::jwt::AuthConfig;
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AuthConfig {
+  pub pk: String,
+  pub sk: String,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ServerConfig {
@@ -36,5 +41,15 @@ impl AppConfig {
     };
 
     Ok(ret?)
+  }
+}
+
+impl TokenConfigProvider for AuthConfig {
+  fn get_encoding_key_pem(&self) -> &str {
+    &self.sk
+  }
+
+  fn get_decoding_key_pem(&self) -> &str {
+    &self.pk
   }
 }

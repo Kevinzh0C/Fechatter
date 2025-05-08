@@ -154,7 +154,7 @@ where
 
     let replace_payload = ReplaceTokenPayload {
       old_token_id: token_record.id,
-      new_raw_token: &new_raw_token,
+      new_raw_token: new_raw_token.clone(),
       new_expires_at,
       new_absolute_expires_at,
       user_agent,

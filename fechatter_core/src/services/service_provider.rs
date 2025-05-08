@@ -8,6 +8,7 @@ use crate::models::jwt::{
   UserClaims,
 };
 use anyhow::anyhow;
+use async_trait::async_trait;
 use sqlx::PgPool;
 use std::sync::Arc;
 
@@ -64,11 +65,76 @@ impl WithServiceProvider for ServiceProvider {
   }
 }
 
+#[cfg(test)]
 impl ActualAuthServiceProvider for ServiceProvider {
   type AuthService = DummyAuthService;
 
   fn create_service(&self) -> Self::AuthService {
     DummyAuthService
+  }
+}
+
+#[cfg(not(test))]
+impl ActualAuthServiceProvider for ServiceProvider {
+  type AuthService = PanicService;
+
+  fn create_service(&self) -> Self::AuthService {
+    PanicService
+  }
+}
+
+#[cfg(not(test))]
+#[derive(Clone)]
+pub struct PanicService;
+
+#[cfg(not(test))]
+impl AuthServiceTrait for PanicService {}
+
+#[cfg(not(test))]
+#[async_trait]
+impl RefreshTokenService for PanicService {
+  async fn refresh_token(
+    &self,
+    _refresh_token: &str,
+    _auth_context: Option<crate::services::AuthContext>,
+  ) -> Result<AuthTokens, CoreError> {
+    panic!("PanicService is not meant to be used in production code")
+  }
+}
+
+#[cfg(not(test))]
+#[async_trait]
+impl SignupService for PanicService {
+  async fn signup(
+    &self,
+    _payload: &crate::models::CreateUser,
+    _auth_context: Option<crate::services::AuthContext>,
+  ) -> Result<AuthTokens, CoreError> {
+    panic!("PanicService is not meant to be used in production code")
+  }
+}
+
+#[cfg(not(test))]
+#[async_trait]
+impl SigninService for PanicService {
+  async fn signin(
+    &self,
+    _payload: &crate::models::SigninUser,
+    _auth_context: Option<crate::services::AuthContext>,
+  ) -> Result<Option<AuthTokens>, CoreError> {
+    panic!("PanicService is not meant to be used in production code")
+  }
+}
+
+#[cfg(not(test))]
+#[async_trait]
+impl LogoutService for PanicService {
+  async fn logout(&self, _refresh_token: &str) -> Result<(), CoreError> {
+    panic!("PanicService is not meant to be used in production code")
+  }
+
+  async fn logout_all(&self, _user_id: i64) -> Result<(), CoreError> {
+    panic!("PanicService is not meant to be used in production code")
   }
 }
 
@@ -112,59 +178,60 @@ macro_rules! define_service {
     };
 }
 
+#[cfg(test)]
 #[derive(Clone)]
 pub struct DummyAuthService;
 
 // Implement each trait with placeholder logic returning an error. These implementations are
 // only meant to satisfy the compiler during the ongoing refactor.
 
-use futures::Future;
-use std::pin::Pin;
-
+#[cfg(test)]
+#[async_trait]
 impl RefreshTokenService for DummyAuthService {
-  fn refresh_token(
+  async fn refresh_token(
     &self,
     _refresh_token: &str,
     _auth_context: Option<crate::services::AuthContext>,
-  ) -> Pin<Box<dyn Future<Output = Result<AuthTokens, CoreError>> + Send>> {
-    Box::pin(async move { Err(CoreError::Internal(anyhow!("Not implemented"))) })
+  ) -> Result<AuthTokens, CoreError> {
+    Err(CoreError::Internal(anyhow!("Not implemented")))
   }
 }
 
+#[cfg(test)]
+#[async_trait]
 impl SignupService for DummyAuthService {
-  fn signup(
+  async fn signup(
     &self,
     _payload: &crate::models::CreateUser,
     _auth_context: Option<crate::services::AuthContext>,
-  ) -> Pin<Box<dyn Future<Output = Result<AuthTokens, CoreError>> + Send>> {
-    Box::pin(async move { Err(CoreError::Internal(anyhow!("Not implemented"))) })
+  ) -> Result<AuthTokens, CoreError> {
+    Err(CoreError::Internal(anyhow!("Not implemented")))
   }
 }
 
+#[cfg(test)]
+#[async_trait]
 impl SigninService for DummyAuthService {
-  fn signin(
+  async fn signin(
     &self,
     _payload: &crate::models::SigninUser,
     _auth_context: Option<crate::services::AuthContext>,
-  ) -> Pin<Box<dyn Future<Output = Result<Option<AuthTokens>, CoreError>> + Send>> {
-    Box::pin(async move { Err(CoreError::Internal(anyhow!("Not implemented"))) })
+  ) -> Result<Option<AuthTokens>, CoreError> {
+    Err(CoreError::Internal(anyhow!("Not implemented")))
   }
 }
 
+#[cfg(test)]
+#[async_trait]
 impl LogoutService for DummyAuthService {
-  fn logout(
-    &self,
-    _refresh_token: &str,
-  ) -> Pin<Box<dyn Future<Output = Result<(), CoreError>> + Send>> {
-    Box::pin(async move { Err(CoreError::Internal(anyhow!("Not implemented"))) })
+  async fn logout(&self, _refresh_token: &str) -> Result<(), CoreError> {
+    Err(CoreError::Internal(anyhow!("Not implemented")))
   }
 
-  fn logout_all(
-    &self,
-    _user_id: i64,
-  ) -> Pin<Box<dyn Future<Output = Result<(), CoreError>> + Send>> {
-    Box::pin(async move { Err(CoreError::Internal(anyhow!("Not implemented"))) })
+  async fn logout_all(&self, _user_id: i64) -> Result<(), CoreError> {
+    Err(CoreError::Internal(anyhow!("Not implemented")))
   }
 }
 
+#[cfg(test)]
 impl AuthServiceTrait for DummyAuthService {}

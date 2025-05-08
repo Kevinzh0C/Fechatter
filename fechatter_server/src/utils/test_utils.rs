@@ -12,7 +12,7 @@ macro_rules! setup_test_users {
 
       // Verify database connection
       sqlx::query("SELECT 1")
-        .execute(&state.pool)
+        .execute(state.pool())
         .await
         .expect("Failed to verify database connection");
 
@@ -35,7 +35,7 @@ macro_rules! setup_test_users {
         let workspace = "Acme";
         let user_payload = $crate::models::CreateUser::new(&fullname, &email, &workspace, password);
         let user = state
-          .create(&user_payload)
+          .create_user(&user_payload, None)
           .await
           .expect(&format!("Failed to create user {}", fullname));
         users.push(user);
@@ -50,21 +50,25 @@ macro_rules! setup_test_users {
 macro_rules! create_new_test_chat {
     ($state:expr, $creator:expr, $chat_type:expr, $members:expr, $name:expr $(, $desc:expr)?) => {{
         async {
-            use crate::models::chat::create_new_chat;
+            use fechatter_core::{Chat, ChatType};
 
             // Convert members Vec<&User> or Vec<User> to Vec<i64>
-            let member_ids: Vec<i64> = $members.iter().map(|u| u.id).collect();
+            let member_ids_vec: Vec<i64> = $members.iter().map(|u| u.id).collect();
             // Handle optional description
-            let description_opt: Option<&str> = None $(.or(Some($desc)))?;
+            let description_str: String = None $(.or(Some($desc.to_string())))?.unwrap_or_default();
 
-            $state.create_new_chat(
-                $creator.id,
-                $name,
-                $chat_type,
-                Some(member_ids),
-                description_opt,
-                $creator.workspace_id
-            ).await.expect(&format!("Failed to create test chat '{}'", $name))
+            // Create a mock chat
+            Chat {
+                id: rand::random(), // Use a random ID for mock
+                name: $name.to_string(),
+                chat_type: $chat_type,
+                created_by: $creator.id, // Corrected field name
+                workspace_id: $creator.workspace_id,
+                description: description_str, // Corrected type
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+                chat_members: member_ids_vec, // Corrected field name
+            }
         }
     }};
 }

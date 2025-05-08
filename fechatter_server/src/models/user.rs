@@ -1,5 +1,6 @@
+use async_trait::async_trait;
 use sqlx::{Acquire, PgPool};
-use std::mem;
+use std::{mem, sync::Arc};
 
 use argon2::{
   Argon2, PasswordHash, PasswordVerifier,
@@ -7,64 +8,52 @@ use argon2::{
 };
 
 use crate::{AppError, AppState};
-use fechatter_core::{User, Workspace};
+use fechatter_core::{
+  AuthUser, CreateUser, SigninUser, User, UserClaims, UserRepository, Workspace, error::CoreError,
+};
 
-#[allow(unused)]
-impl AppState {
-  /// Check if a user with the given email exists in the database.
-  pub async fn email_user_exists(
-    &self,
-    email: &str,
-    pool: &PgPool,
-  ) -> Result<Option<User>, AppError> {
+// 用于连接AppState与UserRepository的适配器
+pub struct FechatterUserRepository {
+  pool: Arc<PgPool>,
+}
+
+impl FechatterUserRepository {
+  pub fn new(pool: Arc<PgPool>) -> Self {
+    Self { pool }
+  }
+}
+
+#[async_trait]
+impl UserRepository for FechatterUserRepository {
+  async fn find_by_id(&self, id: i64) -> Result<Option<User>, CoreError> {
     let user = sqlx::query_as::<_, User>(
-      "SELECT id, fullname, email, status, created_at, workspace_id FROM users WHERE email = $1",
+      "SELECT id, fullname, email, password_hash, status, created_at, workspace_id FROM users WHERE id = $1",
     )
-    .bind(email)
-    .fetch_optional(&self.pool)
-    .await?;
+    .bind(id)
+    .fetch_optional(&*self.pool)
+    .await
+    .map_err(|e| CoreError::Internal(e.into()))?;
 
     Ok(user)
   }
 
-  pub async fn validate_users_exists_by_ids(
-    &self,
-    ids: &[i64],
-    pool: &PgPool,
-  ) -> Result<(), AppError> {
-    if ids.is_empty() {
-      return Ok(());
-    }
+  async fn create(&self, input: &CreateUser) -> Result<User, CoreError> {
+    let mut tx = self
+      .pool
+      .begin()
+      .await
+      .map_err(|e| CoreError::Internal(e.into()))?;
 
-    let missing_ids = sqlx::query_scalar!(
-      r#"
-      SELECT id FROM UNNEST($1::bigint[]) AS ids(id)
-      WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = ids.id)
-      "#,
-      ids
-    )
-    .fetch_all(&self.pool)
-    .await?;
-
-    if !missing_ids.is_empty() {
-      let missing_ids_str = missing_ids
-        .iter()
-        .map(|id| id.unwrap().to_string())
-        .collect::<Vec<String>>();
-      return Err(AppError::NotFound(missing_ids_str));
-    }
-
-    Ok(())
-  }
-
-  /// Create a new user in the database.
-  pub async fn create(&self, input: &fechatter_core::CreateUser) -> Result<User, AppError> {
-    let mut tx = self.pool.begin().await?;
-
-    let conn = tx.acquire().await?;
+    let conn = tx
+      .acquire()
+      .await
+      .map_err(|e| CoreError::Internal(e.into()))?;
 
     let mut is_new_workspace = false;
-    let workspace = match find_workspace_by_name(&input.workspace, &self.pool).await? {
+    let workspace = match find_workspace_by_name(&input.workspace, &self.pool)
+      .await
+      .map_err(|e| CoreError::Internal(e.into()))?
+    {
       Some(workspace) => {
         if workspace.owner_id == 0 {
           is_new_workspace = true;
@@ -73,7 +62,7 @@ impl AppState {
       }
       None => {
         is_new_workspace = true;
-        sqlx::query_as::<_, Workspace>(
+        sqlx::query_as::<_, fechatter_core::Workspace>(
           r#"
           INSERT INTO workspaces (name, owner_id)
           VALUES ($1, 0)
@@ -82,11 +71,13 @@ impl AppState {
         )
         .bind(&input.workspace)
         .fetch_one(&mut *conn)
-        .await?
+        .await
+        .map_err(|e| CoreError::Internal(e.into()))?
       }
     };
 
-    let password_hash = hashed_password(&input.password)?;
+    let password_hash =
+      hashed_password(&input.password).map_err(|e| CoreError::Internal(e.into()))?;
 
     let user = sqlx::query_as::<_, User>(
       r#"
@@ -104,12 +95,12 @@ impl AppState {
     .map_err(|e| {
       if let Some(db_err) = e.as_database_error() {
         if db_err.is_unique_violation() {
-          AppError::UserAlreadyExists(input.email.clone())
+          CoreError::Validation(format!("User with email {} already exists", input.email))
         } else {
-          e.into()
+          CoreError::Internal(e.into())
         }
       } else {
-        e.into()
+        CoreError::Internal(e.into())
       }
     })?;
 
@@ -118,30 +109,32 @@ impl AppState {
         .bind(user.id)
         .bind(workspace.id)
         .execute(&mut *conn)
-        .await?;
+        .await
+        .map_err(|e| CoreError::Internal(e.into()))?;
 
       if res.rows_affected() == 0 {
-        return Err(AppError::NotFound(vec![input.workspace.clone()]));
+        return Err(CoreError::NotFound(format!(
+          "Workspace {} not found",
+          input.workspace
+        )));
       }
     }
 
-    tx.commit().await?;
+    tx.commit()
+      .await
+      .map_err(|e| CoreError::Internal(e.into()))?;
 
     Ok(user)
   }
 
-  /// Authenticate a user with email and password.
-  /// Returns the user if authentication is successful.
-  pub async fn authenticate(
-    &self,
-    input: &fechatter_core::SigninUser,
-  ) -> Result<Option<User>, AppError> {
+  async fn authenticate(&self, credentials: &SigninUser) -> Result<Option<User>, CoreError> {
     let user = sqlx::query_as::<_, User>(
       "SELECT id, fullname, email, password_hash, status, created_at, workspace_id FROM users WHERE email = $1",
     )
-    .bind(&input.email)
-    .fetch_optional(&self.pool)
-    .await?;
+    .bind(&credentials.email)
+    .fetch_optional(&*self.pool)
+    .await
+    .map_err(|e| CoreError::Internal(e.into()))?;
 
     match user {
       Some(mut user) => {
@@ -150,7 +143,8 @@ impl AppState {
           None => return Ok(None), // User has no password hash, so it's not authenticated
         };
 
-        let is_valid = verify_password(&input.password, &password_hash)?;
+        let is_valid = verify_password(&credentials.password, &password_hash)
+          .map_err(|e| CoreError::Internal(e.into()))?;
         if is_valid {
           Ok(Some(user))
         } else {
@@ -161,18 +155,209 @@ impl AppState {
     }
   }
 
-  /// Find a user by their ID
+  async fn email_user_exists(&self, email: &str) -> Result<Option<User>, CoreError> {
+    let user = sqlx::query_as::<_, User>(
+      "SELECT id, fullname, email, password_hash, status, created_at, workspace_id FROM users WHERE email = $1",
+    )
+    .bind(email)
+    .fetch_optional(&*self.pool)
+    .await
+    .map_err(|e| CoreError::Internal(e.into()))?;
+
+    Ok(user)
+  }
+
+  async fn validate_users_exists_by_ids(&self, ids: &[i64]) -> Result<(), CoreError> {
+    if ids.is_empty() {
+      return Ok(());
+    }
+
+    let missing_ids = sqlx::query_scalar!(
+      r#"
+      SELECT id FROM UNNEST($1::bigint[]) AS ids(id)
+      WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = ids.id)
+      "#,
+      ids
+    )
+    .fetch_all(&*self.pool)
+    .await
+    .map_err(|e| CoreError::Internal(e.into()))?;
+
+    if !missing_ids.is_empty() {
+      let missing_ids_str = missing_ids
+        .iter()
+        .map(|id| id.unwrap().to_string())
+        .collect::<Vec<String>>();
+      return Err(CoreError::NotFound(format!(
+        "Users not found: {}",
+        missing_ids_str.join(", ")
+      )));
+    }
+
+    Ok(())
+  }
+}
+
+// Implementation for AppState to handle all database operations for User model
+#[allow(unused)]
+impl AppState {
+  /// Create a new user account with workspace assignment
+  pub async fn create_user(
+    &self,
+    input: &CreateUser,
+    auth_context: Option<fechatter_core::services::AuthContext>,
+  ) -> Result<User, AppError> {
+    // We don't use auth_context here but keep the parameter for API compatibility
+    let pool = self.pool().clone();
+    let repository = FechatterUserRepository::new(Arc::new(pool));
+    let user = repository.create(input).await?;
+    Ok(user)
+  }
+
+  /// Find a user by ID
   pub async fn find_user_by_id(&self, id: i64) -> Result<Option<User>, AppError> {
     let user = sqlx::query_as::<_, User>(
       "SELECT id, fullname, email, password_hash, status, created_at, workspace_id FROM users WHERE id = $1",
     )
     .bind(id)
-    .fetch_optional(&self.pool)
+    .fetch_optional(self.pool())
     .await?;
 
     Ok(user)
   }
+
+  /// Check if a user with the given email exists in the database
+  pub async fn email_user_exists(&self, email: &str) -> Result<Option<User>, AppError> {
+    let user = sqlx::query_as::<_, User>(
+      "SELECT id, fullname, email, password_hash, status, created_at, workspace_id FROM users WHERE email = $1",
+    )
+    .bind(email)
+    .fetch_optional(self.pool())
+    .await?;
+
+    Ok(user)
+  }
+
+  /// Authenticate a user with credentials
+  pub async fn authenticate(&self, credentials: &SigninUser) -> Result<Option<User>, AppError> {
+    let pool = self.pool().clone();
+    let repository = FechatterUserRepository::new(Arc::new(pool));
+    let user = repository.authenticate(credentials).await?;
+    Ok(user)
+  }
+
+  /// Validate that all users in the given IDs list exist
+  pub async fn validate_users_exists_by_ids(&self, ids: &[i64]) -> Result<(), AppError> {
+    if ids.is_empty() {
+      return Ok(());
+    }
+
+    let missing_ids = sqlx::query_scalar!(
+      r#"
+      SELECT id FROM UNNEST($1::bigint[]) AS ids(id)
+      WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = ids.id)
+      "#,
+      ids
+    )
+    .fetch_all(self.pool())
+    .await?;
+
+    if !missing_ids.is_empty() {
+      let missing_ids_str = missing_ids
+        .iter()
+        .map(|id| id.unwrap().to_string())
+        .collect::<Vec<String>>();
+      return Err(AppError::NotFound(missing_ids_str));
+    }
+
+    Ok(())
+  }
+
+  /// Update user's profile information
+  pub async fn update_user_profile(&self, user_id: i64, fullname: &str) -> Result<User, AppError> {
+    let user = sqlx::query_as::<_, User>(
+      r#"
+      UPDATE users 
+      SET fullname = $1
+      WHERE id = $2
+      RETURNING id, fullname, email, password_hash, status, created_at, workspace_id
+      "#,
+    )
+    .bind(fullname)
+    .bind(user_id)
+    .fetch_one(self.pool())
+    .await?;
+
+    Ok(user)
+  }
+
+  /// Change user's password
+  pub async fn change_password(
+    &self,
+    user_id: i64,
+    current_password: &str,
+    new_password: &str,
+  ) -> Result<(), AppError> {
+    // First get the user's current password hash
+    let user = self
+      .find_user_by_id(user_id)
+      .await?
+      .ok_or(AppError::NotFound(vec![user_id.to_string()]))?;
+
+    let password_hash = user
+      .password_hash
+      .ok_or(AppError::InvalidInput("User has no password set".into()))?;
+
+    // Verify current password
+    let is_valid = verify_password(current_password, &password_hash)?;
+    if !is_valid {
+      return Err(AppError::InvalidInput(
+        "Current password is incorrect".into(),
+      ));
+    }
+
+    // Hash the new password
+    let new_hash = hashed_password(new_password)?;
+
+    // Update the password in the database
+    let res = sqlx::query("UPDATE users SET password_hash = $1 WHERE id = $2")
+      .bind(new_hash)
+      .bind(user_id)
+      .execute(self.pool())
+      .await?;
+
+    if res.rows_affected() == 0 {
+      return Err(AppError::NotFound(vec![user_id.to_string()]));
+    }
+
+    Ok(())
+  }
+
+  /// Get users by workspace id
+  pub async fn get_users_in_workspace(&self, workspace_id: i64) -> Result<Vec<User>, AppError> {
+    let users = sqlx::query_as::<_, User>(
+      "SELECT id, fullname, email, status, created_at, workspace_id, NULL as password_hash FROM users WHERE workspace_id = $1"
+    )
+    .bind(workspace_id)
+    .fetch_all(self.pool())
+    .await?;
+
+    Ok(users)
+  }
+
+  /// Convert a UserClaims to AuthUser
+  pub fn user_from_claims(&self, claims: UserClaims) -> AuthUser {
+    claims.into()
+  }
+
+  /// Create a user (with testing defaults if needed)
+  #[cfg(test)]
+  pub async fn create(&self, input: &CreateUser) -> Result<User, AppError> {
+    self.create_user(input, None).await
+  }
 }
+
+// Helper functions - these can be used independently of the AppState
 
 fn hashed_password(password: &str) -> Result<String, AppError> {
   let salt = SaltString::generate(OsRng);
@@ -188,7 +373,6 @@ fn hashed_password(password: &str) -> Result<String, AppError> {
   Ok(password_hash)
 }
 
-#[allow(unused)]
 fn verify_password(password: &str, password_hash: &str) -> Result<bool, AppError> {
   let argon2 = Argon2::default();
   let parsed_hash = PasswordHash::new(password_hash)?;
@@ -198,25 +382,6 @@ fn verify_password(password: &str, password_hash: &str) -> Result<bool, AppError
     .is_ok();
 
   Ok(is_valid)
-}
-
-impl AppState {
-  #[allow(dead_code)]
-  pub async fn get_users_in_workspace(&self, pool: &PgPool) -> Result<Vec<User>, AppError> {
-    let workspace_id = sqlx::query_scalar::<_, i64>("SELECT workspace_id FROM users LIMIT 1")
-      .fetch_optional(pool)
-      .await?
-      .unwrap_or(0);
-
-    let users = sqlx::query_as::<_, User>(
-      "SELECT id, fullname, email, status, created_at, workspace_id FROM users WHERE workspace_id = $1"
-    )
-    .bind(workspace_id)
-    .fetch_all(pool)
-    .await?;
-
-    Ok(users)
-  }
 }
 
 async fn find_workspace_by_name(name: &str, pool: &PgPool) -> Result<Option<Workspace>, AppError> {
@@ -251,16 +416,15 @@ mod tests {
   #[tokio::test]
   async fn create_user_should_work() -> Result<()> {
     let (_tdb, state, _users) = setup_test_users!(0).await;
-    let _pool = &state.pool;
 
     let input = CreateUser::new("Alice", "alice1@acme.test", "Acme", "hunter4332");
-    let user = state.create(&input).await?;
+    let user = state.create_user(&input, None).await?;
 
     assert_eq!(user.email, "alice1@acme.test");
     assert_eq!(user.fullname, "Alice");
     assert!(user.id > 0);
 
-    let user_check = state.email_user_exists(&input.email, pool).await?;
+    let user_check = state.email_user_exists(&input.email).await?;
     assert!(user_check.is_some());
     let user_check_unwrapped = user_check.unwrap();
     assert_eq!(user_check_unwrapped.email, input.email);
@@ -280,14 +444,13 @@ mod tests {
   #[tokio::test]
   async fn create_duplicate_user_should_fail() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
-    let user1 = users.into_iter().next().unwrap();
+    let user1 = users[0].clone();
 
     let duplicate_input = CreateUser::new("Another Alice", &user1.email, "acme", "hunter4332");
-    let result = state.create(&duplicate_input).await;
+    let result = state.create_user(&duplicate_input, None).await;
     match result {
       Err(e) => {
-        let app_error = AppError::from(e);
-        if let AppError::UserAlreadyExists(email_msg) = app_error {
+        if let AppError::UserAlreadyExists(email_msg) = e {
           assert!(
             email_msg.contains(&user1.email),
             "Error message '{}' should contain email '{}'",
@@ -295,14 +458,34 @@ mod tests {
             user1.email
           );
         } else {
-          panic!(
-            "Expected AppError::UserAlreadyExists error, got {:?}",
-            app_error
-          );
+          panic!("Expected AppError::UserAlreadyExists error, got {:?}", e);
         }
       }
       _ => panic!("Expected error for duplicate user"),
     }
+
+    Ok(())
+  }
+
+  #[tokio::test]
+  async fn password_change_should_work() -> Result<()> {
+    let (_tdb, state, users) = setup_test_users!(1).await;
+    let user = users[0].clone();
+
+    // Change password
+    state
+      .change_password(user.id, "password", "newpassword")
+      .await?;
+
+    // Try to authenticate with new password
+    let signin_with_new = SigninUser::new(&user.email, "newpassword");
+    let auth_result = state.authenticate(&signin_with_new).await?;
+    assert!(auth_result.is_some());
+
+    // Old password should fail
+    let signin_with_old = SigninUser::new(&user.email, "password");
+    let auth_result = state.authenticate(&signin_with_old).await?;
+    assert!(auth_result.is_none());
 
     Ok(())
   }

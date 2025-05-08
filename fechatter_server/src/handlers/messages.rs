@@ -27,13 +27,7 @@ pub(crate) async fn send_message_handler(
   Json(message): Json<CreateMessage>,
 ) -> Result<impl IntoResponse, AppError> {
   // Convert core CreateMessage to server CreateMessage
-  let server_message = crate::models::ServerCreateMessage {
-    content: message.content,
-    files: message.files,
-  };
-  let message = state
-    .create_message(server_message, chat_id, user.id)
-    .await?;
+  let message = state.create_message(message, chat_id, user.id).await?;
 
   Ok((StatusCode::CREATED, Json(message)))
 }
@@ -50,7 +44,7 @@ pub(crate) async fn list_messages_handler(
     chat_id,
     user.id
   )
-  .fetch_one(&state.pool)
+  .fetch_one(state.pool())
   .await?;
 
   if !is_member.unwrap_or(false) {
@@ -277,7 +271,6 @@ fn check_file_size(size: usize, filename: &str, max_size: usize) -> Result<(), A
   if size > max_size {
     return Err(AppError::InvalidInput(format!(
       "File '{}' too large: {} bytes (max: {} bytes)",
-      filename, size, max_size
       filename, size, max_size
     )));
   }
@@ -729,7 +722,6 @@ pub(crate) async fn fix_file_storage_handler(
 mod tests {
   use super::*;
 
-  use crate::models::chat::create_new_chat;
   use crate::setup_test_users;
   use axum::extract::FromRequest;
   use axum::http::StatusCode;
@@ -932,7 +924,7 @@ mod tests {
     let workspace = "TestWorkspace".to_string();
     let user_payload = crate::models::CreateUser::new(&fullname, &email, &workspace, "password");
     let user = state
-      .create(&user_payload)
+      .create_user(&user_payload, None)
       .await
       .expect("Failed to create test user");
     users.push(user);
@@ -1027,7 +1019,7 @@ mod tests {
     let workspace = "TestWorkspace".to_string();
     let user_payload = crate::models::CreateUser::new(&fullname, &email, &workspace, "password");
     let user = state
-      .create(&user_payload)
+      .create_user(&user_payload, None)
       .await
       .expect("Failed to create test user");
     users.push(user);
@@ -1192,17 +1184,17 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(10).await;
     let user1 = &users[0];
 
-    let chat = create_new_chat(
-      &state,
-      user1.id,
-      "Large Message Test",
-      fechatter_core::ChatType::Group,
-      Some(users.iter().map(|u| u.id).collect()),
-      Some("Chat for testing large message volumes"),
-      user1.workspace_id,
-    )
-    .await
-    .expect("Failed to create chat");
+    let chat = state
+      .create_new_chat(
+        user1.id,
+        "Large Message Test",
+        fechatter_core::ChatType::Group,
+        Some(users.iter().map(|u| u.id).collect()),
+        Some("Chat for testing large message volumes"),
+        user1.workspace_id,
+      )
+      .await
+      .expect("Failed to create chat");
 
     info!("Created test chat successfully, ID: {}", chat.id);
 
@@ -1215,7 +1207,7 @@ mod tests {
     for i in 0..MESSAGE_COUNT {
       let sender = &users[i % users.len()];
 
-      let message_payload = crate::models::ServerCreateMessage {
+      let message_payload = crate::models::CreateMessage {
         content: format!("Test message #{} from {}", i, sender.fullname),
         files: vec![],
       };
