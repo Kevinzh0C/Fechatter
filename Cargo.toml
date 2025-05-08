@@ -11,7 +11,7 @@ tokio = { version = "1.32", features = [
   "fs",
   "io-util",
 ] }
-tokio-stream = "0.1.17"
+tokio-stream = { version = "0.1.17", features = ["sync"] }
 axum = { version = "0.8.3", features = [
   "http2",
   "query",
@@ -53,4 +53,5 @@ sha1 = "0.10.6"
 sha2 = "0.10.7"
 hex = "0.4.3"
 rand = "0.9.1"
+dashmap = { version = "6.1.0" }
 fechatter_core = { path = "./fechatter_core" }

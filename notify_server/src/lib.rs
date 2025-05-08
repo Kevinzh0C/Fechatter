@@ -1,56 +1,95 @@
+mod config;
+mod error;
+mod notify;
 mod sse;
 
+use std::{ops::Deref, sync::Arc};
+
 use anyhow::Result;
-use app_state::NotifyState;
 use axum::{
   Router,
+  middleware::from_fn_with_state,
   response::{Html, IntoResponse},
   routing::get,
 };
-use fechatter_core::models::{Chat, ChatMember, Message};
-use futures::StreamExt;
-use sqlx::postgres::PgListener;
+use config::AppConfig;
+use dashmap::DashMap;
+use error::NotifyError;
+use fechatter_core::{
+  ErrorMapper, TokenManager, TokenVerifier, UserClaims, middlewares::verify_token_middleware,
+};
+
+pub use notify::*;
 use sse::sse_handler;
-use tracing::info;
+use tokio::sync::broadcast;
+
+type UserMap = Arc<DashMap<i64, broadcast::Sender<Arc<NotifyEvent>>>>;
+
+#[derive(Clone)]
+pub struct AppState {
+  inner: Arc<AppStateInner>,
+}
+
+#[derive(Clone)]
+pub struct AppStateInner {
+  config: AppConfig,
+  users: UserMap,
+  token_manager: TokenManager,
+}
 
 const INDEX_HTML: &str = include_str!("../index.html");
 
-pub enum NotifyEvent {
-  NewChat(Chat),
-  AddToChat(ChatMember),
-  RemoveFromChat(ChatMember),
-  NewMessage(Message),
-}
-
-pub fn get_router(state: NotifyState) -> Router {
-  let state_clone = state.clone();
-  Router::new()
+pub fn get_router() -> (Router, AppState) {
+  let config = AppConfig::load().expect("Failed to load config");
+  let state = AppState::new(config).expect("Failed to create app state");
+  let app = Router::new()
+    .route("/events", get(sse_handler))
+    .layer(from_fn_with_state(
+      state.clone(),
+      verify_token_middleware::<AppState>,
+    ))
     .route("/", get(index_handler))
-    .route(
-      "/events",
-      get(move |req| sse_handler(state_clone.clone(), req)),
-    )
-    .with_state(state)
+    .with_state(state.clone());
+
+  (app, state)
 }
 
 async fn index_handler() -> impl IntoResponse {
   Html(INDEX_HTML)
 }
 
-pub async fn set_up_pg_listener() -> Result<()> {
-  let mut listener =
-    PgListener::connect("postgres://postgres:postgres@localhost:5432/fechatter").await?;
+impl TokenVerifier for AppState {
+  type Claims = UserClaims;
+  type Error = NotifyError;
 
-  listener.listen("chat_updated").await?;
-  listener.listen("message_created").await?;
+  fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error> {
+    self
+      .inner
+      .token_manager
+      .verify_token(token)
+      .map_err(NotifyError::map_error)
+  }
+}
 
-  let mut stream = listener.into_stream();
+impl Deref for AppState {
+  type Target = AppStateInner;
 
-  tokio::spawn(async move {
-    while let Some(Ok(notification)) = stream.next().await {
-      info!("event: {:?}", notification);
-    }
-  });
+  fn deref(&self) -> &Self::Target {
+    &self.inner
+  }
+}
 
-  Ok(())
+impl AppState {
+  pub fn new(config: AppConfig) -> Result<Self, anyhow::Error> {
+    let users = Arc::new(DashMap::new());
+    let token_manager = TokenManager::new(&config.auth)?;
+
+    Ok(Self {
+      inner: Arc::new(AppStateInner {
+        config,
+        users,
+        token_manager,
+      }),
+    })
+  }
 }

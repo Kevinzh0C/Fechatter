@@ -40,7 +40,7 @@ pub(crate) async fn list_messages_handler(
 ) -> Result<impl IntoResponse, AppError> {
   // Verify user is a member of the chat
   let is_member = sqlx::query_scalar!(
-    "SELECT EXISTS(SELECT 1 FROM chat_members_relation WHERE chat_id = $1 AND user_id = $2)",
+    "SELECT EXISTS(SELECT 1 FROM chat_members WHERE chat_id = $1 AND user_id = $2)",
     chat_id,
     user.id
   )

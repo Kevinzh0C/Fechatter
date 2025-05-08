@@ -21,12 +21,12 @@ pub fn chat_member_from_row(row: &PgRow) -> Result<ChatMember, AppError> {
 
 fn member_insert_query(with_conflict_handling: bool) -> &'static str {
   if with_conflict_handling {
-    "INSERT INTO chat_members_relation (chat_id, user_id)
+    "INSERT INTO chat_members (chat_id, user_id)
        VALUES ($1, $2)
        ON CONFLICT (chat_id, user_id) DO NOTHING
        RETURNING chat_id, user_id, joined_at"
   } else {
-    "INSERT INTO chat_members_relation (chat_id, user_id)
+    "INSERT INTO chat_members (chat_id, user_id)
        VALUES ($1, $2)
        RETURNING chat_id, user_id, joined_at"
   }
@@ -130,7 +130,7 @@ impl AppState {
     let added_members = sqlx::query_as!(
       ChatMember,
       r#"
-      INSERT INTO chat_members_relation (chat_id, user_id)
+      INSERT INTO chat_members (chat_id, user_id)
       SELECT $1, user_id_to_add
       FROM UNNEST($2::bigint[]) AS t(user_id_to_add)
       ON CONFLICT (chat_id, user_id) DO NOTHING
@@ -190,7 +190,7 @@ impl AppState {
 
     // 2. Fetch current member count
     let current_member_count = sqlx::query_scalar!(
-      "SELECT COUNT(*) FROM chat_members_relation WHERE chat_id = $1",
+      "SELECT COUNT(*) FROM chat_members WHERE chat_id = $1",
       chat_id
     )
     .fetch_one(self.pool())
@@ -215,7 +215,7 @@ impl AppState {
     // --- Minimum Member Check (Potentially combined with deletion later if using CTEs) ---
     // Fetching count separately for now to maintain clarity without complex SQL yet.
     let actual_members_to_remove = sqlx::query_scalar!(
-      "SELECT user_id FROM chat_members_relation WHERE chat_id = $1 AND user_id = ANY($2)",
+      "SELECT user_id FROM chat_members WHERE chat_id = $1 AND user_id = ANY($2)",
       chat_id,
       &target_member_ids
     )
@@ -247,7 +247,7 @@ impl AppState {
     // --- Execute Batch Deletion and Get Actually Deleted IDs ---
     let deleted_ids = sqlx::query_scalar!(
       r#"
-      DELETE FROM chat_members_relation
+      DELETE FROM chat_members
       WHERE chat_id = $1 AND user_id = ANY($2::bigint[])
       RETURNING user_id
       "#,
@@ -290,7 +290,7 @@ impl AppState {
         chat_id,
         user_id,
         joined_at
-      FROM chat_members_relation
+      FROM chat_members
       WHERE chat_id = $1
       ORDER BY joined_at ASC
       "#,
@@ -322,7 +322,7 @@ impl AppState {
     let result = sqlx::query!(
       r#"
       SELECT EXISTS(
-        SELECT 1 FROM chat_members_relation
+        SELECT 1 FROM chat_members
         WHERE user_id = $1 AND chat_id = $2
       ) as "exists!"
       "#,
@@ -368,7 +368,7 @@ impl AppState {
     let result = sqlx::query!(
       r#"
       SELECT COUNT(*) as "count!"
-      FROM chat_members_relation
+      FROM chat_members
       WHERE chat_id = $1
       "#,
       chat_id
@@ -478,7 +478,7 @@ impl AppState {
   }
 }
 
-pub(crate) async fn insert_chat_members_relation(
+pub(crate) async fn insert_chat_members(
   chat_id: i64,
   chat_members: &[i64],
   tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,

@@ -203,6 +203,34 @@ impl Claims {
 }
 
 impl TokenManager {
+  pub fn new<C: TokenConfigProvider>(config: &C) -> Result<Self, CoreError> {
+    let mut validation = Validation::new(Algorithm::EdDSA);
+    validation.leeway = config.get_jwt_leeway();
+    validation.reject_tokens_expiring_in_less_than = 300;
+    validation.set_required_spec_claims(&["exp", "iss", "aud", "sub"]);
+    validation.validate_aud = true;
+    if let Some(aud) = config.get_jwt_audience() {
+      validation.set_audience(&[aud]);
+    }
+    if let Some(iss) = config.get_jwt_issuer() {
+      validation.set_issuer(&[iss]);
+    }
+
+    let sk_pem = config.get_encoding_key_pem().replace("\\n", "\n");
+    let pk_pem = config.get_decoding_key_pem().replace("\\n", "\n");
+
+    let refresh_token_repo = Arc::new(DummyRefreshTokenRepository);
+
+    Ok(Self {
+      encoding_key: EncodingKey::from_ed_pem(sk_pem.as_bytes())
+        .map_err(|e| CoreError::Internal(e.into()))?,
+      decoding_key: DecodingKey::from_ed_pem(pk_pem.as_bytes())
+        .map_err(|e| CoreError::Internal(e.into()))?,
+      validation,
+      refresh_token_repo,
+    })
+  }
+
   pub fn from_config<C: TokenConfigProvider>(
     config: &C,
     refresh_token_repo: Arc<dyn RefreshTokenRepository + Send + Sync>,
@@ -330,5 +358,54 @@ impl MwTokenVerifier for TokenManager {
 
   fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error> {
     self.internal_verify_token(token)
+  }
+}
+
+struct DummyRefreshTokenRepository;
+
+#[async_trait]
+impl RefreshTokenRepository for DummyRefreshTokenRepository {
+  async fn find_by_token(&self, _raw_token: &str) -> Result<Option<RefreshToken>, CoreError> {
+    Ok(None)
+  }
+
+  async fn replace(&self, payload: ReplaceTokenPayload) -> Result<RefreshToken, CoreError> {
+    let now = Utc::now();
+    Ok(RefreshToken {
+      id: 1,
+      user_id: 1,
+      token_hash: payload.new_raw_token,
+      expires_at: payload.new_expires_at,
+      issued_at: now,
+      revoked: false,
+      replaced_by: None,
+      user_agent: payload.user_agent,
+      ip_address: payload.ip_address,
+      absolute_expires_at: payload.new_absolute_expires_at,
+    })
+  }
+
+  async fn revoke(&self, _token_id: i64) -> Result<(), CoreError> {
+    Ok(())
+  }
+
+  async fn revoke_all_for_user(&self, _user_id: i64) -> Result<(), CoreError> {
+    Ok(())
+  }
+
+  async fn create(&self, payload: StoreTokenPayload) -> Result<RefreshToken, CoreError> {
+    let now = Utc::now();
+    Ok(RefreshToken {
+      id: 1,
+      user_id: payload.user_id,
+      token_hash: payload.raw_token,
+      expires_at: payload.expires_at,
+      issued_at: now,
+      revoked: false,
+      replaced_by: None,
+      user_agent: payload.user_agent,
+      ip_address: payload.ip_address,
+      absolute_expires_at: payload.absolute_expires_at,
+    })
   }
 }

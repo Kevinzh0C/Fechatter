@@ -98,16 +98,16 @@ impl Parse for AllRules {
     let mut initial_state = None;
     let mut helper_functions = true;
     let mut router_ext = true;
-    
+
     // Parse optional configuration
     if input.peek(Ident) && input.parse::<Ident>().unwrap() == "config" {
       let content_config;
       parenthesized!(content_config in input);
-      
+
       while !content_config.is_empty() {
         let key: Ident = content_config.parse()?;
         content_config.parse::<Token![=]>()?;
-        
+
         if key == "initial_state" {
           initial_state = Some(content_config.parse()?);
         } else if key == "helper_functions" {
@@ -115,17 +115,17 @@ impl Parse for AllRules {
         } else if key == "router_ext" {
           router_ext = content_config.parse::<syn::LitBool>()?.value;
         }
-        
+
         if content_config.peek(Token![,]) {
           content_config.parse::<Token![,]>()?;
         }
       }
-      
+
       if input.peek(Token![,]) {
         input.parse::<Token![,]>()?;
       }
     }
-    
+
     // Parse rules
     while !input.is_empty() {
       rules.push(input.parse::<StateTransitionRule>()?);
@@ -135,8 +135,8 @@ impl Parse for AllRules {
         break;
       }
     }
-    
-    Ok(AllRules { 
+
+    Ok(AllRules {
       rules,
       initial_state,
       helper_functions,
@@ -178,19 +178,19 @@ pub fn middleware_builder(args: TokenStream, input: TokenStream) -> TokenStream 
 
   // Check if we need to define the initial state
   let needs_initial_state_def = !state_names.contains(&initial_state_marker);
-  
+
   // Add initial state to the collection if not already present
   if needs_initial_state_def {
     state_names.insert(initial_state_marker.clone());
   }
-  
+
   // Now create the actual quote tokens after all state collection is done
   let state_marker_structs = state_names.iter().map(|state_name| {
     quote! {
       #visibility struct #state_name;
     }
   });
-  
+
   // Define the default initial state quote
   let default_initial_state_def = if needs_initial_state_def {
     quote! { #visibility struct #initial_state_marker; }
@@ -204,7 +204,7 @@ pub fn middleware_builder(args: TokenStream, input: TokenStream) -> TokenStream 
     let from_state = rule.current_state.clone();
     let to_state = rule.new_state.clone();
     let method = rule.method_name.clone();
-    
+
     state_graph
       .entry(from_state)
       .or_insert_with(Vec::new)
@@ -235,7 +235,7 @@ pub fn middleware_builder(args: TokenStream, input: TokenStream) -> TokenStream 
           _state_marker: std::marker::PhantomData::<#initial_state_marker>,
         }
       }
-      
+
       // Always provide build() method
       #visibility fn build(self) -> axum::Router<S> {
         self.router
@@ -265,8 +265,8 @@ pub fn middleware_builder(args: TokenStream, input: TokenStream) -> TokenStream 
         }
       }
     });
-    
-    quote! { 
+
+    quote! {
       #(#middleware_helpers)*
     }
   } else {
@@ -276,7 +276,7 @@ pub fn middleware_builder(args: TokenStream, input: TokenStream) -> TokenStream 
   // Generate impl blocks for all state transitions
   let mut transition_impls = Vec::new();
   transition_impls.push(constructor_impl);
-  
+
   // Group transitions by current state
   let mut transitions_by_state: HashMap<Ident, Vec<&StateTransitionRule>> = HashMap::new();
   for rule in &rules_ast.rules {
@@ -285,7 +285,7 @@ pub fn middleware_builder(args: TokenStream, input: TokenStream) -> TokenStream 
       .or_insert_with(Vec::new)
       .push(rule);
   }
-  
+
   // Generate impl blocks for each state with its transitions
   for (state, transitions) in transitions_by_state {
     // Generate methods for this state
@@ -293,12 +293,12 @@ pub fn middleware_builder(args: TokenStream, input: TokenStream) -> TokenStream 
       let method_name = &rule.method_name;
       let new_state = &rule.new_state;
       let middleware_path = &rule.middleware_path;
-      
+
       quote! {
         #visibility fn #method_name(self) -> #builder_name<S, T, #new_state> {
           // Use the helper function to add the middleware
           let router = #middleware_path(self.router, self.state.clone());
-          
+
           #builder_name {
             router,
             state: self.state,
@@ -307,7 +307,7 @@ pub fn middleware_builder(args: TokenStream, input: TokenStream) -> TokenStream 
         }
       }
     });
-    
+
     // Generate impl block for this state
     let impl_block = quote! {
       impl<S, T> #builder_name<S, T, #state>
@@ -316,14 +316,14 @@ pub fn middleware_builder(args: TokenStream, input: TokenStream) -> TokenStream 
         T: Clone + Send + Sync + 'static,
       {
         #(#transition_methods)*
-        
+
         // Always provide build() method
         #visibility fn build(self) -> axum::Router<S> {
           self.router
         }
       }
     };
-    
+
     transition_impls.push(impl_block);
   }
 
@@ -337,7 +337,7 @@ pub fn middleware_builder(args: TokenStream, input: TokenStream) -> TokenStream 
           state: T,
         ) -> #builder_name<S, T, #initial_state_marker>;
       }
-      
+
       impl<S, T> RouterExt<S, T> for axum::Router<S>
       where
         // Base router constraints
@@ -365,9 +365,9 @@ pub fn middleware_builder(args: TokenStream, input: TokenStream) -> TokenStream 
     #generated_builder_struct
 
     #helper_functions
-    
+
     #(#transition_impls)*
-    
+
     #router_ext_impl
   };
 

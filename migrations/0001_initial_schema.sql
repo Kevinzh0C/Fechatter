@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 -- Create chat_members table for chat members
-CREATE TABLE IF NOT EXISTS  chat_members_relation (
+CREATE TABLE IF NOT EXISTS chat_members (
     chat_id BIGSERIAL NOT NULL REFERENCES chats(id),
     user_id BIGINT NOT NULL REFERENCES users(id),
     joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

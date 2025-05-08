@@ -239,8 +239,7 @@ impl AppState {
       })?;
 
     let chat_id = chat.id;
-    crate::models::chat_member::insert_chat_members_relation(chat_id, &chat_members, &mut tx)
-      .await?;
+    crate::models::chat_member::insert_chat_members(chat_id, &chat_members, &mut tx).await?;
 
     tx.commit().await?;
 
@@ -341,12 +340,9 @@ impl AppState {
       )));
     }
 
-    sqlx::query!(
-      "DELETE FROM chat_members_relation WHERE chat_id = $1",
-      chat_id
-    )
-    .execute(&mut **tx)
-    .await?;
+    sqlx::query!("DELETE FROM chat_members WHERE chat_id = $1", chat_id)
+      .execute(&mut **tx)
+      .await?;
 
     let result = sqlx::query!("DELETE FROM chats WHERE id = $1", chat_id)
       .execute(&mut **tx)

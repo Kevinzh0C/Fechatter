@@ -191,9 +191,21 @@ impl RefreshTokenService for DummyAuthService {
   async fn refresh_token(
     &self,
     _refresh_token: &str,
-    _auth_context: Option<crate::services::AuthContext>,
+    auth_context: Option<crate::services::AuthContext>,
   ) -> Result<AuthTokens, CoreError> {
-    Err(CoreError::Internal(anyhow!("Not implemented")))
+    let now = chrono::Utc::now();
+    let expires_at = now + chrono::Duration::days(7);
+    let absolute_expires_at = now + chrono::Duration::days(30);
+
+    // 创建基本的模拟令牌
+    Ok(AuthTokens {
+      access_token: "mock-access-token-for-test".to_string(),
+      refresh_token: crate::models::jwt::RefreshTokenData {
+        token: "mock-refresh-token-for-test".to_string(),
+        expires_at,
+        absolute_expires_at,
+      },
+    })
   }
 }
 
@@ -202,10 +214,22 @@ impl RefreshTokenService for DummyAuthService {
 impl SignupService for DummyAuthService {
   async fn signup(
     &self,
-    _payload: &crate::models::CreateUser,
-    _auth_context: Option<crate::services::AuthContext>,
+    payload: &crate::models::CreateUser,
+    auth_context: Option<crate::services::AuthContext>,
   ) -> Result<AuthTokens, CoreError> {
-    Err(CoreError::Internal(anyhow!("Not implemented")))
+    // 简单地创建一个基本的模拟令牌
+    let now = chrono::Utc::now();
+    let expires_at = now + chrono::Duration::days(7);
+    let absolute_expires_at = now + chrono::Duration::days(30);
+
+    Ok(AuthTokens {
+      access_token: "mock-access-token-for-test".to_string(),
+      refresh_token: crate::models::jwt::RefreshTokenData {
+        token: "mock-refresh-token-for-test".to_string(),
+        expires_at,
+        absolute_expires_at,
+      },
+    })
   }
 }
 
@@ -214,10 +238,27 @@ impl SignupService for DummyAuthService {
 impl SigninService for DummyAuthService {
   async fn signin(
     &self,
-    _payload: &crate::models::SigninUser,
-    _auth_context: Option<crate::services::AuthContext>,
+    payload: &crate::models::SigninUser,
+    auth_context: Option<crate::services::AuthContext>,
   ) -> Result<Option<AuthTokens>, CoreError> {
-    Err(CoreError::Internal(anyhow!("Not implemented")))
+    // 模拟成功登录
+    let now = chrono::Utc::now();
+    let expires_at = now + chrono::Duration::days(7);
+    let absolute_expires_at = now + chrono::Duration::days(30);
+
+    // 如果是测试用户名"nonexistent@acme.test"，返回None
+    if payload.email == "nonexistent@acme.test" {
+      return Ok(None);
+    }
+
+    Ok(Some(AuthTokens {
+      access_token: "mock-access-token-for-test".to_string(),
+      refresh_token: crate::models::jwt::RefreshTokenData {
+        token: "mock-refresh-token-for-test".to_string(),
+        expires_at,
+        absolute_expires_at,
+      },
+    }))
   }
 }
 
@@ -225,11 +266,13 @@ impl SigninService for DummyAuthService {
 #[async_trait]
 impl LogoutService for DummyAuthService {
   async fn logout(&self, _refresh_token: &str) -> Result<(), CoreError> {
-    Err(CoreError::Internal(anyhow!("Not implemented")))
+    // 简单地返回成功
+    Ok(())
   }
 
   async fn logout_all(&self, _user_id: i64) -> Result<(), CoreError> {
-    Err(CoreError::Internal(anyhow!("Not implemented")))
+    // 简单地返回成功
+    Ok(())
   }
 }
 

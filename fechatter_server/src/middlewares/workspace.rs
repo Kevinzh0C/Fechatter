@@ -57,8 +57,38 @@ pub async fn with_workspace_context(
   // Find workspace
   let workspace = match state.find_by_id_with_pool(auth_user.workspace_id).await {
     Ok(Some(workspace)) => workspace,
-    Ok(None) => return StatusCode::NOT_FOUND.into_response(),
-    Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    Ok(None) => {
+      // 工作区不存在，可能是数据错误
+      // 为调试目的，打印更多信息
+      tracing::error!(
+        "Workspace ID {} not found for user {} (email: {})",
+        auth_user.workspace_id,
+        auth_user.id,
+        auth_user.email
+      );
+
+      // 允许继续请求，使用空的工作区上下文
+      let workspace = Workspace {
+        id: auth_user.workspace_id,
+        name: "Default".to_string(),
+        owner_id: auth_user.id,
+        created_at: chrono::Utc::now(),
+      };
+
+      // 尝试创建这个工作区以修复问题
+      if let Err(e) = state
+        .create_workspace_with_pool(&workspace.name, auth_user.id)
+        .await
+      {
+        tracing::warn!("Failed to create workspace: {:?}", e);
+      }
+
+      workspace
+    }
+    Err(e) => {
+      tracing::error!("Database error when finding workspace: {:?}", e);
+      return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    }
   };
 
   // Add workspace context to request extensions

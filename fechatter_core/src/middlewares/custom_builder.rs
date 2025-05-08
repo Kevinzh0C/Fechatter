@@ -1162,7 +1162,6 @@ mod tests {
     assert_eq!(&body[..], b"User ID: 1");
   }
 
-  #[ignore]
   #[tokio::test]
   async fn it_should_execute_middleware_in_order() {
     // 创建追踪器和应用状态
@@ -1196,7 +1195,6 @@ mod tests {
     // assert!(tracker.correct_order());
   }
 
-  #[ignore]
   #[tokio::test]
   async fn it_should_enforce_middleware_order() {
     // 创建追踪器和应用状态
@@ -1233,7 +1231,6 @@ mod tests {
     // assert!(tracker.correct_order());
   }
 
-  #[ignore]
   #[tokio::test]
   async fn it_should_refresh_token_when_auth_fails() {
     // 创建追踪器和应用状态
@@ -1275,7 +1272,6 @@ mod tests {
     // assert!(tracker.was_refresh_called());
   }
 
-  #[ignore]
   #[tokio::test]
   async fn it_should_handle_token_behavior_variations() {
     // 创建测试用例，每个测试用例包含令牌行为和预期的响应状态
@@ -1325,7 +1321,6 @@ mod tests {
     }
   }
 
-  #[ignore]
   #[tokio::test]
   #[should_panic(expected = "Unexpected error during token verification")]
   async fn it_should_handle_token_verifier_panic() {
@@ -1357,7 +1352,6 @@ mod tests {
     let _ = server.send_request(request).await;
   }
 
-  #[ignore]
   #[tokio::test]
   async fn it_should_handle_random_token_validation() {
     // 创建追踪器和应用状态
@@ -1482,7 +1476,7 @@ mod tests {
   ///
   /// 此测试模拟多个客户端同时使用相同的刷新令牌请求新访问令牌的情境，
   /// 验证系统是否能够维持令牌的唯一性和一致性，防止令牌重放攻击。
-  #[ignore]
+
   #[tokio::test]
   async fn it_should_prevent_concurrent_token_refresh_races() {
     // 测试配置

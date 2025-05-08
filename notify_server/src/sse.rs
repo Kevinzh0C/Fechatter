@@ -1,21 +1,26 @@
 use axum::{
-  extract::Query,
-  http::Request,
+  Extension,
+  extract::State,
   response::{Sse, sse::Event},
 };
 
+use axum_extra::{TypedHeader, headers};
 use futures::Stream;
 use serde::Deserialize;
 use std::{
   convert::Infallible,
   pin::Pin,
   task::{Context, Poll},
+  time::Duration,
 };
-use tokio::sync::mpsc::{self, Sender};
-use tokio_stream::wrappers::ReceiverStream;
+use tokio::sync::{broadcast, mpsc::Sender};
+use tokio_stream::{StreamExt, wrappers::BroadcastStream};
+use tracing::{debug, info};
 
-use crate::app_state::{NotifyState, TokenVerifier};
+use crate::{AppState, NotifyEvent};
 use fechatter_core::AuthUser;
+
+const CHANNEL_CAPACITY: usize = 256;
 
 #[derive(Debug, Deserialize)]
 pub struct EventQuery {
@@ -36,66 +41,41 @@ impl Stream for EventStream {
 }
 
 pub async fn sse_handler(
-  state: NotifyState,
-  req: Request<axum::body::Body>,
-) -> Result<Sse<EventStream>, (axum::http::StatusCode, String)> {
-  let token = if let Some(auth) = req.headers().get("Authorization") {
-    let auth_str = auth.to_str().map_err(|_| {
-      (
-        axum::http::StatusCode::UNAUTHORIZED,
-        "Invalid Authorization header".to_string(),
-      )
-    })?;
+  State(state): State<AppState>,
+  Extension(user): Extension<AuthUser>,
+  TypedHeader(user_agent): TypedHeader<headers::UserAgent>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+  info!("`{}` connected", user_agent.as_str());
 
-    if auth_str.starts_with("Bearer ") {
-      auth_str[7..].to_string()
-    } else {
-      return Err((
-        axum::http::StatusCode::UNAUTHORIZED,
-        "Invalid Authorization format".to_string(),
-      ));
-    }
-  } else {
-    let query = Query::<EventQuery>::try_from_uri(req.uri()).map_err(|_| {
-      (
-        axum::http::StatusCode::BAD_REQUEST,
-        "Invalid query parameters".to_string(),
-      )
-    })?;
-
-    query.0.token.ok_or_else(|| {
-      (
-        axum::http::StatusCode::UNAUTHORIZED,
-        "Missing authentication token".to_string(),
-      )
-    })?
-  };
-
-  let user_claims = state.verify_token(&token).map_err(|e| {
-    (
-      axum::http::StatusCode::UNAUTHORIZED,
-      format!("Invalid token: {:?}", e),
-    )
-  })?;
-
-  let user: AuthUser = user_claims.into();
-
-  let (tx, rx) = mpsc::channel(100);
-  let rx_stream = ReceiverStream::new(rx);
-
-  let subscription_id = uuid::Uuid::now_v7().to_string();
-  state.add_subscriber(user.id, subscription_id.clone());
-
-  let state_clone = state.clone();
   let user_id = user.id;
-  tokio::spawn(async move {
-    state_clone.remove_subscriber(user_id, &subscription_id);
-  });
+  let users = state.users.clone();
 
-  let stream = EventStream {
-    _tx: tx,
-    rx: Box::pin(rx_stream),
+  let rx = if let Some(tx) = users.get(&user_id) {
+    tx.subscribe()
+  } else {
+    let (tx, rx) = broadcast::channel(CHANNEL_CAPACITY);
+    state.users.insert(user_id, tx);
+    rx
   };
+  info!("User {} subscribed to channel", user_id);
 
-  Ok(Sse::new(stream))
+  let stream = BroadcastStream::new(rx)
+    .filter_map(|result| result.ok())
+    .map(|v| {
+      let event_type = match v.as_ref() {
+        NotifyEvent::NewChat(_) => "NewChat",
+        NotifyEvent::AddToChat(_) => "AddToChat",
+        NotifyEvent::RemoveFromChat(_) => "RemoveFromChat",
+        NotifyEvent::NewMessage(_) => "NewMessage",
+      };
+      let v = serde_json::to_string(&v).expect("Failed to serialize event");
+      debug!("Sending event {}: {:?}", event_type, v);
+      Ok(Event::default().data(v).event(event_type))
+    });
+
+  Sse::new(stream).keep_alive(
+    axum::response::sse::KeepAlive::new()
+      .interval(Duration::from_secs(1))
+      .text("keep-alive-text"),
+  )
 }
