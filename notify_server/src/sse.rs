@@ -64,9 +64,10 @@ pub async fn sse_handler(
     .map(|v| {
       let event_type = match v.as_ref() {
         NotifyEvent::NewChat(_) => "NewChat",
-        NotifyEvent::AddToChat(_) => "AddToChat",
-        NotifyEvent::RemoveFromChat(_) => "RemoveFromChat",
+        NotifyEvent::UserJoinedChat(_) => "UserJoinedChat",
+        NotifyEvent::UserLeftChat(_) => "UserLeftChat",
         NotifyEvent::NewMessage(_) => "NewMessage",
+        NotifyEvent::DuplicateMessageAttempted(_) => "DuplicateMessageAttempted",
       };
       let v = serde_json::to_string(&v).expect("Failed to serialize event");
       debug!("Sending event {}: {:?}", event_type, v);

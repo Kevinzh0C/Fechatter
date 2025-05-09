@@ -1,9 +1,11 @@
+use crate::utils::refresh_token::auth_context_matches;
 use async_trait::async_trait;
 use chrono::Utc;
 use fechatter_core::{
   AuthContext, AuthServiceTrait, AuthTokens, CoreError, CreateUser, LogoutService, RefreshToken,
   RefreshTokenData, RefreshTokenRepository, RefreshTokenService, ReplaceTokenPayload,
   SigninService, SigninUser, SignupService, TokenService, UserClaims, UserRepository, UserStatus,
+  error::TokenValidationError,
 };
 use std::sync::Arc;
 use tracing;
@@ -22,15 +24,32 @@ type RefreshTokenInfo = RefreshToken;
 impl RefreshTokenService for AuthService {
   async fn refresh_token(
     &self,
-    refresh_token_str: &str,
-    auth_context: Option<AuthContext>,
+    refresh_token: &str,
+    request_context: Option<AuthContext>,
   ) -> Result<AuthTokens, CoreError> {
-    // Find and validate refresh token
-    let token_record = self.validate_refresh_token(refresh_token_str).await?;
+    tracing::debug!(target: "auth_service_refresh", ?refresh_token, ?request_context, "Attempting token refresh");
+    println!(
+      "!! Debug refresh_token method START - token: {}, context: {:?}",
+      refresh_token, request_context
+    );
+
+    // Find the token in the database (once)
+    let find_result = self
+      .refresh_token_repository
+      .find_by_token(refresh_token)
+      .await;
+    println!("!! Debug find_token result: {:?}", find_result);
+
+    // Extract stored_token from find_result instead of making a second database call
+    let stored_token =
+      find_result?.ok_or(CoreError::InvalidToken(TokenValidationError::NotFound))?;
+
+    tracing::debug!(target: "auth_service_refresh", ?stored_token, "Found stored token");
+    println!("!! Debug - found token in DB: {:?}", stored_token);
 
     // Only validate user agent if both token has one AND auth_context is provided
-    if let Some(saved_agent) = &token_record.user_agent {
-      if let Some(ctx) = &auth_context {
+    if let Some(saved_agent) = &stored_token.user_agent {
+      if let Some(ctx) = &request_context {
         if let Some(current) = &ctx.user_agent {
           // User agent present in both token and request, verify they match
           if current != saved_agent {
@@ -38,6 +57,10 @@ impl RefreshTokenService for AuthService {
               "Token refresh failed: User agent mismatch. Expected: {}, Got: {}",
               saved_agent,
               current
+            );
+            println!(
+              "!! Debug - User agent mismatch: token has '{}', request has '{}'",
+              saved_agent, current
             );
             return Err(CoreError::InvalidToken(
               fechatter_core::error::TokenValidationError::SecurityMismatch,
@@ -54,15 +77,16 @@ impl RefreshTokenService for AuthService {
     // Find associated user
     let user = match self
       .user_repository
-      .find_by_id(token_record.user_id)
+      .find_by_id(stored_token.user_id)
       .await?
     {
       Some(user) => user,
       None => {
         tracing::warn!(
           "Token refresh failed: User not found for token. User ID: {}",
-          token_record.user_id
+          stored_token.user_id
         );
+        println!("!! Debug - User not found: {}", stored_token.user_id);
         return Err(CoreError::InvalidToken(
           fechatter_core::error::TokenValidationError::NotFound,
         ));
@@ -76,6 +100,10 @@ impl RefreshTokenService for AuthService {
         user.id,
         user.status
       );
+      println!(
+        "!! Debug - User account is disabled: id={}, status={:?}",
+        user.id, user.status
+      );
       return Err(CoreError::Unauthorized(format!(
         "User account is disabled. Current status: {:?}",
         user.status
@@ -86,18 +114,44 @@ impl RefreshTokenService for AuthService {
     let user_claims = UserClaims {
       id: user.id,
       workspace_id: user.workspace_id,
-      fullname: user.fullname,
-      email: user.email,
+      fullname: user.fullname.clone(),
+      email: user.email.clone(),
       status: user.status,
       created_at: user.created_at,
     };
 
     // Generate new refresh token
     let new_token = uuid::Uuid::new_v4().to_string();
+    println!("!! Debug - Generated new refresh token: {}", new_token);
 
     // Get auth context details
-    let user_agent = auth_context.as_ref().and_then(|ctx| ctx.user_agent.clone());
-    let ip_address = auth_context.as_ref().and_then(|ctx| ctx.ip_address.clone());
+    let (req_user_agent, req_ip_address) = request_context
+      .map(|ctx| (ctx.user_agent, ctx.ip_address))
+      .unwrap_or((None, None));
+
+    tracing::debug!(target: "auth_service_refresh", ua = ?req_user_agent, ip = ?req_ip_address, "Extracted request context for matching");
+
+    if !auth_context_matches(
+      stored_token.user_agent.as_deref(),
+      stored_token.ip_address.as_deref(),
+      req_user_agent.as_deref(),
+      req_ip_address.as_deref(),
+    ) {
+      tracing::warn!(target: "auth_service_refresh", token_id = stored_token.id, "Auth context mismatch for refresh token");
+      println!(
+        "!! Debug - Auth context mismatch for token ID: {}",
+        stored_token.id
+      );
+      return Err(CoreError::Unauthorized(
+        "Refresh token context does not match request context".to_string(),
+      ));
+    }
+
+    tracing::debug!(target: "auth_service_refresh", token_id = stored_token.id, "Auth context matched successfully");
+    println!(
+      "!! Debug - Auth context matched successfully for token ID: {}",
+      stored_token.id
+    );
 
     // Replace the old token with the new one
     let now = Utc::now();
@@ -105,46 +159,48 @@ impl RefreshTokenService for AuthService {
     let absolute_expires_at = now + chrono::Duration::days(30); // 30 days
 
     let replace_payload = ReplaceTokenPayload {
-      old_token_id: token_record.id,
+      old_token_id: stored_token.id,
       new_raw_token: new_token.clone(),
       new_expires_at: expires_at,
       new_absolute_expires_at: absolute_expires_at,
-      user_agent,
-      ip_address,
+      user_agent: req_user_agent.clone(),
+      ip_address: req_ip_address.clone(),
     };
 
+    println!(
+      "!! Debug - Calling replace on refresh token repository with token ID: {}",
+      stored_token.id
+    );
     let new_token_record = match self.refresh_token_repository.replace(replace_payload).await {
-      Ok(record) => record,
+      Ok(record) => {
+        println!(
+          "!! Debug - Replace successful, new token record: {:?}",
+          record
+        );
+        record
+      }
       Err(e) => {
         tracing::warn!("Token refresh failed: Error replacing token: {:?}", e);
+        println!("!! Debug - Replace failed with error: {:?}", e);
         return Err(CoreError::InvalidToken(
           fechatter_core::error::TokenValidationError::SecurityMismatch,
         ));
       }
     };
 
-    // Generate new access token - 使用已有的auth_context而不尝试unwrap_or_default
-    let tokens = match self
-      .token_service
-      .generate_auth_tokens(
-        &user_claims,
-        auth_context.as_ref().and_then(|ctx| ctx.user_agent.clone()),
-        auth_context.as_ref().and_then(|ctx| ctx.ip_address.clone()),
-      )
-      .await
-    {
-      Ok(tokens) => tokens,
+    // Generate access token
+    let access_token = match self.token_service.generate_token(&user_claims) {
+      Ok(token) => token,
       Err(e) => {
-        tracing::warn!("Token refresh failed: Error generating new tokens: {:?}", e);
-        return Err(CoreError::InvalidToken(
-          fechatter_core::error::TokenValidationError::SecurityMismatch,
-        ));
+        tracing::warn!("Failed to generate access token: {:?}", e);
+        println!("!! Debug - Failed to generate access token: {:?}", e);
+        return Err(e);
       }
     };
 
-    // Create auth tokens response with new refresh token data but keeping tokens.access_token
+    // Create AuthTokens with the new tokens
     let auth_tokens = AuthTokens {
-      access_token: tokens.access_token,
+      access_token,
       refresh_token: RefreshTokenData {
         token: new_token,
         expires_at: new_token_record.expires_at,
@@ -152,6 +208,8 @@ impl RefreshTokenService for AuthService {
       },
     };
 
+    println!("!! Debug refresh_token method END - success");
+    // Return both tokens
     Ok(auth_tokens)
   }
 }

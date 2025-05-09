@@ -169,7 +169,7 @@ pub(crate) async fn refresh_token_handler(
   State(state): State<AppState>,
   headers: HeaderMap,
   cookies: CookieJar,
-  auth_user: Option<Extension<AuthUser>>,
+  _auth_user: Option<Extension<AuthUser>>,
 ) -> Result<impl IntoResponse, AppError> {
   // Extract auth context from headers
   let user_agent = headers
@@ -181,162 +181,94 @@ pub(crate) async fn refresh_token_handler(
     .and_then(|h| h.to_str().ok())
     .map(String::from);
 
+  // Write debug logs
+  println!(
+    "!! Debug refresh_token_handler START - request ID: {:?}",
+    headers.get("x-request-id")
+  );
+  println!("!! Debug refresh_token_handler - headers: {:?}", headers);
+  println!(
+    "!! Debug refresh_token_handler - user_agent: {:?}, ip_address: {:?}",
+    user_agent, ip_address
+  );
+  println!("!! Debug refresh_token_handler - cookies: {:?}", cookies);
+
   let auth_context = Some(AuthContext {
     user_agent,
     ip_address,
   });
 
-  // If we already have an authenticated user, use it as a reference token
-  if let Some(Extension(_user)) = auth_user {
-    // Get refresh token from cookie if available
-    let refresh_token = match cookies.get("refresh_token") {
-      Some(cookie) => cookie.value().to_string(),
-      None => {
-        // Try to get from Authorization header
-        if let Some(auth_header) = headers.get("Authorization") {
-          let auth_value = auth_header
-            .to_str()
-            .map_err(|_| AppError::InvalidInput("Invalid Authorization header".to_string()))?;
+  // Extract refresh token from cookie
+  let refresh_token = if let Some(cookie) = cookies.get("refresh_token") {
+    cookie.value().to_string()
+  } else if let Some(auth_header) = headers.get("Authorization") {
+    // Try to get from Authorization header
+    let auth_value = auth_header
+      .to_str()
+      .map_err(|_| AppError::InvalidInput("Invalid Authorization header".to_string()))?;
 
-          if auth_value.starts_with("Bearer ") {
-            auth_value[7..].to_string()
-          } else {
-            return Ok(
-              (
-                StatusCode::UNAUTHORIZED,
-                Json(ErrorOutput::new(
-                  "Invalid Authorization format, expected 'Bearer {token}'",
-                )),
-              )
-                .into_response(),
-            );
-          }
-        } else {
-          // If no token provided, but user is authenticated,
-          // we should generate new tokens directly for the user instead of trying to refresh
-          // an empty token which would fail validation
-          let user_id = _user.id;
-
-          // Generate new tokens for the authenticated user
-          match state
-            .generate_new_tokens_for_user(user_id, auth_context)
-            .await
-          {
-            Ok(tokens) => {
-              let mut response_headers = HeaderMap::new();
-              set_refresh_token_cookie(
-                &mut response_headers,
-                &tokens.refresh_token.token,
-                &tokens.refresh_token.expires_at,
-              )?;
-
-              let body = Json(AuthResponse {
-                access_token: tokens.access_token,
-                expires_in: ACCESS_TOKEN_EXPIRATION,
-                refresh_token: Some(tokens.refresh_token.token),
-              });
-
-              return Ok((StatusCode::OK, response_headers, body).into_response());
-            }
-            Err(e) => {
-              tracing::warn!(
-                "Failed to generate new tokens for authenticated user {}: {:?}",
-                user_id,
-                e
-              );
-              return Err(AppError::from(e));
-            }
-          }
-        }
-      }
-    };
-
-    // Only try to refresh if we actually have a token
-    if !refresh_token.is_empty() {
-      // Use the existing authenticated user to refresh tokens
-      match state.refresh_token(&refresh_token, auth_context).await {
-        Ok(tokens) => {
-          let mut response_headers = HeaderMap::new();
-          set_refresh_token_cookie(
-            &mut response_headers,
-            &tokens.refresh_token.token,
-            &tokens.refresh_token.expires_at,
-          )?;
-
-          let body = Json(AuthResponse {
-            access_token: tokens.access_token,
-            expires_in: ACCESS_TOKEN_EXPIRATION,
-            refresh_token: Some(tokens.refresh_token.token),
-          });
-
-          return Ok((StatusCode::OK, response_headers, body).into_response());
-        }
-        Err(e) => {
-          // If token refresh fails but we have an authenticated user,
-          // return error but keep user session
-          tracing::warn!("Token refresh failed for authenticated user: {:?}", e);
-          return Err(AppError::from(e));
-        }
-      }
+    if auth_value.starts_with("Bearer ") {
+      auth_value[7..].to_string()
+    } else {
+      return Ok(
+        (
+          StatusCode::UNAUTHORIZED,
+          Json(ErrorOutput::new(
+            "Invalid Authorization format, expected 'Bearer {token}'",
+          )),
+        )
+          .into_response(),
+      );
     }
-  }
-
-  // If no authenticated user, try to refresh with the provided token
-  let refresh_token_str = match cookies.get("refresh_token") {
-    Some(cookie) => cookie.value().to_string(),
-    None => {
-      if let Some(auth_header) = headers.get("Authorization") {
-        let auth_value = auth_header
-          .to_str()
-          .map_err(|_| AppError::InvalidInput("Invalid Authorization header".to_string()))?;
-
-        if auth_value.starts_with("Bearer ") {
-          auth_value[7..].to_string()
-        } else {
-          return Ok(
-            (
-              StatusCode::UNAUTHORIZED,
-              Json(ErrorOutput::new(
-                "Invalid Authorization format, expected 'Bearer {token}'",
-              )),
-            )
-              .into_response(),
-          );
-        }
-      } else {
-        return Ok(
-          (
-            StatusCode::UNAUTHORIZED,
-            Json(ErrorOutput::new("Refresh token not provided")),
-          )
-            .into_response(),
-        );
-      }
-    }
+  } else {
+    return Ok(
+      (
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorOutput::new("No refresh token provided")),
+      )
+        .into_response(),
+    );
   };
 
-  // Use the token refresh service to refresh the token
-  match state.refresh_token(&refresh_token_str, auth_context).await {
+  println!(
+    "!! Debug: Using refresh token: {} (length: {})",
+    refresh_token,
+    refresh_token.len()
+  );
+
+  // Call refresh token service
+  let result = state.refresh_token(&refresh_token, auth_context).await;
+
+  match result {
     Ok(tokens) => {
-      let mut headers = HeaderMap::new();
+      println!(
+        "!! Debug: Token refresh successful - new token: {}",
+        tokens.refresh_token.token
+      );
+      // Set refresh token cookie in response
+      let mut response_headers = HeaderMap::new();
       set_refresh_token_cookie(
-        &mut headers,
+        &mut response_headers,
         &tokens.refresh_token.token,
         &tokens.refresh_token.expires_at,
       )?;
+
       let body = Json(AuthResponse {
         access_token: tokens.access_token,
         expires_in: ACCESS_TOKEN_EXPIRATION,
         refresh_token: Some(tokens.refresh_token.token),
       });
 
-      Ok((StatusCode::OK, headers, body).into_response())
+      println!("!! Debug refresh_token_handler END - success");
+      Ok((StatusCode::OK, response_headers, body).into_response())
     }
     Err(e) => {
+      println!("!! Debug: Token refresh failed: {:?}", e);
       // For tests we need to map all errors to proper format with expected error messages
       let mut headers = HeaderMap::new();
       clear_refresh_token_cookie(&mut headers)?;
 
+      println!("!! Debug refresh_token_handler END - error");
       // Map specific errors to expected error messages
       match e {
         fechatter_core::error::CoreError::InvalidToken(_) => Ok(
@@ -628,7 +560,7 @@ mod tests {
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     let body = BodyExt::collect(response.into_body()).await?.to_bytes();
     let res: ErrorOutput = serde_json::from_slice(&body)?;
-    assert_eq!(res.error, "Refresh token not provided");
+    assert_eq!(res.error, "No refresh token provided");
 
     Ok(())
   }

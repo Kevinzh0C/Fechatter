@@ -19,7 +19,6 @@ use dashmap::DashMap;
 use fechatter_core::chat::ChatSidebar;
 use fechatter_core::error::CoreError;
 use fechatter_core::models::jwt::TokenManager;
-use fechatter_core::service_provider::ServiceProvider;
 use fechatter_core::{
   SigninUser,
   middlewares::{
@@ -41,7 +40,21 @@ use fechatter_core::middlewares::custom_builder::RouterExt as CoreRouterExt;
 use handlers::*;
 use middlewares::RouterExt;
 
-use once_cell::sync::OnceCell;
+use crate::handlers::auth::{
+  logout_all_handler, logout_handler, refresh_token_handler, signin_handler, signup_handler,
+};
+use crate::handlers::chat::{
+  create_chat_handler, delete_chat_handler, list_chats_handler, update_chat_handler,
+};
+use crate::handlers::chat_member::{
+  add_chat_members_batch_handler, list_chat_members_handler, remove_chat_member_handler,
+  transfer_chat_ownership_handler,
+};
+use crate::handlers::messages::{
+  file_handler, fix_file_storage_handler, list_messages_handler, send_message_handler,
+  upload_handler,
+};
+use crate::handlers::workspace::list_all_workspace_users_handler;
 
 // Define the cache trait locally
 #[allow(unused)]
@@ -64,7 +77,7 @@ pub struct AppState {
 
 pub struct AppStateInner {
   pub(crate) config: AppConfig,
-  pub(crate) service_provider: ServiceProvider,
+  pub(crate) service_provider: crate::services::service_provider::ServiceProvider,
   pub(crate) chat_list_cache: DashMap<i64, (Arc<Vec<ChatSidebar>>, Instant)>,
 }
 
@@ -73,7 +86,11 @@ impl CoreTokenVerifier for AppState {
   type Error = CoreError;
 
   fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error> {
-    self.inner.service_provider.verify_token(token)
+    self
+      .inner
+      .service_provider
+      .token_manager()
+      .verify_token(token)
   }
 }
 
@@ -86,7 +103,7 @@ impl CoreWithTokenManager for AppState {
 }
 
 impl WithServiceProvider for AppState {
-  type ServiceProviderType = ServiceProvider;
+  type ServiceProviderType = crate::services::service_provider::ServiceProvider;
 
   fn service_provider(&self) -> &Self::ServiceProviderType {
     &self.inner.service_provider
@@ -150,8 +167,7 @@ impl WithCache<i64, (Arc<Vec<ChatSidebar>>, Instant)> for AppState {
 }
 
 pub async fn get_router(state: AppState) -> Result<Router, AppError> {
-  // Public routes - no authentication required but apply token refresh
-  // Must use direct approach since the builder enforces auth before refresh
+  // Public routes - 只需要令牌刷新中间件
   let public_routes = Router::new()
     .route("/signin", post(signin_handler))
     .route("/signup", post(signup_handler))
@@ -161,9 +177,12 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
         refresh_token_handler(state, cookies, headers, auth_user)
       }),
     )
-    .with_refresh(state.clone());
+    .with_middlewares(state.clone())
+    .with_refresh()
+    .build();
 
-  // Basic auth routes - requires authentication and token refresh
+  // Basic auth routes - 需要Auth和Refresh中间件
+  // 执行顺序为: Auth -> Refresh -> 基础设施中间件 -> Handler
   let auth_routes = Router::new()
     .route("/upload", post(upload_handler))
     .route("/files/{ws_id}/{*path}", get(file_handler))
@@ -172,21 +191,20 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
     .route("/logout", post(logout_handler))
     .route("/logout_all", post(logout_all_handler))
     .with_middlewares(state.clone())
-    .with_auth()
-    .with_token_refresh()
+    .with_auth_refresh() // 使用辅助方法一次添加Auth和Refresh
     .build();
 
-  // Chat create routes - need auth, refresh, and workspace context
+  // Chat create routes - 需要Auth, Refresh和Workspace中间件
+  // 执行顺序为: Auth -> Refresh -> Workspace -> 基础设施中间件 -> Handler
   let chat_create_routes = Router::new()
     .route("/chat", post(create_chat_handler))
     .route("/chat", get(list_chats_handler))
     .with_middlewares(state.clone())
-    .with_auth()
-    .with_token_refresh()
-    .with_workspace()
+    .with_auth_refresh_workspace() // 使用辅助方法一次添加Auth, Refresh和Workspace
     .build();
 
-  // Chat manage routes - need auth, refresh, workspace, and chat membership
+  // Chat manage routes - 需要所有业务中间件
+  // 执行顺序为: Auth -> Refresh -> Workspace -> Chat Membership -> 基础设施中间件 -> Handler
   let chat_manage_routes = Router::new()
     .route(
       "/chat/{id}",
@@ -207,10 +225,7 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
       get(list_messages_handler).post(send_message_handler),
     )
     .with_middlewares(state.clone())
-    .with_auth()
-    .with_token_refresh()
-    .with_workspace()
-    .with_chat_membership()
+    .with_all_middlewares() // 使用辅助方法一次添加所有业务中间件
     .build();
 
   // Merge all routes
@@ -255,8 +270,9 @@ impl AppState {
     let refresh_token_repo = Arc::new(RefreshTokenAdaptor::new(Arc::new(pool.clone())));
     let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo)?;
 
-    // Create service provider - centrally manages pool and token_manager
-    let service_provider = ServiceProvider::new(pool, token_manager);
+    // Create service provider - 确保这里创建的是服务器层的 ServiceProvider
+    let service_provider =
+      crate::services::service_provider::ServiceProvider::new(pool, token_manager);
 
     // Create chat list cache
     let chat_list_cache = DashMap::new();
@@ -277,7 +293,7 @@ impl AppState {
 #[cfg(any(test, feature = "test-util"))]
 mod test_util {
   use super::*;
-  use sqlx::{Executor, PgPool};
+
   use sqlx_db_tester::TestPg;
 
   impl AppState {
@@ -302,7 +318,8 @@ mod test_util {
       let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo)?;
 
       // Create service provider - centrally manages pool and token_manager
-      let service_provider = ServiceProvider::new(pool, token_manager);
+      let service_provider =
+        crate::services::service_provider::ServiceProvider::new(pool, token_manager);
 
       // Create chat list cache
       let chat_list_cache = DashMap::new();

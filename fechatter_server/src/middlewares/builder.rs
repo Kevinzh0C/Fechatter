@@ -1,5 +1,5 @@
 use axum::{Router, middleware::from_fn};
-use std::marker::PhantomData;
+use fechatter_core::SetLayer as _;
 use std::sync::Arc;
 
 // 本地定义类型状态标记，而不是导入
@@ -27,8 +27,13 @@ use axum::middleware::Next;
 use axum::response::IntoResponse;
 use fechatter_core::jwt::TokenManager;
 use fechatter_core::middlewares::custom_builder::{add_auth_middleware, add_refresh_middleware};
+use fechatter_core::middlewares::server_time::ServerTimeLayer; // 导入服务器时间中间件
 use fechatter_core::middlewares::{
-  ActualAuthServiceProvider, TokenVerifier, WithServiceProvider, WithTokenManager,
+  ActualAuthServiceProvider,
+  TokenVerifier,
+  WithServiceProvider,
+  WithTokenManager,
+  request_id_middleware, // 导入请求ID中间件
 };
 use fechatter_core::models::AuthUser;
 use fechatter_core::models::jwt::UserClaims;
@@ -84,51 +89,36 @@ where
   }))
 }
 
-/// Middleware builder for the server, handling Auth, Refresh, Workspace, and ChatMembership states.
-pub struct MiddlewareBuilder<
-  S,
-  T,
-  AuthState = WithoutAuth,                     // Uses core's auth states
-  RefreshState = WithoutRefresh,               // Uses core's refresh states
-  WorkspaceState = WithoutWorkspace,           // Server's own workspace states
-  ChatMembershipState = WithoutChatMembership, // Server's own chat membership states
-> {
-  router: Router<S>,
-  state: T,
-  #[cfg(test)]
-  pub app_state: Option<Arc<AppState>>, // 测试模式下公开字段
-  #[cfg(not(test))]
-  app_state: Option<Arc<AppState>>, // 正常模式下保持私有
-  _auth_marker: PhantomData<AuthState>,
-  _refresh_marker: PhantomData<RefreshState>,
-  _workspace_marker: PhantomData<WorkspaceState>,
-  _chat_membership_marker: PhantomData<ChatMembershipState>,
-}
+// 使用位标志来表示已应用的中间件类型
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct MiddlewareFlags(u8);
 
-// 辅助特性，用于获取Arc<AppState>
-pub trait GetOrCreateAppState<T: Into<AppState>> {
-  fn get_or_create_app_state(&self, state: &T) -> Arc<AppState>;
-}
+impl MiddlewareFlags {
+  const NONE: Self = Self(0);
+  const AUTH: Self = Self(1);
+  const REFRESH: Self = Self(2);
+  const WORKSPACE: Self = Self(4);
+  const CHAT_MEMBERSHIP: Self = Self(8);
 
-// 为所有MiddlewareBuilder实现统一的获取AppState方法
-impl<S, T, A, R, W, C> GetOrCreateAppState<T> for MiddlewareBuilder<S, T, A, R, W, C>
-where
-  T: Into<AppState> + Clone,
-{
-  fn get_or_create_app_state(&self, state: &T) -> Arc<AppState> {
-    if let Some(app_state) = &self.app_state {
-      // 如果已有app_state，直接返回克隆（只增加引用计数）
-      app_state.clone()
-    } else {
-      // 首次调用时创建
-      Arc::new(state.clone().into())
-    }
+  const fn contains(self, other: Self) -> bool {
+    (self.0 & other.0) == other.0
+  }
+
+  const fn add(self, other: Self) -> Self {
+    Self(self.0 | other.0)
   }
 }
 
-// Initial state: No middleware applied
-impl<S, T>
-  MiddlewareBuilder<S, T, WithoutAuth, WithoutRefresh, WithoutWorkspace, WithoutChatMembership>
+/// 一个更简洁、灵活的中间件构建器
+/// 使用位标志而不是类型参数来跟踪中间件状态
+pub struct MiddlewareBuilder<S, T> {
+  router: Router<S>,
+  state: T,
+  app_state: Option<Arc<AppState>>,
+  applied: MiddlewareFlags, // 跟踪已应用的中间件
+}
+
+impl<S, T> MiddlewareBuilder<S, T>
 where
   S: Clone + Send + Sync + 'static,
   T: TokenVerifier<Claims = UserClaims>
@@ -142,361 +132,170 @@ where
   <T as TokenVerifier>::Error: Send + 'static,
   <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
   AuthUser: From<UserClaims>,
-  T: Into<AppState>,
 {
+  /// 创建一个新的中间件构建器
   pub fn new(router: Router<S>, state: T) -> Self {
     Self {
       router,
       state,
-      app_state: None, // 初始化为None，延迟加载
-      _auth_marker: PhantomData,
-      _refresh_marker: PhantomData,
-      _workspace_marker: PhantomData,
-      _chat_membership_marker: PhantomData,
-    }
-  }
-
-  pub fn with_auth(
-    self,
-  ) -> MiddlewareBuilder<S, T, WithAuth, WithoutRefresh, WithoutWorkspace, WithoutChatMembership>
-  {
-    // Use the core library's function to add auth middleware
-    let router = add_auth_middleware(self.router, self.state.clone());
-
-    MiddlewareBuilder {
-      router,
-      state: self.state,
-      app_state: self.app_state, // 保持app_state不变
-      _auth_marker: PhantomData,
-      _refresh_marker: PhantomData,
-      _workspace_marker: PhantomData,
-      _chat_membership_marker: PhantomData,
-    }
-  }
-
-  // NOTE: with_token_refresh is intentionally not provided here
-  // to ensure that authentication is applied before token refresh,
-  // as the core refresh middleware might depend on AuthUser extensions
-
-  pub fn build(self) -> Router<S> {
-    self.router
-  }
-}
-
-// State: Auth applied, No Refresh, No Workspace, No ChatMembership
-impl<S, T>
-  MiddlewareBuilder<S, T, WithAuth, WithoutRefresh, WithoutWorkspace, WithoutChatMembership>
-where
-  S: Clone + Send + Sync + 'static,
-  T: TokenVerifier<Claims = UserClaims>
-    + WithTokenManager<TokenManagerType = TokenManager>
-    + WithServiceProvider
-    + Into<AppState>
-    + Clone
-    + Send
-    + Sync
-    + 'static,
-  <T as TokenVerifier>::Error: Send + 'static,
-  <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
-  AuthUser: From<UserClaims>,
-  T: Into<AppState>,
-{
-  pub fn with_token_refresh(
-    self,
-  ) -> MiddlewareBuilder<S, T, WithAuth, WithRefresh, WithoutWorkspace, WithoutChatMembership> {
-    // Use the core library's function to add refresh middleware
-    let router = add_refresh_middleware(self.router, self.state.clone());
-
-    MiddlewareBuilder {
-      router,
-      state: self.state,
-      app_state: self.app_state, // 保持app_state不变
-      _auth_marker: PhantomData,
-      _refresh_marker: PhantomData,
-      _workspace_marker: PhantomData,
-      _chat_membership_marker: PhantomData,
-    }
-  }
-
-  pub fn with_workspace(
-    self,
-  ) -> MiddlewareBuilder<S, T, WithAuth, WithoutRefresh, WithWorkspace, WithoutChatMembership> {
-    // 获取或创建Arc<AppState>
-    let app_state_arc = self.get_or_create_app_state(&self.state);
-
-    // 克隆Arc内部的AppState并传给中间件函数
-    let app_state_clone = (*app_state_arc).clone();
-    let router = add_workspace_middleware(self.router, app_state_clone);
-
-    MiddlewareBuilder {
-      router,
-      state: self.state,
-      app_state: Some(app_state_arc), // 保存Arc引用
-      _auth_marker: PhantomData,
-      _refresh_marker: PhantomData,
-      _workspace_marker: PhantomData,
-      _chat_membership_marker: PhantomData,
-    }
-  }
-
-  pub fn build(self) -> Router<S> {
-    self.router
-  }
-}
-
-// NOTE: The WithoutAuth+WithRefresh state is intentionally NOT implemented
-// because we now require Auth before Refresh to ensure type safety
-
-// State: Auth, Refresh applied, No Workspace, No ChatMembership
-impl<S, T> MiddlewareBuilder<S, T, WithAuth, WithRefresh, WithoutWorkspace, WithoutChatMembership>
-where
-  S: Clone + Send + Sync + 'static,
-  T: TokenVerifier<Claims = UserClaims>
-    + WithTokenManager<TokenManagerType = TokenManager>
-    + WithServiceProvider
-    + Into<AppState>
-    + Clone
-    + Send
-    + Sync
-    + 'static,
-  <T as TokenVerifier>::Error: Send + 'static,
-  <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
-  AuthUser: From<UserClaims>,
-  T: Into<AppState>,
-{
-  pub fn with_workspace(
-    self,
-  ) -> MiddlewareBuilder<S, T, WithAuth, WithRefresh, WithWorkspace, WithoutChatMembership> {
-    // 获取或创建Arc<AppState>
-    let app_state_arc = self.get_or_create_app_state(&self.state);
-
-    // 克隆Arc内部的AppState并传给中间件函数
-    let app_state_clone = (*app_state_arc).clone();
-    let router = add_workspace_middleware(self.router, app_state_clone);
-
-    MiddlewareBuilder {
-      router,
-      state: self.state,
-      app_state: Some(app_state_arc), // 保存Arc引用
-      _auth_marker: PhantomData,
-      _refresh_marker: PhantomData,
-      _workspace_marker: PhantomData,
-      _chat_membership_marker: PhantomData,
-    }
-  }
-
-  pub fn build(self) -> Router<S> {
-    self.router
-  }
-}
-
-// State: Auth, No Refresh, Workspace applied, No ChatMembership
-impl<S, T> MiddlewareBuilder<S, T, WithAuth, WithoutRefresh, WithWorkspace, WithoutChatMembership>
-where
-  S: Clone + Send + Sync + 'static,
-  T: TokenVerifier<Claims = UserClaims>
-    + WithTokenManager<TokenManagerType = TokenManager>
-    + WithServiceProvider
-    + Into<AppState>
-    + Clone
-    + Send
-    + Sync
-    + 'static,
-  <T as TokenVerifier>::Error: Send + 'static,
-  <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
-  AuthUser: From<UserClaims>,
-  T: Into<AppState>,
-{
-  pub fn with_token_refresh(
-    self,
-  ) -> MiddlewareBuilder<S, T, WithAuth, WithRefresh, WithWorkspace, WithoutChatMembership> {
-    // Use the core library's function to add refresh middleware
-    let router = add_refresh_middleware(self.router, self.state.clone());
-
-    MiddlewareBuilder {
-      router,
-      state: self.state,
       app_state: None,
-      _auth_marker: PhantomData,
-      _refresh_marker: PhantomData,
-      _workspace_marker: PhantomData,
-      _chat_membership_marker: PhantomData,
+      applied: MiddlewareFlags::NONE,
     }
   }
 
-  pub fn with_chat_membership(
-    self,
-  ) -> MiddlewareBuilder<S, T, WithAuth, WithoutRefresh, WithWorkspace, WithChatMembership> {
-    // 获取或创建Arc<AppState>
-    let app_state_arc = self.get_or_create_app_state(&self.state);
-
-    // 克隆Arc内部的AppState并传给中间件函数
-    let app_state_clone = (*app_state_arc).clone();
-    let router = add_chat_membership_middleware(self.router, app_state_clone);
-
-    MiddlewareBuilder {
-      router,
-      state: self.state,
-      app_state: Some(app_state_arc), // 保存Arc引用
-      _auth_marker: PhantomData,
-      _refresh_marker: PhantomData,
-      _workspace_marker: PhantomData,
-      _chat_membership_marker: PhantomData,
+  /// 获取或创建AppState
+  fn get_or_create_app_state(&mut self) -> Arc<AppState> {
+    if let Some(app_state) = &self.app_state {
+      app_state.clone()
+    } else {
+      let app_state = Arc::new(self.state.clone().into());
+      self.app_state = Some(app_state.clone());
+      app_state
     }
   }
 
-  pub fn build(self) -> Router<S> {
-    self.router
-  }
-}
-
-// State: Auth, Refresh, Workspace applied, No ChatMembership
-impl<S, T> MiddlewareBuilder<S, T, WithAuth, WithRefresh, WithWorkspace, WithoutChatMembership>
-where
-  S: Clone + Send + Sync + 'static,
-  T: TokenVerifier<Claims = UserClaims>
-    + WithTokenManager<TokenManagerType = TokenManager>
-    + WithServiceProvider
-    + Into<AppState>
-    + Clone
-    + Send
-    + Sync
-    + 'static,
-  <T as TokenVerifier>::Error: Send + 'static,
-  <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
-  AuthUser: From<UserClaims>,
-  T: Into<AppState>,
-{
-  pub fn with_chat_membership(
-    self,
-  ) -> MiddlewareBuilder<S, T, WithAuth, WithRefresh, WithWorkspace, WithChatMembership> {
-    // 获取或创建Arc<AppState>
-    let app_state_arc = self.get_or_create_app_state(&self.state);
-
-    // 克隆Arc内部的AppState并传给中间件函数
-    let app_state_clone = (*app_state_arc).clone();
-    let router = add_chat_membership_middleware(self.router, app_state_clone);
-
-    MiddlewareBuilder {
-      router,
-      state: self.state,
-      app_state: Some(app_state_arc), // 保存Arc引用
-      _auth_marker: PhantomData,
-      _refresh_marker: PhantomData,
-      _workspace_marker: PhantomData,
-      _chat_membership_marker: PhantomData,
+  /// 添加认证中间件
+  pub fn with_auth(mut self) -> Self {
+    if !self.applied.contains(MiddlewareFlags::AUTH) {
+      self.router = add_auth_middleware(self.router, self.state.clone());
+      self.applied = self.applied.add(MiddlewareFlags::AUTH);
     }
+    self
   }
 
-  pub fn build(self) -> Router<S> {
-    self.router
-  }
-}
-
-// State: Auth, No Refresh, Workspace, ChatMembership applied (Final state for this path)
-impl<S, T> MiddlewareBuilder<S, T, WithAuth, WithoutRefresh, WithWorkspace, WithChatMembership>
-where
-  S: Clone + Send + Sync + 'static,
-  T: TokenVerifier<Claims = UserClaims>
-    + WithTokenManager<TokenManagerType = TokenManager>
-    + WithServiceProvider
-    + Into<AppState>
-    + Clone
-    + Send
-    + Sync
-    + 'static,
-  <T as TokenVerifier>::Error: Send + 'static,
-  <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
-  AuthUser: From<UserClaims>,
-  T: Into<AppState>,
-{
-  pub fn with_token_refresh(
-    self,
-  ) -> MiddlewareBuilder<S, T, WithAuth, WithRefresh, WithWorkspace, WithChatMembership> {
-    // Use the core library's function to add refresh middleware
-    let router = add_refresh_middleware(self.router, self.state.clone());
-
-    MiddlewareBuilder {
-      router,
-      state: self.state,
-      app_state: None,
-      _auth_marker: PhantomData,
-      _refresh_marker: PhantomData,
-      _workspace_marker: PhantomData,
-      _chat_membership_marker: PhantomData,
+  /// 添加令牌刷新中间件
+  pub fn with_refresh(mut self) -> Self {
+    if !self.applied.contains(MiddlewareFlags::REFRESH) {
+      self.router = add_refresh_middleware(self.router, self.state.clone());
+      self.applied = self.applied.add(MiddlewareFlags::REFRESH);
     }
+    self
   }
 
+  /// 添加工作区中间件
+  pub fn with_workspace(mut self) -> Self {
+    if !self.applied.contains(MiddlewareFlags::WORKSPACE) {
+      let app_state = self.get_or_create_app_state();
+      self.router = add_workspace_middleware(self.router, (*app_state).clone());
+      self.applied = self.applied.add(MiddlewareFlags::WORKSPACE);
+    }
+    self
+  }
+
+  /// 添加聊天成员资格中间件
+  pub fn with_chat_membership(mut self) -> Self {
+    if !self.applied.contains(MiddlewareFlags::CHAT_MEMBERSHIP) {
+      let app_state = self.get_or_create_app_state();
+      self.router = add_chat_membership_middleware(self.router, (*app_state).clone());
+      self.applied = self.applied.add(MiddlewareFlags::CHAT_MEMBERSHIP);
+    }
+    self
+  }
+
+  /// 添加所有业务中间件（Auth, Refresh, Workspace, Chat Membership）
+  /// 顺序将自动设置为：Auth -> Refresh -> Workspace -> ChatMembership
+  pub fn with_all_middlewares(self) -> Self {
+    self
+      .with_chat_membership()
+      .with_workspace()
+      .with_refresh()
+      .with_auth()
+  }
+
+  /// 应用Auth和Refresh中间件
+  pub fn with_auth_refresh(self) -> Self {
+    self.with_refresh().with_auth()
+  }
+
+  /// 应用Auth, Refresh和Workspace中间件
+  pub fn with_auth_refresh_workspace(self) -> Self {
+    self.with_workspace().with_refresh().with_auth()
+  }
+
+  /// 构建最终的路由，应用基础设施中间件并返回
   pub fn build(self) -> Router<S> {
-    self.router
+    // 应用基础设施中间件（ServerTime, RequestId, Compression, Trace）
+    self.router.set_layer()
   }
 }
 
-// Final builder state with all possible middleware applied
-impl<S, T> MiddlewareBuilder<S, T, WithAuth, WithRefresh, WithWorkspace, WithChatMembership>
-where
-  S: Clone + Send + Sync + 'static,
-  T: TokenVerifier<Claims = UserClaims>
-    + WithTokenManager<TokenManagerType = TokenManager>
-    + WithServiceProvider
-    + Into<AppState>
-    + Clone
-    + Send
-    + Sync
-    + 'static,
-  <T as TokenVerifier>::Error: Send + 'static,
-  <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
-  AuthUser: From<UserClaims>,
-  T: Into<AppState>,
-{
-  pub fn build(self) -> Router<S> {
-    self.router
-  }
+// 提供RouterExt扩展特性以便于链式调用
+pub trait RouterExt<S>: Sized {
+  fn with_middlewares<T>(self, state: T) -> MiddlewareBuilder<S, T>
+  where
+    S: Clone + Send + Sync + 'static,
+    T: TokenVerifier<Claims = UserClaims>
+      + WithTokenManager<TokenManagerType = TokenManager>
+      + WithServiceProvider
+      + Into<AppState>
+      + Clone
+      + Send
+      + Sync
+      + 'static,
+    <T as TokenVerifier>::Error: Send + 'static,
+    <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
+    AuthUser: From<UserClaims>;
 }
 
-// RouterExt trait for the server's MiddlewareBuilder
-pub trait RouterExt<S, T> {
-  fn with_middlewares(
-    self,
-    state: T,
-  ) -> MiddlewareBuilder<S, T, WithoutAuth, WithoutRefresh, WithoutWorkspace, WithoutChatMembership>;
-}
-
-impl<S, T> RouterExt<S, T> for Router<S>
-where
-  // Base router constraints
-  S: Clone + Send + Sync + 'static,
-  // Token and service provider constraints
-  T: TokenVerifier<Claims = UserClaims>
-    + WithTokenManager<TokenManagerType = TokenManager>
-    + WithServiceProvider
-    + Into<AppState>
-    + Clone
-    + Send
-    + Sync
-    + 'static,
-  // Associated type constraints
-  <T as TokenVerifier>::Error: Send + 'static,
-  <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
-  // User claims mapping
-  AuthUser: From<UserClaims>,
-{
-  fn with_middlewares(
-    self,
-    state: T,
-  ) -> MiddlewareBuilder<S, T, WithoutAuth, WithoutRefresh, WithoutWorkspace, WithoutChatMembership>
+impl<S> RouterExt<S> for Router<S> {
+  fn with_middlewares<T>(self, state: T) -> MiddlewareBuilder<S, T>
+  where
+    S: Clone + Send + Sync + 'static,
+    T: TokenVerifier<Claims = UserClaims>
+      + WithTokenManager<TokenManagerType = TokenManager>
+      + WithServiceProvider
+      + Into<AppState>
+      + Clone
+      + Send
+      + Sync
+      + 'static,
+    <T as TokenVerifier>::Error: Send + 'static,
+    <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
+    AuthUser: From<UserClaims>,
   {
     MiddlewareBuilder::new(self, state)
   }
 }
 
-// 为所有MiddlewareBuilder实现获取app_state的方法
-impl<S, T, A, R, W, C> MiddlewareBuilder<S, T, A, R, W, C>
+// 为了保持与旧API的兼容性，保留这些方法
+impl<S, T> MiddlewareBuilder<S, T>
 where
-  T: Into<AppState> + Clone,
+  S: Clone + Send + Sync + 'static,
+  T: TokenVerifier<Claims = UserClaims>
+    + WithTokenManager<TokenManagerType = TokenManager>
+    + WithServiceProvider
+    + Into<AppState>
+    + Clone
+    + Send
+    + Sync
+    + 'static,
+  <T as TokenVerifier>::Error: Send + 'static,
+  <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
+  AuthUser: From<UserClaims>,
 {
-  /// 获取当前已缓存的AppState，或者创建一个新的并返回
-  pub fn get_app_state(&self) -> Option<Arc<AppState>> {
-    self.app_state.clone()
+  /// 类似于finalize，但不添加任何中间件
+  /// 只添加基础设施中间件（ServerTime, RequestId, Compression, Trace）
+  pub fn finalize_base(self) -> Router<S> {
+    self.build()
+  }
+
+  /// 添加认证中间件和基础设施中间件
+  pub fn finalize_auth_only(self) -> Router<S> {
+    self.with_auth().build()
+  }
+
+  /// 添加认证、刷新中间件和基础设施中间件
+  pub fn finalize_auth_refresh(self) -> Router<S> {
+    self.with_auth_refresh().build()
+  }
+
+  /// 添加认证、刷新、工作区中间件和基础设施中间件
+  pub fn finalize_auth_refresh_workspace(self) -> Router<S> {
+    self.with_auth_refresh_workspace().build()
+  }
+
+  /// 添加所有中间件：认证、刷新、工作区、聊天成员资格和基础设施中间件
+  pub fn finalize(self) -> Router<S> {
+    self.with_all_middlewares().build()
   }
 }

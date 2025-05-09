@@ -15,6 +15,7 @@ pub use workspace::*;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use uuid;
 
 #[derive(Debug, Serialize, Deserialize, sqlx::Type, Clone, Copy, PartialEq, Eq)]
 #[sqlx(type_name = "user_status", rename_all = "lowercase")]
@@ -97,6 +98,8 @@ pub struct Message {
   pub files: Option<Vec<String>>,
   #[sqlx(default)] // Handle potential NULL or default timestamp
   pub created_at: DateTime<Utc>,
+  #[sqlx(default)] // idempotency_key可能为NULL，特别是对于旧记录
+  pub idempotency_key: Option<uuid::Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

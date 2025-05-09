@@ -140,7 +140,7 @@ macro_rules! assert_chat_list_count {
   ($state:expr, $auth_user:expr, $expected_count:expr) => {{
     // Use assert_handler_success! internally to check status and get the list
     let chats = $crate::assert_handler_success!(
-      $crate::handlers::list_chats_handler(
+      $crate::list_chats_handler(
         axum::extract::State($state.clone()),
         axum::extract::Extension($auth_user.clone())
       ),
@@ -163,7 +163,7 @@ macro_rules! assert_chat_list_count {
 macro_rules! assert_chat_member_count {
   ($state:expr, $auth_user:expr, $chat_id:expr, $expected_count:expr) => {{
     let members = $crate::assert_handler_success!(
-      $crate::handlers::list_chat_members_handler(
+      $crate::list_chat_members_handler(
         axum::extract::State($state.clone()),
         axum::extract::Extension($auth_user.clone()),
         axum::extract::Path($chat_id)

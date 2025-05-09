@@ -84,7 +84,7 @@ mod token_refresh_tests {
 mod list_messages_auth_tests {
   use crate::setup_test_users;
   use crate::{
-    handlers::list_messages_handler,
+    handlers::messages::list_messages_handler,
     models::{AuthUser, ChatType, ListMessage},
   };
   use anyhow::Result;

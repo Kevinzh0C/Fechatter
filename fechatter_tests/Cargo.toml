@@ -36,3 +36,4 @@ sqlx-db-tester = "0.6.0"
 
 hyper = "1.6.0"
 futures = "0.3.30"
+bytes = "1.10.1"

@@ -92,8 +92,6 @@ mod tests {
       chat_type: ChatType::Group,
       members: Some(vec![user2.id, user3.id]),
       description: Some("A test group".to_string()),
-      created_by: user1.id,
-      workspace_id: user1.workspace_id,
     };
 
     let created_chat = assert_handler_success!(
@@ -126,8 +124,6 @@ mod tests {
       chat_type: ChatType::Single,
       members: Some(vec![user2.id]),
       description: Some("".to_string()),
-      created_by: user1.id,
-      workspace_id: user1.workspace_id,
     };
 
     let created_chat = assert_handler_success!(

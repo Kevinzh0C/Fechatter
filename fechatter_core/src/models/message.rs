@@ -1,6 +1,7 @@
 use crate::error::CoreError;
 use serde::{Deserialize, Serialize};
 use std::future::Future;
+use uuid::Uuid;
 
 use super::Message;
 
@@ -9,6 +10,8 @@ pub struct CreateMessage {
   pub content: String,
   #[serde(default)]
   pub files: Vec<String>,
+  #[serde(default = "Uuid::now_v7")] // 默认使用UUID v7（时间序列UUID）
+  pub idempotency_key: Uuid,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

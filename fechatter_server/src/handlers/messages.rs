@@ -26,7 +26,10 @@ pub(crate) async fn send_message_handler(
   Path(chat_id): Path<i64>,
   Json(message): Json<CreateMessage>,
 ) -> Result<impl IntoResponse, AppError> {
-  info!("User {} sending message to chat {}", user.id, chat_id);
+  info!(
+    "User {} sending message to chat {} with idempotency_key {}",
+    user.id, chat_id, message.idempotency_key
+  );
 
   // Convert core CreateMessage to server CreateMessage
   let message = state.create_message(message, chat_id, user.id).await?;
@@ -804,6 +807,7 @@ mod tests {
     let message_request = CreateMessage {
       content: "Hello, this is a test message".to_string(),
       files: vec![],
+      idempotency_key: uuid::Uuid::now_v7(),
     };
 
     let result = send_message_handler(
@@ -1198,6 +1202,7 @@ mod tests {
       let message_payload = crate::models::CreateMessage {
         content: format!("Test message #{} from {}", i, sender.fullname),
         files: vec![],
+        idempotency_key: uuid::Uuid::now_v7(),
       };
 
       let message = state

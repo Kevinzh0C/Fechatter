@@ -258,11 +258,11 @@ impl RefreshTokenRepository for RefreshTokenAdaptor {
   async fn find_by_token(&self, raw_token: &str) -> Result<Option<CoreRefreshToken>, CoreError> {
     let pool = self.pool.clone();
     let token = raw_token.to_string();
-    let found = RefreshTokenStorage::find_by_token(&token, &pool)
+    let result = RefreshTokenStorage::find_by_token(&token, &pool)
       .await
       .map_err(|e| CoreError::Internal(e.to_string()))?;
 
-    Ok(found.map(|token| token.to_dto()))
+    Ok(result.map(|token| token.to_dto()))
   }
 
   async fn replace(&self, payload: ReplaceTokenPayload) -> Result<CoreRefreshToken, CoreError> {
@@ -322,6 +322,51 @@ impl RefreshTokenRepository for RefreshTokenAdaptor {
 
     Ok(result.to_dto())
   }
+}
+
+pub(crate) fn auth_context_matches(
+  token_user_agent: Option<&str>,
+  token_ip_address: Option<&str>,
+  request_user_agent: Option<&str>,
+  request_ip_address: Option<&str>,
+) -> bool {
+  // Print direct println debug info along with tracing
+  println!("!! DEBUG auth_context_matches:");
+  println!("!! Token User-Agent: {:?}", token_user_agent);
+  println!("!! Request User-Agent: {:?}", request_user_agent);
+  println!("!! Token IP: {:?}", token_ip_address);
+  println!("!! Request IP: {:?}", request_ip_address);
+
+  tracing::debug!(
+      target: "auth_context_match",
+      stored_ua = ?token_user_agent,
+      stored_ip = ?token_ip_address,
+      request_ua = ?request_user_agent,
+      request_ip = ?request_ip_address,
+      "Performing auth context match"
+  );
+
+  // If token has no user agent, we don't care about the request's user agent
+  let ua_match = token_user_agent.map_or(true, |t_ua| request_user_agent == Some(t_ua));
+  // If token has no IP, we don't care about the request's IP
+  let ip_match = token_ip_address.map_or(true, |t_ip| request_ip_address == Some(t_ip));
+
+  println!(
+    "!! ua_match: {}, ip_match: {}, final: {}",
+    ua_match,
+    ip_match,
+    ua_match && ip_match
+  );
+
+  tracing::debug!(
+      target: "auth_context_match",
+      ua_match,
+      ip_match,
+      final_match = ua_match && ip_match,
+      "Auth context match results"
+  );
+
+  ua_match && ip_match
 }
 
 #[cfg(test)]

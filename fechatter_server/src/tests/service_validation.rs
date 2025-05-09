@@ -5,7 +5,7 @@ mod service_validation_tests {
   use fechatter_core::middlewares::TokenVerifier;
   use fechatter_core::{
     LogoutService, RefreshTokenService, SigninService, SignupService, TokenService,
-    middlewares::{ActualAuthServiceProvider, WithServiceProvider},
+    middlewares::ActualAuthServiceProvider,
     models::jwt::UserClaims,
   };
 

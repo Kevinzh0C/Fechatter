@@ -139,7 +139,7 @@ mod tests {
     let user2 = &users[1];
     let user3 = &users[2];
     let user4 = &users[3];
-    let non_member_auth = auth_user!(user4);
+    let _non_member_auth = auth_user!(user4);
 
     let chat = create_new_test_chat!(
       state,

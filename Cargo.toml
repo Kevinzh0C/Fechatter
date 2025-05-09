@@ -21,12 +21,7 @@ axum = { version = "0.8.3", features = [
   "macros",
 ] }
 axum-extra = { version = "0.10.0", features = ["typed-header", "cookie"] }
-sqlx = { version = "0.8.3", features = [
-  "postgres",
-  "runtime-tokio",
-  "tls-rustls",
-  "chrono",
-] }
+sqlx = { version = "0.8.0", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "chrono", "macros"] }
 async-trait = "0.1"
 uuid = { version = "1.4", features = ["v4", "v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }

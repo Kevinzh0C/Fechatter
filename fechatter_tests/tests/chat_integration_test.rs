@@ -64,23 +64,25 @@ mod chat_integration_tests {
     }
   }
 
-  // 实现WithServiceProvider
+  // 添加 WithServiceProvider 实现
   impl fechatter_core::middlewares::WithServiceProvider for TestAppState {
-    type ServiceProviderType = fechatter_core::service_provider::ServiceProvider;
+    type ServiceProviderType = fechatter_server::services::service_provider::ServiceProvider;
 
     fn service_provider(&self) -> &Self::ServiceProviderType {
       println!("调试: TestAppState.service_provider 被调用");
-      self.0.service_provider()
+      // 使用AppState的service_provider方法
+      fechatter_core::middlewares::WithServiceProvider::service_provider(&self.0)
     }
   }
 
-  // 实现ActualAuthServiceProvider
+  // Modify the ActualAuthServiceProvider implementation for TestAppState to use the wrapper directly
   impl ActualAuthServiceProvider for TestAppState {
-    type AuthService = fechatter_server::services::AuthService;
+    type AuthService = fechatter_server::services::auth_service::AuthService;
 
     fn create_service(&self) -> Self::AuthService {
       println!("调试: TestAppState.create_service 被调用");
-      self.0.create_service()
+      // 创建新的AuthService实例，直接委托给内部AppState
+      fechatter_core::middlewares::ActualAuthServiceProvider::create_service(&self.0)
     }
   }
 
@@ -721,9 +723,36 @@ mod chat_integration_tests {
     let mut ws2_user = users[1].clone();
     ws2_user.workspace_id = 2;
 
+    // 使用服务器的TokenService直接生成令牌，而不是使用refresh token
     // 生成令牌
-    let ws1_token = create_auth_token(&state, &ws1_user).await;
-    let ws2_token = create_auth_token(&state, &ws2_user).await;
+    let claims1 = UserClaims {
+      id: ws1_user.id,
+      email: ws1_user.email.clone(),
+      fullname: ws1_user.fullname.clone(),
+      workspace_id: ws1_user.workspace_id,
+      status: ws1_user.status,
+      created_at: ws1_user.created_at,
+    };
+
+    let claims2 = UserClaims {
+      id: ws2_user.id,
+      email: ws2_user.email.clone(),
+      fullname: ws2_user.fullname.clone(),
+      workspace_id: ws2_user.workspace_id,
+      status: ws2_user.status,
+      created_at: ws2_user.created_at,
+    };
+
+    // 直接使用token_manager生成JWT令牌，避免refresh token操作
+    println!("调试: 直接生成JWT令牌，跳过refresh token处理");
+    let ws1_token = state
+      .token_manager()
+      .generate_token(&claims1)
+      .expect("Failed to generate token");
+    let ws2_token = state
+      .token_manager()
+      .generate_token(&claims2)
+      .expect("Failed to generate token");
 
     // 测试请求，忽略工作区中间件
     // 1. 测试工作区1用户访问

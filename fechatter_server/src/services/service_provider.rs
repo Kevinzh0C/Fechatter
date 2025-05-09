@@ -13,10 +13,7 @@ use tracing;
 
 // Additional imports for tests
 #[cfg(test)]
-use {
-  crate::config::AppConfig, ::async_trait::async_trait,
-  fechatter_core::models::jwt::RefreshTokenRepository, sqlx_db_tester::TestPg, std::path::Path,
-};
+use {crate::config::AppConfig, sqlx_db_tester::TestPg, std::path::Path};
 
 /// Server implementation of TokenService that wraps the core TokenManager
 pub struct ServerTokenService {
@@ -556,6 +553,7 @@ mod tests {
   /// 使用 TestPg 创建测试数据库连接和 ServiceProvider
   ///
   /// 这种方法创建一个临时数据库，并运行迁移脚本，确保测试环境完全独立
+  #[allow(dead_code)]
   async fn create_test_database_and_provider() -> (TestPg, ServiceProvider) {
     // 从配置文件加载
     let config = AppConfig::load().expect("Failed to load config from chat.yml");
@@ -819,9 +817,9 @@ mod tests {
       fechatter_core::jwt::TokenManager::from_config(&token_config, refresh_token_repo)
         .expect("Failed to create test token manager");
 
-    // 创建ServiceProvider
+    // 创建ServiceProvider - Ensure this is the server's ServiceProvider
     let service_provider =
-      fechatter_core::service_provider::ServiceProvider::new(pool.clone(), token_manager);
+      crate::services::service_provider::ServiceProvider::new(pool.clone(), token_manager);
 
     // 创建AppState with mock components
     let inner = crate::AppStateInner {

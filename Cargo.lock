@@ -746,6 +746,7 @@ dependencies = [
  "anyhow",
  "axum",
  "axum-extra",
+ "bytes",
  "chrono",
  "fechatter_core",
  "fechatter_server",
@@ -1611,6 +1612,7 @@ dependencies = [
  "anyhow",
  "axum",
  "axum-extra",
+ "chrono",
  "dashmap",
  "fechatter_core",
  "futures",
@@ -2491,6 +2493,7 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "url",
+ "uuid",
  "webpki-roots 0.26.11",
 ]
 
@@ -2587,6 +2590,7 @@ dependencies = [
  "stringprep",
  "thiserror 2.0.12",
  "tracing",
+ "uuid",
  "whoami",
 ]
 
@@ -2625,6 +2629,7 @@ dependencies = [
  "stringprep",
  "thiserror 2.0.12",
  "tracing",
+ "uuid",
  "whoami",
 ]
 
@@ -2651,6 +2656,7 @@ dependencies = [
  "thiserror 2.0.12",
  "tracing",
  "url",
+ "uuid",
 ]
 
 [[package]]

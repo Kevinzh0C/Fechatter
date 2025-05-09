@@ -6,12 +6,6 @@ pub mod workspace;
 
 use axum::response::IntoResponse;
 
-pub use auth::*;
-pub use chat::*;
-pub use chat_member::*;
-pub use messages::*;
-pub use workspace::*;
-
 pub async fn index_handler() -> impl IntoResponse {
   "index"
 }

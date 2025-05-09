@@ -18,13 +18,11 @@ use tracing::Level;
 use crate::models::AuthUser;
 use crate::models::jwt::AuthServiceTrait;
 
-use std::sync::Arc;
 
 pub use self::bearer_auth::verify_token_middleware;
 pub use self::custom_builder::*;
 pub use self::request_id::request_id_middleware;
 pub use self::server_time::ServerTimeLayer;
-pub use custom_builder::*;
 
 pub const REQUEST_ID_HEADER: &str = "x-request-id";
 pub const SERVER_TIME_HEADER: &str = "x-server-time";

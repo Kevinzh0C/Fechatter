@@ -54,9 +54,24 @@ pub async fn with_workspace_context(
   mut request: Request<Body>,
   next: Next,
 ) -> Response {
+  tracing::debug!(
+    "with_workspace_context called for user_id={}, email={}, workspace_id={}",
+    auth_user.id,
+    auth_user.email,
+    auth_user.workspace_id
+  );
+
   // Find workspace
   let workspace = match state.find_by_id_with_pool(auth_user.workspace_id).await {
-    Ok(Some(workspace)) => workspace,
+    Ok(Some(workspace)) => {
+      tracing::debug!(
+        "Workspace found: id={}, name={}, owner_id={}",
+        workspace.id,
+        workspace.name,
+        workspace.owner_id
+      );
+      workspace
+    }
     Ok(None) => {
       // 工作区不存在，可能是数据错误
       // 为调试目的，打印更多信息
@@ -67,33 +82,60 @@ pub async fn with_workspace_context(
         auth_user.email
       );
 
-      // 允许继续请求，使用空的工作区上下文
-      let workspace = Workspace {
-        id: auth_user.workspace_id,
-        name: "Default".to_string(),
-        owner_id: auth_user.id,
-        created_at: chrono::Utc::now(),
-      };
-
       // 尝试创建这个工作区以修复问题
-      if let Err(e) = state
-        .create_workspace_with_pool(&workspace.name, auth_user.id)
+      let new_workspace_name = format!("Workspace-{}", auth_user.workspace_id);
+      tracing::info!(
+        "Attempting to create missing workspace with name '{}' for user_id={}",
+        new_workspace_name,
+        auth_user.id
+      );
+
+      match state
+        .create_workspace_with_pool(&new_workspace_name, auth_user.id)
         .await
       {
-        tracing::warn!("Failed to create workspace: {:?}", e);
-      }
+        Ok(new_workspace) => {
+          tracing::info!(
+            "Successfully created new workspace id={}, name={} for user_id={}",
+            new_workspace.id,
+            new_workspace.name,
+            auth_user.id
+          );
+          new_workspace
+        }
+        Err(e) => {
+          tracing::error!("Failed to create workspace: {:?}", e);
 
-      workspace
+          // 返回401而不是继续 - 这可能是造成集成测试问题的原因
+          tracing::error!(
+            "Returning UNAUTHORIZED due to workspace creation failure. This is likely causing the 401 errors in tests."
+          );
+          return StatusCode::UNAUTHORIZED.into_response();
+        }
+      }
     }
     Err(e) => {
-      tracing::error!("Database error when finding workspace: {:?}", e);
+      tracing::error!(
+        "Database error when finding workspace id={} for user_id={}: {:?}",
+        auth_user.workspace_id,
+        auth_user.id,
+        e
+      );
       return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
   };
 
   // Add workspace context to request extensions
-  let ctx = WorkspaceContext::new(workspace);
-  request.extensions_mut().insert(ctx);
+  let workspace_copy = workspace.clone(); // Keep a copy for logging
+  let ctx = WorkspaceContext::new(workspace.clone()); // Clone to avoid ownership issues
+  request.extensions_mut().insert(workspace); // Insert workspace directly
+  request.extensions_mut().insert(ctx); // Insert context too
+
+  tracing::debug!(
+    "Workspace context added to request. Proceeding with user_id={}, workspace_id={}",
+    auth_user.id,
+    workspace_copy.id
+  );
 
   // Continue processing request
   next.run(request).await

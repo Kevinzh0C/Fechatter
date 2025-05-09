@@ -8,10 +8,8 @@ use crate::models::{Chat, ChatType};
 pub struct CreateChat {
   pub name: String,
   pub chat_type: ChatType,
-  pub created_by: i64,
   pub members: Option<Vec<i64>>,
   pub description: Option<String>,
-  pub workspace_id: i64,
 }
 
 impl CreateChat {
@@ -19,10 +17,8 @@ impl CreateChat {
     Self {
       name: name.to_string(),
       chat_type,
-      created_by: 0,
       members: Some(members),
       description: Some(description.to_string()),
-      workspace_id: 0,
     }
   }
 }
@@ -70,7 +66,6 @@ pub struct ChatSidebar {
   pub name: String,
   pub chat_type: ChatType,
   pub last_message: Option<ChatLastMessage>,
-  pub unread_count: i64,
   pub is_creator: bool,
 }
 

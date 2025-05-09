@@ -7,10 +7,8 @@ use crate::models::jwt::{
   AuthServiceTrait, AuthTokens, LogoutService, RefreshTokenService, SigninService, SignupService,
   UserClaims,
 };
-use anyhow::anyhow;
 use async_trait::async_trait;
 use sqlx::PgPool;
-use std::marker::PhantomData;
 use std::sync::Arc;
 
 #[derive(Clone)]

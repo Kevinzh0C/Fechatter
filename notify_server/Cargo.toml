@@ -22,3 +22,4 @@ tokio-stream = { workspace = true }
 dashmap = { workspace = true }
 fechatter_core = { workspace = true }
 jsonwebtoken = { workspace = true }
+chrono = { workspace = true }

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use fechatter_server::{AppConfig, AppState, get_router};
 use tokio::net::TcpListener;
-use tracing::{debug, info, level_filters::LevelFilter};
+use tracing::{debug, info};
 use tracing_subscriber::{
   EnvFilter, Layer as _, fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt,
 };

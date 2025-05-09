@@ -72,7 +72,6 @@ impl AppState {
         chat_type,
         is_creator: created_by == user_id,
         last_message: None,
-        unread_count: 0,
       });
     }
 

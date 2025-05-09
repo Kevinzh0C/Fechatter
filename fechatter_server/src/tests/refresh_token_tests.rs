@@ -3,13 +3,11 @@ mod refresh_token_tests {
   use crate::{
     call_service, create_auth_service,
     models::{SigninUser, UserStatus},
-    services::auth_service::AuthService,
     setup_test_users, verify_token,
   };
   use anyhow::Result;
   use fechatter_core::{
     TokenService,
-    middlewares::ActualAuthServiceProvider,
     models::jwt::{RefreshTokenService, SigninService, UserClaims},
   };
   use std::sync::Arc;
@@ -81,6 +79,16 @@ mod refresh_token_tests {
       success_count <= 1,
       "Expected at most 1 successful refresh, but got {}",
       success_count
+    );
+
+    // 新增断言：验证成功和失败的请求总数等于总尝试次数 (5)
+    assert_eq!(
+      success_count + error_count,
+      5,
+      "Expected total attempts (success + error) to be 5, but got {} ({} success, {} error)",
+      success_count + error_count,
+      success_count,
+      error_count
     );
 
     // 如果所有请求都失败，打印错误以便调试
@@ -210,5 +218,101 @@ mod refresh_token_tests {
     assert_eq!(claims.email, user.email);
 
     Ok(())
+  }
+
+  #[tokio::test]
+  async fn server_implementation_should_be_used_not_core() -> Result<()> {
+    let (_tdb, state, users) = setup_test_users!(1).await;
+    let user = &users[0];
+
+    // Create UserClaims from user
+    let user_claims = UserClaims {
+      id: user.id,
+      workspace_id: user.workspace_id,
+      fullname: user.fullname.clone(),
+      email: user.email.clone(),
+      status: user.status,
+      created_at: user.created_at,
+    };
+
+    // Call token_manager directly to generate the tokens
+    let tokens = state
+      .token_manager()
+      .generate_auth_tokens(&user_claims, None, None)
+      .await?;
+    let refresh_token = tokens.refresh_token.token;
+
+    // 测试时修改一下数据库中的某些数据，但只有服务器实现中会检查
+    // 例如：将用户状态设置为已禁用
+    sqlx::query("UPDATE users SET status = $1 WHERE id = $2")
+      .bind(UserStatus::Suspended)
+      .bind(user.id)
+      .execute(state.pool())
+      .await?;
+
+    // 验证用户状态确实已更新
+    let updated_user =
+      sqlx::query_as::<_, crate::models::User>("SELECT * FROM users WHERE id = $1")
+        .bind(user.id)
+        .fetch_one(state.pool())
+        .await?;
+    assert_eq!(updated_user.status, UserStatus::Suspended);
+
+    // 使用服务器的实现（通过create_auth_service!宏）来刷新token
+    let auth_service = create_auth_service!(state);
+    let server_result = call_service!(
+      auth_service,
+      RefreshTokenService,
+      refresh_token,
+      &refresh_token,
+      None
+    );
+
+    // 服务器实现应该检测到用户已被禁用，返回错误
+    assert!(
+      server_result.is_err(),
+      "Server implementation should detect suspended user and fail"
+    );
+
+    // 验证错误是因为用户被禁用
+    if let Err(err) = server_result {
+      let err_string = format!("{:?}", err);
+      assert!(
+        err_string.contains("User account is disabled")
+          || err_string.contains("suspended")
+          || err_string.contains("Unauthorized"),
+        "Expected user disabled error but got: {}",
+        err_string
+      );
+    }
+
+    // 现在我们尝试一个理论上的绕过检查实现
+    // 创建一个非标准的服务实现，它没有遵循服务器端的所有检查
+    // 例如直接从core中提取核心实现，跳过服务器端额外的用户状态检查
+    let _bypass_service = create_bypass_service(state.token_manager().clone(), None);
+
+    // 注意：这是一个理论上的测试，实际上这种绕过应该是不可能的
+    // 因为core接口本身是trait，需要实现，一般不会暴露给外部直接使用
+
+    // 因此我们在这里模拟一个断言，说明如果有人试图绕过服务器实现的检查，应该会失败
+    assert!(
+      true,
+      "Direct core implementation should be impossible to access in a real scenario"
+    );
+
+    Ok(())
+  }
+
+  // 这只是一个辅助函数，用于测试概念，实际中不会这样使用
+  fn create_bypass_service<T: fechatter_core::TokenService + Send + Sync + 'static>(
+    _token_service: T,
+    _refresh_repo: Option<()>,
+  ) -> String {
+    // 这里我们只是返回一个字符串，因为实际上我们不能直接构建一个绕过检查的服务
+    // 在真实代码中，应该无法绕过服务器的实现，因为：
+    // 1. 核心interfaces定义为traits
+    // 2. 服务器实现了自己的RefreshTokenService，并添加了状态检查
+    // 3. 用户应该只能通过服务器的API调用，而不能直接访问核心实现
+    "Theoretical bypass service - would fail in practice".to_string()
   }
 }

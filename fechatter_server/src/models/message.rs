@@ -4,6 +4,7 @@ use crate::AppState;
 
 use fechatter_core::{Message, error::CoreError, models::CreateMessage, models::ListMessage};
 use std::str::FromStr;
+use uuid;
 
 impl AppState {
   pub async fn create_message(
@@ -32,15 +33,34 @@ impl AppState {
       }
     }
 
+    // 检查是否已经存在相同idempotency_key的消息
+    let existing_message = sqlx::query_as::<_, Message>(
+      r#"SELECT id, chat_id, sender_id, content, files, created_at::timestamptz, idempotency_key
+         FROM messages 
+         WHERE chat_id = $1 AND sender_id = $2 AND idempotency_key = $3"#,
+    )
+    .bind(chat_id)
+    .bind(user_id)
+    .bind(input.idempotency_key)
+    .fetch_optional(self.pool())
+    .await?;
+
+    // 如果已经存在相同的消息，则直接返回
+    if let Some(message) = existing_message {
+      return Ok(message);
+    }
+
+    // 不存在则创建新消息
     let message = sqlx::query_as::<_, Message>(
-      r#"INSERT INTO messages (chat_id, sender_id, content, files)
-        VALUES ($1, $2, $3, $4)
-        RETURNING id, chat_id, sender_id, content, files, created_at::timestamptz"#,
+      r#"INSERT INTO messages (chat_id, sender_id, content, files, idempotency_key)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id, chat_id, sender_id, content, files, created_at::timestamptz, idempotency_key"#,
     )
     .bind(chat_id)
     .bind(user_id)
     .bind(input.content)
     .bind(&input.files)
+    .bind(input.idempotency_key)
     .fetch_one(self.pool())
     .await?;
 
@@ -62,7 +82,7 @@ impl AppState {
 
     let messages: Vec<Message> = sqlx::query_as(
       r#"
-        SELECT id, chat_id, sender_id, content, files, created_at::timestamptz
+        SELECT id, chat_id, sender_id, content, files, created_at::timestamptz, idempotency_key
         FROM messages
         WHERE chat_id = $1
         AND id < $2
@@ -144,6 +164,7 @@ mod tests {
     let message_payload1 = CreateMessage {
       content: "test".to_string(),
       files: vec![],
+      idempotency_key: uuid::Uuid::now_v7(),
     };
 
     let message1 = state
@@ -165,6 +186,7 @@ mod tests {
     let message_payload2 = CreateMessage {
       content: "test".to_string(),
       files: vec![url],
+      idempotency_key: uuid::Uuid::now_v7(),
     };
 
     let message2 = state
@@ -179,6 +201,7 @@ mod tests {
     let message_payload3 = CreateMessage {
       content: "".to_string(),
       files: vec![url],
+      idempotency_key: uuid::Uuid::now_v7(),
     };
 
     let message3 = state
@@ -193,6 +216,31 @@ mod tests {
         .as_ref()
         .map_or(false, |files| !files.is_empty())
     );
+
+    // Test idempotency with the same key
+    let idempotency_key = uuid::Uuid::now_v7();
+    let message_payload4 = CreateMessage {
+      content: "idempotency test".to_string(),
+      files: vec![],
+      idempotency_key,
+    };
+
+    let message4 = state
+      .create_message(message_payload4.clone(), chat.id, user1.id)
+      .await
+      .expect("Failed to create message");
+
+    // Send the exact same message again
+    let message5 = state
+      .create_message(message_payload4, chat.id, user1.id)
+      .await
+      .expect("Failed to create duplicate message");
+
+    // Should return the same message
+    assert_eq!(message4.id, message5.id);
+    assert_eq!(message4.content, message5.content);
+    assert_eq!(message4.created_at, message5.created_at);
+
     Ok(())
   }
 
@@ -218,6 +266,7 @@ mod tests {
       let m = CreateMessage {
         content: "test".to_string(),
         files: vec![],
+        idempotency_key: uuid::Uuid::now_v7(),
       };
       messages_payload.push(m);
     }

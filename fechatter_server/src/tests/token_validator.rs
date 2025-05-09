@@ -4,8 +4,8 @@ mod tests {
   use std::sync::Arc;
 
   use crate::{
-    AppConfig, AppError,
-    models::{User, UserStatus, jwt::TokenManager},
+    AppConfig, AppError, AppState,
+    models::{User, UserClaims, UserStatus, jwt::TokenManager},
     utils::RefreshTokenAdaptor,
     verify_token,
   };
@@ -83,50 +83,38 @@ mod tests {
     // Generate token using TokenService trait - 使用完全限定语法
     let token = <TokenManager as TokenService>::generate_token(&token_manager, &user_claims)?;
 
-    // 创建适合使用verify_token!宏的测试环境
-    #[cfg(test)]
-    mod verify_token_test {
-      use crate::{AppConfig, AppState, verify_token};
-      use anyhow::Result;
-      use fechatter_core::models::jwt::UserClaims;
-
-      #[tokio::test]
-      async fn test_verify_token_macro() -> Result<()> {
-        // 使用正常的测试设置
-        let config = AppConfig::load()?;
-        let app_state = AppState::try_new(config).await?;
-
-        // 创建测试用户
-        let user_claims = UserClaims {
-          id: 1,
-          workspace_id: 1,
-          fullname: "Test User".to_string(),
-          email: "test@example.com".to_string(),
-          status: fechatter_core::UserStatus::Active,
-          created_at: chrono::Utc::now(),
-        };
-
-        // 生成token
-        let token = <fechatter_core::models::jwt::TokenManager as fechatter_core::TokenService>::generate_token(
-          app_state.token_manager(),
-          &user_claims
-        )?;
-
-        // 使用宏验证token
-        let result = verify_token!(app_state, &token)?;
-
-        assert_eq!(result.id, user_claims.id);
-
-        Ok(())
-      }
-    }
-
     // Validate token using TokenVerifier trait explicitly
     let validated_claims = <TokenManager as TokenVerifier>::verify_token(&token_manager, &token)?;
 
     assert_eq!(validated_claims.id, user.id);
     assert_eq!(validated_claims.email, user.email);
     assert_eq!(validated_claims.fullname, user.fullname);
+
+    Ok(())
+  }
+
+  #[tokio::test]
+  async fn test_verify_token_macro() -> Result<(), anyhow::Error> {
+    let config = AppConfig::load()?;
+    let app_state = AppState::try_new(config).await?;
+
+    let user_claims = UserClaims {
+      id: 1,
+      workspace_id: 1,
+      fullname: "Test User".to_string(),
+      email: "test@example.com".to_string(),
+      status: fechatter_core::UserStatus::Active,
+      created_at: chrono::Utc::now(),
+    };
+
+    let token =
+      <fechatter_core::models::jwt::TokenManager as fechatter_core::TokenService>::generate_token(
+        app_state.token_manager(),
+        &user_claims,
+      )?;
+
+    let result = verify_token!(app_state, &token)?;
+    assert_eq!(result.id, user_claims.id);
 
     Ok(())
   }

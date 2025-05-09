@@ -62,8 +62,12 @@ POST {{baseUrl}}/api/refresh
 Content-Type: application/json
 Cookie: refresh_token={{loginRefreshToken}}
 
-### signin
-# @name login
+### Save new tokens from refresh with cookie
+@accessTokenFromCookie = {{refreshWithCookie.response.body.$.access_token}}
+@refreshTokenFromCookie = {{refreshWithCookie.response.body.$.refresh_token}}
+
+### signin (second login to get fresh tokens)
+# @name login2
 POST {{baseUrl}}/api/signin
 Content-Type: application/json
 
@@ -72,21 +76,23 @@ Content-Type: application/json
   "password": "password"
 }
 
+### Save tokens from second login
+@accessToken = {{login2.response.body.$.access_token}}
+@refreshToken = {{login2.response.body.$.refresh_token}}
+
 ### Refresh token using Authorization header
 # @name refreshWithHeader
 POST {{baseUrl}}/api/refresh
 Content-Type: application/json
-Authorization: Bearer {{loginRefreshToken}}
+Authorization: Bearer {{refreshToken}}
 
 ### Save new tokens from refresh
-# Overwrite variables with values from the REFRESH response
-@accessToken = {{refreshWithHeader.response.body.$.access_token}}
-@refreshToken = {{refreshWithHeader.response.body.$.refresh_token}}
+@newAccessToken = {{refreshWithHeader.response.body.$.access_token}}
+@newRefreshToken = {{refreshWithHeader.response.body.$.refresh_token}}
 
-### Test with newly refreshed token
-# Use the LATEST accessToken obtained from the REFRESH step
+### list users
 GET {{baseUrl}}/api/users
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{newAccessToken}}
 
 ### signin (invalid user)
 POST {{baseUrl}}/api/signin
@@ -117,9 +123,9 @@ Content-Type: application/json
 Authorization: Bearer {{accessToken}}
 
 {
-  "name": "Test2 Chat",
+  "name": "Test1 Chat",
   "chat_type": "Group", 
-  "chat_members": [1, 2, 3],
+  "members": [1, 2, 3],
   "description": "This is a test chat"
 }
 
@@ -132,7 +138,7 @@ Content-Type: application/json
 Authorization: Bearer {{accessToken}}
 
 {
-  "name": "Updated Chat2",
+  "name": "Updated Chat3",
   "description": "This is an updated test chat"
 }
 
