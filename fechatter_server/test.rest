@@ -230,3 +230,249 @@ Authorization: Bearer {{refreshToken}}
 ### logout all sessions (need authentication)
 POST {{baseUrl}}/api/logout-all
 Authorization: Bearer {{accessToken}}
+
+
+### ----- EXTENDED TEST SECTION -----
+
+### Get fresh authentication tokens for comprehensive testing
+# @name freshLogin
+POST {{baseUrl}}/api/signin
+Content-Type: application/json
+
+{
+  "email": "alice@acmn.com",
+  "password": "password"
+}
+
+### Save fresh tokens
+@testAccessToken = {{freshLogin.response.body.$.access_token}}
+@testRefreshToken = {{freshLogin.response.body.$.refresh_token}}
+
+### Create a test chat for comprehensive tests
+# @name createTestChat
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Authorization: Bearer {{testAccessToken}}
+
+{
+  "name": "Comprehensive Test Chat",
+  "chat_type": "Group", 
+  "members": [1, 2, 3],
+  "description": "Chat for comprehensive API tests"
+}
+
+### Get test chat ID
+@testChatId = {{createTestChat.response.body.$.id}}
+
+### ----- 1. DUPLICATE MESSAGE DETECTION TESTS -----
+
+### Send a message with explicit idempotency key
+# @name sendIdempotentMessage
+POST {{baseUrl}}/api/chat/{{testChatId}}/messages
+Content-Type: application/json
+Authorization: Bearer {{testAccessToken}}
+
+{
+  "content": "This is an idempotent message with fixed key",
+  "files": [],
+  "idempotency_key": "01970000-0000-7000-0000-000000000001"
+}
+
+### Attempt to send the same message with identical idempotency key (should be rejected)
+# @name sendDuplicateMessage
+POST {{baseUrl}}/api/chat/{{testChatId}}/messages
+Content-Type: application/json
+Authorization: Bearer {{testAccessToken}}
+
+{
+  "content": "This is an idempotent message with fixed key",
+  "files": [],
+  "idempotency_key": "01970000-0000-7000-0000-000000000001"
+}
+
+### Get the first message ID
+@firstMessageId = {{sendIdempotentMessage.response.body.$.id}}
+
+### ----- 2. MESSAGE PAGINATION TESTS -----
+
+### Send multiple messages for pagination testing
+# @name sendMessage1
+POST {{baseUrl}}/api/chat/{{testChatId}}/messages
+Content-Type: application/json
+Authorization: Bearer {{testAccessToken}}
+
+{
+  "content": "Pagination test message 1",
+  "files": []
+}
+
+### Send message 2
+# @name sendMessage2
+POST {{baseUrl}}/api/chat/{{testChatId}}/messages
+Content-Type: application/json
+Authorization: Bearer {{testAccessToken}}
+
+{
+  "content": "Pagination test message 2",
+  "files": []
+}
+
+### Send message 3
+# @name sendMessage3
+POST {{baseUrl}}/api/chat/{{testChatId}}/messages
+Content-Type: application/json
+Authorization: Bearer {{testAccessToken}}
+
+{
+  "content": "Pagination test message 3",
+  "files": []
+}
+
+### Test basic pagination - first page (latest messages)
+GET {{baseUrl}}/api/chat/{{testChatId}}/messages?limit=2
+Authorization: Bearer {{testAccessToken}}
+
+### Get the last message ID from the first page
+@lastMsgId = {{sendMessage3.response.body.$.id}}
+
+### Test pagination - second page using last_id
+GET {{baseUrl}}/api/chat/{{testChatId}}/messages?last_id={{lastMsgId}}&limit=2
+Authorization: Bearer {{testAccessToken}}
+
+### ----- 3. CHAT MEMBER MANAGEMENT TESTS -----
+
+### List chat members
+# @name listChatMembers
+GET {{baseUrl}}/api/chat/{{testChatId}}/members
+Authorization: Bearer {{testAccessToken}}
+
+### Add members to chat (batch)
+# @name addChatMembers
+POST {{baseUrl}}/api/chat/{{testChatId}}/members
+Content-Type: application/json
+Authorization: Bearer {{testAccessToken}}
+
+[2, 3]
+
+
+### Remove member from chat
+# @name removeChatMember
+DELETE {{baseUrl}}/api/chat/{{testChatId}}/members
+Content-Type: application/json
+Authorization: Bearer {{testAccessToken}}
+
+[3]
+
+### List members after modifications
+GET {{baseUrl}}/api/chat/{{testChatId}}/members
+Authorization: Bearer {{testAccessToken}}
+
+### Transfer chat ownership (admin operation)
+# @name transferChatOwnership
+PATCH {{baseUrl}}/api/chat/{{testChatId}}/members/2
+Content-Type: application/json
+Authorization: Bearer {{testAccessToken}}
+
+{
+  "operation": "transfer_ownership"
+}
+
+
+### ----- 4. MESSAGES WITH MULTIPLE FILES -----
+
+### Upload first test file
+# @name uploadTestFile1
+POST {{baseUrl}}/api/upload
+Authorization: Bearer {{testAccessToken}}
+Content-Type: multipart/form-data; boundary=File1Boundary
+
+--File1Boundary
+Content-Disposition: form-data; filename="test1.txt"
+Content-Type: text/plain
+
+This is test file 1 content
+--File1Boundary--
+
+### Get first file URL
+@fileUrl1 = {{uploadTestFile1.response.body.$[0]}}
+
+### Upload second test file
+# @name uploadTestFile2
+POST {{baseUrl}}/api/upload
+Authorization: Bearer {{testAccessToken}}
+Content-Type: multipart/form-data; boundary=File2Boundary
+
+--File2Boundary
+Content-Disposition: form-data; filename="test2.txt"
+Content-Type: text/plain
+
+This is test file 2 content
+--File2Boundary--
+
+### Get second file URL
+@fileUrl2 = {{uploadTestFile2.response.body.$[0]}}
+
+### Send message with multiple files
+# @name sendMessageWithFiles
+POST {{baseUrl}}/api/chat/{{testChatId}}/messages
+Content-Type: application/json
+Authorization: Bearer {{testAccessToken}}
+
+{
+  "content": "This message contains multiple file attachments",
+  "files": ["{{fileUrl1}}", "{{fileUrl2}}"]
+}
+
+### Get message with files ID
+@messageWithFilesId = {{sendMessageWithFiles.response.body.$.id}}
+
+### List messages to verify file attachments
+GET {{baseUrl}}/api/chat/{{testChatId}}/messages?limit=1
+Authorization: Bearer {{testAccessToken}}
+
+### ----- 6. FILE STORAGE FIXING TEST -----
+
+### Trigger file storage structure fix
+# @name fixFileStorage
+POST {{baseUrl}}/api/fix-files/1
+Authorization: Bearer {{testAccessToken}}
+
+### ----- 7. EDGE CASES AND ERROR HANDLING -----
+
+### Test invalid chat ID
+GET {{baseUrl}}/api/chat/999999/messages
+Authorization: Bearer {{testAccessToken}}
+
+### Test invalid message data
+POST {{baseUrl}}/api/chat/{{testChatId}}/messages
+Content-Type: application/json
+Authorization: Bearer {{testAccessToken}}
+
+{
+  "content": "",
+  "files": ["invalid-file-url"]
+}
+
+### Test invalid chat creation (missing required fields)
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Authorization: Bearer {{testAccessToken}}
+
+{
+  "name": ""
+}
+
+### Test invalid file upload (empty file)
+POST {{baseUrl}}/api/upload
+Authorization: Bearer {{testAccessToken}}
+Content-Type: multipart/form-data; boundary=EmptyFileBoundary
+
+--EmptyFileBoundary
+Content-Disposition: form-data; filename="empty.txt"
+Content-Type: text/plain
+
+--EmptyFileBoundary--
+
+### Access non-existent file
+GET {{baseUrl}}/api/files/1/non/exi/stent1234567890abcdef.txt
+Authorization: Bearer {{testAccessToken}}

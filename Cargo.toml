@@ -53,6 +53,7 @@ dashmap = { version = "6.1.0" }
 fechatter_core = { path = "./fechatter_core" }
 fechatter_server = { path = "./fechatter_server" }
 notify_server = { path = "./notify_server" }
+fechatter_macro = { path = "./fechatter_macro" }
 
 
 

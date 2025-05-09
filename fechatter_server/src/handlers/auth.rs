@@ -24,7 +24,7 @@ fn set_refresh_token_cookie(
   cookie.set_http_only(true);
   cookie.set_secure(true);
   cookie.set_same_site(Some(SameSite::Lax));
-  cookie.set_path("/api");
+  cookie.set_path("/");
 
   // Calculate seconds until expiration
   let now = Utc::now();
@@ -57,7 +57,7 @@ fn clear_refresh_token_cookie(headers: &mut HeaderMap) -> Result<(), AppError> {
   cookie.set_http_only(true);
   cookie.set_secure(true);
   cookie.set_same_site(Some(SameSite::Lax));
-  cookie.set_path("/api");
+  cookie.set_path("/");
 
   // Set both Max-Age=0 and Expires to past date for cross-browser compatibility
   let cookie_str = format!(
@@ -198,8 +198,37 @@ pub(crate) async fn refresh_token_handler(
     ip_address,
   });
 
-  // Extract refresh token from cookie
+  // Check if user is already authenticated via extension
+  if let Some(auth_user) = _auth_user {
+    println!("!! Debug: User already authenticated, generating new tokens");
+    // User is authenticated, we can just generate new tokens
+    let tokens = state
+      .generate_new_tokens_for_user(auth_user.id, auth_context)
+      .await?;
+
+    let mut response_headers = HeaderMap::new();
+    set_refresh_token_cookie(
+      &mut response_headers,
+      &tokens.refresh_token.token,
+      &tokens.refresh_token.expires_at,
+    )?;
+
+    let body = Json(AuthResponse {
+      access_token: tokens.access_token,
+      expires_in: ACCESS_TOKEN_EXPIRATION,
+      refresh_token: Some(tokens.refresh_token.token),
+    });
+
+    println!("!! Debug refresh_token_handler END - success (auth user)");
+    return Ok((StatusCode::OK, response_headers, body).into_response());
+  }
+
+  // Extract refresh token from cookie or Authorization header
   let refresh_token = if let Some(cookie) = cookies.get("refresh_token") {
+    println!(
+      "!! Debug: Found refresh_token cookie with value: {}",
+      cookie.value()
+    );
     cookie.value().to_string()
   } else if let Some(auth_header) = headers.get("Authorization") {
     // Try to get from Authorization header
@@ -221,6 +250,7 @@ pub(crate) async fn refresh_token_handler(
       );
     }
   } else {
+    println!("!! Debug: No refresh token found in cookies or Authorization header");
     return Ok(
       (
         StatusCode::UNAUTHORIZED,

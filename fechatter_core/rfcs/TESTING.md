@@ -113,6 +113,134 @@ async fn test_refresh_token_repository() {
 }
 ```
 
+## Testing Middleware
+
+The type-state based middleware system requires special testing approaches to verify correctness.
+
+### Unit Testing Middleware Functions
+
+Individual middleware functions should be tested in isolation:
+
+```rust
+#[tokio::test]
+async fn test_auth_middleware() {
+    // Create a mock token verifier
+    let token_verifier = MockTokenVerifier::new();
+    token_verifier.set_should_succeed(true);
+    
+    // Create a test request with a valid token
+    let request = Request::builder()
+        .uri("/test")
+        .header("Authorization", "Bearer valid_token")
+        .body(Body::empty())
+        .unwrap();
+    
+    // Test the middleware directly
+    let response = verify_token_middleware(State(token_verifier), request, next_mock())
+        .await;
+    
+    assert_eq!(response.status(), StatusCode::OK);
+}
+```
+
+### Testing Middleware Chains
+
+To test chains of middleware, use the middleware builder with mock state:
+
+```rust
+#[tokio::test]
+async fn test_middleware_chain() {
+    // Create a mock state with required implementations
+    let mock_state = MockAppState::new();
+    
+    // Create a test router with middleware chain
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .with_middlewares(mock_state.clone())
+        .with_auth()
+        .with_token_refresh()
+        .build();
+    
+    // Create a test server
+    let server = MockServer::new(app);
+    
+    // Test with valid credentials
+    let request = Request::builder()
+        .uri("/test")
+        .header("Authorization", "Bearer valid_token")
+        .body(Body::empty())
+        .unwrap();
+    
+    let response = server.send_request(request).await;
+    assert_eq!(response.status(), StatusCode::OK);
+}
+```
+
+### Testing Middleware Order
+
+The type-state pattern should prevent incorrect middleware ordering at compile time, but the behavior can be verified with tests:
+
+```rust
+#[tokio::test]
+async fn test_middleware_execution_order() {
+    // Create a tracker to monitor middleware call order
+    let call_tracker = MiddlewareCallTracker::new();
+    
+    // Create a mock state with the tracker
+    let mock_state = MockAppState::new_with_tracker(call_tracker.clone());
+    
+    // Create a test router with middleware chain
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .with_middlewares(mock_state.clone())
+        .with_auth()
+        .with_token_refresh()
+        .build();
+    
+    // Create a test server and send a request
+    let server = MockServer::new(app);
+    let request = Request::builder()
+        .uri("/test")
+        .header("Authorization", "Bearer valid_token")
+        .body(Body::empty())
+        .unwrap();
+    
+    let _ = server.send_request(request).await;
+    
+    // Verify middleware was called in the correct order
+    let calls = call_tracker.get_calls();
+    assert_eq!(calls[0], "auth");
+    assert_eq!(calls[1], "refresh");
+}
+```
+
+## Testing Procedural Macros
+
+The middleware builder procedural macro should be tested separately:
+
+```rust
+#[test]
+fn test_middleware_builder_macro() {
+    // This is a compile-time test - the code should compile
+    // without any type errors if the macro is working correctly
+    
+    #[middleware_builder(
+        state(TestState1) -> with_test1 uses "crate::test::test_middleware1" => TestState2,
+        state(TestState2) -> with_test2 uses "crate::test::test_middleware2" => TestState3
+    )]
+    struct TestBuilder;
+    
+    // The macro should generate the required structs and methods
+    // so that this code compiles without errors
+    let _router = Router::new()
+        .route("/test", get(|| async { "test" }))
+        .with_middlewares(MockState {})
+        .with_test1()
+        .with_test2()
+        .build();
+}
+```
+
 ## Test Environment
 
 The server tests use:
@@ -134,4 +262,5 @@ Tests are run as part of the CI pipeline to ensure:
 
 1. All pure functions work correctly
 2. Repository implementations satisfy their contracts
-3. Server components integrate properly with the database 
+3. Server components integrate properly with the database
+4. Middleware behaves correctly in various scenarios 

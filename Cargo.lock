@@ -709,6 +709,7 @@ dependencies = [
  "dashmap",
  "dotenv",
  "fechatter_core",
+ "fechatter_macro",
  "fechatter_server",
  "futures",
  "hex",

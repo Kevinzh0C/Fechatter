@@ -217,13 +217,19 @@ fn get_cookie_value(headers: &HeaderMap, name: &str) -> Option<String> {
     let trimmed = cookie_part.trim();
     debug!("Checking cookie segment: {}", trimmed);
 
-    // Look for cookie with the specified name
-    if trimmed.starts_with(&format!("{}=", name)) {
-      debug!("Found cookie {}", trimmed);
-      let cookie_value = trimmed[name.len() + 1..].to_string();
-      return Some(cookie_value);
+    // Look for cookie with the specified name - more robust parsing logic
+    // Handle name=value exactly and also name = value with potential spaces
+    let mut parts = trimmed.splitn(2, '=');
+    if let Some(cookie_name) = parts.next() {
+      if cookie_name.trim() == name {
+        if let Some(value) = parts.next() {
+          debug!("Found cookie {} with value: {}", name, value.trim());
+          return Some(value.trim().to_string());
+        }
+      }
     }
   }
 
+  debug!("Cookie {} not found in header", name);
   None
 }

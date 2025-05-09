@@ -69,6 +69,90 @@ impl UserRepository for PgUserRepository {
 }
 ```
 
+## Using Repositories in Middleware
+
+Middleware often needs to access repositories to perform data validation or authentication. Here's how to use repositories in middleware components:
+
+### Access Through Application State
+
+When implementing middleware, access repositories through the application state:
+
+```rust
+async fn workspace_middleware<S, AppState>(
+    State(state): State<AppState>,
+    mut request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> 
+where
+    AppState: WithServiceProvider,
+{
+    // Extract workspace_id from path parameters or query params
+    let workspace_id = extract_workspace_id(&request)?;
+    
+    // Get the authenticated user from request extensions
+    let auth_user = request.extensions().get::<AuthUser>().ok_or(StatusCode::UNAUTHORIZED)?;
+    
+    // Access the workspace repository through the service provider
+    let workspace_repo = state.service_provider().workspace_repository();
+    
+    // Validate workspace access
+    let has_access = workspace_repo.check_user_access(auth_user.id, workspace_id).await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    
+    if !has_access {
+        return Err(StatusCode::FORBIDDEN);
+    }
+    
+    // Proceed to the next middleware/handler
+    Ok(next.run(request).await)
+}
+```
+
+### Using WithServiceProvider Trait
+
+The `WithServiceProvider` trait provides access to all repositories:
+
+```rust
+pub trait WithServiceProvider {
+    type ServiceProviderType;
+    
+    fn service_provider(&self) -> &Self::ServiceProviderType;
+}
+```
+
+Implement this trait for your application state:
+
+```rust
+impl WithServiceProvider for AppState {
+    type ServiceProviderType = ServiceProvider;
+    
+    fn service_provider(&self) -> &ServiceProvider {
+        &self.service_provider
+    }
+}
+```
+
+### State Management in Middleware Chain
+
+The type-state builder pattern ensures that middleware is applied in the correct order, which matters for repository access:
+
+1. **Authentication middleware** must run first to populate the `AuthUser` in request extensions
+2. **Workspace middleware** can then use the authenticated user to validate workspace access
+3. **Chat membership middleware** can check if the user has access to a specific chat
+
+Example middleware chain:
+
+```rust
+let router = Router::new()
+    .route("/api/chat/:id/messages", get(list_messages))
+    .with_middlewares(app_state)
+    .with_auth()                // Add AuthUser to request
+    .with_token_refresh()       // Refresh tokens if needed
+    .with_workspace()           // Validate workspace access
+    .with_chat_membership()     // Validate chat membership
+    .build();
+```
+
 ## Testing Repositories
 
 You should test your repository implementations to ensure they correctly implement the interfaces:

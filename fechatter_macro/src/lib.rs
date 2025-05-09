@@ -13,7 +13,6 @@ use syn::{DeriveInput, Ident, LitStr, Path, Result, Token, parenthesized};
 
 // Represents a single state transition rule:
 // state(CurrentStateIdent) -> method_ident uses "actual::middleware::path" => NewStateIdent
-#[derive(Debug)]
 struct StateTransitionRule {
   current_state: Ident,
   _arrow_token: Token![->],
@@ -58,13 +57,27 @@ impl Parse for StateTransitionRule {
     let mut return_type = None;
 
     // Parse optional "requires" keyword
-    if input.peek(Ident) && input.parse::<Ident>().unwrap() == "requires" {
+    if input.peek(Ident)
+      && input
+        .fork()
+        .parse::<Ident>()
+        .map(|i| i == "requires")
+        .unwrap_or(false)
+    {
+      let _ = input.parse::<Ident>(); // consume 'requires'
       let traits_str: LitStr = input.parse()?;
       required_traits = Some(traits_str.parse_with(syn::Path::parse_mod_style)?);
     }
 
     // Parse optional "returns" keyword
-    if input.peek(Ident) && input.parse::<Ident>().unwrap() == "returns" {
+    if input.peek(Ident)
+      && input
+        .fork()
+        .parse::<Ident>()
+        .map(|i| i == "returns")
+        .unwrap_or(false)
+    {
+      let _ = input.parse::<Ident>(); // consume 'returns'
       let return_type_str: LitStr = input.parse()?;
       return_type = Some(return_type_str.parse_with(syn::Path::parse_mod_style)?);
     }
@@ -83,7 +96,6 @@ impl Parse for StateTransitionRule {
   }
 }
 
-#[derive(Debug)]
 struct AllRules {
   rules: Vec<StateTransitionRule>,
   // New fields for configuration
@@ -100,7 +112,14 @@ impl Parse for AllRules {
     let mut router_ext = true;
 
     // Parse optional configuration
-    if input.peek(Ident) && input.parse::<Ident>().unwrap() == "config" {
+    if input.peek(Ident)
+      && input
+        .fork()
+        .parse::<Ident>()
+        .map(|i| i == "config")
+        .unwrap_or(false)
+    {
+      let _ = input.parse::<Ident>(); // consume 'config'
       let content_config;
       parenthesized!(content_config in input);
 
@@ -247,7 +266,13 @@ pub fn middleware_builder(args: TokenStream, input: TokenStream) -> TokenStream 
   let helper_functions = if rules_ast.helper_functions {
     let middleware_helpers = rules_ast.rules.iter().map(|rule| {
       let method_name = &rule.method_name;
-      let helper_fn_name = format_ident!("add_{}_middleware", method_name.to_string().strip_prefix("with_").unwrap_or(&method_name.to_string()));
+      let helper_fn_name = format_ident!(
+        "add_{}_middleware",
+        method_name
+          .to_string()
+          .strip_prefix("with_")
+          .unwrap_or(&method_name.to_string())
+      );
       let middleware_path = &rule.middleware_path;
 
       quote! {
@@ -256,12 +281,9 @@ pub fn middleware_builder(args: TokenStream, input: TokenStream) -> TokenStream 
           S: Clone + Send + Sync + 'static,
           T: Clone + Send + Sync + 'static,
         {
-          use axum::middleware::from_fn;
+          use axum::middleware::from_fn_with_state;
 
-          router.layer(from_fn(move |req: axum::extract::Request<axum::body::Body>, next: axum::middleware::Next| {
-            let state_clone = state.clone();
-            async move { #middleware_path(axum::extract::State(state_clone), req, next).await }
-          }))
+          router.layer(from_fn_with_state(state.clone(), #middleware_path))
         }
       }
     });
@@ -277,26 +299,50 @@ pub fn middleware_builder(args: TokenStream, input: TokenStream) -> TokenStream 
   let mut transition_impls = Vec::new();
   transition_impls.push(constructor_impl);
 
-  // Group transitions by current state
+  // Group transitions by current state and collect initial state transitions
   let mut transitions_by_state: HashMap<Ident, Vec<&StateTransitionRule>> = HashMap::new();
+  let mut initial_state_transitions = Vec::new();
+
   for rule in &rules_ast.rules {
     transitions_by_state
       .entry(rule.current_state.clone())
       .or_insert_with(Vec::new)
       .push(rule);
+
+    // Collect initial state transitions separately
+    if rule.current_state == initial_state_marker {
+      initial_state_transitions.push(rule);
+    }
   }
 
   // Generate impl blocks for each state with its transitions
-  for (state, transitions) in transitions_by_state {
+  for (state, transitions) in &transitions_by_state {
     // Generate methods for this state
     let transition_methods = transitions.iter().map(|rule| {
       let method_name = &rule.method_name;
       let new_state = &rule.new_state;
       let middleware_path = &rule.middleware_path;
 
+      // Generate method with appropriate trait constraints
+      let additional_constraints = if let Some(req_traits) = &rule.required_traits {
+        quote! { T: #req_traits + Clone + Send + Sync + 'static, }
+      } else {
+        quote! {}
+      };
+
+      // Generate return type if specified
+      let _return_type = if let Some(ret_type) = &rule.return_type {
+        quote! { : #ret_type }
+      } else {
+        quote! {}
+      };
+
       quote! {
-        #visibility fn #method_name(self) -> #builder_name<S, T, #new_state> {
-          // Use the helper function to add the middleware
+        #visibility fn #method_name(self) -> #builder_name<S, T, #new_state>
+        where
+          #additional_constraints
+        {
+          // Use the middleware path directly
           let router = #middleware_path(self.router, self.state.clone());
 
           #builder_name {
@@ -329,28 +375,67 @@ pub fn middleware_builder(args: TokenStream, input: TokenStream) -> TokenStream 
 
   // Generate RouterExt trait if requested
   let router_ext_impl = if rules_ast.router_ext {
+    // Generate methods for RouterExt trait from the separately collected initial state transitions
+    let router_ext_methods: Vec<_> = initial_state_transitions
+      .iter()
+      .map(|rule| {
+        let method_name = &rule.method_name;
+        let middleware_path = &rule.middleware_path;
+
+        // Add any required traits from the rule
+        let trait_constraints = if let Some(req_traits) = &rule.required_traits {
+          quote! { T: #req_traits + Clone + Send + Sync + 'static, }
+        } else {
+          quote! { T: Clone + Send + Sync + 'static, }
+        };
+
+        quote! {
+          fn #method_name<T>(self, state: T) -> axum::Router<S>
+          where
+            #trait_constraints
+          {
+            #middleware_path(self, state)
+          }
+        }
+      })
+      .collect();
+
+    // Generate trait declaration with collected methods
+    let trait_methods = router_ext_methods.clone();
+    // Generate impl methods with the same methods
+    let impl_methods = router_ext_methods;
+
     quote! {
       // Extension trait for Router
-      #visibility trait RouterExt<S, T> {
-        fn with_middlewares(
+      #visibility trait RouterExt<S>: Sized {
+        fn with_middlewares<T>(
           self,
           state: T,
-        ) -> #builder_name<S, T, #initial_state_marker>;
+        ) -> #builder_name<S, T, #initial_state_marker>
+        where
+          T: Clone + Send + Sync + 'static;
+
+        // Add methods for each transition from initial state
+        #(#trait_methods)*
       }
 
-      impl<S, T> RouterExt<S, T> for axum::Router<S>
+      impl<S> RouterExt<S> for axum::Router<S>
       where
         // Base router constraints
         S: Clone + Send + Sync + 'static,
-        // Token and service provider constraints
-        T: Clone + Send + Sync + 'static,
       {
-        fn with_middlewares(
+        fn with_middlewares<T>(
           self,
           state: T,
-        ) -> #builder_name<S, T, #initial_state_marker> {
+        ) -> #builder_name<S, T, #initial_state_marker>
+        where
+          T: Clone + Send + Sync + 'static,
+        {
           #builder_name::new(self, state)
         }
+
+        // Implement all initial state transition methods
+        #(#impl_methods)*
       }
     }
   } else {
@@ -364,9 +449,9 @@ pub fn middleware_builder(args: TokenStream, input: TokenStream) -> TokenStream 
 
     #generated_builder_struct
 
-    #helper_functions
-
     #(#transition_impls)*
+
+    #helper_functions
 
     #router_ext_impl
   };
