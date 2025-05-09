@@ -82,17 +82,18 @@ impl AppState {
   }
 
   async fn ensure_user_is_chat_creator(&self, chat_id: i64, user_id: i64) -> Result<(), AppError> {
+    // 首先检查聊天是否存在
+    let _chat_exists = sqlx::query("SELECT 1 FROM chats WHERE id = $1")
+      .bind(chat_id)
+      .fetch_optional(self.pool())
+      .await?
+      .ok_or(AppError::NotFound(vec![chat_id.to_string()]))?;
+
+    // 然后检查用户是否是创建者
     let creator_check = CreateChatMember { chat_id, user_id };
     if !self.is_creator_in_chat(&creator_check).await? {
-      // Check if the chat exists before returning permission error
-      sqlx::query("SELECT 1 FROM chats WHERE id = $1")
-        .bind(chat_id)
-        .fetch_optional(self.pool())
-        .await?
-        .ok_or(AppError::NotFound(vec![chat_id.to_string()]))?;
-
       return Err(AppError::ChatPermissionError(format!(
-        "User {} is not the creator of chat {} and cannot perform this action", // If chat exists but user is not creator, return PermissionError
+        "User {} is not the creator of chat {}",
         user_id, chat_id
       )));
     }
@@ -104,6 +105,14 @@ impl AppState {
     chat_id: i64,
     user_id: i64,
   ) -> Result<bool, AppError> {
+    // 首先检查聊天是否存在
+    let _chat_exists = sqlx::query("SELECT 1 FROM chats WHERE id = $1")
+      .bind(chat_id)
+      .fetch_optional(self.pool())
+      .await?
+      .ok_or(AppError::NotFound(vec![chat_id.to_string()]))?;
+
+    // 然后检查用户是否是成员
     let member_check = CreateChatMember { chat_id, user_id };
     if !self.member_exists_in_chat(&member_check).await? {
       return Err(AppError::ChatPermissionError(format!(
@@ -319,6 +328,18 @@ impl AppState {
   }
 
   pub async fn member_exists_in_chat(&self, member: &CreateChatMember) -> Result<bool, AppError> {
+    // 首先检查聊天是否存在
+    let chat_exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM chats WHERE id = $1) as exists")
+      .bind(member.chat_id)
+      .fetch_one(self.pool())
+      .await?
+      .try_get::<bool, _>("exists")
+      .map_err(|_| AppError::SqlxError(sqlx::Error::RowNotFound))?;
+
+    if !chat_exists {
+      return Err(AppError::NotFound(vec![member.chat_id.to_string()]));
+    }
+
     let result = sqlx::query!(
       r#"
       SELECT EXISTS(
@@ -348,6 +369,18 @@ impl AppState {
   }
 
   pub async fn is_creator_in_chat(&self, member: &CreateChatMember) -> Result<bool, AppError> {
+    // 首先检查聊天是否存在
+    let chat_exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM chats WHERE id = $1) as exists")
+      .bind(member.chat_id)
+      .fetch_one(self.pool())
+      .await?
+      .try_get::<bool, _>("exists")
+      .map_err(|_| AppError::SqlxError(sqlx::Error::RowNotFound))?;
+
+    if !chat_exists {
+      return Err(AppError::NotFound(vec![member.chat_id.to_string()]));
+    }
+
     let result = sqlx::query!(
       r#"
       SELECT EXISTS(
@@ -410,7 +443,10 @@ impl AppState {
     .bind(chat_id)
     .fetch_optional(&mut *tx)
     .await?
-    .ok_or(AppError::NotFound(vec![chat_id.to_string()]))?;
+    .ok_or(AppError::NotFound(vec![format!(
+      "Chat with id {} not found",
+      chat_id
+    )]))?;
 
     if chat.chat_type != ChatType::Group {
       tx.rollback().await?;
@@ -421,17 +457,19 @@ impl AppState {
 
     if chat.created_by != from_user_id {
       tx.rollback().await?;
-      return Err(AppError::ChatPermissionError(
-        "Only the creator can transfer ownership".to_string(),
-      ));
+      return Err(AppError::ChatPermissionError(format!(
+        "User {} is not the creator of chat {}",
+        from_user_id, chat_id
+      )));
     }
 
     // Check if the target user is already a member using the fetched members
     if !chat.chat_members.contains(&to_user_id) {
       tx.rollback().await?; // Rollback before returning error
-      return Err(AppError::ChatValidationError(
-        "Target user must be a chat member to receive ownership".to_string(),
-      ));
+      return Err(AppError::ChatValidationError(format!(
+        "User {} is not a member of chat {}",
+        to_user_id, chat_id
+      )));
     }
 
     // Update the creator

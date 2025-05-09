@@ -50,25 +50,29 @@ macro_rules! setup_test_users {
 macro_rules! create_new_test_chat {
     ($state:expr, $creator:expr, $chat_type:expr, $members:expr, $name:expr $(, $desc:expr)?) => {{
         async {
-            use fechatter_core::{Chat, ChatType};
+            use fechatter_core::ChatType;
 
             // Convert members Vec<&User> or Vec<User> to Vec<i64>
             let member_ids_vec: Vec<i64> = $members.iter().map(|u| u.id).collect();
             // Handle optional description
-            let description_str: String = None $(.or(Some($desc.to_string())))?.unwrap_or_default();
+            let description_str = match Option::<String>::None $(.or(Some($desc.to_string())))? {
+                Some(s) => s,
+                None => String::new(),
+            };
 
-            // Create a mock chat
-            Chat {
-                id: rand::random(), // Use a random ID for mock
-                name: $name.to_string(),
-                chat_type: $chat_type,
-                created_by: $creator.id, // Corrected field name
-                workspace_id: $creator.workspace_id,
-                description: description_str, // Corrected type
-                created_at: chrono::Utc::now(),
-                updated_at: chrono::Utc::now(),
-                chat_members: member_ids_vec, // Corrected field name
-            }
+            // Actually create the chat in the database
+            let chat = $state.create_new_chat(
+                $creator.id,
+                $name,
+                $chat_type,
+                Some(member_ids_vec),
+                Some(&description_str),
+                $creator.workspace_id,
+            )
+            .await
+            .expect(&format!("Failed to create test chat '{}'", $name));
+
+            chat
         }
     }};
 }
@@ -212,5 +216,35 @@ mod tests {
   async fn zero_users_ok() {
     let (_, _, users) = setup_test_users!(0).await;
     assert!(users.is_empty());
+  }
+}
+
+use fechatter_core::models::jwt::TokenConfigProvider;
+use once_cell::sync::Lazy;
+
+// Generate test JWT signing keys for tests - using simple strings for tests
+static TEST_JWT_KEYS: Lazy<(String, String)> = Lazy::new(|| {
+  // For tests, we use a simple pair of EdDSA-like strings as keys
+  // Using the same key for both encoding and decoding to avoid key mismatch in tests
+  let key = "TEST_CONSISTENT_KEY_FOR_BOTH_SIGNING_AND_VERIFICATION".to_string();
+
+  (key.clone(), key.clone())
+});
+
+/// A test-specific TokenConfigProvider that uses consistent in-memory test keys
+pub struct TestTokenConfig;
+
+impl TokenConfigProvider for TestTokenConfig {
+  fn get_encoding_key_pem(&self) -> &str {
+    &TEST_JWT_KEYS.0
+  }
+
+  fn get_decoding_key_pem(&self) -> &str {
+    &TEST_JWT_KEYS.1
+  }
+
+  // Smaller leeway for tests
+  fn get_jwt_leeway(&self) -> u64 {
+    5 // 5 seconds for tests
   }
 }

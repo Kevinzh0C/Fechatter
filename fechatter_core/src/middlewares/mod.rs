@@ -18,6 +18,8 @@ use tracing::Level;
 use crate::models::AuthUser;
 use crate::models::jwt::AuthServiceTrait;
 
+use std::sync::Arc;
+
 pub use self::bearer_auth::verify_token_middleware;
 pub use self::custom_builder::*;
 pub use self::request_id::request_id_middleware;
@@ -78,7 +80,7 @@ pub trait TokenVerifier {
 pub trait ActualAuthServiceProvider {
   // The associated type AuthService should itself be bound by AuthServiceTrait
   type AuthService: AuthServiceTrait;
-  fn create_service(&self) -> Self::AuthService; // Consider if this should return Box<dyn AuthServiceTrait>
+  fn create_service(&self) -> Self::AuthService;
 }
 
 pub trait WithServiceProvider {

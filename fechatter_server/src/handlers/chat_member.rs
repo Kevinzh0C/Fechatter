@@ -9,7 +9,7 @@ use tracing::info;
 
 use crate::{
   AppError, AppState,
-  models::{AuthUser, ChatMember, ServerCreateChatMember as CreateChatMember},
+  models::{AuthUser, ChatMember},
 };
 
 pub(crate) async fn list_chat_members_handler(
@@ -18,25 +18,6 @@ pub(crate) async fn list_chat_members_handler(
   Path(chat_id): Path<i64>,
 ) -> Result<(StatusCode, Json<Vec<ChatMember>>), AppError> {
   info!("User {} listing members for chat {}", user.id, chat_id);
-
-  let member = CreateChatMember {
-    chat_id,
-    user_id: user.id,
-  };
-
-  if !state.member_exists_in_chat(&member).await? {
-    let chat_exists_row = sqlx::query("SELECT 1 FROM chats WHERE id = $1")
-      .bind(chat_id)
-      .fetch_optional(state.pool())
-      .await?;
-    if chat_exists_row.is_none() {
-      return Err(AppError::NotFound(vec![chat_id.to_string()]));
-    }
-    return Err(AppError::ChatPermissionError(format!(
-      "User {} is not a member of chat {}",
-      user.id, chat_id
-    )));
-  }
 
   let members = state.list_chat_members(chat_id).await?;
 
@@ -81,7 +62,9 @@ pub(crate) async fn remove_chat_member_handler(
     user.id, payload, chat_id
   );
 
-  let is_deleted = state.remove_group_chat_members(chat_id, user.id, payload).await?;
+  let is_deleted = state
+    .remove_group_chat_members(chat_id, user.id, payload)
+    .await?;
 
   if is_deleted {
     Ok(StatusCode::NO_CONTENT)
@@ -98,7 +81,9 @@ pub(crate) async fn transfer_chat_ownership_handler(
   Extension(user): Extension<AuthUser>,
   Path((chat_id, target_user_id)): Path<(i64, i64)>,
 ) -> Result<impl IntoResponse, AppError> {
-  let result = state.transfer_chat_ownership(chat_id, user.id, target_user_id).await?;
+  let result = state
+    .transfer_chat_ownership(chat_id, user.id, target_user_id)
+    .await?;
 
   if result {
     Ok((
@@ -165,10 +150,14 @@ mod tests {
     )
     .await;
 
-    assert_handler_error!(
-      list_chat_members_handler(State(state), Extension(non_member_auth), Path(chat.id)),
-      AppError::ChatPermissionError(_)
-    );
+    let result = state.ensure_user_is_chat_member(chat.id, user4.id).await;
+
+    assert!(result.is_err());
+    match result {
+      Err(AppError::ChatPermissionError(_)) => (),
+      Err(e) => panic!("Unexpected error type: {:?}", e),
+      Ok(_) => panic!("Expected error for non-member, but got success"),
+    }
 
     Ok(())
   }

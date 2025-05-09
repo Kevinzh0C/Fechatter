@@ -43,13 +43,17 @@ impl ErrorMapper for NotifyError {
 
   fn map_error(error: CoreError) -> Self::Error {
     match error {
-      CoreError::Database(e) => NotifyError::SqlxError(e),
+      CoreError::Database(e) => NotifyError::SqlxError(sqlx::Error::Io(std::io::Error::new(
+        std::io::ErrorKind::Other,
+        e,
+      ))),
       CoreError::Validation(msg) => NotifyError::ValidationError(msg),
       CoreError::Authentication(e) => NotifyError::AuthenticationError(e.to_string()),
       CoreError::NotFound(msg) => NotifyError::NotFoundError(msg),
       CoreError::Conflict(msg) => NotifyError::ConflictError(msg),
       CoreError::Unauthorized(msg) => NotifyError::UnauthorizedError(msg),
-      CoreError::Internal(e) => NotifyError::AnyError(e),
+      CoreError::Internal(e) => NotifyError::AnyError(anyhow::anyhow!(e)),
+      _ => NotifyError::AnyError(anyhow::anyhow!("Unhandled error type")),
     }
   }
 }

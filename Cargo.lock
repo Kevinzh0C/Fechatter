@@ -640,7 +640,46 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
 
 [[package]]
-name = "fechatter-server"
+name = "fechatter_core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "argon2",
+ "async-trait",
+ "axum",
+ "axum-extra",
+ "base64 0.22.1",
+ "chrono",
+ "fechatter_macro",
+ "futures",
+ "hex",
+ "jsonwebtoken",
+ "mockall",
+ "rand 0.9.1",
+ "serde",
+ "serde_yaml",
+ "sha1",
+ "sha2",
+ "sqlx",
+ "thiserror",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "fechatter_macro"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "fechatter_server"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -683,47 +722,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "fechatter_core"
+name = "fechatter_tests"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "argon2",
- "async-trait",
  "axum",
  "axum-extra",
- "base64 0.22.1",
- "chrono",
- "fechatter_macro",
- "futures",
- "hex",
- "jsonwebtoken",
- "mockall",
- "rand 0.9.1",
+ "fechatter_core",
+ "fechatter_server",
  "serde",
- "serde_yaml",
- "sha1",
- "sha2",
- "sqlx",
- "thiserror",
  "tokio",
- "tower",
- "tower-http",
- "tracing",
- "uuid",
+ "tokio-stream",
+ "tokio-util",
 ]
-
-[[package]]
-name = "fechatter_macro"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "fechatter_tests"
-version = "0.1.0"
 
 [[package]]
 name = "flate2"
@@ -1503,7 +1514,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "notify-server"
+name = "notify_server"
 version = "0.1.0"
 dependencies = [
  "anyhow",

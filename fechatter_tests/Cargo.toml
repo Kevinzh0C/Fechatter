@@ -4,3 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+axum = { workspace = true }
+axum-extra = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+tokio-util = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+fechatter_server = { workspace = true }
+fechatter_core = { workspace = true }

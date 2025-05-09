@@ -21,6 +21,43 @@ impl FechatterUserRepository {
   pub fn new(pool: Arc<PgPool>) -> Self {
     Self { pool }
   }
+
+  #[allow(unused)]
+  fn pool(&self) -> &PgPool {
+    &self.pool
+  }
+
+  /// Find workspace by name, or create a default one if it doesn't exist
+  async fn find_workspace_by_name(
+    &self,
+    name: &str,
+  ) -> Result<fechatter_core::Workspace, CoreError> {
+    let mut conn = self.pool.acquire().await?;
+
+    match sqlx::query_as::<_, fechatter_core::Workspace>(
+      "SELECT id, name, owner_id, created_at FROM workspaces WHERE name = $1",
+    )
+    .bind(name)
+    .fetch_optional(&mut *conn)
+    .await?
+    {
+      Some(workspace) => Ok(workspace),
+      None => {
+        // Create a new workspace with owner_id 0 (will be updated later)
+        sqlx::query_as::<_, fechatter_core::Workspace>(
+          r#"
+          INSERT INTO workspaces (name, owner_id)
+          VALUES ($1, 0)
+          RETURNING id, name, owner_id, created_at
+          "#,
+        )
+        .bind(name)
+        .fetch_one(&mut *conn)
+        .await
+        .map_err(|e| CoreError::Internal(e.to_string()))
+      }
+    }
+  }
 }
 
 #[async_trait]
@@ -32,52 +69,42 @@ impl UserRepository for FechatterUserRepository {
     .bind(id)
     .fetch_optional(&*self.pool)
     .await
-    .map_err(|e| CoreError::Internal(e.into()))?;
+    .map_err(|e| CoreError::Internal(e.to_string()))?;
 
     Ok(user)
   }
 
   async fn create(&self, input: &CreateUser) -> Result<User, CoreError> {
+    // Check if email already exists
+    let existing_user = self.email_user_exists(&input.email).await?;
+    if existing_user.is_some() {
+      return Err(CoreError::UserAlreadyExists(format!(
+        "User with email {} already exists",
+        input.email
+      )));
+    }
+
+    // Check if workspace exists (or create default)
+    let workspace = self.find_workspace_by_name(&input.workspace).await?;
+
     let mut tx = self
       .pool
       .begin()
       .await
-      .map_err(|e| CoreError::Internal(e.into()))?;
+      .map_err(|e| CoreError::Internal(e.to_string()))?;
 
     let conn = tx
       .acquire()
       .await
-      .map_err(|e| CoreError::Internal(e.into()))?;
+      .map_err(|e| CoreError::Internal(e.to_string()))?;
 
     let mut is_new_workspace = false;
-    let workspace = match find_workspace_by_name(&input.workspace, &self.pool)
-      .await
-      .map_err(|e| CoreError::Internal(e.into()))?
-    {
-      Some(workspace) => {
-        if workspace.owner_id == 0 {
-          is_new_workspace = true;
-        }
-        workspace
-      }
-      None => {
-        is_new_workspace = true;
-        sqlx::query_as::<_, fechatter_core::Workspace>(
-          r#"
-          INSERT INTO workspaces (name, owner_id)
-          VALUES ($1, 0)
-          RETURNING id, name, owner_id, created_at
-          "#,
-        )
-        .bind(&input.workspace)
-        .fetch_one(&mut *conn)
-        .await
-        .map_err(|e| CoreError::Internal(e.into()))?
-      }
-    };
+    if workspace.owner_id == 0 {
+      is_new_workspace = true;
+    }
 
     let password_hash =
-      hashed_password(&input.password).map_err(|e| CoreError::Internal(e.into()))?;
+      hashed_password(&input.password).map_err(|e| CoreError::Internal(e.to_string()))?;
 
     let user = sqlx::query_as::<_, User>(
       r#"
@@ -97,10 +124,10 @@ impl UserRepository for FechatterUserRepository {
         if db_err.is_unique_violation() {
           CoreError::Validation(format!("User with email {} already exists", input.email))
         } else {
-          CoreError::Internal(e.into())
+          CoreError::Internal(e.to_string())
         }
       } else {
-        CoreError::Internal(e.into())
+        CoreError::Internal(e.to_string())
       }
     })?;
 
@@ -110,7 +137,7 @@ impl UserRepository for FechatterUserRepository {
         .bind(workspace.id)
         .execute(&mut *conn)
         .await
-        .map_err(|e| CoreError::Internal(e.into()))?;
+        .map_err(|e| CoreError::Internal(e.to_string()))?;
 
       if res.rows_affected() == 0 {
         return Err(CoreError::NotFound(format!(
@@ -122,7 +149,7 @@ impl UserRepository for FechatterUserRepository {
 
     tx.commit()
       .await
-      .map_err(|e| CoreError::Internal(e.into()))?;
+      .map_err(|e| CoreError::Internal(e.to_string()))?;
 
     Ok(user)
   }
@@ -134,7 +161,7 @@ impl UserRepository for FechatterUserRepository {
     .bind(&credentials.email)
     .fetch_optional(&*self.pool)
     .await
-    .map_err(|e| CoreError::Internal(e.into()))?;
+    .map_err(|e| CoreError::Internal(e.to_string()))?;
 
     match user {
       Some(mut user) => {
@@ -144,7 +171,7 @@ impl UserRepository for FechatterUserRepository {
         };
 
         let is_valid = verify_password(&credentials.password, &password_hash)
-          .map_err(|e| CoreError::Internal(e.into()))?;
+          .map_err(|e| CoreError::Internal(e.to_string()))?;
         if is_valid {
           Ok(Some(user))
         } else {
@@ -162,7 +189,7 @@ impl UserRepository for FechatterUserRepository {
     .bind(email)
     .fetch_optional(&*self.pool)
     .await
-    .map_err(|e| CoreError::Internal(e.into()))?;
+    .map_err(|e| CoreError::Internal(e.to_string()))?;
 
     Ok(user)
   }
@@ -181,7 +208,7 @@ impl UserRepository for FechatterUserRepository {
     )
     .fetch_all(&*self.pool)
     .await
-    .map_err(|e| CoreError::Internal(e.into()))?;
+    .map_err(|e| CoreError::Internal(e.to_string()))?;
 
     if !missing_ids.is_empty() {
       let missing_ids_str = missing_ids
@@ -384,6 +411,7 @@ fn verify_password(password: &str, password_hash: &str) -> Result<bool, AppError
   Ok(is_valid)
 }
 
+#[allow(unused)]
 async fn find_workspace_by_name(name: &str, pool: &PgPool) -> Result<Option<Workspace>, AppError> {
   let workspace = sqlx::query_as::<_, Workspace>(
     "SELECT id, name, owner_id, created_at FROM workspaces WHERE name = $1",

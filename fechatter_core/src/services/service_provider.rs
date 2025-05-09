@@ -10,6 +10,7 @@ use crate::models::jwt::{
 use anyhow::anyhow;
 use async_trait::async_trait;
 use sqlx::PgPool;
+use std::marker::PhantomData;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -74,67 +75,76 @@ impl ActualAuthServiceProvider for ServiceProvider {
   }
 }
 
+// 注意：这里故意不完整，需要在fechatter_server中实现这个特性
+// 我们设置一个占位符类型，应该在server中被正确替换
 #[cfg(not(test))]
 impl ActualAuthServiceProvider for ServiceProvider {
-  type AuthService = PanicService;
+  // 定义一个占位符类型，这个类型会在服务器层被实际实现
+  type AuthService = RealAuthServicePlaceholder;
 
   fn create_service(&self) -> Self::AuthService {
-    PanicService
+    // 这个函数永远不应该被直接调用，因为实际的实现应该在服务器层
+    // 如果这个函数被调用了，那就是配置错误
+    panic!(
+      "This is a placeholder implementation. The actual implementation should be in the server layer"
+    )
   }
 }
 
+// 定义一个占位符类型，这个类型在服务器层会被正确替换
 #[cfg(not(test))]
 #[derive(Clone)]
-pub struct PanicService;
+pub struct RealAuthServicePlaceholder;
 
+// 为占位符实现必要的特性，这样编译器才不会报错
 #[cfg(not(test))]
-impl AuthServiceTrait for PanicService {}
+impl AuthServiceTrait for RealAuthServicePlaceholder {}
 
 #[cfg(not(test))]
 #[async_trait]
-impl RefreshTokenService for PanicService {
+impl RefreshTokenService for RealAuthServicePlaceholder {
   async fn refresh_token(
     &self,
     _refresh_token: &str,
     _auth_context: Option<crate::services::AuthContext>,
   ) -> Result<AuthTokens, CoreError> {
-    panic!("PanicService is not meant to be used in production code")
+    panic!("This is a placeholder implementation")
   }
 }
 
 #[cfg(not(test))]
 #[async_trait]
-impl SignupService for PanicService {
+impl SignupService for RealAuthServicePlaceholder {
   async fn signup(
     &self,
     _payload: &crate::models::CreateUser,
     _auth_context: Option<crate::services::AuthContext>,
   ) -> Result<AuthTokens, CoreError> {
-    panic!("PanicService is not meant to be used in production code")
+    panic!("This is a placeholder implementation")
   }
 }
 
 #[cfg(not(test))]
 #[async_trait]
-impl SigninService for PanicService {
+impl SigninService for RealAuthServicePlaceholder {
   async fn signin(
     &self,
     _payload: &crate::models::SigninUser,
     _auth_context: Option<crate::services::AuthContext>,
   ) -> Result<Option<AuthTokens>, CoreError> {
-    panic!("PanicService is not meant to be used in production code")
+    panic!("This is a placeholder implementation")
   }
 }
 
 #[cfg(not(test))]
 #[async_trait]
-impl LogoutService for PanicService {
+impl LogoutService for RealAuthServicePlaceholder {
   async fn logout(&self, _refresh_token: &str) -> Result<(), CoreError> {
-    panic!("PanicService is not meant to be used in production code")
+    panic!("This is a placeholder implementation")
   }
 
   async fn logout_all(&self, _user_id: i64) -> Result<(), CoreError> {
-    panic!("PanicService is not meant to be used in production code")
+    panic!("This is a placeholder implementation")
   }
 }
 

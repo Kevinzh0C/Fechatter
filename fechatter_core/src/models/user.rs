@@ -57,7 +57,7 @@ pub fn hashed_password(password: &str) -> Result<String, CoreError> {
   // Hash password to PHC string ($argon2id$v=19$...)
   let password_hash = argon2
     .hash_password(password.as_bytes(), &salt)
-    .map_err(|e| CoreError::Internal(e.into()))?
+    .map_err(|e| CoreError::Internal(e.to_string()))?
     .to_string();
 
   Ok(password_hash)
@@ -65,7 +65,8 @@ pub fn hashed_password(password: &str) -> Result<String, CoreError> {
 
 pub fn verify_password(password: &str, password_hash: &str) -> Result<bool, CoreError> {
   let argon2 = Argon2::default();
-  let parsed_hash = PasswordHash::new(password_hash).map_err(|e| CoreError::Internal(e.into()))?;
+  let parsed_hash =
+    PasswordHash::new(password_hash).map_err(|e| CoreError::Internal(e.to_string()))?;
 
   let is_valid = argon2
     .verify_password(password.as_bytes(), &parsed_hash)

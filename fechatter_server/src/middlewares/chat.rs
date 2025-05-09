@@ -123,15 +123,19 @@ pub async fn verify_chat_membership_middleware(
         "Permission denied: User {} is not a member of chat {}",
         user.id, chat_id
       );
-      let err = AppError::ChatPermissionError(format!(
+      AppError::ChatPermissionError(format!(
         "User {} is not a member of chat {}",
         user.id, chat_id
-      ));
-      err.into_response()
+      ))
+      .into_response()
     }
     Err(e) => {
       error!("Error checking chat membership: {:?}", e);
       match e {
+        AppError::NotFound(_) => {
+          // If chat doesn't exist, provide more consistent error
+          AppError::NotFound(vec![format!("Chat with id {} not found", chat_id)]).into_response()
+        }
         AppError::ChatPermissionError(_) => e.into_response(),
         _ => AppError::from(e).into_response(),
       }

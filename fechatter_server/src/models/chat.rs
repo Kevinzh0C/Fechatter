@@ -231,10 +231,16 @@ impl AppState {
           if db_error.is_unique_violation() {
             AppError::ChatAlreadyExists(format!("Chat {} already exists", name))
           } else {
-            e.into()
+            AppError::SqlxError(sqlx::Error::Io(std::io::Error::new(
+              std::io::ErrorKind::Other,
+              e.to_string(),
+            )))
           }
         } else {
-          e.into()
+          AppError::SqlxError(sqlx::Error::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            e.to_string(),
+          )))
         }
       })?;
 
@@ -256,7 +262,19 @@ impl AppState {
     user_id: i64,
     payload: UpdateChat,
   ) -> Result<Chat, AppError> {
-    // Use the server's CreateChatMember type for is_creator_in_chat
+    // 首先检查聊天是否存在
+    let chat_exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM chats WHERE id = $1) as exists")
+      .bind(chat_id)
+      .fetch_one(self.pool())
+      .await?
+      .try_get::<bool, _>("exists")
+      .map_err(|_| AppError::SqlxError(sqlx::Error::RowNotFound))?;
+
+    if !chat_exists {
+      return Err(AppError::NotFound(vec![chat_id.to_string()]));
+    }
+
+    // 然后检查用户是否是创建者
     let creator = crate::models::ServerCreateChatMember { chat_id, user_id };
     let is_creator = self.is_creator_in_chat(&creator).await?;
 
@@ -285,7 +303,17 @@ impl AppState {
     .bind(&payload.description)
     .bind(chat_id)
     .fetch_one(self.pool())
-    .await?;
+    .await.map_err(|e| {
+      if let Some(db_error) = e.as_database_error() {
+        if db_error.is_unique_violation() {
+          return AppError::ChatAlreadyExists(format!(
+            "Chat name '{}' is already taken by another chat",
+            payload.name.as_ref().unwrap()
+          ));
+        }
+      }
+      AppError::from(e)
+    })?;
 
     if payload.name.is_some() || payload.description.is_some() {
       for &member_id in &chat_result.chat_members {
@@ -297,6 +325,18 @@ impl AppState {
   }
 
   pub async fn delete_chat(&self, chat_id: i64, user_id: i64) -> Result<bool, AppError> {
+    // 首先检查聊天是否存在
+    let chat_exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM chats WHERE id = $1) as exists")
+      .bind(chat_id)
+      .fetch_one(self.pool())
+      .await?
+      .try_get::<bool, _>("exists")
+      .map_err(|_| AppError::SqlxError(sqlx::Error::RowNotFound))?;
+
+    if !chat_exists {
+      return Err(AppError::NotFound(vec![chat_id.to_string()]));
+    }
+
     let mut tx = self.pool().begin().await?;
 
     let members_to_invalidate = match self
@@ -330,8 +370,12 @@ impl AppState {
       chat_id
     )
     .fetch_optional(&mut **tx)
-    .await?
-    .ok_or(AppError::NotFound(vec![chat_id.to_string()]))?;
+    .await?;
+
+    let chat_info = match chat_info {
+      Some(info) => info,
+      None => return Err(AppError::NotFound(vec![chat_id.to_string()])),
+    };
 
     if chat_info.created_by != user_id {
       return Err(AppError::ChatPermissionError(format!(
@@ -1290,9 +1334,9 @@ mod tests {
       .await;
 
     match update_result {
-      Err(AppError::ChatPermissionError(error_message)) => {
+      Err(AppError::ChatAlreadyExists(error_message)) => {
         let expected_error = format!(
-          "Cannot update chat to '{}', this name is already in use",
+          "Chat name '{}' is already taken by another chat",
           first_chat_name
         );
         assert_eq!(error_message, expected_error);
@@ -1307,7 +1351,7 @@ mod tests {
 
 #[cfg(test)]
 mod process_chat_members_data_driven_tests {
-  use super::*;
+  // use super::*;
   use crate::AppError;
   use crate::models::ChatType;
   use anyhow::Result;

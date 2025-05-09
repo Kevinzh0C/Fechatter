@@ -223,9 +223,9 @@ impl TokenManager {
 
     Ok(Self {
       encoding_key: EncodingKey::from_ed_pem(sk_pem.as_bytes())
-        .map_err(|e| CoreError::Internal(e.into()))?,
+        .map_err(|e| CoreError::Internal(e.to_string()))?,
       decoding_key: DecodingKey::from_ed_pem(pk_pem.as_bytes())
-        .map_err(|e| CoreError::Internal(e.into()))?,
+        .map_err(|e| CoreError::Internal(e.to_string()))?,
       validation,
       refresh_token_repo,
     })
@@ -252,9 +252,9 @@ impl TokenManager {
 
     Ok(Self {
       encoding_key: EncodingKey::from_ed_pem(sk_pem.as_bytes())
-        .map_err(|e| CoreError::Internal(e.into()))?,
+        .map_err(|e| CoreError::Internal(e.to_string()))?,
       decoding_key: DecodingKey::from_ed_pem(pk_pem.as_bytes())
-        .map_err(|e| CoreError::Internal(e.into()))?,
+        .map_err(|e| CoreError::Internal(e.to_string()))?,
       validation,
       refresh_token_repo,
     })
@@ -327,6 +327,24 @@ impl TokenManager {
     let token_data = decode::<Claims>(token, &self.decoding_key, &self.validation)
       .map_err(|e| CoreError::Validation(e.to_string()))?;
     Ok(token_data.claims.user)
+  }
+
+  pub fn gen_jwt_token(&self, claims: &UserClaims) -> Result<String, CoreError> {
+    // Create JWT with given claims
+    // Uses RS256 algorithm with private key
+    let header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::EdDSA);
+    jsonwebtoken::encode(&header, claims, &self.encoding_key)
+      .map_err(|e| CoreError::Authentication(e.to_string()))
+  }
+
+  pub fn verify_jwt_token(&self, token: &str) -> Result<UserClaims, CoreError> {
+    let validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::EdDSA);
+    match jsonwebtoken::decode::<UserClaims>(token, &self.decoding_key, &validation) {
+      Ok(token_data) => Ok(token_data.claims),
+      Err(_) => Err(CoreError::Authentication(
+        "Invalid or expired refresh token".to_string(),
+      )),
+    }
   }
 }
 

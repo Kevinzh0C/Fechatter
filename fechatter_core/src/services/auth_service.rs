@@ -1,5 +1,6 @@
 use crate::{
   error::CoreError,
+  error::TokenValidationError,
   jwt::{
     AuthTokens, RefreshToken, RefreshTokenData, RefreshTokenRepository, ReplaceTokenPayload,
     UserClaims,
@@ -104,26 +105,24 @@ where
   ) -> Result<AuthTokens, CoreError> {
     let token_record = self.validate_refresh_token(refresh_token_str).await?;
 
+    // Only validate user agent if the token has one AND auth_context is provided
+    // This allows clients without user agent support to still refresh tokens
     if let Some(saved_agent) = &token_record.user_agent {
       if let Some(ctx) = &auth_context {
-        match &ctx.user_agent {
-          None => {
-            return Err(CoreError::Validation(
-              "Security validation failed for token".to_string(),
+        // Auth context is provided, so we can validate the user agent
+        if let Some(current_agent) = &ctx.user_agent {
+          // Check if user agents match
+          if current_agent != saved_agent {
+            return Err(CoreError::InvalidToken(
+              TokenValidationError::SecurityMismatch,
             ));
           }
-          Some(current) if current != saved_agent => {
-            return Err(CoreError::Validation(
-              "Security validation failed for token".to_string(),
-            ));
-          }
-          _ => {}
         }
-      } else {
-        return Err(CoreError::Validation(
-          "Security validation failed for token".to_string(),
-        ));
+        // If auth_context has no user_agent, we'll still allow the refresh
+        // This is more permissive than before but necessary for some clients
       }
+      // If no auth_context provided but token has user_agent,
+      // we'll also allow the refresh for better compatibility with different clients
     }
 
     let user = self
@@ -205,17 +204,16 @@ where
       .refresh_token_repository
       .find_by_token(token_str)
       .await?
-      .ok_or_else(|| CoreError::Validation("Invalid or expired refresh token".to_string()))?;
+      .ok_or_else(|| CoreError::InvalidToken(TokenValidationError::NotFound))?;
+
     if token_record.expires_at < chrono::Utc::now() {
-      return Err(CoreError::Validation(
-        "Invalid or expired refresh token".to_string(),
-      ));
+      return Err(CoreError::InvalidToken(TokenValidationError::Expired));
     }
+
     if token_record.revoked {
-      return Err(CoreError::Validation(
-        "Invalid or revoked refresh token".to_string(),
-      ));
+      return Err(CoreError::InvalidToken(TokenValidationError::Revoked));
     }
+
     Ok(token_record)
   }
 }

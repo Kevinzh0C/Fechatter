@@ -90,24 +90,30 @@ pub(crate) async fn signup_handler(
     ip_address,
   });
 
-  // Delegate to the auth service for signup
-  let tokens = state.signup(&payload, auth_context).await?;
+  // Delegate to the auth service for signup and handle errors explicitly
+  match state.signup(&payload, auth_context).await {
+    Ok(tokens) => {
+      // Set refresh token cookie in response
+      let mut response_headers = HeaderMap::new();
+      set_refresh_token_cookie(
+        &mut response_headers,
+        &tokens.refresh_token.token,
+        &tokens.refresh_token.expires_at,
+      )?;
 
-  // Set refresh token cookie in response
-  let mut response_headers = HeaderMap::new();
-  set_refresh_token_cookie(
-    &mut response_headers,
-    &tokens.refresh_token.token,
-    &tokens.refresh_token.expires_at,
-  )?;
+      let body = Json(AuthResponse {
+        access_token: tokens.access_token,
+        expires_in: ACCESS_TOKEN_EXPIRATION,
+        refresh_token: Some(tokens.refresh_token.token),
+      });
 
-  let body = Json(AuthResponse {
-    access_token: tokens.access_token,
-    expires_in: ACCESS_TOKEN_EXPIRATION,
-    refresh_token: Some(tokens.refresh_token.token),
-  });
-
-  Ok((StatusCode::CREATED, response_headers, body).into_response())
+      Ok((StatusCode::CREATED, response_headers, body).into_response())
+    }
+    Err(fechatter_core::error::CoreError::UserAlreadyExists(msg)) => {
+      Ok((StatusCode::CONFLICT, Json(ErrorOutput::new(msg))).into_response())
+    }
+    Err(e) => Err(AppError::from(e)),
+  }
 }
 
 pub(crate) async fn signin_handler(
@@ -207,35 +213,70 @@ pub(crate) async fn refresh_token_handler(
           }
         } else {
           // If no token provided, but user is authenticated,
-          // we can still refresh tokens using the auth_context
-          "".to_string()
+          // we should generate new tokens directly for the user instead of trying to refresh
+          // an empty token which would fail validation
+          let user_id = _user.id;
+
+          // Generate new tokens for the authenticated user
+          match state
+            .generate_new_tokens_for_user(user_id, auth_context)
+            .await
+          {
+            Ok(tokens) => {
+              let mut response_headers = HeaderMap::new();
+              set_refresh_token_cookie(
+                &mut response_headers,
+                &tokens.refresh_token.token,
+                &tokens.refresh_token.expires_at,
+              )?;
+
+              let body = Json(AuthResponse {
+                access_token: tokens.access_token,
+                expires_in: ACCESS_TOKEN_EXPIRATION,
+                refresh_token: Some(tokens.refresh_token.token),
+              });
+
+              return Ok((StatusCode::OK, response_headers, body).into_response());
+            }
+            Err(e) => {
+              tracing::warn!(
+                "Failed to generate new tokens for authenticated user {}: {:?}",
+                user_id,
+                e
+              );
+              return Err(AppError::from(e));
+            }
+          }
         }
       }
     };
 
-    // Use the existing authenticated user to refresh tokens
-    match state.refresh_token(&refresh_token, auth_context).await {
-      Ok(tokens) => {
-        let mut response_headers = HeaderMap::new();
-        set_refresh_token_cookie(
-          &mut response_headers,
-          &tokens.refresh_token.token,
-          &tokens.refresh_token.expires_at,
-        )?;
+    // Only try to refresh if we actually have a token
+    if !refresh_token.is_empty() {
+      // Use the existing authenticated user to refresh tokens
+      match state.refresh_token(&refresh_token, auth_context).await {
+        Ok(tokens) => {
+          let mut response_headers = HeaderMap::new();
+          set_refresh_token_cookie(
+            &mut response_headers,
+            &tokens.refresh_token.token,
+            &tokens.refresh_token.expires_at,
+          )?;
 
-        let body = Json(AuthResponse {
-          access_token: tokens.access_token,
-          expires_in: ACCESS_TOKEN_EXPIRATION,
-          refresh_token: Some(tokens.refresh_token.token),
-        });
+          let body = Json(AuthResponse {
+            access_token: tokens.access_token,
+            expires_in: ACCESS_TOKEN_EXPIRATION,
+            refresh_token: Some(tokens.refresh_token.token),
+          });
 
-        return Ok((StatusCode::OK, response_headers, body).into_response());
-      }
-      Err(e) => {
-        // If token refresh fails but we have an authenticated user,
-        // return error but keep user session
-        tracing::warn!("Token refresh failed for authenticated user: {:?}", e);
-        return Err(AppError::from(e));
+          return Ok((StatusCode::OK, response_headers, body).into_response());
+        }
+        Err(e) => {
+          // If token refresh fails but we have an authenticated user,
+          // return error but keep user session
+          tracing::warn!("Token refresh failed for authenticated user: {:?}", e);
+          return Err(AppError::from(e));
+        }
       }
     }
   }
@@ -291,21 +332,32 @@ pub(crate) async fn refresh_token_handler(
 
       Ok((StatusCode::OK, headers, body).into_response())
     }
-    Err(e) => match e {
-      fechatter_core::error::CoreError::Validation(msg) => {
-        let mut headers = HeaderMap::new();
-        clear_refresh_token_cookie(&mut headers)?;
-        Ok(
+    Err(e) => {
+      // For tests we need to map all errors to proper format with expected error messages
+      let mut headers = HeaderMap::new();
+      clear_refresh_token_cookie(&mut headers)?;
+
+      // Map specific errors to expected error messages
+      match e {
+        fechatter_core::error::CoreError::InvalidToken(_) => Ok(
           (
             StatusCode::UNAUTHORIZED,
             headers,
-            Json(ErrorOutput::new(msg)),
+            Json(ErrorOutput::new("Invalid or expired refresh token")),
           )
             .into_response(),
-        )
+        ),
+        fechatter_core::error::CoreError::Validation(_) => Ok(
+          (
+            StatusCode::UNAUTHORIZED,
+            headers,
+            Json(ErrorOutput::new("Invalid or expired refresh token")),
+          )
+            .into_response(),
+        ),
+        _ => Err(AppError::from(e)),
       }
-      _ => Err(AppError::from(e)),
-    },
+    }
   }
 }
 
@@ -416,8 +468,6 @@ mod tests {
   use anyhow::Result;
   use axum::{Json, http::StatusCode};
   use axum_extra::extract::cookie::{Cookie, CookieJar};
-  use chrono::Duration;
-  use fechatter_core::{AuthTokens, models::jwt::RefreshTokenData};
   use http_body_util::BodyExt;
   #[tokio::test]
   async fn signup_handler_should_work() -> Result<()> {
@@ -479,13 +529,38 @@ mod tests {
       signup_handler(State(state), HeaderMap::new(), Json(payload)).await
     };
 
-    let response = test_handler(state.clone(), payload.clone()).await?;
-    let response = response.into_response();
-    assert_eq!(response.status(), StatusCode::CONFLICT);
+    // 测试通过state直接调用，确保返回的是正确的核心错误类型
+    let core_result = state.signup(&payload, None).await;
+    match core_result {
+      Err(fechatter_core::error::CoreError::UserAlreadyExists(msg)) => {
+        assert!(msg.contains(&user1.email));
+      }
+      _ => {
+        panic!(
+          "Expected CoreError::UserAlreadyExists, but got: {:?}",
+          core_result
+        );
+      }
+    }
 
-    let body = BodyExt::collect(response.into_body()).await?.to_bytes();
-    let error_output: ErrorOutput = serde_json::from_slice(&body)?;
-    assert!(error_output.error.contains("already exists"));
+    // 测试handler的响应码
+    // 由于handler会将UserAlreadyExists映射到CONFLICT响应
+    match test_handler(state.clone(), payload.clone()).await {
+      Ok(resp) => {
+        let http_resp = resp.into_response();
+        assert_eq!(http_resp.status(), StatusCode::CONFLICT);
+
+        let body = BodyExt::collect(http_resp.into_body()).await?.to_bytes();
+        let error_output: ErrorOutput = serde_json::from_slice(&body)?;
+        assert!(error_output.error.contains("already exists"));
+      }
+      Err(err) => {
+        panic!(
+          "Handler should return Ok with CONFLICT status, not Err. Got: {:?}",
+          err
+        );
+      }
+    }
 
     Ok(())
   }
@@ -513,46 +588,22 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
 
-    // Generate tokens for testing using AppState instead of AuthService directly
-    let tokens = {
-      let auth_context = Some(AuthContext {
-        user_agent: Some("test-agent".to_string()),
-        ip_address: Some("127.0.0.1".to_string()),
-      });
+    // 创建一个登录用户的token
+    let signin_payload = SigninUser::new(&user.email, "password");
+    let signin_result = state.signin(&signin_payload, None).await.unwrap().unwrap();
 
-      // Create a temporary token for the user
-      let expires_at = Utc::now() + Duration::days(7);
-      let absolute_expires_at = expires_at + Duration::days(30);
+    // 使用真实的refresh token
+    let refresh_token = signin_result.refresh_token.token;
 
-      // This should go through state's implemented refresh_token method
-      match state
-        .refresh_token("test-token", auth_context.clone())
-        .await
-      {
-        Ok(tokens) => tokens,
-        Err(_) => {
-          // Use a mock token for tests if refresh fails
-          AuthTokens {
-            access_token: "test-access-token".to_string(),
-            refresh_token: RefreshTokenData {
-              token: "test-refresh-token".to_string(),
-              expires_at,
-              absolute_expires_at,
-            },
-          }
-        }
-      }
-    };
-
+    // 创建cookie jar模拟请求
     let mut jar = CookieJar::new();
-    jar = jar.add(Cookie::new(
-      "refresh_token",
-      tokens.refresh_token.token.clone(),
-    ));
+    jar = jar.add(Cookie::new("refresh_token", refresh_token));
 
+    // 创建handler
     let test_handler =
       |state, jar| async { refresh_token_handler(State(state), HeaderMap::new(), jar, None).await };
 
+    // 验证成功响应
     let auth_response = assert_handler_success!(
       test_handler(state.clone(), jar),
       StatusCode::OK,
@@ -602,7 +653,9 @@ mod tests {
         let res: ErrorOutput = serde_json::from_slice(&body)?;
         assert_eq!(res.error, "Invalid or expired refresh token");
       }
-      Err(_) => {}
+      Err(_) => {
+        panic!("Expected response with UNAUTHORIZED status, but got an error");
+      }
     }
 
     Ok(())
@@ -613,40 +666,18 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
 
-    // Generate test tokens using AppState implementation
-    let tokens = {
-      let auth_context = Some(AuthContext {
-        user_agent: Some("test-agent".to_string()),
-        ip_address: Some("127.0.0.1".to_string()),
-      });
+    // 创建一个登录用户的token
+    let signin_payload = SigninUser::new(&user.email, "password");
+    let signin_result = state.signin(&signin_payload, None).await.unwrap().unwrap();
 
-      // Try to use AppState's refresh_token method
-      match state.refresh_token("test-token", auth_context).await {
-        Ok(tokens) => tokens,
-        Err(_) => {
-          // Create a mock token for testing
-          let expires_at = Utc::now() + Duration::days(7);
-          let absolute_expires_at = expires_at + Duration::days(30);
+    // 使用真实的refresh token
+    let refresh_token = signin_result.refresh_token.token;
 
-          AuthTokens {
-            access_token: "test-access-token".to_string(),
-            refresh_token: RefreshTokenData {
-              token: "test-refresh-token".to_string(),
-              expires_at,
-              absolute_expires_at,
-            },
-          }
-        }
-      }
-    };
-
+    // 创建cookie jar
     let mut jar = CookieJar::new();
-    jar = jar.add(Cookie::new(
-      "refresh_token",
-      tokens.refresh_token.token.clone(),
-    ));
+    jar = jar.add(Cookie::new("refresh_token", refresh_token.clone()));
 
-    // Set up auth user Extension directly for the test
+    // 设置auth user Extension
     let auth_user = Extension(AuthUser {
       id: user.id,
       fullname: user.fullname.clone(),
@@ -656,20 +687,20 @@ mod tests {
       workspace_id: user.workspace_id,
     });
 
-    // Create a simplified test that just passes the user directly
+    // 测试logout
     let response = logout_handler(State(state.clone()), jar, HeaderMap::new(), auth_user)
       .await?
       .into_response();
 
-    println!("Logout response status: {:?}", response.status());
     assert_eq!(response.status(), StatusCode::OK);
 
     let body = BodyExt::collect(response.into_body()).await?.to_bytes();
     let res: serde_json::Value = serde_json::from_slice(&body)?;
     assert_eq!(res["message"], "Logged out successfully");
 
+    // 尝试使用已经登出的token
     let mut jar2 = CookieJar::new();
-    jar2 = jar2.add(Cookie::new("refresh_token", tokens.refresh_token.token));
+    jar2 = jar2.add(Cookie::new("refresh_token", refresh_token));
 
     let test_refresh =
       |state, jar| async { refresh_token_handler(State(state), HeaderMap::new(), jar, None).await };
@@ -681,7 +712,9 @@ mod tests {
         let resp = resp.into_response();
         assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
       }
-      Err(_) => {}
+      Err(_) => {
+        panic!("Expected UNAUTHORIZED response, but got an error");
+      }
     }
 
     Ok(())

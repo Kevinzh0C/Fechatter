@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 
-use crate::error::CoreError;
+use crate::error::{ChatValidationError, CoreError};
 use crate::models::{Chat, ChatType};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,13 +91,13 @@ pub struct UpdateChat {
 
 pub fn validate_chat_name(name: &str) -> Result<(), CoreError> {
   if name.trim().is_empty() {
-    Err(CoreError::Validation(
+    Err(CoreError::ChatValidation(ChatValidationError::InvalidName(
       "Chat name cannot be empty".to_string(),
-    ))
+    )))
   } else if name.len() > 128 {
-    Err(CoreError::Validation(
+    Err(CoreError::ChatValidation(ChatValidationError::InvalidName(
       "Chat name cannot be longer than 128 characters".to_string(),
-    ))
+    )))
   } else {
     Ok(())
   }
@@ -113,14 +113,16 @@ pub fn process_chat_members(
       Some(members) if members.len() == 1 => {
         let target_id = members[0];
         if target_id == creator_id {
-          return Err(CoreError::Validation(
-            "Single chat must have exactly one member".to_string(),
+          return Err(CoreError::ChatValidation(
+            ChatValidationError::InvalidMembers(
+              "Single chat must have exactly one member".to_string(),
+            ),
           ));
         }
         Ok(vec![creator_id, target_id])
       }
-      _ => Err(CoreError::Validation(
-        "Invalid single chat members".to_string(),
+      _ => Err(CoreError::ChatValidation(
+        ChatValidationError::InvalidMembers("Invalid single chat members".to_string()),
       )),
     },
     ChatType::Group => {
@@ -133,8 +135,10 @@ pub fn process_chat_members(
         }
       }
       if result.len() < 3 {
-        return Err(CoreError::Validation(
-          "Group chat must have at least three members".to_string(),
+        return Err(CoreError::ChatValidation(
+          ChatValidationError::InvalidMembers(
+            "Group chat must have at least three members".to_string(),
+          ),
         ));
       }
       Ok(result)

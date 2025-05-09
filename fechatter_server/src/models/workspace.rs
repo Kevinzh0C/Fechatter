@@ -37,10 +37,16 @@ impl AppState {
         if db_err.is_unique_violation() {
           AppError::WorkspaceAlreadyExists(name.to_string())
         } else {
-          e.into()
+          AppError::SqlxError(sqlx::Error::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            e.to_string(),
+          )))
         }
       } else {
-        e.into()
+        AppError::SqlxError(sqlx::Error::Io(std::io::Error::new(
+          std::io::ErrorKind::Other,
+          e.to_string(),
+        )))
       }
     })?;
 
@@ -258,7 +264,7 @@ impl AppState {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
+  // use super::*;
   use crate::setup_test_users;
   use anyhow::{Ok, Result};
 

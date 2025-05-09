@@ -41,6 +41,8 @@ use fechatter_core::middlewares::custom_builder::RouterExt as CoreRouterExt;
 use handlers::*;
 use middlewares::RouterExt;
 
+use once_cell::sync::OnceCell;
+
 // Define the cache trait locally
 #[allow(unused)]
 trait WithCache<K, V> {
@@ -94,6 +96,33 @@ impl WithServiceProvider for AppState {
 impl WithDbPool for AppState {
   fn db_pool(&self) -> &PgPool {
     self.inner.service_provider.pool()
+  }
+}
+
+// 为AppState实现ActualAuthServiceProvider，替换core中的默认实现
+impl ActualAuthServiceProvider for AppState {
+  type AuthService = AuthService;
+
+  fn create_service(&self) -> Self::AuthService {
+    // 直接创建服务实例
+    tracing::trace!("Creating new AuthService instance from AppState");
+
+    let user_repository = Box::new(crate::models::user::FechatterUserRepository::new(Arc::new(
+      self.inner.service_provider.pool().clone(),
+    )));
+
+    let token_service: Box<dyn fechatter_core::TokenService + Send + Sync + 'static> =
+      Box::new(crate::services::ServerTokenService::new(Arc::new(
+        self.inner.service_provider.token_manager().clone(),
+      )));
+
+    let refresh_token_repository = Box::new(crate::utils::refresh_token::RefreshTokenAdaptor::new(
+      Arc::new(self.inner.service_provider.pool().clone()),
+    ));
+
+    // 创建和返回新的AuthService实例
+    // 虽然每次都创建新的实例，但所有组件都是通过Arc共享的
+    AuthService::new(user_repository, token_service, refresh_token_repository)
   }
 }
 
@@ -305,10 +334,7 @@ impl AppState {
     payload: &fechatter_core::CreateUser,
     auth_context: Option<fechatter_core::services::AuthContext>,
   ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
-    self
-      .inner
-      .service_provider
-      .create_service()
+    <Self as ActualAuthServiceProvider>::create_service(self)
       .signup(payload, auth_context)
       .await
   }
@@ -318,10 +344,7 @@ impl AppState {
     payload: &fechatter_core::SigninUser,
     auth_context: Option<fechatter_core::services::AuthContext>,
   ) -> Result<Option<fechatter_core::AuthTokens>, fechatter_core::error::CoreError> {
-    self
-      .inner
-      .service_provider
-      .create_service()
+    <Self as ActualAuthServiceProvider>::create_service(self)
       .signin(payload, auth_context)
       .await
   }
@@ -331,30 +354,57 @@ impl AppState {
     refresh_token: &str,
     auth_context: Option<fechatter_core::services::AuthContext>,
   ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
-    self
-      .inner
-      .service_provider
-      .create_service()
+    <Self as ActualAuthServiceProvider>::create_service(self)
       .refresh_token(refresh_token, auth_context)
       .await
   }
 
   pub async fn logout(&self, refresh_token: &str) -> Result<(), fechatter_core::error::CoreError> {
-    self
-      .inner
-      .service_provider
-      .create_service()
+    <Self as ActualAuthServiceProvider>::create_service(self)
       .logout(refresh_token)
       .await
   }
 
   pub async fn logout_all(&self, user_id: i64) -> Result<(), fechatter_core::error::CoreError> {
-    self
-      .inner
-      .service_provider
-      .create_service()
+    <Self as ActualAuthServiceProvider>::create_service(self)
       .logout_all(user_id)
       .await
+  }
+
+  pub async fn generate_new_tokens_for_user(
+    &self,
+    user_id: i64,
+    auth_context: Option<fechatter_core::services::AuthContext>,
+  ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
+    // Get the user from database
+    let user = self
+      .find_user_by_id(user_id)
+      .await
+      .map_err(|e| {
+        fechatter_core::error::CoreError::Internal(format!("Failed to find user: {}", e))
+      })?
+      .ok_or_else(|| {
+        fechatter_core::error::CoreError::NotFound(format!("User with id {} not found", user_id))
+      })?;
+
+    // Create UserClaims from the user
+    let user_claims = fechatter_core::models::jwt::UserClaims {
+      id: user.id,
+      workspace_id: user.workspace_id,
+      fullname: user.fullname,
+      email: user.email,
+      status: user.status,
+      created_at: user.created_at,
+    };
+
+    // Generate new tokens using the token manager directly with fully qualified syntax
+    // This calls generate_auth_tokens on TokenManager through the TokenService trait
+    <fechatter_core::models::jwt::TokenManager as fechatter_core::TokenService>::generate_auth_tokens(
+      self.token_manager(),
+      &user_claims,
+      auth_context.as_ref().and_then(|ctx| ctx.user_agent.clone()),
+      auth_context.as_ref().and_then(|ctx| ctx.ip_address.clone()),
+    ).await
   }
 }
 
@@ -375,3 +425,6 @@ impl fmt::Debug for AppStateInner {
     )
   }
 }
+
+// 确保导出服务模块和AuthService
+pub use crate::services::AuthService;

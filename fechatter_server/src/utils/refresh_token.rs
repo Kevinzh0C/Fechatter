@@ -10,10 +10,10 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::sync::Arc;
 
-pub const ACCESS_TOKEN_EXPIRATION: usize = 30 * 60; // 30 minutes
 pub const REFRESH_TOKEN_EXPIRATION: usize = 14 * 24 * 60 * 60; // 14 days
 pub const REFRESH_TOKEN_MAX_LIFETIME: usize = 30 * 24 * 60 * 60; // 30 days
 
+#[allow(unused)]
 pub fn generate_refresh_token() -> String {
   use rand::{Rng, rng};
 
@@ -166,24 +166,59 @@ impl RefreshTokenStorage {
     absolute_expires_at: DateTime<Utc>,
     pool: &PgPool,
   ) -> Result<RefreshTokenEntity, AppError> {
-    let now = Utc::now();
+    let now = chrono::Utc::now();
     let new_expires_at = now + Duration::seconds(REFRESH_TOKEN_EXPIRATION as i64);
     let new_token_hash = sha256_hash(new_token);
 
+    // 使用事务和行级锁确保并发安全
     let mut tx = pool.begin().await?;
 
-    sqlx::query(
+    // 首先检查令牌是否已经被撤销或替换
+    // 使用 FOR UPDATE 获取行锁，确保在事务期间其他会话无法修改该行
+    let token_status = sqlx::query!(
+      r#"
+      SELECT revoked, replaced_by 
+      FROM refresh_tokens 
+      WHERE id = $1
+      FOR UPDATE
+      "#,
+      old_token_id
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    // 如果令牌不存在或已经被撤销/替换，返回错误
+    match token_status {
+      None => {
+        tx.rollback().await?;
+        return Err(AppError::NotFound(vec![format!(
+          "Refresh token with id {} not found",
+          old_token_id
+        )]));
+      }
+      Some(status) if status.revoked || status.replaced_by.is_some() => {
+        tx.rollback().await?;
+        return Err(AppError::JwtError(jsonwebtoken::errors::Error::from(
+          jsonwebtoken::errors::ErrorKind::InvalidToken,
+        )));
+      }
+      _ => {} // 令牌存在且未被撤销
+    }
+
+    // 使用新令牌替换旧令牌
+    sqlx::query!(
       r#"
       UPDATE refresh_tokens
       SET revoked = TRUE, replaced_by = $1
       WHERE id = $2
       "#,
+      &new_token_hash,
+      old_token_id
     )
-    .bind(&new_token_hash)
-    .bind(old_token_id)
     .execute(&mut *tx)
     .await?;
 
+    // 创建新的刷新令牌
     let refresh_token = sqlx::query_as::<_, RefreshTokenEntity>(
       r#"
       INSERT INTO refresh_tokens (user_id, token_hash, expires_at, user_agent, ip_address, absolute_expires_at)
@@ -200,6 +235,7 @@ impl RefreshTokenStorage {
     .fetch_one(&mut *tx)
     .await?;
 
+    // 提交事务
     tx.commit().await?;
 
     Ok(refresh_token)
@@ -224,7 +260,7 @@ impl RefreshTokenRepository for RefreshTokenAdaptor {
     let token = raw_token.to_string();
     let found = RefreshTokenStorage::find_by_token(&token, &pool)
       .await
-      .map_err(|e| CoreError::Internal(e.into()))?;
+      .map_err(|e| CoreError::Internal(e.to_string()))?;
 
     Ok(found.map(|token| token.to_dto()))
   }
@@ -240,7 +276,7 @@ impl RefreshTokenRepository for RefreshTokenAdaptor {
       .bind(old_token_id)
       .fetch_one(&*pool)
       .await
-      .map_err(|e| CoreError::Internal(e.into()))?;
+      .map_err(|e| CoreError::Internal(e.to_string()))?;
 
     // 调用RefreshTokenStorage::replace来执行token替换
     let result = RefreshTokenStorage::replace(
@@ -253,7 +289,7 @@ impl RefreshTokenRepository for RefreshTokenAdaptor {
       &pool,
     )
     .await
-    .map_err(|e| CoreError::Internal(e.into()))?;
+    .map_err(|e| CoreError::Internal(e.to_string()))?;
 
     Ok(result.to_dto())
   }
@@ -262,14 +298,14 @@ impl RefreshTokenRepository for RefreshTokenAdaptor {
     let pool = self.pool.clone();
     RefreshTokenStorage::revoke(token_id, &pool)
       .await
-      .map_err(|e| CoreError::Internal(e.into()))
+      .map_err(|e| CoreError::Internal(e.to_string()))
   }
 
   async fn revoke_all_for_user(&self, user_id: i64) -> Result<(), CoreError> {
     let pool = self.pool.clone();
     RefreshTokenStorage::revoke_all_for_user(user_id, &pool)
       .await
-      .map_err(|e| CoreError::Internal(e.into()))
+      .map_err(|e| CoreError::Internal(e.to_string()))
   }
 
   async fn create(&self, payload: StoreTokenPayload) -> Result<CoreRefreshToken, CoreError> {
@@ -282,7 +318,7 @@ impl RefreshTokenRepository for RefreshTokenAdaptor {
       &pool,
     )
     .await
-    .map_err(|e| CoreError::Internal(e.into()))?;
+    .map_err(|e| CoreError::Internal(e.to_string()))?;
 
     Ok(result.to_dto())
   }
@@ -293,7 +329,6 @@ mod tests {
   use super::*;
   use crate::{AppConfig, models::UserStatus, setup_test_users};
   use anyhow::Result;
-  use anyhow::anyhow;
   use fechatter_core::TokenService;
   use fechatter_core::{User, UserClaims, jwt::TokenManager};
 
@@ -308,7 +343,7 @@ mod tests {
     }
 
     async fn replace(&self, _payload: ReplaceTokenPayload) -> Result<CoreRefreshToken, CoreError> {
-      Err(CoreError::Internal(anyhow!("Not implemented")))
+      Err(CoreError::Internal("Not implemented".to_string()))
     }
 
     async fn revoke(&self, _token_id: i64) -> Result<(), CoreError> {

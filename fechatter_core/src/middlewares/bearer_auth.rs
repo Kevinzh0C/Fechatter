@@ -123,8 +123,7 @@ mod tests {
 
       async fn replace(&self, _payload: ReplaceTokenPayload) -> Result<RefreshToken, CoreError> {
         // Use a static string to avoid lifetime issues
-        static ERROR_MSG: &str = "Not implemented";
-        Err(CoreError::Internal(anyhow::Error::msg(ERROR_MSG)))
+        Err(CoreError::Internal("Not implemented".to_string()))
       }
 
       async fn revoke(&self, _token_id: i64) -> Result<(), CoreError> {

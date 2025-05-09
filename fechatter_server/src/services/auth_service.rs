@@ -3,16 +3,16 @@ use chrono::Utc;
 use fechatter_core::{
   AuthContext, AuthServiceTrait, AuthTokens, CoreError, CreateUser, LogoutService, RefreshToken,
   RefreshTokenData, RefreshTokenRepository, RefreshTokenService, ReplaceTokenPayload,
-  SigninService, SigninUser, SignupService, TokenService, UserClaims, UserRepository,
+  SigninService, SigninUser, SignupService, TokenService, UserClaims, UserRepository, UserStatus,
 };
 use std::sync::Arc;
 use tracing;
 
 #[derive(Clone)]
 pub struct AuthService {
-  user_repository: Arc<Box<dyn UserRepository + Send + Sync + 'static>>,
-  token_service: Arc<Box<dyn TokenService + Send + Sync + 'static>>,
-  refresh_token_repository: Arc<Box<dyn RefreshTokenRepository + Send + Sync + 'static>>,
+  pub(crate) user_repository: Arc<Box<dyn UserRepository + Send + Sync + 'static>>,
+  pub(crate) token_service: Arc<Box<dyn TokenService + Send + Sync + 'static>>,
+  pub(crate) refresh_token_repository: Arc<Box<dyn RefreshTokenRepository + Send + Sync + 'static>>,
 }
 
 // Define RefreshTokenInfo as an alias for RefreshToken
@@ -28,36 +28,27 @@ impl RefreshTokenService for AuthService {
     // Find and validate refresh token
     let token_record = self.validate_refresh_token(refresh_token_str).await?;
 
+    // Only validate user agent if both token has one AND auth_context is provided
     if let Some(saved_agent) = &token_record.user_agent {
-      // If token has saved user agent, require user agent in request
       if let Some(ctx) = &auth_context {
-        match &ctx.user_agent {
-          None => {
-            tracing::warn!(
-              "Token refresh failed: Missing user agent in request but token has user agent saved"
-            );
-            return Err(CoreError::Validation(
-              "Security validation failed for token".to_string(),
-            ));
-          }
-          Some(current) if current != saved_agent => {
+        if let Some(current) = &ctx.user_agent {
+          // User agent present in both token and request, verify they match
+          if current != saved_agent {
             tracing::warn!(
               "Token refresh failed: User agent mismatch. Expected: {}, Got: {}",
               saved_agent,
               current
             );
-            return Err(CoreError::Validation(
-              "Security validation failed for token".to_string(),
+            return Err(CoreError::InvalidToken(
+              fechatter_core::error::TokenValidationError::SecurityMismatch,
             ));
           }
-          _ => {} // User agent matches, continue
         }
-      } else {
-        tracing::warn!("Token refresh failed: Missing auth context but token has user agent saved");
-        return Err(CoreError::Validation(
-          "Security validation failed for token".to_string(),
-        ));
+        // If auth_context exists but has no user_agent, allow the refresh
+        // This makes the API more flexible for different client types
       }
+      // If no auth_context, also allow refresh for compatibility with different clients
+      // This is more permissive but necessary for mobile apps and other clients
     }
 
     // Find associated user
@@ -72,11 +63,24 @@ impl RefreshTokenService for AuthService {
           "Token refresh failed: User not found for token. User ID: {}",
           token_record.user_id
         );
-        return Err(CoreError::Validation(
-          "Security validation failed for token".to_string(),
+        return Err(CoreError::InvalidToken(
+          fechatter_core::error::TokenValidationError::NotFound,
         ));
       }
     };
+
+    // 重要：检查用户状态，禁止已禁用用户刷新令牌
+    if user.status != UserStatus::Active {
+      tracing::warn!(
+        "Token refresh failed: User account is disabled. User ID: {}, Status: {:?}",
+        user.id,
+        user.status
+      );
+      return Err(CoreError::Unauthorized(format!(
+        "User account is disabled. Current status: {:?}",
+        user.status
+      )));
+    }
 
     // Create user claims
     let user_claims = UserClaims {
@@ -113,8 +117,8 @@ impl RefreshTokenService for AuthService {
       Ok(record) => record,
       Err(e) => {
         tracing::warn!("Token refresh failed: Error replacing token: {:?}", e);
-        return Err(CoreError::Validation(
-          "Security validation failed for token".to_string(),
+        return Err(CoreError::InvalidToken(
+          fechatter_core::error::TokenValidationError::SecurityMismatch,
         ));
       }
     };
@@ -132,8 +136,8 @@ impl RefreshTokenService for AuthService {
       Ok(tokens) => tokens,
       Err(e) => {
         tracing::warn!("Token refresh failed: Error generating new tokens: {:?}", e);
-        return Err(CoreError::Validation(
-          "Security validation failed for token".to_string(),
+        return Err(CoreError::InvalidToken(
+          fechatter_core::error::TokenValidationError::SecurityMismatch,
         ));
       }
     };
@@ -258,9 +262,10 @@ impl LogoutService for AuthService {
         Ok(_) => Ok(()),
         Err(e) => {
           tracing::warn!("Logout failed: Error revoking token: {:?}", e);
-          Err(CoreError::Validation(
-            "Security validation failed".to_string(),
-          ))
+          Err(CoreError::Internal(format!(
+            "Failed to revoke token: {}",
+            e
+          )))
         }
       }
     } else {
@@ -278,9 +283,10 @@ impl LogoutService for AuthService {
       Ok(_) => Ok(()),
       Err(e) => {
         tracing::warn!("Logout all failed for user {}: {:?}", user_id, e);
-        Err(CoreError::Validation(
-          "Security validation failed".to_string(),
-        ))
+        Err(CoreError::Internal(format!(
+          "Failed to revoke all tokens for user {}: {}",
+          user_id, e
+        )))
       }
     }
   }
@@ -302,6 +308,15 @@ impl AuthService {
     }
   }
 
+  // 添加方法从Arc<AuthService>创建AuthService
+  pub fn from_arc(arc_service: Arc<Self>) -> Self {
+    Self {
+      user_repository: Arc::clone(&arc_service.user_repository),
+      token_service: Arc::clone(&arc_service.token_service),
+      refresh_token_repository: Arc::clone(&arc_service.refresh_token_repository),
+    }
+  }
+
   async fn validate_refresh_token(
     &self,
     refresh_token_str: &str,
@@ -314,14 +329,14 @@ impl AuthService {
       Ok(Some(record)) => record,
       Ok(None) => {
         tracing::warn!("Token validation failed: Token not found");
-        return Err(CoreError::Validation(
-          "Security validation failed for token".to_string(),
+        return Err(CoreError::InvalidToken(
+          fechatter_core::error::TokenValidationError::NotFound,
         ));
       }
       Err(e) => {
         tracing::warn!("Token validation failed: Error finding token: {:?}", e);
-        return Err(CoreError::Validation(
-          "Security validation failed for token".to_string(),
+        return Err(CoreError::InvalidToken(
+          fechatter_core::error::TokenValidationError::NotFound,
         ));
       }
     };
@@ -336,16 +351,16 @@ impl AuthService {
         token_record.absolute_expires_at,
         now
       );
-      return Err(CoreError::Validation(
-        "Security validation failed for token".to_string(),
+      return Err(CoreError::InvalidToken(
+        fechatter_core::error::TokenValidationError::Expired,
       ));
     }
 
     // Check if token has been revoked
     if token_record.revoked {
       tracing::warn!("Token validation failed: Token has been revoked");
-      return Err(CoreError::Validation(
-        "Security validation failed for token".to_string(),
+      return Err(CoreError::InvalidToken(
+        fechatter_core::error::TokenValidationError::Revoked,
       ));
     }
 

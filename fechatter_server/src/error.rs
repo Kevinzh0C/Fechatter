@@ -6,7 +6,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use fechatter_core::error::{CoreError, ErrorMapper};
+use fechatter_core::error::{ChatValidationError, CoreError, ErrorMapper};
 use thiserror::Error;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -81,13 +81,29 @@ impl ErrorMapper for AppError {
 
   fn map_error(error: CoreError) -> Self::Error {
     match error {
-      CoreError::Database(e) => AppError::SqlxError(e),
+      CoreError::Database(e) => AppError::SqlxError(sqlx::Error::Io(std::io::Error::new(
+        std::io::ErrorKind::Other,
+        e,
+      ))),
+      CoreError::UserAlreadyExists(e) => AppError::UserAlreadyExists(e),
       CoreError::Validation(e) => AppError::ChatValidationError(e),
+      CoreError::ChatValidation(e) => match e {
+        ChatValidationError::InvalidName(msg) => AppError::ChatValidationError(msg),
+        ChatValidationError::InvalidMembers(msg) => AppError::ChatValidationError(msg),
+        ChatValidationError::PermissionDenied(msg) => AppError::ChatPermissionError(msg),
+        ChatValidationError::MemberNotFound(msg) => AppError::NotFound(vec![msg]),
+        ChatValidationError::ChatNotFound(msg) => AppError::NotFound(vec![msg]),
+      },
       CoreError::NotFound(e) => AppError::NotFound(vec![e]),
       CoreError::Conflict(e) => AppError::Conflict(e),
-      CoreError::Authentication(e) => AppError::JwtError(e),
+      CoreError::Authentication(_e) => AppError::JwtError(jsonwebtoken::errors::Error::from(
+        jsonwebtoken::errors::ErrorKind::InvalidToken,
+      )),
+      CoreError::InvalidToken(_msg) => AppError::JwtError(jsonwebtoken::errors::Error::from(
+        jsonwebtoken::errors::ErrorKind::InvalidToken,
+      )),
       CoreError::Unauthorized(e) => AppError::Unauthorized(e),
-      CoreError::Internal(e) => AppError::AnyError(e),
+      CoreError::Internal(e) => AppError::AnyError(anyhow::anyhow!(e)),
     }
   }
 }

@@ -26,6 +26,8 @@ pub(crate) async fn send_message_handler(
   Path(chat_id): Path<i64>,
   Json(message): Json<CreateMessage>,
 ) -> Result<impl IntoResponse, AppError> {
+  info!("User {} sending message to chat {}", user.id, chat_id);
+
   // Convert core CreateMessage to server CreateMessage
   let message = state.create_message(message, chat_id, user.id).await?;
 
@@ -38,21 +40,7 @@ pub(crate) async fn list_messages_handler(
   Path(chat_id): Path<i64>,
   Query(query): Query<ListMessage>,
 ) -> Result<impl IntoResponse, AppError> {
-  // Verify user is a member of the chat
-  let is_member = sqlx::query_scalar!(
-    "SELECT EXISTS(SELECT 1 FROM chat_members WHERE chat_id = $1 AND user_id = $2)",
-    chat_id,
-    user.id
-  )
-  .fetch_one(state.pool())
-  .await?;
-
-  if !is_member.unwrap_or(false) {
-    return Err(AppError::ChatPermissionError(format!(
-      "User {} is not a member of chat {}",
-      user.id, chat_id
-    )));
-  }
+  info!("User {} listing messages for chat {}", user.id, chat_id);
 
   let messages: Vec<crate::models::Message> = state.list_messages(query, chat_id).await?;
 
