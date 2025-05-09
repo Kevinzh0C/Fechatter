@@ -20,28 +20,23 @@
     <h1>Notify Server</h1>
     
     <script lang="javascript">
-      var eventSource = new EventSource("/events");
-
-      eventSource.onmessage = function(event) {
+      let token = "";
+      let source = new EventSource(`/events?access_token=${token}`);
+      source.onmessage = function(event) {
         console.log("Received event: ", event.data);
       };
-
-      eventSource.addEventListener("NewChat", function(event) {
+      source.addEventListener("NewChat", function(event) {
         console.log("NewChat event: ", event.data);
       });
-
-      eventSource.addEventListener("NewMessage", function(event) {
+      source.addEventListener("NewMessage", function(event) {
         console.log("NewMessage event: ", event.data);
       });
-
-      eventSource.addEventListener("AddToChat", function(event) {
-        console.log("NewMessage event: ", event.data);
+      source.addEventListener("AddToChat", function(event) {
+        console.log("AddToChat event: ", event.data);
       });
-
-      eventSource.addEventListener("RemoveFromChat", function(event) {
-        console.log("RemoveFromChat event: ", event.data);
+      source.addEventListener("RemoveFromChat", function(event) {
+          console.log("RemoveFromChat event: ", event.data);
       });
-
     </script> 
   </body>
 </html>

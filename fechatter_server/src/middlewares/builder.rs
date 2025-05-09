@@ -1,5 +1,6 @@
 use axum::{Router, middleware::from_fn};
 use std::marker::PhantomData;
+use std::sync::Arc;
 
 // 本地定义类型状态标记，而不是导入
 // 认证状态标记
@@ -94,10 +95,35 @@ pub struct MiddlewareBuilder<
 > {
   router: Router<S>,
   state: T,
+  #[cfg(test)]
+  pub app_state: Option<Arc<AppState>>, // 测试模式下公开字段
+  #[cfg(not(test))]
+  app_state: Option<Arc<AppState>>, // 正常模式下保持私有
   _auth_marker: PhantomData<AuthState>,
   _refresh_marker: PhantomData<RefreshState>,
   _workspace_marker: PhantomData<WorkspaceState>,
   _chat_membership_marker: PhantomData<ChatMembershipState>,
+}
+
+// 辅助特性，用于获取Arc<AppState>
+pub trait GetOrCreateAppState<T: Into<AppState>> {
+  fn get_or_create_app_state(&self, state: &T) -> Arc<AppState>;
+}
+
+// 为所有MiddlewareBuilder实现统一的获取AppState方法
+impl<S, T, A, R, W, C> GetOrCreateAppState<T> for MiddlewareBuilder<S, T, A, R, W, C>
+where
+  T: Into<AppState> + Clone,
+{
+  fn get_or_create_app_state(&self, state: &T) -> Arc<AppState> {
+    if let Some(app_state) = &self.app_state {
+      // 如果已有app_state，直接返回克隆（只增加引用计数）
+      app_state.clone()
+    } else {
+      // 首次调用时创建
+      Arc::new(state.clone().into())
+    }
+  }
 }
 
 // Initial state: No middleware applied
@@ -108,6 +134,7 @@ where
   T: TokenVerifier<Claims = UserClaims>
     + WithTokenManager<TokenManagerType = TokenManager>
     + WithServiceProvider
+    + Into<AppState>
     + Clone
     + Send
     + Sync
@@ -121,6 +148,7 @@ where
     Self {
       router,
       state,
+      app_state: None, // 初始化为None，延迟加载
       _auth_marker: PhantomData,
       _refresh_marker: PhantomData,
       _workspace_marker: PhantomData,
@@ -138,6 +166,7 @@ where
     MiddlewareBuilder {
       router,
       state: self.state,
+      app_state: self.app_state, // 保持app_state不变
       _auth_marker: PhantomData,
       _refresh_marker: PhantomData,
       _workspace_marker: PhantomData,
@@ -162,6 +191,7 @@ where
   T: TokenVerifier<Claims = UserClaims>
     + WithTokenManager<TokenManagerType = TokenManager>
     + WithServiceProvider
+    + Into<AppState>
     + Clone
     + Send
     + Sync
@@ -180,6 +210,7 @@ where
     MiddlewareBuilder {
       router,
       state: self.state,
+      app_state: self.app_state, // 保持app_state不变
       _auth_marker: PhantomData,
       _refresh_marker: PhantomData,
       _workspace_marker: PhantomData,
@@ -190,15 +221,17 @@ where
   pub fn with_workspace(
     self,
   ) -> MiddlewareBuilder<S, T, WithAuth, WithoutRefresh, WithWorkspace, WithoutChatMembership> {
-    // Convert state to AppState and apply workspace middleware
-    let app_state = Into::<AppState>::into(self.state.clone());
+    // 获取或创建Arc<AppState>
+    let app_state_arc = self.get_or_create_app_state(&self.state);
 
-    // Use our helper function to add workspace middleware
-    let router = add_workspace_middleware(self.router, app_state);
+    // 克隆Arc内部的AppState并传给中间件函数
+    let app_state_clone = (*app_state_arc).clone();
+    let router = add_workspace_middleware(self.router, app_state_clone);
 
     MiddlewareBuilder {
       router,
       state: self.state,
+      app_state: Some(app_state_arc), // 保存Arc引用
       _auth_marker: PhantomData,
       _refresh_marker: PhantomData,
       _workspace_marker: PhantomData,
@@ -221,6 +254,7 @@ where
   T: TokenVerifier<Claims = UserClaims>
     + WithTokenManager<TokenManagerType = TokenManager>
     + WithServiceProvider
+    + Into<AppState>
     + Clone
     + Send
     + Sync
@@ -233,15 +267,17 @@ where
   pub fn with_workspace(
     self,
   ) -> MiddlewareBuilder<S, T, WithAuth, WithRefresh, WithWorkspace, WithoutChatMembership> {
-    // Convert state to AppState and apply workspace middleware
-    let app_state = Into::<AppState>::into(self.state.clone());
+    // 获取或创建Arc<AppState>
+    let app_state_arc = self.get_or_create_app_state(&self.state);
 
-    // Use our helper function to add workspace middleware
-    let router = add_workspace_middleware(self.router, app_state);
+    // 克隆Arc内部的AppState并传给中间件函数
+    let app_state_clone = (*app_state_arc).clone();
+    let router = add_workspace_middleware(self.router, app_state_clone);
 
     MiddlewareBuilder {
       router,
       state: self.state,
+      app_state: Some(app_state_arc), // 保存Arc引用
       _auth_marker: PhantomData,
       _refresh_marker: PhantomData,
       _workspace_marker: PhantomData,
@@ -261,6 +297,7 @@ where
   T: TokenVerifier<Claims = UserClaims>
     + WithTokenManager<TokenManagerType = TokenManager>
     + WithServiceProvider
+    + Into<AppState>
     + Clone
     + Send
     + Sync
@@ -279,6 +316,7 @@ where
     MiddlewareBuilder {
       router,
       state: self.state,
+      app_state: None,
       _auth_marker: PhantomData,
       _refresh_marker: PhantomData,
       _workspace_marker: PhantomData,
@@ -289,15 +327,17 @@ where
   pub fn with_chat_membership(
     self,
   ) -> MiddlewareBuilder<S, T, WithAuth, WithoutRefresh, WithWorkspace, WithChatMembership> {
-    // Convert state to AppState and apply chat membership middleware
-    let app_state = Into::<AppState>::into(self.state.clone());
+    // 获取或创建Arc<AppState>
+    let app_state_arc = self.get_or_create_app_state(&self.state);
 
-    // Use our helper function to add chat membership middleware
-    let router = add_chat_membership_middleware(self.router, app_state);
+    // 克隆Arc内部的AppState并传给中间件函数
+    let app_state_clone = (*app_state_arc).clone();
+    let router = add_chat_membership_middleware(self.router, app_state_clone);
 
     MiddlewareBuilder {
       router,
       state: self.state,
+      app_state: Some(app_state_arc), // 保存Arc引用
       _auth_marker: PhantomData,
       _refresh_marker: PhantomData,
       _workspace_marker: PhantomData,
@@ -317,6 +357,7 @@ where
   T: TokenVerifier<Claims = UserClaims>
     + WithTokenManager<TokenManagerType = TokenManager>
     + WithServiceProvider
+    + Into<AppState>
     + Clone
     + Send
     + Sync
@@ -329,15 +370,17 @@ where
   pub fn with_chat_membership(
     self,
   ) -> MiddlewareBuilder<S, T, WithAuth, WithRefresh, WithWorkspace, WithChatMembership> {
-    // Convert state to AppState and apply chat membership middleware
-    let app_state = Into::<AppState>::into(self.state.clone());
+    // 获取或创建Arc<AppState>
+    let app_state_arc = self.get_or_create_app_state(&self.state);
 
-    // Use our helper function to add chat membership middleware
-    let router = add_chat_membership_middleware(self.router, app_state);
+    // 克隆Arc内部的AppState并传给中间件函数
+    let app_state_clone = (*app_state_arc).clone();
+    let router = add_chat_membership_middleware(self.router, app_state_clone);
 
     MiddlewareBuilder {
       router,
       state: self.state,
+      app_state: Some(app_state_arc), // 保存Arc引用
       _auth_marker: PhantomData,
       _refresh_marker: PhantomData,
       _workspace_marker: PhantomData,
@@ -357,6 +400,7 @@ where
   T: TokenVerifier<Claims = UserClaims>
     + WithTokenManager<TokenManagerType = TokenManager>
     + WithServiceProvider
+    + Into<AppState>
     + Clone
     + Send
     + Sync
@@ -375,6 +419,7 @@ where
     MiddlewareBuilder {
       router,
       state: self.state,
+      app_state: None,
       _auth_marker: PhantomData,
       _refresh_marker: PhantomData,
       _workspace_marker: PhantomData,
@@ -394,6 +439,7 @@ where
   T: TokenVerifier<Claims = UserClaims>
     + WithTokenManager<TokenManagerType = TokenManager>
     + WithServiceProvider
+    + Into<AppState>
     + Clone
     + Send
     + Sync
@@ -441,5 +487,16 @@ where
   ) -> MiddlewareBuilder<S, T, WithoutAuth, WithoutRefresh, WithoutWorkspace, WithoutChatMembership>
   {
     MiddlewareBuilder::new(self, state)
+  }
+}
+
+// 为所有MiddlewareBuilder实现获取app_state的方法
+impl<S, T, A, R, W, C> MiddlewareBuilder<S, T, A, R, W, C>
+where
+  T: Into<AppState> + Clone,
+{
+  /// 获取当前已缓存的AppState，或者创建一个新的并返回
+  pub fn get_app_state(&self) -> Option<Arc<AppState>> {
+    self.app_state.clone()
   }
 }

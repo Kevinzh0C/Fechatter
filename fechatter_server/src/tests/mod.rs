@@ -1,11 +1,11 @@
 // 导入测试模块
+mod auth_service_test;
 mod auth_tests;
+mod macros;
 mod middleware_tests;
 mod refresh_token_tests;
-mod auth_service_test;
-mod token_validator;
 mod service_validation;
-mod macros;
+mod token_validator;
 //mod builder_tests;
 //mod chat_tests;
 //mod workspace_tests;

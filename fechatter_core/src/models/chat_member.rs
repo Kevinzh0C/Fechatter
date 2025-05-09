@@ -43,10 +43,15 @@ pub trait ChatMemberRepository: Send + Sync {
     user_id: i64,
   ) -> std::pin::Pin<Box<dyn Future<Output = Result<bool, CoreError>> + Send>>;
 
-  fn count_members(&self, chat_id: i64) -> std::pin::Pin<Box<dyn Future<Output = Result<i64, CoreError>> + Send>>;
+  fn count_members(
+    &self,
+    chat_id: i64,
+  ) -> std::pin::Pin<Box<dyn Future<Output = Result<i64, CoreError>> + Send>>;
 
-  fn get_chat_type(&self, chat_id: i64)
-  -> std::pin::Pin<Box<dyn Future<Output = Result<ChatType, CoreError>> + Send>>;
+  fn get_chat_type(
+    &self,
+    chat_id: i64,
+  ) -> std::pin::Pin<Box<dyn Future<Output = Result<ChatType, CoreError>> + Send>>;
 
   fn transfer_ownership(
     &self,

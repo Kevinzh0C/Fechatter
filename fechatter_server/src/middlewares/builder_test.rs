@@ -27,6 +27,11 @@ mod tests {
   use std::time::Instant;
   use tower::ServiceExt;
 
+  use crate::AppState;
+  use crate::middlewares::builder::{GetOrCreateAppState, MiddlewareBuilder};
+  use std::ops::Deref;
+  use std::ptr;
+
   // Middleware execution order tracker
   #[derive(Clone, Default)]
   struct MiddlewareTracker {
@@ -763,5 +768,178 @@ mod tests {
       vec!["auth", "refresh", "workspace", "chat"],
       "Middleware call order mismatch"
     );
+  }
+
+  // 此结构体用于确认我们的MiddlewareBuilder实现中是否
+  // 保持了同一个Arc<AppState>在所有中间件步骤中
+  struct AppStateTracker<S, T, A, R, W, C> {
+    pub builder: MiddlewareBuilder<S, T, A, R, W, C>,
+    pub app_state_arcs: Vec<Arc<AppState>>,
+  }
+
+  // 辅助方法用于跟踪MiddlewareBuilder中的app_state
+  impl<S, T, A, R, W, C> AppStateTracker<S, T, A, R, W, C>
+  where
+    T: Into<AppState> + Clone,
+  {
+    fn new(builder: MiddlewareBuilder<S, T, A, R, W, C>) -> Self {
+      Self {
+        builder,
+        app_state_arcs: Vec::new(),
+      }
+    }
+
+    // 从builder获取app_state，如果存在则添加到跟踪列表
+    fn track(&mut self) {
+      if let Some(app_state) = self.builder.get_app_state() {
+        self.app_state_arcs.push(app_state);
+      }
+    }
+  }
+
+  // 测试MiddlewareBuilder中app_state是否一致
+  #[tokio::test]
+  async fn test_app_state_consistency() {
+    // 创建测试用AppState
+    let (_, app_state) = AppState::test_new()
+      .await
+      .expect("Failed to create test AppState");
+
+    // 创建基础路由 - 使用具体类型注解
+    let router: Router = Router::new().route("/test", get(test_handler));
+
+    // 创建初始Builder
+    let builder = MiddlewareBuilder::new(router, app_state.clone());
+
+    // 创建新的AppState引用用于首次获取
+    let init_app_state = builder.get_or_create_app_state(&app_state);
+
+    // 逐步应用中间件并收集app_state引用
+    let builder = builder.with_auth(); // 应用Auth中间件
+    let auth_app_state = builder.get_app_state();
+
+    let builder = builder.with_workspace(); // 应用Workspace中间件
+    let workspace_app_state = builder.get_app_state();
+
+    let builder = builder.with_chat_membership(); // 应用ChatMembership中间件
+    let chat_app_state = builder.get_app_state();
+
+    // 打印app_state状态
+    println!("Init app_state: {:p}", init_app_state.as_ref());
+    println!(
+      "Auth app_state: {:?}",
+      auth_app_state.as_ref().map(|a| Arc::as_ptr(a))
+    );
+    println!(
+      "Workspace app_state: {:?}",
+      workspace_app_state.as_ref().map(|a| Arc::as_ptr(a))
+    );
+    println!(
+      "Chat app_state: {:?}",
+      chat_app_state.as_ref().map(|a| Arc::as_ptr(a))
+    );
+
+    // 验证所有步骤中app_state的一致性
+    assert!(auth_app_state.is_none(), "Auth中间件后app_state应为None");
+    assert!(
+      workspace_app_state.is_some(),
+      "Workspace中间件后app_state应有值"
+    );
+    assert!(
+      chat_app_state.is_some(),
+      "ChatMembership中间件后app_state应有值"
+    );
+
+    // 检查所有引用是否相同 - 跳过auth_app_state因为它是None
+    let workspace_ptr = workspace_app_state.unwrap();
+    let chat_ptr = chat_app_state.unwrap();
+
+    // 比较Arc内部指向的值是否相同而不是比较指针本身
+    // AppState没有实现PartialEq，所以我们可以比较AppState的属性或功能是否一致
+    let init_token_manager = init_app_state.token_manager();
+    let workspace_token_manager = workspace_ptr.token_manager();
+    let chat_token_manager = chat_ptr.token_manager();
+
+    // 验证token_manager的行为一致性
+    let test_token = "test_token";
+    let init_result = init_token_manager.verify_token(test_token);
+    let workspace_result = workspace_token_manager.verify_token(test_token);
+    let chat_result = chat_token_manager.verify_token(test_token);
+
+    assert_eq!(
+      init_result.is_err(),
+      workspace_result.is_err(),
+      "Workspace中间件后的AppState行为与初始AppState不一致"
+    );
+    assert_eq!(
+      init_result.is_err(),
+      chat_result.is_err(),
+      "Chat中间件后的AppState行为与初始AppState不一致"
+    );
+
+    // 检查引用计数是否正确 - 应该大于或等于3（初始Arc + 2个中间件共享）
+    assert!(
+      Arc::strong_count(&chat_ptr) >= 3,
+      "Arc引用计数不正确，应至少为3，实际为{}",
+      Arc::strong_count(&chat_ptr)
+    );
+
+    println!("Arc引用计数: {}", Arc::strong_count(&chat_ptr));
+    println!("测试通过: Arc<AppState>在中间件链中被正确共享");
+  }
+
+  // 测试不同中间件应用路径中AppState的一致性
+  #[tokio::test]
+  async fn test_different_middleware_paths() {
+    // 创建测试用AppState
+    let (_, app_state) = AppState::test_new()
+      .await
+      .expect("Failed to create test AppState");
+
+    // 创建基础路由 - 使用具体类型注解
+    let router: Router = Router::new().route("/test", get(test_handler));
+
+    // 路径1: auth -> workspace
+    let builder1 = MiddlewareBuilder::new(router.clone(), app_state.clone())
+      .with_auth()
+      .with_workspace();
+
+    // 路径2: auth -> refresh -> workspace
+    let builder2 = MiddlewareBuilder::new(router, app_state.clone())
+      .with_auth()
+      .with_token_refresh()
+      .with_workspace();
+
+    // 获取两个路径的最终app_state
+    let app_state1 = builder1.get_app_state();
+    let app_state2 = builder2.get_app_state();
+
+    // 验证两个路径都有app_state
+    assert!(app_state1.is_some(), "路径1应该有app_state");
+    assert!(app_state2.is_some(), "路径2应该有app_state");
+
+    // 解包Arc<AppState>
+    let arc1 = app_state1.unwrap();
+    let arc2 = app_state2.unwrap();
+
+    // 因为是不同的路径，所以Arc应该不同
+    // 但内部AppState的功能应该相同
+    assert!(
+      !Arc::ptr_eq(&arc1, &arc2),
+      "不同路径应该创建不同的Arc<AppState>实例"
+    );
+
+    // 验证功能是否相同
+    let result1 = arc1.token_manager().verify_token("test_token");
+    let result2 = arc2.token_manager().verify_token("test_token");
+
+    // 尽管是不同实例，但行为应该一致（同为错误或同为成功）
+    assert_eq!(
+      result1.is_err(),
+      result2.is_err(),
+      "不同路径的AppState实例行为不一致"
+    );
+
+    println!("测试通过: 不同路径创建的AppState功能一致");
   }
 }

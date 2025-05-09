@@ -12,7 +12,7 @@ use axum::{
   response::{Html, IntoResponse},
   routing::get,
 };
-use config::AppConfig;
+pub use config::AppConfig;
 use dashmap::DashMap;
 use error::NotifyError;
 use fechatter_core::{
@@ -39,9 +39,10 @@ pub struct AppStateInner {
 
 const INDEX_HTML: &str = include_str!("../index.html");
 
-pub fn get_router() -> (Router, AppState) {
-  let config = AppConfig::load().expect("Failed to load config");
+pub async fn get_router(config: AppConfig) -> anyhow::Result<Router> {
   let state = AppState::new(config).expect("Failed to create app state");
+  notify::set_up_pg_listener(state.clone()).await?;
+
   let app = Router::new()
     .route("/events", get(sse_handler))
     .layer(from_fn_with_state(
@@ -51,7 +52,7 @@ pub fn get_router() -> (Router, AppState) {
     .route("/", get(index_handler))
     .with_state(state.clone());
 
-  (app, state)
+  Ok(app)
 }
 
 async fn index_handler() -> impl IntoResponse {

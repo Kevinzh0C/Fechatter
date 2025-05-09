@@ -249,7 +249,7 @@ pub fn middleware_builder(args: TokenStream, input: TokenStream) -> TokenStream 
       let method_name = &rule.method_name;
       let helper_fn_name = format_ident!("add_{}_middleware", method_name.to_string().strip_prefix("with_").unwrap_or(&method_name.to_string()));
       let middleware_path = &rule.middleware_path;
-      
+
       quote! {
         #visibility fn #helper_fn_name<S>(router: axum::Router<S>, state: T) -> axum::Router<S>
         where
@@ -257,7 +257,7 @@ pub fn middleware_builder(args: TokenStream, input: TokenStream) -> TokenStream 
           T: Clone + Send + Sync + 'static,
         {
           use axum::middleware::from_fn;
-          
+
           router.layer(from_fn(move |req: axum::extract::Request<axum::body::Body>, next: axum::middleware::Next| {
             let state_clone = state.clone();
             async move { #middleware_path(axum::extract::State(state_clone), req, next).await }

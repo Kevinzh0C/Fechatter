@@ -3,13 +3,36 @@ name = "fechatter_tests"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
+
+[dev-dependencies]
+anyhow = { workspace = true }
 axum = { workspace = true }
 axum-extra = { workspace = true }
+fechatter_core = { workspace = true }
+fechatter_server = { workspace = true, features = ["test-util"] }
+notify_server = { workspace = true }
+reqwest = { version = "0.12.4", default-features = false, features = [
+  "rustls-tls",
+  "json",
+  "multipart",
+  "stream",
+] }
+sqlx = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+reqwest-eventsource = "0.6.0"
+serde = { workspace = true }
+serde_json = "1.0.116"
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
 tokio-util = { workspace = true }
-anyhow = { workspace = true }
-serde = { workspace = true }
-fechatter_server = { workspace = true }
-fechatter_core = { workspace = true }
+sqlx-db-tester = "0.6.0"
+
+[dependencies]
+
+hyper = "1.6.0"
+futures = "0.3.30"

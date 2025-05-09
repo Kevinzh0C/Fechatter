@@ -1,12 +1,12 @@
-mod config;
-mod error;
-mod handlers;
-mod middlewares;
-mod models;
-mod tests;
-mod utils;
+pub mod config;
+pub mod error;
+pub mod handlers;
+pub mod middlewares;
+pub mod models;
+pub mod services;
+pub mod tests;
+pub mod utils;
 
-mod services;
 use std::sync::Arc;
 use std::{fmt, ops::Deref};
 
@@ -149,9 +149,7 @@ impl WithCache<i64, (Arc<Vec<ChatSidebar>>, Instant)> for AppState {
   }
 }
 
-pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
-  let state = AppState::try_new(config).await?;
-
+pub async fn get_router(state: AppState) -> Result<Router, AppError> {
   // Public routes - no authentication required but apply token refresh
   // Must use direct approach since the builder enforces auth before refresh
   let public_routes = Router::new()
@@ -274,51 +272,59 @@ impl AppState {
       inner: Arc::new(state),
     })
   }
+}
 
-  #[cfg(test)]
-  pub async fn test_new() -> Result<(sqlx_db_tester::TestPg, Self), AppError> {
-    use sqlx_db_tester::TestPg;
+#[cfg(any(test, feature = "test-util"))]
+mod test_util {
+  use super::*;
+  use sqlx::{Executor, PgPool};
+  use sqlx_db_tester::TestPg;
 
-    let config = AppConfig::load().expect("Failed to load config");
-    fs::create_dir_all(&config.server.base_dir)
-      .await
-      .map_err(|e| AppError::IOError(e))?;
+  impl AppState {
+    pub async fn test_new() -> Result<(sqlx_db_tester::TestPg, Self), AppError> {
+      let config = AppConfig::load().expect("Failed to load config");
+      fs::create_dir_all(&config.server.base_dir)
+        .await
+        .map_err(|e| AppError::IOError(e))?;
 
-    let post = config.server.db_url.rfind('/').expect("invalid db_url");
-    let server_url = &config.server.db_url[..post];
-    let tdb = TestPg::new(
-      server_url.to_string(),
-      std::path::Path::new("../migrations"),
-    );
+      let post = config.server.db_url.rfind('/').expect("invalid db_url");
+      let server_url = &config.server.db_url[..post];
+      let tdb = TestPg::new(
+        server_url.to_string(),
+        std::path::Path::new("../migrations"),
+      );
 
-    // Create test database connection pool
-    let pool = tdb.get_pool().await;
+      // Create test database connection pool
+      let pool = tdb.get_pool().await;
 
-    // Create refresh token adapter and token manager
-    let refresh_token_repo = Arc::new(RefreshTokenAdaptor::new(Arc::new(pool.clone())));
-    let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo)?;
+      // Create refresh token adapter and token manager
+      let refresh_token_repo = Arc::new(RefreshTokenAdaptor::new(Arc::new(pool.clone())));
+      let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo)?;
 
-    // Create service provider - centrally manages pool and token_manager
-    let service_provider = ServiceProvider::new(pool, token_manager);
+      // Create service provider - centrally manages pool and token_manager
+      let service_provider = ServiceProvider::new(pool, token_manager);
 
-    // Create chat list cache
-    let chat_list_cache = DashMap::new();
+      // Create chat list cache
+      let chat_list_cache = DashMap::new();
 
-    // Create application state
-    let state = AppStateInner {
-      config,
-      service_provider,
-      chat_list_cache,
-    };
+      // Create application state
+      let state = AppStateInner {
+        config,
+        service_provider,
+        chat_list_cache,
+      };
 
-    Ok((
-      tdb,
-      Self {
-        inner: Arc::new(state),
-      },
-    ))
+      Ok((
+        tdb,
+        Self {
+          inner: Arc::new(state),
+        },
+      ))
+    }
   }
+}
 
+impl AppState {
   #[inline]
   pub fn pool(&self) -> &PgPool {
     self.inner.service_provider.pool()
