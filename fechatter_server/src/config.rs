@@ -1,4 +1,5 @@
 use anyhow::{Result, bail};
+use fechatter_core::models::jwt::TokenConfigProvider;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs::File;
@@ -27,10 +28,10 @@ pub struct ServerConfig {
 
 impl AppConfig {
   pub fn load() -> Result<Self> {
-    // Attempt to read from ./app.yml, /etc/config/app.yml, or from the environment variable CHAT_CONFIG
-    let ret = match (
-      File::open("app.yml"),
-      File::open("/etc/config/app.yml"),
+    // Attempt to read from ./chat.yml, /etc/config/chat.yml, or from the environment variable CHAT_CONFIG
+    let ret: std::result::Result<AppConfig, serde_yaml::Error> = match (
+      File::open("chat.yml"),
+      File::open("/etc/config/chat.yml"),
       env::var("CHAT_CONFIG"),
     ) {
       (Ok(reader), _, _) => serde_yaml::from_reader(reader),
@@ -40,5 +41,15 @@ impl AppConfig {
     };
 
     Ok(ret?)
+  }
+}
+
+impl TokenConfigProvider for AuthConfig {
+  fn get_encoding_key_pem(&self) -> &str {
+    &self.sk
+  }
+
+  fn get_decoding_key_pem(&self) -> &str {
+    &self.pk
   }
 }

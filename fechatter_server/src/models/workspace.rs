@@ -1,12 +1,17 @@
-use sqlx::{Executor, PgPool, Postgres, query_as};
+use sqlx::{Executor, Postgres, query_as};
 
-use crate::AppError;
+use crate::{AppError, AppState};
 
-use super::{ChatUser, Workspace};
+use fechatter_core::{ChatUser, Workspace};
 
-#[allow(dead_code)]
-impl Workspace {
-  pub async fn create<'e, E>(name: &str, user_id: i64, executor: E) -> Result<Self, AppError>
+#[allow(unused)]
+impl AppState {
+  pub async fn create_workspace<'e, E>(
+    &self,
+    name: &str,
+    user_id: i64,
+    executor: E,
+  ) -> Result<Workspace, AppError>
   where
     E: Executor<'e, Database = Postgres> + Copy,
   {
@@ -32,10 +37,16 @@ impl Workspace {
         if db_err.is_unique_violation() {
           AppError::WorkspaceAlreadyExists(name.to_string())
         } else {
-          e.into()
+          AppError::SqlxError(sqlx::Error::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            e.to_string(),
+          )))
         }
       } else {
-        e.into()
+        AppError::SqlxError(sqlx::Error::Io(std::io::Error::new(
+          std::io::ErrorKind::Other,
+          e.to_string(),
+        )))
       }
     })?;
 
@@ -55,7 +66,12 @@ impl Workspace {
     Ok(workspace)
   }
 
-  pub async fn update_owner<'e, E>(&self, owner_id: i64, executor: E) -> Result<Self, AppError>
+  pub async fn update_owner<'e, E>(
+    &self,
+    workspace_id: i64,
+    owner_id: i64,
+    executor: E,
+  ) -> Result<Workspace, AppError>
   where
     E: Executor<'e, Database = Postgres>,
   {
@@ -68,14 +84,18 @@ impl Workspace {
       "#,
     )
     .bind(owner_id)
-    .bind(self.id)
+    .bind(workspace_id)
     .fetch_one(executor)
     .await?;
 
     Ok(workspace)
   }
 
-  pub async fn fetch_all_users<'e, E>(id: i64, executor: E) -> Result<Vec<ChatUser>, AppError>
+  pub async fn fetch_workspace_users<'e, E>(
+    &self,
+    workspace_id: i64,
+    executor: E,
+  ) -> Result<Vec<ChatUser>, AppError>
   where
     E: Executor<'e, Database = Postgres>,
   {
@@ -86,20 +106,24 @@ impl Workspace {
       WHERE u.workspace_id = $1
       "#,
     )
-    .bind(id)
+    .bind(workspace_id)
     .fetch_all(executor)
     .await?;
 
     Ok(users)
   }
 
-  pub async fn find_by_name<'e, E>(name: &str, executor: E) -> Result<Option<Self>, AppError>
+  pub async fn find_by_name<'e, E>(
+    &self,
+    name: &str,
+    executor: E,
+  ) -> Result<Option<Workspace>, AppError>
   where
     E: Executor<'e, Database = Postgres>,
   {
     let workspace = sqlx::query_as::<_, Workspace>(
       r#"
-      SELECT * FROM workspaces WHERE name = $1
+      SELECT id, name, owner_id, created_at FROM workspaces WHERE name = $1
       "#,
     )
     .bind(name)
@@ -109,13 +133,13 @@ impl Workspace {
     Ok(workspace)
   }
 
-  pub async fn find_by_id<'e, E>(id: i64, executor: E) -> Result<Option<Self>, AppError>
+  pub async fn find_by_id<'e, E>(&self, id: i64, executor: E) -> Result<Option<Workspace>, AppError>
   where
     E: Executor<'e, Database = Postgres>,
   {
     let workspace = sqlx::query_as::<_, Workspace>(
       r#"
-      SELECT * FROM workspaces WHERE id = $1
+      SELECT id, name, owner_id, created_at FROM workspaces WHERE id = $1
       "#,
     )
     .bind(id)
@@ -125,7 +149,12 @@ impl Workspace {
     Ok(workspace)
   }
 
-  pub async fn add_to_workspace<'e, E>(&self, user_id: i64, executor: E) -> Result<Self, AppError>
+  pub async fn add_to_workspace<'e, E>(
+    &self,
+    workspace_id: i64,
+    user_id: i64,
+    executor: E,
+  ) -> Result<Workspace, AppError>
   where
     E: Executor<'e, Database = Postgres> + Copy,
   {
@@ -141,12 +170,12 @@ impl Workspace {
       "#,
     )
     .bind(user_id)
-    .bind(self.id)
+    .bind(workspace_id)
     .fetch_one(executor)
     .await?;
 
     let rows = sqlx::query("UPDATE users SET workspace_id = $1 WHERE id = $2")
-      .bind(self.id)
+      .bind(workspace_id)
       .bind(user_id)
       .execute(executor)
       .await?
@@ -160,50 +189,82 @@ impl Workspace {
   }
 }
 
-#[allow(dead_code)]
-impl Workspace {
-  pub async fn create_with_pool(name: &str, user_id: i64, pool: &PgPool) -> Result<Self, AppError> {
-    Self::create(name, user_id, pool).await
-  }
-
-  pub async fn update_owner_with_pool(
+#[allow(unused)]
+impl AppState {
+  pub async fn create_workspace_with_pool(
     &self,
-    owner_id: i64,
-    pool: &PgPool,
-  ) -> Result<Self, AppError> {
-    self.update_owner(owner_id, pool).await
+    name: &str,
+    user_id: i64,
+  ) -> Result<Workspace, AppError> {
+    self.create_workspace(name, user_id, self.pool()).await
   }
 
-  pub async fn fetch_all_users_with_pool(
+  /// Update the owner of a workspace.
+  pub async fn update_workspace_owner<'e, E>(
+    &self,
     workspace_id: i64,
-    pool: &PgPool,
-  ) -> Result<Vec<ChatUser>, AppError> {
-    Self::fetch_all_users(workspace_id, pool).await
+    owner_id: i64,
+  ) -> Result<Workspace, AppError> {
+    self.update_owner(workspace_id, owner_id, self.pool()).await
   }
 
-  pub async fn find_by_name_with_pool(name: &str, pool: &PgPool) -> Result<Option<Self>, AppError> {
-    Self::find_by_name(name, pool).await
+  pub async fn fetch_workspace_users_with_pool(
+    &self,
+    workspace_id: i64,
+  ) -> Result<Vec<ChatUser>, AppError> {
+    self.fetch_workspace_users(workspace_id, self.pool()).await
+  }
+
+  pub async fn find_by_name_with_pool(&self, name: &str) -> Result<Option<Workspace>, AppError> {
+    self.find_by_name(name, self.pool()).await
   }
 
   pub async fn find_by_id_with_pool(
+    &self,
     workspace_id: i64,
-    pool: &PgPool,
-  ) -> Result<Option<Self>, AppError> {
-    Self::find_by_id(workspace_id, pool).await
+  ) -> Result<Option<Workspace>, AppError> {
+    let workspace = sqlx::query_as::<_, Workspace>(
+      "SELECT id, name, owner_id, created_at FROM workspaces WHERE id = $1",
+    )
+    .bind(workspace_id)
+    .fetch_optional(self.pool())
+    .await?;
+
+    Ok(workspace)
+  }
+
+  pub async fn add_user_to_workspace<'e, E>(
+    &self,
+    workspace_id: i64,
+    user_id: i64,
+  ) -> Result<Workspace, AppError> {
+    self
+      .add_to_workspace(workspace_id, user_id, self.pool())
+      .await
   }
 
   pub async fn add_to_workspace_with_pool(
     &self,
+    workspace_id: i64,
     user_id: i64,
-    pool: &PgPool,
-  ) -> Result<Self, AppError> {
-    self.add_to_workspace(user_id, pool).await
+  ) -> Result<Workspace, AppError> {
+    self
+      .add_to_workspace(workspace_id, user_id, self.pool())
+      .await
+  }
+
+  pub async fn update_owner_with_pool(
+    &self,
+    workspace_id: i64,
+    owner_id: i64,
+  ) -> Result<Workspace, AppError> {
+    self.update_owner(workspace_id, owner_id, self.pool()).await
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use super::*;
+  // use super::*;
   use crate::setup_test_users;
   use anyhow::{Ok, Result};
 
@@ -212,19 +273,21 @@ mod tests {
     let (_tdb, state, _users) = setup_test_users!(1).await;
     let user_id = _users[0].id;
 
-    let workspace = Workspace::create("PWQ", 0, &state.pool).await?;
+    let workspace = state.create_workspace_with_pool("PWQ", user_id).await?;
     assert_eq!(workspace.name, "PWQ");
 
-    workspace.add_to_workspace(user_id, &state.pool).await?;
+    state
+      .add_to_workspace_with_pool(workspace.id, user_id)
+      .await?;
 
     let workspace_id = sqlx::query_scalar::<_, i64>("SELECT workspace_id FROM users WHERE id = $1")
       .bind(user_id)
-      .fetch_one(&state.pool)
+      .fetch_one(state.pool())
       .await?;
 
     assert_eq!(workspace.id, workspace_id);
 
-    let updated_workspace = workspace.update_owner(user_id, &state.pool).await?;
+    let updated_workspace = state.update_owner_with_pool(workspace.id, user_id).await?;
     assert_eq!(updated_workspace.owner_id, user_id);
 
     Ok(())
@@ -234,10 +297,10 @@ mod tests {
   async fn workspace_should_find_by_name() -> Result<()> {
     let (_tdb, state, _users) = setup_test_users!(1).await;
 
-    let workspace = Workspace::find_by_name("Acme", &state.pool).await?;
+    let workspace = state.find_by_name_with_pool("Acme").await?;
     assert_eq!(workspace.unwrap().name, "Acme");
 
-    let workspace = Workspace::find_by_name("NonExistentWorkspace", &state.pool).await?;
+    let workspace = state.find_by_name_with_pool("NonExistentWorkspace").await?;
     assert!(workspace.is_none());
 
     Ok(())
@@ -247,7 +310,9 @@ mod tests {
   async fn workspace_should_fetch_all_users() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(5).await;
 
-    let workspace = Workspace::fetch_all_users(users[0].workspace_id, &state.pool).await?;
+    let workspace = state
+      .fetch_workspace_users_with_pool(users[0].workspace_id)
+      .await?;
     assert_eq!(workspace.len(), 5);
 
     Ok(())
@@ -259,11 +324,10 @@ mod tests {
     let user1 = users[0].clone();
     let user2 = users[1].clone();
 
-    let workspace = Workspace::find_by_id(user1.workspace_id, &state.pool)
-      .await?
-      .unwrap();
+    let workspace = state.find_by_id_with_pool(user1.workspace_id).await?;
+    let workspace = workspace.unwrap();
 
-    let updated_workspace = workspace.update_owner(user2.id, &state.pool).await?;
+    let updated_workspace = state.update_owner_with_pool(workspace.id, user2.id).await?;
 
     assert_eq!(updated_workspace.owner_id, user2.id);
     Ok(())
