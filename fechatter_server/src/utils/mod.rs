@@ -1,7 +1,5 @@
-pub mod refresh_token;
-pub mod test_utils;
-
-pub use refresh_token::*;
+pub(crate) mod jwt;
+pub(crate) mod test_utils;
 
 #[macro_export]
 macro_rules! auth_user {

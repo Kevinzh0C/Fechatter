@@ -1,411 +1,378 @@
 use std::{sync::Arc, time::Duration};
 
-use sqlx::Row;
+use serde::{Deserialize, Serialize};
+use sqlx::{PgPool, prelude::FromRow};
 use tokio::time::Instant;
 
 use crate::{AppError, AppState, models::ChatType};
-use fechatter_core::{UpdateChat, chat::ChatSidebar};
 
-use crate::models::Chat;
+use super::{Chat, CreateChatMember, User, insert_chat_members_relation, is_creator_in_chat};
 
 const CHAT_LIST_CACHE_TTL: Duration = Duration::from_secs(30);
 
-impl AppState {
-  /// Retrieves a list of chat sidebars for a specific user
-  pub async fn list_chats_of_user(&self, user_id: i64) -> Result<Arc<Vec<ChatSidebar>>, AppError> {
-    if let Some(entry) = self.chat_list_cache.get(&user_id) {
-      let (cached_chats, timestamp) = entry.value();
-      if timestamp.elapsed() < CHAT_LIST_CACHE_TTL {
-        return Ok(cached_chats.clone());
-      }
-    }
-
-    // If no valid cache exists, fetch the chat list from the database
-    let chats = self.fetch_chat_list_from_db(user_id).await?;
-
-    // Create an Arc to allow shared ownership of the chat list
-    let chats_arc = Arc::new(chats);
-
-    // Update the cache with the new chat list and current timestamp
-    self
-      .chat_list_cache
-      .insert(user_id, (chats_arc.clone(), Instant::now()));
-
-    Ok(chats_arc)
-  }
-
-  async fn fetch_chat_list_from_db(&self, user_id: i64) -> Result<Vec<ChatSidebar>, AppError> {
-    let rows = sqlx::query(
-      r#"SELECT
-        id,
-        chat_name as name,
-        type::text as chat_type,
-        created_by
-      FROM chats
-      WHERE created_by = $1 OR $1 = ANY(chat_members)
-      ORDER BY updated_at DESC"#,
-    )
-    .bind(user_id)
-    .fetch_all(self.pool())
-    .await?;
-
-    let mut chats = Vec::new();
-
-    for row in rows {
-      let id: i64 = row.get("id");
-      let name: String = row.get("name");
-      let chat_type_str: String = row.get("chat_type");
-      let created_by: i64 = row.get("created_by");
-
-      // Convert string to ChatType
-      let chat_type = match chat_type_str.as_str() {
-        "Single" => fechatter_core::ChatType::Single,
-        "Group" => fechatter_core::ChatType::Group,
-        "PrivateChannel" => fechatter_core::ChatType::PrivateChannel,
-        "PublicChannel" => fechatter_core::ChatType::PublicChannel,
-        _ => fechatter_core::ChatType::Group, // Default
-      };
-
-      chats.push(ChatSidebar {
-        id,
-        name,
-        chat_type,
-        is_creator: created_by == user_id,
-        last_message: None,
-      });
-    }
-
-    Ok(chats)
-  }
-
-  pub async fn fetch_all_chats(&self, workspace_id: i64) -> Result<Vec<Chat>, AppError> {
-    let chats = sqlx::query_as::<_, Chat>(
-      r#"
-        SELECT
-          id,
-          workspace_id,
-          chat_name as name,
-          type as "chat_type: _",
-          chat_members,
-          description,
-          created_by,
-          created_at,
-          updated_at
-        FROM chats WHERE workspace_id = $1
-        ORDER BY updated_at DESC
-      "#,
-    )
-    .bind(workspace_id)
-    .fetch_all(self.pool())
-    .await?;
-
-    Ok(chats)
-  }
-
-  fn validate_chat_name(&self, name: &str) -> Result<(), AppError> {
-    if name.trim().is_empty() {
-      Err(AppError::ChatValidationError(
-        "Chat name cannot be empty".to_string(),
-      ))
-    } else if name.len() > 128 {
-      Err(AppError::ChatValidationError(
-        "Chat name cannot be longer than 128 characters".to_string(),
-      ))
-    } else {
-      Ok(())
+/// Retrieves a list of chat sidebars for a specific user
+pub async fn list_chats_of_user(
+  state: &AppState,
+  user_id: i64,
+) -> Result<Arc<Vec<ChatSidebar>>, AppError> {
+  if let Some(entry) = state.chat_list_cache.get(&user_id) {
+    let (cached_chats, timestamp) = entry.value();
+    if timestamp.elapsed() < CHAT_LIST_CACHE_TTL {
+      return Ok(cached_chats.clone());
     }
   }
 
-  fn process_chat_members(
-    &self,
-    chat_type: &ChatType,
-    creator_id: i64,
-    target_members: Option<&Vec<i64>>,
-  ) -> Result<Vec<i64>, AppError> {
-    match chat_type {
-      ChatType::Single => match target_members {
-        Some(members) if members.len() == 1 => {
-          let target_id = members[0];
-          if target_id == creator_id {
-            return Err(AppError::ChatValidationError(
-              "Single chat must have exactly one member".to_string(),
-            ));
-          }
-          Ok(vec![creator_id, target_id])
-        }
-        _ => Err(AppError::ChatValidationError(
-          "Invalid single chat members".to_string(),
-        )),
-      },
-      ChatType::Group => {
-        let mut result = vec![creator_id];
-        if let Some(members) = target_members {
-          for &id in members {
-            if id != creator_id && !result.contains(&id) {
-              result.push(id);
-            }
-          }
-        }
-        if result.len() < 3 {
+  // If no valid cache exists, fetch the chat list from the database
+  let chats = fetch_chat_list_from_db(&state.pool, user_id).await?;
+
+  // Create an Arc to allow shared ownership of the chat list
+  let chats_arc = Arc::new(chats);
+
+  // Update the cache with the new chat list and current timestamp
+  state
+    .chat_list_cache
+    .insert(user_id, (chats_arc.clone(), Instant::now()));
+
+  Ok(chats_arc)
+}
+
+async fn fetch_chat_list_from_db(
+  pool: &PgPool,
+  user_id: i64,
+) -> Result<Vec<ChatSidebar>, AppError> {
+  let chats = sqlx::query_as!(
+    ChatSidebar,
+    r#"SELECT
+      id,
+      chat_name as name,
+      type as "chat_type: _"
+    FROM chats
+    WHERE created_by = $1 OR $1 = ANY(chat_members)
+    ORDER BY updated_at DESC"#,
+    user_id
+  )
+  .fetch_all(pool)
+  .await
+  .map(|rows| {
+    rows
+      .into_iter()
+      .map(|row: ChatSidebar| ChatSidebar {
+        id: row.id,
+        name: row.name,
+        chat_type: row.chat_type,
+      })
+      .collect()
+  })?;
+
+  Ok(chats)
+}
+
+fn validate_chat_name(name: &str) -> Result<(), AppError> {
+  if name.trim().is_empty() {
+    Err(AppError::ChatValidationError(
+      "Chat name cannot be empty".to_string(),
+    ))
+  } else if name.len() > 128 {
+    Err(AppError::ChatValidationError(
+      "Chat name cannot be longer than 128 characters".to_string(),
+    ))
+  } else {
+    Ok(())
+  }
+}
+
+fn process_chat_members(
+  chat_type: &ChatType,
+  creator_id: i64,
+  target_members: Option<&Vec<i64>>,
+) -> Result<Vec<i64>, AppError> {
+  match chat_type {
+    ChatType::Single => match target_members {
+      Some(members) if members.len() == 1 => {
+        let target_id = members[0];
+        if target_id == creator_id {
           return Err(AppError::ChatValidationError(
-            "Group chat must have at least three members".to_string(),
+            "Single chat must have exactly one member".to_string(),
           ));
         }
-        Ok(result)
+        Ok(vec![creator_id, target_id])
       }
-      ChatType::PrivateChannel => {
-        let mut result = vec![creator_id];
-        if let Some(members) = target_members {
-          for &id in members {
-            if id != creator_id && !result.contains(&id) {
-              result.push(id);
-            }
+      _ => Err(AppError::ChatValidationError(
+        "Invalid single chat members".to_string(),
+      )),
+    },
+    ChatType::Group => {
+      let mut result = vec![creator_id];
+      if let Some(members) = target_members {
+        for &id in members {
+          if id != creator_id && !result.contains(&id) {
+            result.push(id);
           }
         }
-        Ok(result)
       }
-      ChatType::PublicChannel => Ok(vec![creator_id]),
+      if result.len() < 3 {
+        return Err(AppError::ChatValidationError(
+          "Group chat must have at least three members".to_string(),
+        ));
+      }
+      Ok(result)
     }
-  }
-
-  async fn insert_chat_record(
-    &self,
-    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    name: &str,
-    chat_type: &ChatType,
-    chat_members: &Vec<i64>,
-    description: &str,
-    creator_id: i64,
-    workspace_id: i64,
-  ) -> Result<Chat, sqlx::Error> {
-    let query = "INSERT INTO chats (chat_name, type, chat_members, description, created_by, workspace_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, chat_name as name, type as chat_type, chat_members,
-                 COALESCE(description, '') as description, created_by, created_at, updated_at, workspace_id";
-
-    let chat = sqlx::query_as::<_, Chat>(query)
-      .bind(name)
-      .bind(chat_type)
-      .bind(chat_members)
-      .bind(description)
-      .bind(creator_id)
-      .bind(workspace_id)
-      .fetch_one(&mut **tx)
-      .await?;
-
-    Ok(chat)
-  }
-
-  pub async fn create_new_chat(
-    &self,
-    creator_id: i64,
-    name: &str,
-    chat_type: ChatType,
-    target_members: Option<Vec<i64>>,
-    description: Option<&str>,
-    workspace_id: i64,
-  ) -> Result<Chat, AppError> {
-    self.validate_chat_name(name)?;
-
-    let chat_members =
-      self.process_chat_members(&chat_type, creator_id, target_members.as_ref())?;
-
-    self.validate_users_exists_by_ids(&chat_members).await?;
-
-    let mut tx = self.pool().begin().await?;
-
-    let chat = self
-      .insert_chat_record(
-        &mut tx,
-        name,
-        &chat_type,
-        &chat_members,
-        description.unwrap_or(""),
-        creator_id,
-        workspace_id,
-      )
-      .await
-      .map_err(|e| {
-        if let Some(db_error) = e.as_database_error() {
-          if db_error.is_unique_violation() {
-            AppError::ChatAlreadyExists(format!("Chat {} already exists", name))
-          } else {
-            AppError::SqlxError(sqlx::Error::Io(std::io::Error::new(
-              std::io::ErrorKind::Other,
-              e.to_string(),
-            )))
+    ChatType::PrivateChannel => {
+      let mut result = vec![creator_id];
+      if let Some(members) = target_members {
+        for &id in members {
+          if id != creator_id && !result.contains(&id) {
+            result.push(id);
           }
-        } else {
-          AppError::SqlxError(sqlx::Error::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            e.to_string(),
-          )))
-        }
-      })?;
-
-    let chat_id = chat.id;
-    crate::models::chat_member::insert_chat_members(chat_id, &chat_members, &mut tx).await?;
-
-    tx.commit().await?;
-
-    for &member in &chat_members {
-      self.chat_list_cache.remove(&member);
-    }
-
-    Ok(chat)
-  }
-
-  pub async fn update_chat(
-    &self,
-    chat_id: i64,
-    user_id: i64,
-    payload: UpdateChat,
-  ) -> Result<Chat, AppError> {
-    // 首先检查聊天是否存在
-    let chat_exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM chats WHERE id = $1) as exists")
-      .bind(chat_id)
-      .fetch_one(self.pool())
-      .await?
-      .try_get::<bool, _>("exists")
-      .map_err(|_| AppError::SqlxError(sqlx::Error::RowNotFound))?;
-
-    if !chat_exists {
-      return Err(AppError::NotFound(vec![chat_id.to_string()]));
-    }
-
-    // 然后检查用户是否是创建者
-    let creator = crate::models::ServerCreateChatMember { chat_id, user_id };
-    let is_creator = self.is_creator_in_chat(&creator).await?;
-
-    if !is_creator {
-      return Err(AppError::ChatPermissionError(format!(
-        "User {} is not the creator of chat {}",
-        user_id, chat_id
-      )));
-    }
-
-    if let Some(ref name) = payload.name {
-      self.validate_chat_name(name)?;
-    }
-
-    let chat_result = sqlx::query_as::<_, Chat>(
-      "UPDATE chats
-       SET
-         chat_name = COALESCE($1, chat_name),
-         description = COALESCE($2, description),
-         updated_at = NOW()
-       WHERE id = $3
-       RETURNING id, chat_name as name, type as chat_type, chat_members,
-                 COALESCE(description, '') as description, created_by, created_at, updated_at, workspace_id",
-    )
-    .bind(&payload.name)
-    .bind(&payload.description)
-    .bind(chat_id)
-    .fetch_one(self.pool())
-    .await.map_err(|e| {
-      if let Some(db_error) = e.as_database_error() {
-        if db_error.is_unique_violation() {
-          return AppError::ChatAlreadyExists(format!(
-            "Chat name '{}' is already taken by another chat",
-            payload.name.as_ref().unwrap()
-          ));
         }
       }
-      AppError::from(e)
-    })?;
-
-    if payload.name.is_some() || payload.description.is_some() {
-      for &member_id in &chat_result.chat_members {
-        self.chat_list_cache.remove(&member_id);
-      }
+      Ok(result)
     }
-
-    Ok(chat_result)
+    ChatType::PublicChannel => Ok(vec![creator_id]),
   }
+}
 
-  pub async fn delete_chat(&self, chat_id: i64, user_id: i64) -> Result<bool, AppError> {
-    // 首先检查聊天是否存在
-    let chat_exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM chats WHERE id = $1) as exists")
-      .bind(chat_id)
-      .fetch_one(self.pool())
-      .await?
-      .try_get::<bool, _>("exists")
-      .map_err(|_| AppError::SqlxError(sqlx::Error::RowNotFound))?;
+async fn insert_chat_record(
+  tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+  name: &str,
+  chat_type: &ChatType,
+  chat_members: &Vec<i64>,
+  description: &str,
+  creator_id: i64,
+  workspace_id: i64,
+) -> Result<Chat, sqlx::Error> {
+  let query = "INSERT INTO chats (chat_name, type, chat_members, description, created_by, workspace_id)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id, chat_name as name, type as chat_type, chat_members, 
+               COALESCE(description, '') as description, created_by, created_at, updated_at, workspace_id";
 
-    if !chat_exists {
-      return Err(AppError::NotFound(vec![chat_id.to_string()]));
-    }
-
-    let mut tx = self.pool().begin().await?;
-
-    let members_to_invalidate = match self
-      .delete_chat_transactional(&mut tx, chat_id, user_id)
-      .await
-    {
-      Ok(members) => members,
-      Err(e) => {
-        let _ = tx.rollback().await;
-        return Err(e);
-      }
-    };
-
-    tx.commit().await?;
-
-    for &member in &members_to_invalidate {
-      self.chat_list_cache.remove(&member);
-    }
-
-    Ok(true)
-  }
-
-  async fn delete_chat_transactional(
-    &self,
-    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    chat_id: i64,
-    user_id: i64,
-  ) -> Result<Vec<i64>, AppError> {
-    let chat_info = sqlx::query!(
-      "SELECT chat_members, created_by FROM chats WHERE id = $1 FOR UPDATE",
-      chat_id
-    )
-    .fetch_optional(&mut **tx)
+  let chat = sqlx::query_as::<_, Chat>(query)
+    .bind(name)
+    .bind(chat_type)
+    .bind(chat_members)
+    .bind(description)
+    .bind(creator_id)
+    .bind(workspace_id)
+    .fetch_one(&mut **tx)
     .await?;
 
-    let chat_info = match chat_info {
-      Some(info) => info,
-      None => return Err(AppError::NotFound(vec![chat_id.to_string()])),
-    };
+  Ok(chat)
+}
 
-    if chat_info.created_by != user_id {
-      return Err(AppError::ChatPermissionError(format!(
-        "User {} is not the creator of chat {}",
-        user_id, chat_id
-      )));
+#[allow(dead_code)]
+pub async fn fetch_all_chats(workspace_id: i64, pool: &PgPool) -> Result<Vec<Chat>, AppError> {
+  let chats = sqlx::query_as::<_, Chat>(
+    r#"
+      SELECT 
+        id,
+        workspace_id,
+        chat_name as name,
+        type as "chat_type: _",
+        chat_members,
+        description,
+        created_by,
+        created_at,
+        updated_at
+      FROM chats WHERE workspace_id = $1
+      ORDER BY updated_at DESC
+    "#,
+  )
+  .bind(workspace_id)
+  .fetch_all(pool)
+  .await?;
+
+  Ok(chats)
+}
+
+pub async fn create_new_chat(
+  state: &AppState,
+  creator_id: i64,
+  name: &str,
+  chat_type: ChatType,
+  target_members: Option<Vec<i64>>,
+  description: Option<&str>,
+  workspace_id: i64,
+) -> Result<Chat, AppError> {
+  validate_chat_name(name)?;
+
+  let chat_members = process_chat_members(&chat_type, creator_id, target_members.as_ref())?;
+
+  User::validate_users_exists_by_ids(&chat_members, &state.pool).await?;
+
+  let mut tx = state.pool.begin().await?;
+
+  let chat = insert_chat_record(
+    &mut tx,
+    name,
+    &chat_type,
+    &chat_members,
+    description.unwrap_or(""),
+    creator_id,
+    workspace_id,
+  )
+  .await
+  .map_err(|e| {
+    if let Some(db_error) = e.as_database_error() {
+      if db_error.is_unique_violation() {
+        AppError::ChatAlreadyExists(format!("Chat {} already exists", name))
+      } else {
+        e.into()
+      }
+    } else {
+      e.into()
     }
+  })?;
 
-    sqlx::query!("DELETE FROM chat_members WHERE chat_id = $1", chat_id)
-      .execute(&mut **tx)
-      .await?;
+  let chat_id = chat.id;
+  insert_chat_members_relation(chat_id, &chat_members, &mut tx).await?;
 
-    let result = sqlx::query!("DELETE FROM chats WHERE id = $1", chat_id)
-      .execute(&mut **tx)
-      .await?;
+  tx.commit().await?;
 
-    if result.rows_affected() == 0 {
-      return Err(AppError::NotFound(vec![chat_id.to_string()]));
-    }
-
-    Ok(chat_info.chat_members)
+  for &member in &chat_members {
+    state.chat_list_cache.remove(&member);
   }
+
+  Ok(chat)
+}
+
+pub async fn update_chat(
+  state: &AppState,
+  chat_id: i64,
+  user_id: i64,
+  payload: UpdateChat,
+) -> Result<Chat, AppError> {
+  let creator = CreateChatMember { chat_id, user_id };
+  let is_creator = is_creator_in_chat(&state.pool, &creator).await?;
+
+  if !is_creator {
+    return Err(AppError::ChatPermissionError(format!(
+      "User {} is not the creator of chat {}",
+      user_id, chat_id
+    )));
+  }
+
+  let chat = sqlx::query_as::<_, Chat>(
+    "UPDATE chats
+     SET
+       chat_name = COALESCE($1, chat_name),
+       description = COALESCE($2, description),
+       updated_at = NOW()
+     WHERE id = $3
+     RETURNING id, chat_name as name, type as chat_type, chat_members, 
+               COALESCE(description, '') as description, created_by, created_at, updated_at, workspace_id",
+  )
+  .bind(&payload.name)
+  .bind(&payload.description)
+  .bind(chat_id)
+  .fetch_one(&state.pool)
+  .await?;
+
+  if payload.name.is_some() || payload.description.is_some() {
+    for &member_id in &chat.chat_members {
+      state.chat_list_cache.remove(&member_id);
+    }
+  }
+
+  Ok(chat)
+}
+
+async fn delete_chat_transactional(
+  tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+  chat_id: i64,
+  user_id: i64,
+) -> Result<Vec<i64>, AppError> {
+  let chat_info = sqlx::query!(
+    "SELECT chat_members, created_by FROM chats WHERE id = $1 FOR UPDATE",
+    chat_id
+  )
+  .fetch_optional(&mut **tx)
+  .await?
+  .ok_or(AppError::NotFound(vec![chat_id.to_string()]))?;
+
+  if chat_info.created_by != user_id {
+    return Err(AppError::ChatPermissionError(format!(
+      "User {} is not the creator of chat {}",
+      user_id, chat_id
+    )));
+  }
+
+  sqlx::query!(
+    "DELETE FROM chat_members_relation WHERE chat_id = $1",
+    chat_id
+  )
+  .execute(&mut **tx)
+  .await?;
+
+  let result = sqlx::query!("DELETE FROM chats WHERE id = $1", chat_id)
+    .execute(&mut **tx)
+    .await?;
+
+  if result.rows_affected() == 0 {
+    return Err(AppError::NotFound(vec![chat_id.to_string()]));
+  }
+
+  Ok(chat_info.chat_members)
+}
+
+pub async fn delete_chat(state: &AppState, chat_id: i64, user_id: i64) -> Result<bool, AppError> {
+  let mut tx = state.pool.begin().await?;
+
+  let members_to_invalidate = match delete_chat_transactional(&mut tx, chat_id, user_id).await {
+    Ok(members) => members,
+    Err(e) => {
+      let _ = tx.rollback().await;
+      return Err(e);
+    }
+  };
+
+  tx.commit().await?;
+
+  for &member in &members_to_invalidate {
+    state.chat_list_cache.remove(&member);
+  }
+
+  Ok(true)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateChat {
+  pub name: String,
+  pub chat_type: ChatType,
+  pub chat_members: Vec<i64>,
+  pub description: String,
+}
+
+#[cfg(test)]
+impl CreateChat {
+  pub fn new(name: &str, chat_type: ChatType, chat_members: Vec<i64>, description: &str) -> Self {
+    Self {
+      name: name.to_string(),
+      chat_type,
+      chat_members,
+      description: description.to_string(),
+    }
+  }
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct ChatSidebar {
+  pub id: i64,
+  pub name: String,
+  pub chat_type: ChatType,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateChat {
+  pub name: Option<String>,
+  pub description: Option<String>,
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
-
+  use crate::models::{add_chat_members, remove_group_chat_members};
   use crate::setup_test_users;
   use anyhow::Result;
-  use fechatter_core::{CreateChat, UpdateChat};
 
   #[tokio::test]
   async fn create_and_list_chats_should_work() -> Result<()> {
@@ -422,16 +389,16 @@ mod tests {
       single_members.clone(),
       "One-on-one chat",
     );
-    let single_chat_created = state
-      .create_new_chat(
-        user1.id,
-        &single_chat.name,
-        single_chat.chat_type,
-        Some(single_members),
-        Some(single_chat.description.as_deref().unwrap_or("")),
-        user1.workspace_id,
-      )
-      .await?;
+    let single_chat_created = create_new_chat(
+      &state,
+      user1.id,
+      &single_chat.name,
+      single_chat.chat_type,
+      Some(single_members),           // Pass Option<Vec<i64>> for members
+      Some(&single_chat.description), // Pass Option<&str> for description
+      user1.workspace_id,
+    )
+    .await?;
 
     assert_eq!(single_chat_created.chat_type, ChatType::Single);
     assert_eq!(single_chat_created.chat_members.len(), 2);
@@ -448,16 +415,16 @@ mod tests {
       group_members.clone(),
       "Work group",
     );
-    let chat = state
-      .create_new_chat(
-        user1.id,
-        &group_chat.name,
-        group_chat.chat_type,
-        Some(group_members),
-        Some(group_chat.description.as_deref().unwrap_or("")),
-        user1.workspace_id,
-      )
-      .await?;
+    let chat = create_new_chat(
+      &state,
+      user1.id,
+      &group_chat.name,
+      group_chat.chat_type,
+      Some(group_members),           // Pass Option<Vec<i64>> for members
+      Some(&group_chat.description), // Pass Option<&str> for description
+      user1.workspace_id,
+    )
+    .await?;
 
     assert_eq!(chat.chat_type, ChatType::Group);
     assert_eq!(chat.chat_members.len(), 3);
@@ -467,37 +434,37 @@ mod tests {
 
     // 3. Create private channel
     let channel_members = vec![user2.id];
-    let private_chat = state
-      .create_new_chat(
-        user1.id,
-        "Project Updates",
-        ChatType::PrivateChannel,
-        Some(channel_members.clone()),
-        Some("Invite only"),
-        user1.workspace_id,
-      )
-      .await?;
+    let private_chat = create_new_chat(
+      &state,
+      user1.id,
+      "Project Updates",
+      ChatType::PrivateChannel,
+      Some(channel_members.clone()),
+      Some("Invite only"),
+      user1.workspace_id,
+    )
+    .await?;
 
     assert_eq!(private_chat.chat_type, ChatType::PrivateChannel);
     assert_eq!(private_chat.chat_members.len(), 2);
 
     // 4. Create public channel
-    let public_chat = state
-      .create_new_chat(
-        user1.id,
-        "Company Announcements",
-        ChatType::PublicChannel,
-        None, // No members for public channel
-        Some("Company announcements"),
-        user1.workspace_id,
-      )
-      .await?;
+    let public_chat = create_new_chat(
+      &state,
+      user1.id,
+      "Company Announcements",
+      ChatType::PublicChannel,
+      None, // No members for public channel
+      Some("Company announcements"),
+      user1.workspace_id,
+    )
+    .await?;
 
     assert_eq!(public_chat.chat_type, ChatType::PublicChannel);
     assert_eq!(public_chat.chat_members.len(), 1);
 
     // Use the correct function signature for listing chats
-    let chats = state.list_chats_of_user(user1.id).await?;
+    let chats = list_chats_of_user(&state, user1.id).await?;
     assert_eq!(chats.len(), 4);
 
     Ok(())
@@ -510,73 +477,73 @@ mod tests {
     let user2 = &users[1];
     let user3 = &users[2];
 
-    let single_chat = state
-      .create_new_chat(
-        user1.id,
-        "Single Chat with Bob (for update/delete)",
-        ChatType::Single,
-        Some(vec![user2.id]),
-        Some("One-on-one chat"),
-        user1.workspace_id,
-      )
-      .await?;
+    let single_chat = create_new_chat(
+      &state,
+      user1.id,
+      "Single Chat with Bob (for update/delete)",
+      ChatType::Single,
+      Some(vec![user2.id]),
+      Some("One-on-one chat"),
+      user1.workspace_id,
+    )
+    .await?;
     assert_eq!(single_chat.chat_type, ChatType::Single);
 
     let group_members = vec![user2.id, user3.id];
-    let group_chat = state
-      .create_new_chat(
-        user1.id,
-        "Work Team",
-        ChatType::Group,
-        Some(group_members),
-        Some("Work group"),
-        user1.workspace_id,
-      )
-      .await?;
+    let group_chat = create_new_chat(
+      &state,
+      user1.id,
+      "Work Team",
+      ChatType::Group,
+      Some(group_members),
+      Some("Work group"),
+      user1.workspace_id,
+    )
+    .await?;
     assert_eq!(group_chat.chat_type, ChatType::Group);
     assert_eq!(group_chat.chat_members.len(), 3);
 
-    let updated_single_chat = state
-      .update_chat(
-        single_chat.id,
-        user1.id,
-        UpdateChat {
-          name: Some("Updated Single Chat".to_string()),
-          description: Some("Updated description".to_string()),
-        },
-      )
-      .await?;
+    let updated_single_chat = update_chat(
+      &state,
+      single_chat.id,
+      user1.id,
+      UpdateChat {
+        name: Some("Updated Single Chat".to_string()),
+        description: Some("Updated description".to_string()),
+      },
+    )
+    .await?;
 
     assert_eq!(updated_single_chat.name, "Updated Single Chat");
     assert_eq!(updated_single_chat.description, "Updated description");
 
-    let updated_group_chat = state
-      .update_chat(
-        group_chat.id,
-        user1.id,
-        UpdateChat {
-          name: Some("Updated Group Chat".to_string()),
-          description: Some("Updated description".to_string()),
-        },
-      )
-      .await?;
+    let updated_group_chat = update_chat(
+      &state,
+      group_chat.id,
+      user1.id,
+      UpdateChat {
+        name: Some("Updated Group Chat".to_string()),
+        description: Some("Updated description".to_string()),
+      },
+    )
+    .await?;
 
     assert_eq!(updated_group_chat.name, "Updated Group Chat");
     assert_eq!(updated_group_chat.description, "Updated description");
 
-    let chats = state.list_chats_of_user(user1.id).await?;
+    let chats = list_chats_of_user(&state, user1.id).await?;
     assert_eq!(chats.len(), 2);
 
-    let deleted_single_chat = state.delete_chat(single_chat.id, user1.id).await?;
+    let deleted_single_chat = delete_chat(&state, single_chat.id, user1.id).await?;
     assert!(deleted_single_chat);
 
-    let chats = state.list_chats_of_user(user1.id).await?;
+    let chats = list_chats_of_user(&state, user1.id).await?;
     assert_eq!(chats.len(), 1);
 
-    let deleted_group_chat = state.delete_chat(group_chat.id, user1.id).await?;
+    let deleted_group_chat = delete_chat(&state, group_chat.id, user1.id).await?;
     assert!(deleted_group_chat);
 
-    let chats = state.list_chats_of_user(user1.id).await?;
+    let chats = list_chats_of_user(&state, user1.id).await?;
     assert_eq!(chats.len(), 0);
 
     Ok(())
@@ -591,236 +558,236 @@ mod tests {
     let user4 = &users[3];
 
     // 1. Test creating a chat with no name (should fail)
-    let result = state
-      .create_new_chat(
-        user1.id,
-        "",
-        ChatType::Single,
-        Some(vec![user2.id]),
-        None,
-        user1.workspace_id,
-      )
-      .await;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      "",
+      ChatType::Single,
+      Some(vec![user2.id]),
+      None,
+      user1.workspace_id,
+    )
+    .await;
     assert!(result.is_err());
 
     // 2. Try to create a single chat with yourself (should fail)
-    let result = state
-      .create_new_chat(
-        user1.id,
-        "Self Chat",
-        ChatType::Single,
-        Some(vec![user1.id]),
-        None,
-        user1.workspace_id,
-      )
-      .await;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      "Self Chat",
+      ChatType::Single,
+      Some(vec![user1.id]),
+      None,
+      user1.workspace_id,
+    )
+    .await;
     assert!(result.is_err());
 
     // 3. Test single chat without specifying members
-    let result = state
-      .create_new_chat(
-        user1.id,
-        "No Target Chat",
-        ChatType::Single,
-        None,
-        None,
-        user1.workspace_id,
-      )
-      .await;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      "No Target Chat",
+      ChatType::Single,
+      None,
+      None,
+      user1.workspace_id,
+    )
+    .await;
     assert!(result.is_err());
 
     // 4. Test single chat with empty member list
-    let result = state
-      .create_new_chat(
-        user1.id,
-        "Empty Members Chat",
-        ChatType::Single,
-        Some(vec![]),
-        None,
-        user1.workspace_id,
-      )
-      .await;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      "Empty Members Chat",
+      ChatType::Single,
+      Some(vec![]),
+      None,
+      user1.workspace_id,
+    )
+    .await;
     assert!(result.is_err());
 
     // 5. Test single chat with multiple members
-    let result = state
-      .create_new_chat(
-        user1.id,
-        "Multi Target Chat",
-        ChatType::Single,
-        Some(vec![user2.id, user3.id]),
-        None,
-        user1.workspace_id,
-      )
-      .await;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      "Multi Target Chat",
+      ChatType::Single,
+      Some(vec![user2.id, user3.id]),
+      None,
+      user1.workspace_id,
+    )
+    .await;
     assert!(result.is_err());
 
     // 6. Create a group with insufficient members (should fail)
-    let result = state
-      .create_new_chat(
-        user1.id,
-        "Small Group",
-        ChatType::Group,
-        Some(vec![user2.id]),
-        None,
-        user1.workspace_id,
-      )
-      .await;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      "Small Group",
+      ChatType::Group,
+      Some(vec![user2.id]),
+      None,
+      user1.workspace_id,
+    )
+    .await;
     assert!(result.is_err());
 
     // 7. Test group chat without specifying target members (should fail as total members < 3)
-    let result = state
-      .create_new_chat(
-        user1.id,
-        "No Members Group",
-        ChatType::Group,
-        None,
-        None,
-        user1.workspace_id,
-      )
-      .await;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      "No Members Group",
+      ChatType::Group,
+      None,
+      None,
+      user1.workspace_id,
+    )
+    .await;
     assert!(result.is_err());
 
     // 8. Test group chat with empty member list (should fail as total members < 3)
-    let result = state
-      .create_new_chat(
-        user1.id,
-        "Empty Members Group",
-        ChatType::Group,
-        Some(vec![]),
-        None,
-        user1.workspace_id,
-      )
-      .await;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      "Empty Members Group",
+      ChatType::Group,
+      Some(vec![]),
+      None,
+      user1.workspace_id,
+    )
+    .await;
     assert!(result.is_err());
 
     // 9. Test group chat with duplicate members (should succeed but deduplicate)
-    let result = state
-      .create_new_chat(
-        user1.id,
-        "Duplicate Members Group",
-        ChatType::Group,
-        Some(vec![user2.id, user3.id, user2.id, user3.id]),
-        None,
-        user1.workspace_id,
-      )
-      .await?;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      "Duplicate Members Group",
+      ChatType::Group,
+      Some(vec![user2.id, user3.id, user2.id, user3.id]),
+      None,
+      user1.workspace_id,
+    )
+    .await?;
     assert_eq!(result.chat_members.len(), 3);
 
     // 10. Test group chat that includes the creator (should succeed but not duplicate creator)
-    let result = state
-      .create_new_chat(
-        user1.id,
-        "Self Included Group",
-        ChatType::Group,
-        Some(vec![user1.id, user2.id, user3.id]),
-        None,
-        user1.workspace_id,
-      )
-      .await?;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      "Self Included Group",
+      ChatType::Group,
+      Some(vec![user1.id, user2.id, user3.id]),
+      None,
+      user1.workspace_id,
+    )
+    .await?;
     assert_eq!(result.chat_members.len(), 3);
     assert_eq!(result.chat_members[0], user1.id);
 
     // 11. Test empty members private channel (should succeed with only creator)
-    let result = state
-      .create_new_chat(
-        user1.id,
-        "Empty Private Channel",
-        ChatType::PrivateChannel,
-        None,
-        None,
-        user1.workspace_id,
-      )
-      .await?;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      "Empty Private Channel",
+      ChatType::PrivateChannel,
+      None,
+      None,
+      user1.workspace_id,
+    )
+    .await?;
     assert_eq!(result.chat_members.len(), 1);
     assert_eq!(result.chat_members[0], user1.id);
 
     // 12. Test private channel that includes creator (should succeed but not duplicate)
-    let result = state
-      .create_new_chat(
-        user1.id,
-        "Self Included Private Channel",
-        ChatType::PrivateChannel,
-        Some(vec![user1.id, user2.id]),
-        None,
-        user1.workspace_id,
-      )
-      .await?;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      "Self Included Private Channel",
+      ChatType::PrivateChannel,
+      Some(vec![user1.id, user2.id]),
+      None,
+      user1.workspace_id,
+    )
+    .await?;
     assert_eq!(result.chat_members.len(), 2);
     assert_eq!(result.chat_members[0], user1.id);
 
     // 13. Test private channel with duplicate members (should succeed but deduplicate)
-    let result = state
-      .create_new_chat(
-        user1.id,
-        "Duplicate Private Channel",
-        ChatType::PrivateChannel,
-        Some(vec![user2.id, user2.id, user3.id, user3.id]),
-        None,
-        user1.workspace_id,
-      )
-      .await?;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      "Duplicate Private Channel",
+      ChatType::PrivateChannel,
+      Some(vec![user2.id, user2.id, user3.id, user3.id]),
+      None,
+      user1.workspace_id,
+    )
+    .await?;
     assert_eq!(result.chat_members.len(), 3);
 
     // 14. Test public channel (always succeeds, ignores all member parameters)
-    let result = state
-      .create_new_chat(
-        user1.id,
-        "Public Channel No Members",
-        ChatType::PublicChannel,
-        None,
-        None,
-        user1.workspace_id,
-      )
-      .await?;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      "Public Channel No Members",
+      ChatType::PublicChannel,
+      None,
+      None,
+      user1.workspace_id,
+    )
+    .await?;
     assert_eq!(result.chat_members.len(), 1);
     assert_eq!(result.chat_members[0], user1.id);
 
     // 15. Test public channel with specified members (should succeed but ignore members)
-    let result = state
-      .create_new_chat(
-        user1.id,
-        "Public Channel With Members",
-        ChatType::PublicChannel,
-        Some(vec![user2.id, user3.id, user4.id]),
-        None,
-        user1.workspace_id,
-      )
-      .await?;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      "Public Channel With Members",
+      ChatType::PublicChannel,
+      Some(vec![user2.id, user3.id, user4.id]),
+      None,
+      user1.workspace_id,
+    )
+    .await?;
     assert_eq!(result.chat_members.len(), 1);
     assert_eq!(result.chat_members[0], user1.id);
 
     // 16. Test chat with extremely long name (database constraint is 128 characters)
     let long_name = "a".repeat(130);
-    let result = state
-      .create_new_chat(
-        user1.id,
-        &long_name,
-        ChatType::Single,
-        Some(vec![user2.id]),
-        None,
-        user1.workspace_id,
-      )
-      .await;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      &long_name,
+      ChatType::Single,
+      Some(vec![user2.id]),
+      None,
+      user1.workspace_id,
+    )
+    .await;
     assert!(result.is_err());
 
     // 17. Test chat with description
-    let result = state
-      .create_new_chat(
-        user1.id,
-        "Chat With Description",
-        ChatType::Single,
-        Some(vec![user2.id]),
-        Some("This is a test description that should be saved correctly"),
-        user1.workspace_id,
-      )
-      .await?;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      "Chat With Description",
+      ChatType::Single,
+      Some(vec![user2.id]),
+      Some("This is a test description that should be saved correctly"),
+      user1.workspace_id,
+    )
+    .await?;
     assert_eq!(
       result.description,
       "This is a test description that should be saved correctly"
     );
 
-    let chats = state.list_chats_of_user(user1.id).await?;
+    let chats = list_chats_of_user(&state, user1.id).await?;
     assert_eq!(chats.len(), 8);
 
     Ok(())
@@ -838,65 +805,65 @@ mod tests {
 
     // 1. Create department group chat
     let department_members = Some(vec![user2.id, user3.id, user4.id, user5.id]);
-    let department_chat = state
-      .create_new_chat(
-        user1.id, // Alice as creator
-        "Marketing Department",
-        ChatType::Group,
-        department_members,
-        Some("Department internal communication group"),
-        user1.workspace_id,
-      )
-      .await?;
+    let department_chat = create_new_chat(
+      &state,
+      user1.id, // Alice as creator
+      "Marketing Department",
+      ChatType::Group,
+      department_members,
+      Some("Department internal communication group"),
+      user1.workspace_id,
+    )
+    .await?;
 
     assert_eq!(department_chat.chat_members.len(), 5);
 
     // 2. Create project team
     let project_members = Some(vec![user2.id, user3.id]); // Bob and Charlie
-    let project_chat = state
-      .create_new_chat(
-        user1.id, // Alice as creator
-        "Website Redesign",
-        ChatType::Group,
-        project_members,
-        Some("Website redesign project discussion"),
-        user1.workspace_id,
-      )
-      .await?;
+    let project_chat = create_new_chat(
+      &state,
+      user1.id, // Alice as creator
+      "Website Redesign",
+      ChatType::Group,
+      project_members,
+      Some("Website redesign project discussion"),
+      user1.workspace_id,
+    )
+    .await?;
 
     assert_eq!(project_chat.chat_members.len(), 3); // Alice + Bob + Charlie
 
     // 3. Create company announcement channel
-    let announce_channel = state
-      .create_new_chat(
-        user1.id, // Alice as manager
-        "Company Announcements",
-        ChatType::PublicChannel,
-        None,
-        Some("Company important announcements"),
-        user1.workspace_id,
-      )
-      .await?;
+    let announce_channel = create_new_chat(
+      &state,
+      user1.id, // Alice as manager
+      "Company Announcements",
+      ChatType::PublicChannel,
+      None,
+      Some("Company important announcements"),
+      user1.workspace_id,
+    )
+    .await?;
 
     assert_eq!(announce_channel.chat_members.len(), 1); // Only Alice
 
     // 4. Alice and Bob's one-on-one chat
-    let one_on_one = state
-      .create_new_chat(
-        user1.id, // Alice
-        "Alice & Bob",
-        ChatType::Single,
-        Some(vec![user2.id]), // Bob
-        None,
-        user1.workspace_id,
-      )
-      .await?;
+    let one_on_one = create_new_chat(
+      &state,
+      user1.id, // Alice
+      "Alice & Bob",
+      ChatType::Single,
+      Some(vec![user2.id]), // Bob
+      None,
+      user1.workspace_id,
+    )
+    .await?;
 
     assert_eq!(one_on_one.chat_members.len(), 2);
     assert!(one_on_one.chat_members.contains(&user1.id));
     assert!(one_on_one.chat_members.contains(&user2.id));
 
-    let chats = state.list_chats_of_user(user1.id).await?;
+    let chats = list_chats_of_user(&state, user1.id).await?;
     assert_eq!(chats.len(), 4);
 
     Ok(())
@@ -924,29 +891,29 @@ mod tests {
       vec![user2.id, user3.id],
       "",
     );
-    let first_chat = state
-      .create_new_chat(
-        user1.id,
-        &first_chat.name,
-        first_chat.chat_type,
-        first_chat.members,
-        None,
-        user1.workspace_id,
-      )
-      .await?;
+    let first_chat = create_new_chat(
+      &state,
+      user1.id,
+      &first_chat.name,
+      first_chat.chat_type,
+      Some(first_chat.chat_members),
+      None,
+      user1.workspace_id,
+    )
+    .await?;
     assert_eq!(first_chat.chat_members.len(), 3);
 
     // Try to create chat with same name (should fail)
-    let result = state
-      .create_new_chat(
-        user4.id,           // Different creator
-        "Unique Name Test", // Same name
-        ChatType::Group,
-        Some(vec![user5.id, user6.id]), // Different members
-        None,
-        user1.workspace_id,
-      )
-      .await;
+    let result = create_new_chat(
+      &state,
+      user4.id,           // Different creator
+      "Unique Name Test", // Same name
+      ChatType::Group,
+      Some(vec![user5.id, user6.id]), // Different members
+      None,
+      user1.workspace_id,
+    )
+    .await;
 
     assert!(result.is_err());
 
@@ -955,16 +922,16 @@ mod tests {
     // Use various special characters as chat name
     let special_name = "!@#$%^&*()_+-=[]{}|;':\",./<>?";
     let special_chat = CreateChat::new(special_name, ChatType::Group, vec![user2.id, user3.id], "");
-    let special_chat = state
-      .create_new_chat(
-        user1.id,
-        &special_chat.name,
-        special_chat.chat_type,
-        special_chat.members,
-        None,
-        user1.workspace_id,
-      )
-      .await?;
+    let special_chat = create_new_chat(
+      &state,
+      user1.id,
+      &special_chat.name,
+      special_chat.chat_type,
+      Some(special_chat.chat_members),
+      None,
+      user1.workspace_id,
+    )
+    .await?;
 
     assert_eq!(special_chat.name, special_name);
 
@@ -978,16 +945,16 @@ mod tests {
       vec![user2.id, user3.id],
       &long_desc,
     );
-    let long_desc_chat = state
-      .create_new_chat(
-        user1.id,
-        &long_desc_chat.name,
-        long_desc_chat.chat_type,
-        long_desc_chat.members,
-        Some(long_desc_chat.description.as_deref().unwrap_or("")),
-        user1.workspace_id,
-      )
-      .await?;
+    let long_desc_chat = create_new_chat(
+      &state,
+      user1.id,
+      &long_desc_chat.name,
+      long_desc_chat.chat_type,
+      Some(long_desc_chat.chat_members),
+      Some(&long_desc_chat.description),
+      user1.workspace_id,
+    )
+    .await?;
 
     assert_eq!(long_desc_chat.description, long_desc);
 
@@ -1002,16 +969,16 @@ mod tests {
       ],
       "",
     );
-    let large_group = state
-      .create_new_chat(
-        user1.id,
-        &large_group.name,
-        large_group.chat_type,
-        large_group.members,
-        None,
-        user1.workspace_id,
-      )
-      .await?;
+    let large_group = create_new_chat(
+      &state,
+      user1.id,
+      &large_group.name,
+      large_group.chat_type,
+      Some(large_group.chat_members),
+      None,
+      user1.workspace_id,
+    )
+    .await?;
 
     assert_eq!(large_group.chat_members.len(), 8); // Creator + 7 members
 
@@ -1022,16 +989,16 @@ mod tests {
 
     // Single chat
     let single_chat = CreateChat::new("Same Members Single", ChatType::Single, members.clone(), "");
-    let single_chat = state
-      .create_new_chat(
-        user1.id,
-        &single_chat.name,
-        single_chat.chat_type,
-        single_chat.members,
-        None,
-        user1.workspace_id,
-      )
-      .await?;
+    let single_chat = create_new_chat(
+      &state,
+      user1.id,
+      &single_chat.name,
+      single_chat.chat_type,
+      Some(single_chat.chat_members),
+      None,
+      user1.workspace_id,
+    )
+    .await?;
 
     // Private channel
     let private_channel = CreateChat::new(
@@ -1040,16 +1007,16 @@ mod tests {
       members.clone(),
       "",
     );
-    let private_channel = state
-      .create_new_chat(
-        user1.id,
-        &private_channel.name,
-        private_channel.chat_type,
-        private_channel.members,
-        None,
-        user1.workspace_id,
-      )
-      .await?;
+    let private_channel = create_new_chat(
+      &state,
+      user1.id,
+      &private_channel.name,
+      private_channel.chat_type,
+      Some(private_channel.chat_members),
+      None,
+      user1.workspace_id,
+    )
+    .await?;
 
     assert_eq!(single_chat.chat_members.len(), 2);
     assert_eq!(private_channel.chat_members.len(), 2);
@@ -1062,16 +1029,16 @@ mod tests {
 
     // Try to use all-spaces name
     let all_spaces = CreateChat::new("   ", ChatType::Group, vec![user2.id, user3.id], "");
-    let result = state
-      .create_new_chat(
-        user1.id,
-        &all_spaces.name,
-        all_spaces.chat_type,
-        all_spaces.members,
-        None,
-        user1.workspace_id,
-      )
-      .await;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      &all_spaces.name,
+      all_spaces.chat_type,
+      Some(all_spaces.chat_members),
+      None,
+      user1.workspace_id,
+    )
+    .await;
 
     assert!(result.is_err());
 
@@ -1084,16 +1051,16 @@ mod tests {
       vec![user2.id, user3.id, user1.id, user3.id],
       "",
     );
-    let creator_included = state
-      .create_new_chat(
-        user1.id,
-        &creator_included.name,
-        creator_included.chat_type,
-        creator_included.members,
-        None,
-        user1.workspace_id,
-      )
-      .await?;
+    let creator_included = create_new_chat(
+      &state,
+      user1.id,
+      &creator_included.name,
+      creator_included.chat_type,
+      Some(creator_included.chat_members),
+      None,
+      user1.workspace_id,
+    )
+    .await?;
 
     assert_eq!(creator_included.chat_members.len(), 3);
     assert_eq!(creator_included.chat_members[0], user1.id); // Creator should be first
@@ -1102,16 +1069,16 @@ mod tests {
 
     // Name exactly 128 characters (database limit is 128)
     let name_128 = "a".repeat(128);
-    let result = state
-      .create_new_chat(
-        user1.id,
-        &name_128,
-        ChatType::Single,
-        Some(vec![user2.id]),
-        None,
-        user1.workspace_id,
-      )
-      .await?;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      &name_128,
+      ChatType::Single,
+      Some(vec![user2.id]),
+      None,
+      user1.workspace_id,
+    )
+    .await?;
 
     assert_eq!(result.name.len(), 128);
 
@@ -1124,16 +1091,16 @@ mod tests {
       vec![user2.id, user3.id],
       "",
     );
-    let relation_test = state
-      .create_new_chat(
-        user1.id,
-        &relation_test.name,
-        relation_test.chat_type,
-        relation_test.members,
-        None,
-        user1.workspace_id,
-      )
-      .await?;
+    let relation_test = create_new_chat(
+      &state,
+      user1.id,
+      &relation_test.name,
+      relation_test.chat_type,
+      Some(relation_test.chat_members),
+      None,
+      user1.workspace_id,
+    )
+    .await?;
 
     // Typically would need to query database for verification, but we can indirectly verify through chat_members
     assert_eq!(relation_test.chat_members.len(), 3);
@@ -1147,16 +1114,16 @@ mod tests {
       vec![user2.id, user3.id],
       "",
     );
-    let normal_chat = state
-      .create_new_chat(
-        user1.id,
-        &normal_chat.name,
-        normal_chat.chat_type,
-        normal_chat.members,
-        None,
-        user1.workspace_id,
-      )
-      .await?;
+    let normal_chat = create_new_chat(
+      &state,
+      user1.id,
+      &normal_chat.name,
+      normal_chat.chat_type,
+      Some(normal_chat.chat_members),
+      None,
+      user1.workspace_id,
+    )
+    .await?;
 
     assert_eq!(normal_chat.chat_members.len(), 3);
     assert!(normal_chat.chat_members.contains(&user1.id));
@@ -1166,25 +1133,25 @@ mod tests {
     // Adding implementation for edit members, etc. to satisfy TODO
     // Add a new member to the chat
     let user4_id = 999; // Simulating another user
-    let add_result = state
-      .add_chat_members(
-        normal_chat.id,
-        user1.id, // Creator is performing the action
-        vec![user4_id],
-      )
-      .await;
+    let add_result = add_chat_members(
+      &state,
+      normal_chat.id,
+      user1.id, // Creator is performing the action
+      vec![user4_id],
+    )
+    .await;
 
     // This should fail as user4 doesn't exist, but verifies the function is callable
     assert!(add_result.is_err());
 
     // Test deleting a member
-    let remove_result = state
-      .remove_group_chat_members(
-        normal_chat.id,
-        user1.id, // Creator is performing the action
-        vec![user3.id],
-      )
-      .await?;
+    let remove_result = remove_group_chat_members(
+      &state,
+      normal_chat.id,
+      user1.id, // Creator is performing the action
+      vec![user3.id],
+    )
+    .await?;
 
     assert!(remove_result);
 
@@ -1197,16 +1164,16 @@ mod tests {
       vec![user2.id, user3.id],
       "This is a non-English description, testing UTF-8 support",
     );
-    let non_english_chat = state
-      .create_new_chat(
-        user1.id,
-        &non_english_chat.name,
-        non_english_chat.chat_type,
-        non_english_chat.members,
-        Some(non_english_chat.description.as_deref().unwrap_or("")),
-        user1.workspace_id,
-      )
-      .await?;
+    let non_english_chat = create_new_chat(
+      &state,
+      user1.id,
+      &non_english_chat.name,
+      non_english_chat.chat_type,
+      Some(non_english_chat.chat_members),
+      Some(&non_english_chat.description),
+      user1.workspace_id,
+    )
+    .await?;
 
     assert_eq!(non_english_chat.name, "Chat with non-English name test");
     assert_eq!(
@@ -1223,21 +1190,21 @@ mod tests {
       vec![user2.id, user3.id],
       "Testing emoji support 😊👍",
     );
-    let emoji_chat = state
-      .create_new_chat(
-        user1.id,
-        &emoji_chat.name,
-        emoji_chat.chat_type,
-        emoji_chat.members,
-        Some(emoji_chat.description.as_deref().unwrap_or("")),
-        user1.workspace_id,
-      )
-      .await?;
+    let emoji_chat = create_new_chat(
+      &state,
+      user1.id,
+      &emoji_chat.name,
+      emoji_chat.chat_type,
+      Some(emoji_chat.chat_members),
+      Some(&emoji_chat.description),
+      user1.workspace_id,
+    )
+    .await?;
 
     assert_eq!(emoji_chat.name, "😀 Emoji Chat 🎉");
     assert_eq!(emoji_chat.description, "Testing emoji support 😊👍");
 
-    let chats = state.list_chats_of_user(user1.id).await?;
+    let chats = list_chats_of_user(&state, user1.id).await?;
     assert_eq!(chats.len(), 12);
 
     Ok(())
@@ -1250,32 +1217,33 @@ mod tests {
     let user2 = &users[1];
     let user3 = &users[2];
 
+    // 创建第一个聊天
     let chat_name = "Unique Test Chat";
     let members = vec![user2.id, user3.id];
-    let first_chat = state
-      .create_new_chat(
-        user1.id,
-        chat_name,
-        ChatType::Group,
-        Some(members.clone()),
-        Some("First chat description"),
-        user1.workspace_id,
-      )
-      .await?;
+    let first_chat = create_new_chat(
+      &state,
+      user1.id,
+      chat_name,
+      ChatType::Group,
+      Some(members.clone()),
+      Some("First chat description"),
+      user1.workspace_id,
+    )
+    .await?;
 
     assert_eq!(first_chat.name, chat_name);
 
     // Attempt to create a second chat with the same name
-    let result = state
-      .create_new_chat(
-        user1.id,
-        chat_name, // same name
-        ChatType::Group,
-        Some(members.clone()),
-        Some("Second chat description"),
-        user1.workspace_id,
-      )
-      .await;
+    let result = create_new_chat(
+      &state,
+      user1.id,
+      chat_name, // same name
+      ChatType::Group,
+      Some(members.clone()),
+      Some("Second chat description"),
+      user1.workspace_id,
+    )
+    .await;
 
     // Verify creation fails and returns the correct error
     match result {
@@ -1289,68 +1257,11 @@ mod tests {
 
     Ok(())
   }
-
-  #[tokio::test]
-  async fn update_chat_with_existing_name_should_fail() -> Result<()> {
-    let (_tdb, state, users) = setup_test_users!(3).await;
-    let user1 = &users[0];
-    let user2 = &users[1];
-    let user3 = &users[2];
-
-    let first_chat_name = "First Chat Name";
-    state
-      .create_new_chat(
-        user1.id,
-        first_chat_name,
-        ChatType::Group,
-        Some(vec![user2.id, user3.id]),
-        Some("First chat description"),
-        user1.workspace_id,
-      )
-      .await?;
-
-    let second_chat_name = "Second Chat Name";
-    let second_chat = state
-      .create_new_chat(
-        user1.id,
-        second_chat_name,
-        ChatType::Group,
-        Some(vec![user2.id, user3.id]),
-        Some("Second chat description"),
-        user1.workspace_id,
-      )
-      .await?;
-
-    let update_result = state
-      .update_chat(
-        second_chat.id,
-        user1.id,
-        UpdateChat {
-          name: Some(first_chat_name.to_string()),
-          description: None,
-        },
-      )
-      .await;
-
-    match update_result {
-      Err(AppError::ChatAlreadyExists(error_message)) => {
-        let expected_error = format!(
-          "Chat name '{}' is already taken by another chat",
-          first_chat_name
-        );
-        assert_eq!(error_message, expected_error);
-      }
-      Ok(_) => panic!("Expected chat update to fail, but it succeeded."),
-      Err(e) => panic!("Expected ChatPermissionError, but got {:?}", e),
-    }
-
-    Ok(())
-  }
 }
 
 #[cfg(test)]
-mod process_chat_members_data_driven_tests {
-  // use super::*;
+mod process_chat_members_data_driven_test {
+  use super::*;
   use crate::AppError;
   use crate::models::ChatType;
   use anyhow::Result;
@@ -1358,58 +1269,6 @@ mod process_chat_members_data_driven_tests {
   const CREATOR_ID: i64 = 1;
   const USER_2: i64 = 2;
   const USER_3: i64 = 3;
-
-  // 使用与AppState实现相同的函数，但作为静态函数
-  fn process_chat_members(
-    chat_type: &ChatType,
-    creator_id: i64,
-    target_members: Option<&Vec<i64>>,
-  ) -> Result<Vec<i64>, AppError> {
-    match chat_type {
-      ChatType::Single => match target_members {
-        Some(members) if members.len() == 1 => {
-          let target_id = members[0];
-          if target_id == creator_id {
-            return Err(AppError::ChatValidationError(
-              "Single chat must have exactly one member".to_string(),
-            ));
-          }
-          Ok(vec![creator_id, target_id])
-        }
-        _ => Err(AppError::ChatValidationError(
-          "Invalid single chat members".to_string(),
-        )),
-      },
-      ChatType::Group => {
-        let mut result = vec![creator_id];
-        if let Some(members) = target_members {
-          for &id in members {
-            if id != creator_id && !result.contains(&id) {
-              result.push(id);
-            }
-          }
-        }
-        if result.len() < 3 {
-          return Err(AppError::ChatValidationError(
-            "Group chat must have at least three members".to_string(),
-          ));
-        }
-        Ok(result)
-      }
-      ChatType::PrivateChannel => {
-        let mut result = vec![creator_id];
-        if let Some(members) = target_members {
-          for &id in members {
-            if id != creator_id && !result.contains(&id) {
-              result.push(id);
-            }
-          }
-        }
-        Ok(result)
-      }
-      ChatType::PublicChannel => Ok(vec![creator_id]),
-    }
-  }
 
   struct TestCase<'a> {
     desc: &'a str,
@@ -1509,7 +1368,7 @@ mod process_chat_members_data_driven_tests {
     for case in test_cases {
       println!("Testing case: {}", case.desc);
 
-      // 调用测试模块中的静态函数而不是state.process_chat_members
+      // Call the function, note that .as_ref() converts Option<Vec> to Option<&Vec>
       let actual_result =
         process_chat_members(&case.chat_type, CREATOR_ID, case.input_members.as_ref());
 

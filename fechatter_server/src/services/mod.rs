@@ -1,6 +1,10 @@
+use serde::{Deserialize, Serialize};
+
 pub mod auth_service;
-pub mod service_provider;
 
-pub use service_provider::*;
 
-pub use auth_service::AuthService;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthContext {
+  pub user_agent: Option<String>,
+  pub ip_address: Option<String>,
+}

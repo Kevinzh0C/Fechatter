@@ -17,7 +17,6 @@ Content-Type: application/json
 @accessToken = {{signup.response.body.$.access_token}}
 @refreshToken = {{signup.response.body.$.refresh_token}}
 
-
 ### signup (second user)
 # @name signup2
 POST {{baseUrl}}/api/signup
@@ -60,14 +59,10 @@ Content-Type: application/json
 # @name refreshWithCookie
 POST {{baseUrl}}/api/refresh
 Content-Type: application/json
-Cookie: refresh_token={{loginRefreshToken}}
+Cookie: refresh_token={{refreshToken}}
 
-### Save new tokens from refresh with cookie
-@accessTokenFromCookie = {{refreshWithCookie.response.body.$.access_token}}
-@refreshTokenFromCookie = {{refreshWithCookie.response.body.$.refresh_token}}
-
-### signin (second login to get fresh tokens)
-# @name login2
+### signin
+# @name login
 POST {{baseUrl}}/api/signin
 Content-Type: application/json
 
@@ -76,23 +71,21 @@ Content-Type: application/json
   "password": "password"
 }
 
-### Save tokens from second login
-@accessToken = {{login2.response.body.$.access_token}}
-@refreshToken = {{login2.response.body.$.refresh_token}}
-
 ### Refresh token using Authorization header
 # @name refreshWithHeader
 POST {{baseUrl}}/api/refresh
 Content-Type: application/json
-Authorization: Bearer {{refreshToken}}
+Authorization: Bearer {{loginRefreshToken}}
 
 ### Save new tokens from refresh
-@newAccessToken = {{refreshWithHeader.response.body.$.access_token}}
-@newRefreshToken = {{refreshWithHeader.response.body.$.refresh_token}}
+# Overwrite variables with values from the REFRESH response
+@accessToken = {{refreshWithHeader.response.body.$.access_token}}
+@refreshToken = {{refreshWithHeader.response.body.$.refresh_token}}
 
-### list users
+### Test with newly refreshed token
+# Use the LATEST accessToken obtained from the REFRESH step
 GET {{baseUrl}}/api/users
-Authorization: Bearer {{newAccessToken}}
+Authorization: Bearer {{accessToken}}
 
 ### signin (invalid user)
 POST {{baseUrl}}/api/signin
@@ -114,7 +107,7 @@ Content-Type: application/json
 
 ### list chats
 GET {{baseUrl}}/api/chat
-Authorization: Bearer {{loginAccessToken}}
+Authorization: Bearer {{accessToken}}
 
 ### create chat
 # @name createChat
@@ -123,9 +116,9 @@ Content-Type: application/json
 Authorization: Bearer {{accessToken}}
 
 {
-  "name": "Test1 Chat",
+  "name": "Test2 Chat",
   "chat_type": "Group", 
-  "members": [1, 2, 3],
+  "chat_members": [1, 2, 3],
   "description": "This is a test chat"
 }
 
@@ -138,7 +131,7 @@ Content-Type: application/json
 Authorization: Bearer {{accessToken}}
 
 {
-  "name": "Updated Chat3",
+  "name": "Updated Chat",
   "description": "This is an updated test chat"
 }
 
@@ -189,17 +182,6 @@ Authorization: Bearer {{accessToken}}
 # GET {{baseUrl}}/api/files/366b6ca7f43e61ae1559b372608fe6c170.png
 # Authorization: Bearer {{accessToken}}
 
-
-### send message
-POST {{baseUrl}}/api/chat/1/messages
-Content-Type: application/json
-Authorization: Bearer {{accessToken}}
-
-{
-  "content": "Hello, this is a content message",
-  "files": []
-}
-
 ### send message with file
 POST {{baseUrl}}/api/chat/1/messages
 Content-Type: application/json
@@ -211,8 +193,8 @@ Authorization: Bearer {{accessToken}}
 }
 
 ### list messages
-GET {{baseUrl}}/api/chat/{{chatId}}/messages
-Authorization: Bearer {{loginAccessToken}}
+GET {{baseUrl}}/api/chat/1/messages
+Authorization: Bearer {{accessToken}}
 
 ### Logout with cookies
 POST {{baseUrl}}/api/logout
@@ -230,249 +212,3 @@ Authorization: Bearer {{refreshToken}}
 ### logout all sessions (need authentication)
 POST {{baseUrl}}/api/logout-all
 Authorization: Bearer {{accessToken}}
-
-
-### ----- EXTENDED TEST SECTION -----
-
-### Get fresh authentication tokens for comprehensive testing
-# @name freshLogin
-POST {{baseUrl}}/api/signin
-Content-Type: application/json
-
-{
-  "email": "alice@acmn.com",
-  "password": "password"
-}
-
-### Save fresh tokens
-@testAccessToken = {{freshLogin.response.body.$.access_token}}
-@testRefreshToken = {{freshLogin.response.body.$.refresh_token}}
-
-### Create a test chat for comprehensive tests
-# @name createTestChat
-POST {{baseUrl}}/api/chat
-Content-Type: application/json
-Authorization: Bearer {{testAccessToken}}
-
-{
-  "name": "Comprehensive Test Chat",
-  "chat_type": "Group", 
-  "members": [1, 2, 3],
-  "description": "Chat for comprehensive API tests"
-}
-
-### Get test chat ID
-@testChatId = {{createTestChat.response.body.$.id}}
-
-### ----- 1. DUPLICATE MESSAGE DETECTION TESTS -----
-
-### Send a message with explicit idempotency key
-# @name sendIdempotentMessage
-POST {{baseUrl}}/api/chat/{{testChatId}}/messages
-Content-Type: application/json
-Authorization: Bearer {{testAccessToken}}
-
-{
-  "content": "This is an idempotent message with fixed key",
-  "files": [],
-  "idempotency_key": "01970000-0000-7000-0000-000000000001"
-}
-
-### Attempt to send the same message with identical idempotency key (should be rejected)
-# @name sendDuplicateMessage
-POST {{baseUrl}}/api/chat/{{testChatId}}/messages
-Content-Type: application/json
-Authorization: Bearer {{testAccessToken}}
-
-{
-  "content": "This is an idempotent message with fixed key",
-  "files": [],
-  "idempotency_key": "01970000-0000-7000-0000-000000000001"
-}
-
-### Get the first message ID
-@firstMessageId = {{sendIdempotentMessage.response.body.$.id}}
-
-### ----- 2. MESSAGE PAGINATION TESTS -----
-
-### Send multiple messages for pagination testing
-# @name sendMessage1
-POST {{baseUrl}}/api/chat/{{testChatId}}/messages
-Content-Type: application/json
-Authorization: Bearer {{testAccessToken}}
-
-{
-  "content": "Pagination test message 1",
-  "files": []
-}
-
-### Send message 2
-# @name sendMessage2
-POST {{baseUrl}}/api/chat/{{testChatId}}/messages
-Content-Type: application/json
-Authorization: Bearer {{testAccessToken}}
-
-{
-  "content": "Pagination test message 2",
-  "files": []
-}
-
-### Send message 3
-# @name sendMessage3
-POST {{baseUrl}}/api/chat/{{testChatId}}/messages
-Content-Type: application/json
-Authorization: Bearer {{testAccessToken}}
-
-{
-  "content": "Pagination test message 3",
-  "files": []
-}
-
-### Test basic pagination - first page (latest messages)
-GET {{baseUrl}}/api/chat/{{testChatId}}/messages?limit=2
-Authorization: Bearer {{testAccessToken}}
-
-### Get the last message ID from the first page
-@lastMsgId = {{sendMessage3.response.body.$.id}}
-
-### Test pagination - second page using last_id
-GET {{baseUrl}}/api/chat/{{testChatId}}/messages?last_id={{lastMsgId}}&limit=2
-Authorization: Bearer {{testAccessToken}}
-
-### ----- 3. CHAT MEMBER MANAGEMENT TESTS -----
-
-### List chat members
-# @name listChatMembers
-GET {{baseUrl}}/api/chat/{{testChatId}}/members
-Authorization: Bearer {{testAccessToken}}
-
-### Add members to chat (batch)
-# @name addChatMembers
-POST {{baseUrl}}/api/chat/{{testChatId}}/members
-Content-Type: application/json
-Authorization: Bearer {{testAccessToken}}
-
-[2, 3]
-
-
-### Remove member from chat
-# @name removeChatMember
-DELETE {{baseUrl}}/api/chat/{{testChatId}}/members
-Content-Type: application/json
-Authorization: Bearer {{testAccessToken}}
-
-[3]
-
-### List members after modifications
-GET {{baseUrl}}/api/chat/{{testChatId}}/members
-Authorization: Bearer {{testAccessToken}}
-
-### Transfer chat ownership (admin operation)
-# @name transferChatOwnership
-PATCH {{baseUrl}}/api/chat/{{testChatId}}/members/2
-Content-Type: application/json
-Authorization: Bearer {{testAccessToken}}
-
-{
-  "operation": "transfer_ownership"
-}
-
-
-### ----- 4. MESSAGES WITH MULTIPLE FILES -----
-
-### Upload first test file
-# @name uploadTestFile1
-POST {{baseUrl}}/api/upload
-Authorization: Bearer {{testAccessToken}}
-Content-Type: multipart/form-data; boundary=File1Boundary
-
---File1Boundary
-Content-Disposition: form-data; filename="test1.txt"
-Content-Type: text/plain
-
-This is test file 1 content
---File1Boundary--
-
-### Get first file URL
-@fileUrl1 = {{uploadTestFile1.response.body.$[0]}}
-
-### Upload second test file
-# @name uploadTestFile2
-POST {{baseUrl}}/api/upload
-Authorization: Bearer {{testAccessToken}}
-Content-Type: multipart/form-data; boundary=File2Boundary
-
---File2Boundary
-Content-Disposition: form-data; filename="test2.txt"
-Content-Type: text/plain
-
-This is test file 2 content
---File2Boundary--
-
-### Get second file URL
-@fileUrl2 = {{uploadTestFile2.response.body.$[0]}}
-
-### Send message with multiple files
-# @name sendMessageWithFiles
-POST {{baseUrl}}/api/chat/{{testChatId}}/messages
-Content-Type: application/json
-Authorization: Bearer {{testAccessToken}}
-
-{
-  "content": "This message contains multiple file attachments",
-  "files": ["{{fileUrl1}}", "{{fileUrl2}}"]
-}
-
-### Get message with files ID
-@messageWithFilesId = {{sendMessageWithFiles.response.body.$.id}}
-
-### List messages to verify file attachments
-GET {{baseUrl}}/api/chat/{{testChatId}}/messages?limit=1
-Authorization: Bearer {{testAccessToken}}
-
-### ----- 6. FILE STORAGE FIXING TEST -----
-
-### Trigger file storage structure fix
-# @name fixFileStorage
-POST {{baseUrl}}/api/fix-files/1
-Authorization: Bearer {{testAccessToken}}
-
-### ----- 7. EDGE CASES AND ERROR HANDLING -----
-
-### Test invalid chat ID
-GET {{baseUrl}}/api/chat/999999/messages
-Authorization: Bearer {{testAccessToken}}
-
-### Test invalid message data
-POST {{baseUrl}}/api/chat/{{testChatId}}/messages
-Content-Type: application/json
-Authorization: Bearer {{testAccessToken}}
-
-{
-  "content": "",
-  "files": ["invalid-file-url"]
-}
-
-### Test invalid chat creation (missing required fields)
-POST {{baseUrl}}/api/chat
-Content-Type: application/json
-Authorization: Bearer {{testAccessToken}}
-
-{
-  "name": ""
-}
-
-### Test invalid file upload (empty file)
-POST {{baseUrl}}/api/upload
-Authorization: Bearer {{testAccessToken}}
-Content-Type: multipart/form-data; boundary=EmptyFileBoundary
-
---EmptyFileBoundary
-Content-Disposition: form-data; filename="empty.txt"
-Content-Type: text/plain
-
---EmptyFileBoundary--
-
-### Access non-existent file
-GET {{baseUrl}}/api/files/1/non/exi/stent1234567890abcdef.txt
-Authorization: Bearer {{testAccessToken}}

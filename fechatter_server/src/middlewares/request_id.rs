@@ -3,8 +3,7 @@ use axum::{extract::Request, http::HeaderValue, middleware::Next, response::Resp
 use tracing::warn;
 use uuid::Uuid;
 
-/// HTTP header for request ID
-pub const REQUEST_ID_HEADER: &str = "x-request-id";
+use super::REQUEST_ID_HEADER;
 
 /**
  * Request ID Middleware

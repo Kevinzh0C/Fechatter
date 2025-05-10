@@ -1,15 +1,14 @@
-use crate::AppError;
 use std::{
   path::{Path, PathBuf},
   str::FromStr,
 };
 
+use crate::{AppError, models::ChatFile};
+use tracing::{info, warn};
+
 use sha1::{Digest, Sha1};
 
-use super::ChatFile;
-
 impl ChatFile {
-  #[allow(unused)]
   pub fn new(ws_id: i64, filename: &str, data: &[u8]) -> Self {
     let sha1_file_hash = Sha1::digest(data);
     let hash = hex::encode(sha1_file_hash);
@@ -31,7 +30,7 @@ impl ChatFile {
   }
 
   /// split hash into 3 parts, first 2 with 3 chars, last with 2 chars
-  /// For example: "1/943/a70/2d06f34599aee1f8da8ef9f7296031d699.txt",
+  /// 例如： "1/943/a70/2d06f34599aee1f8da8ef9f7296031d699.txt",
   pub fn hash_to_path(&self) -> String {
     let (part1, part2) = self.hash.split_at(3);
     let (part2, part3) = part2.split_at(3);
@@ -47,39 +46,58 @@ impl ChatFile {
     path
   }
 }
+
 impl FromStr for ChatFile {
   type Err = AppError;
 
   fn from_str(s: &str) -> Result<Self, Self::Err> {
+    info!("[TRACE] ChatFile::from_str parsing: {}", s);
     let Some(s) = s.strip_prefix("/files/") else {
+      warn!("[TRACE] Invalid path prefix: {}", s);
       return Err(AppError::ChatFileError(
         "Invaild chat file path".to_string(),
       ));
     };
+    info!("[TRACE] Stripped prefix, remaining: {}", s);
 
     let parts: Vec<&str> = s.split('/').collect();
+    info!("[TRACE] Split parts: {:?}", parts);
+    info!("[TRACE] Parts length: {}", parts.len());
+    info!("[TRACE] Expected format: /files/<workspace_id>/<part1>/<part2>/<part3>.<ext>");
 
     if parts.len() != 4 {
+      warn!("[TRACE] Invalid parts length: {}", parts.len());
+      warn!("[TRACE] Expected format: /files/<workspace_id>/<part1>/<part2>/<part3>.<ext>");
       return Err(AppError::ChatFileError(
         "Invalid chat file path".to_string(),
       ));
     }
 
     let Ok(ws_id) = parts[0].parse::<i64>() else {
+      warn!("[TRACE] Invalid workspace id: {}", parts[0]);
       return Err(AppError::ChatFileError(format!(
         "Invalid workspace id: {}",
         parts[0]
       )));
     };
+    info!("[TRACE] Parsed workspace id: {}", ws_id);
 
     let Some((part3, ext)) = parts[3].split_once('.') else {
+      warn!("[TRACE] Invalid file name format: {}", parts[3]);
+      warn!("[TRACE] Expected format: <part3>.<ext>");
       return Err(AppError::ChatFileError(format!(
         "Invalid file name {}",
         parts[3]
       )));
     };
+    info!("[TRACE] Split filename: part3={}, ext={}", part3, ext);
 
     let hash = format!("{}{}{}", parts[1], parts[2], part3);
+    info!("[TRACE] Constructed hash: {}", hash);
+    info!(
+      "[TRACE] Final ChatFile: workspace_id={}, hash={}, ext={}",
+      ws_id, hash, ext
+    );
 
     Ok(Self {
       workspace_id: ws_id,

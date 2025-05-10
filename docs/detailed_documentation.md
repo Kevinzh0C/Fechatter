@@ -28,10 +28,6 @@ Fechatter consists of two main services:
 
 ```
 fechatter/
-├── fechatter_core/         # Core logic and shared functionalities
-│   └── src/
-├── fechatter_macro/        # Procedural macros
-│   └── src/
 ├── fechatter_server/       # Main chat application server
 │   └── src/
 │       ├── handlers/       # HTTP request handlers
@@ -39,7 +35,6 @@ fechatter/
 │       ├── models/         # Data models and database interactions
 │       ├── services/       # Business logic services
 │       ├── utils/          # Utility functions
-│       ├── tests/          # Integration and unit tests for the server
 │       ├── config.rs       # Configuration management
 │       ├── error.rs        # Error handling
 │       ├── lib.rs          # Core application setup
@@ -47,13 +42,9 @@ fechatter/
 │
 ├── notify_server/          # Notification service
 │   └── src/
-│       ├── config.rs       # Configuration for the notify server
-│       ├── error.rs        # Error handling for the notify server
-│       ├── lib.rs          # Notification service core
-│       ├── main.rs         # Notification service entry point
-│       ├── notify.rs       # Core notification logic
 │       ├── sse.rs          # Server-Sent Events implementation
-│       └── utils.rs        # Utility functions for the notify server
+│       ├── lib.rs          # Notification service core
+│       └── main.rs         # Notification service entry point
 │
 ├── migrations/             # Database migration files
 ├── .env.example            # Example environment variables

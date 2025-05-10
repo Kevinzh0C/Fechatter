@@ -1,5 +1,5 @@
 [package]
-name = "notify_server"
+name = "notify-server"
 version = "0.1.0"
 edition = "2024"
 
@@ -18,8 +18,4 @@ serde_json = { workspace = true }
 serde_yaml = { workspace = true }
 futures = { workspace = true }
 axum-extra = { workspace = true }
-tokio-stream = { workspace = true }
-dashmap = { workspace = true }
-fechatter_core = { workspace = true }
-jsonwebtoken = { workspace = true }
-chrono = { workspace = true }
+tokio-stream = "0.1.17"
