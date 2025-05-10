@@ -1,17 +1,11 @@
 pub mod auth;
-mod chat;
-mod chat_member;
-mod messages;
-mod workspace;
+pub mod chat;
+pub mod chat_member;
+pub mod messages;
+pub mod workspace;
 
 use axum::response::IntoResponse;
 
-pub(crate) use auth::*;
-pub(crate) use chat::*;
-pub(crate) use chat_member::*;
-pub(crate) use messages::*;
-pub(crate) use workspace::*;
-
-pub(crate) async fn index_handler() -> impl IntoResponse {
+pub async fn index_handler() -> impl IntoResponse {
   "index"
 }

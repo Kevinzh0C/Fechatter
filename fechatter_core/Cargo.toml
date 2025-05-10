@@ -1,0 +1,38 @@
+[package]
+name = "fechatter_core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+futures = { workspace = true }
+argon2 = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+sqlx = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+axum = { workspace = true }
+axum-extra = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+jsonwebtoken = { workspace = true }
+sha1 = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+rand = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+utoipa = { workspace = true }
+utoipa-rapidoc = { workspace = true }
+utoipa-redoc = { workspace = true }
+utoipa-swagger-ui = { workspace = true }
+utoipa-scalar = { workspace = true }
+base64 = { version = "0.22.1", features = ["default"] }
+fechatter_macro = { path = "../fechatter_macro" }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+mockall = "0.13.1"

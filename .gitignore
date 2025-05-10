@@ -64,6 +64,8 @@ yarn-error.log*
 
 # Project specific
 *.pem
+# Exception for fixture PEM files
+!**/fixtures/*.pem
 test.rest
 rustc-ice-*
 

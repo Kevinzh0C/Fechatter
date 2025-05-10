@@ -48,12 +48,12 @@ CREATE TABLE IF NOT EXISTS messages (
     chat_id BIGSERIAL NOT NULL REFERENCES chats(id),
     sender_id BIGINT NOT NULL REFERENCES users(id),
     content TEXT,
-    files TEXT[],
+    files TEXT[] DEFAULT '{}',
     created_at timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create chat_members table for chat members
-CREATE TABLE IF NOT EXISTS  chat_members_relation (
+CREATE TABLE IF NOT EXISTS chat_members (
     chat_id BIGSERIAL NOT NULL REFERENCES chats(id),
     user_id BIGINT NOT NULL REFERENCES users(id),
     joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

@@ -7,41 +7,85 @@ use axum::{
 
 use tracing::info;
 
-use crate::{
-  AppError, AppState,
-  models::{
-    AuthUser, CreateChat, UpdateChat, create_new_chat, delete_chat, list_chats_of_user, update_chat,
-  },
-};
+use crate::{AppError, AppState, error::ErrorOutput, models::AuthUser};
+use fechatter_core::{Chat, CreateChat, UpdateChat};
 
+/// 获取当前用户的聊天列表
+#[utoipa::path(
+    get,
+    path = "/api/chats",
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 200, description = "Chats retrieved successfully", body = Vec<Chat>),
+        (status = 401, description = "Unauthorized", body = ErrorOutput)
+    ),
+    tag = "chats"
+)]
 pub(crate) async fn list_chats_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
 ) -> Result<impl IntoResponse, AppError> {
   info!("User {} listing chats", user.id);
-  let chats_arc = list_chats_of_user(&state, user.id).await?;
+  let chats_arc = state.list_chats_of_user(user.id).await?;
   Ok((StatusCode::OK, Json(chats_arc)))
 }
 
+/// 创建新聊天
+#[utoipa::path(
+    post,
+    path = "/api/chats",
+    request_body = CreateChat,
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 201, description = "Chat created successfully", body = Chat),
+        (status = 400, description = "Invalid input", body = ErrorOutput),
+        (status = 401, description = "Unauthorized", body = ErrorOutput)
+    ),
+    tag = "chats"
+)]
 pub(crate) async fn create_chat_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
   Json(payload): Json<CreateChat>,
 ) -> Result<impl IntoResponse, AppError> {
-  let chat = create_new_chat(
-    &state,
-    user.id,
-    &payload.name,
-    payload.chat_type,
-    Some(payload.chat_members),
-    Some(&payload.description),
-    user.workspace_id,
-  )
-  .await?;
+  let chat = state
+    .create_new_chat(
+      user.id,
+      &payload.name,
+      payload.chat_type,
+      payload.members,
+      Some(payload.description.as_deref().unwrap_or("")),
+      user.workspace_id,
+    )
+    .await?;
 
   Ok((StatusCode::CREATED, Json(chat)))
 }
 
+/// 更新聊天信息
+#[utoipa::path(
+    put,
+    path = "/api/chats/{chat_id}",
+    params(
+        ("chat_id" = i64, Path, description = "Chat ID")
+    ),
+    request_body = UpdateChat,
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 200, description = "Chat updated successfully", body = Chat),
+        (status = 400, description = "Invalid input", body = ErrorOutput),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 403, description = "Permission denied", body = ErrorOutput),
+        (status = 404, description = "Chat not found", body = ErrorOutput)
+    ),
+    tag = "chats"
+)]
 pub(crate) async fn update_chat_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
@@ -50,11 +94,29 @@ pub(crate) async fn update_chat_handler(
 ) -> Result<impl IntoResponse, AppError> {
   info!("User {} updating chat: {}", user.id, chat_id);
 
-  let updated_chat = update_chat(&state, chat_id, user.id, payload).await?;
+  let updated_chat = state.update_chat(chat_id, user.id, payload).await?;
 
   Ok((StatusCode::OK, Json(updated_chat)))
 }
 
+/// 删除聊天
+#[utoipa::path(
+    delete,
+    path = "/api/chats/{chat_id}",
+    params(
+        ("chat_id" = i64, Path, description = "Chat ID")
+    ),
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 204, description = "Chat deleted successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 403, description = "Permission denied", body = ErrorOutput),
+        (status = 404, description = "Chat not found", body = ErrorOutput)
+    ),
+    tag = "chats"
+)]
 pub(crate) async fn delete_chat_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
@@ -62,7 +124,7 @@ pub(crate) async fn delete_chat_handler(
 ) -> Result<impl IntoResponse, AppError> {
   info!("User {} deleting chat: {}", user.id, chat_id);
 
-  let deleted = delete_chat(&state, chat_id, user.id).await?;
+  let deleted = state.delete_chat(chat_id, user.id).await?;
 
   if deleted {
     Ok(StatusCode::NO_CONTENT.into_response())
@@ -74,13 +136,15 @@ pub(crate) async fn delete_chat_handler(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::models::{Chat, ChatType, CreateChat, UpdateChat};
+  use crate::models::{Chat, ChatType};
+
   use crate::{
     assert_chat_list_count, assert_handler_error, assert_handler_success, auth_user,
     create_new_test_chat, setup_test_users,
   };
   use anyhow::Result;
   use axum::{Json, extract::Path, http::StatusCode, response::IntoResponse};
+  use fechatter_core::CreateChat;
 
   #[tokio::test]
   async fn create_chat_handler_should_work() -> Result<()> {
@@ -93,8 +157,8 @@ mod tests {
     let payload = CreateChat {
       name: "Test Group Chat".to_string(),
       chat_type: ChatType::Group,
-      chat_members: vec![user2.id, user3.id], // IDs needed here
-      description: "A test group".to_string(),
+      members: Some(vec![user2.id, user3.id]),
+      description: Some("A test group".to_string()),
     };
 
     let created_chat = assert_handler_success!(
@@ -125,8 +189,8 @@ mod tests {
     let payload = CreateChat {
       name: "Test Single Chat".to_string(),
       chat_type: ChatType::Single,
-      chat_members: vec![user2.id],
-      description: "".to_string(),
+      members: Some(vec![user2.id]),
+      description: Some("".to_string()),
     };
 
     let created_chat = assert_handler_success!(
