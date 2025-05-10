@@ -1,6 +1,7 @@
 use crate::{
   AppError, AppState,
-  models::{AuthUser, ChatFile, CreateMessage, ListMessage},
+  error::ErrorOutput,
+  models::{AuthUser, ChatFile},
 };
 use axum::{
   body::Body,
@@ -8,40 +9,114 @@ use axum::{
   http::{StatusCode, header},
   response::{IntoResponse, Json, Response},
 };
+use fechatter_core::{CreateMessage, ListMessages, Message};
+use utoipa::{IntoParams, ToSchema};
 
 use bytes::Bytes;
 use futures::{StreamExt, TryStreamExt, stream::BoxStream};
-use mime_guess;
 use sha2::{Digest, Sha256};
 use std::path::{Path as StdPath, PathBuf};
 use std::str::FromStr as _;
-use tokio::fs::{self, File};
-use tokio::io::AsyncWriteExt;
+use tokio::{
+  fs::{self, File},
+  io::AsyncWriteExt as _,
+};
 use tokio_util::io::ReaderStream;
 use tracing::{info, warn};
 
+/// Payload for file uploads
+#[derive(Debug, ToSchema)]
+pub(crate) struct UploadPayload {
+  /// The file(s) to upload.
+  #[schema(value_type = String, format = "binary")]
+  files: Vec<String>, // utoipa 会将其渲染为文件上传
+}
+
+/// 发送消息
+#[utoipa::path(
+    post,
+    path = "/api/chats/{chat_id}/messages",
+    params(
+        ("chat_id" = i64, Path, description = "Chat ID")
+    ),
+    request_body = CreateMessage,
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 201, description = "Message sent successfully", body = Message),
+        (status = 400, description = "Invalid input", body = ErrorOutput),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 403, description = "Permission denied", body = ErrorOutput),
+        (status = 404, description = "Chat not found", body = ErrorOutput)
+    ),
+    tag = "messages"
+)]
 pub(crate) async fn send_message_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
   Path(chat_id): Path<i64>,
   Json(message): Json<CreateMessage>,
 ) -> Result<impl IntoResponse, AppError> {
+  info!(
+    "User {} sending message to chat {} with idempotency_key {}",
+    user.id, chat_id, message.idempotency_key
+  );
+
+  // Convert core CreateMessage to server CreateMessage
   let message = state.create_message(message, chat_id, user.id).await?;
 
   Ok((StatusCode::CREATED, Json(message)))
 }
 
+/// 获取消息列表
+#[utoipa::path(
+    get,
+    path = "/api/chats/{chat_id}/messages",
+    params(
+        ("chat_id" = i64, Path, description = "Chat ID")
+    ),
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 200, description = "Messages retrieved successfully", body = Vec<Message>),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 403, description = "Permission denied", body = ErrorOutput),
+        (status = 404, description = "Chat not found", body = ErrorOutput)
+    ),
+    tag = "messages"
+)]
 pub(crate) async fn list_messages_handler(
   State(state): State<AppState>,
+  Extension(user): Extension<AuthUser>,
   Path(chat_id): Path<i64>,
-  Query(query): Query<ListMessage>,
+  Query(query): Query<ListMessages>,
 ) -> Result<impl IntoResponse, AppError> {
-  let messages = state.list_messages(query, chat_id).await?;
+  info!("User {} listing messages for chat {}", user.id, chat_id);
+
+  let messages: Vec<crate::models::Message> = state.list_messages(query, chat_id).await?;
 
   Ok((StatusCode::OK, Json(messages)))
 }
-
-/// handling file from specificed storage
+/// 获取文件
+#[utoipa::path(
+    get,
+    path = "/files/{ws_id}/{file_path}",
+    params(
+        ("ws_id" = i64, Path, description = "Workspace ID"),
+        ("file_path" = String, Path, description = "File path")
+    ),
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 200, description = "File retrieved successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 404, description = "File not found", body = ErrorOutput)
+    ),
+    tag = "files"
+)]
 pub(crate) async fn file_handler(
   State(state): State<AppState>,
   Extension(_user): Extension<AuthUser>,
@@ -253,9 +328,7 @@ fn check_file_size(size: usize, filename: &str, max_size: usize) -> Result<(), A
   if size > max_size {
     return Err(AppError::InvalidInput(format!(
       "File '{}' too large: {} bytes (max: {} bytes)",
-      filename,
-      size,
-      max_size
+      filename, size, max_size
     )));
   }
   Ok(())
@@ -340,8 +413,7 @@ async fn stream_to_temp_file<'a>(
 
       return Err(AppError::InvalidInput(format!(
         "File '{}' too large: exceeds {} bytes limit",
-        filename,
-        max_file_size
+        filename, max_file_size
       )));
     }
 
@@ -438,9 +510,7 @@ async fn save_file_to_storage(
   // Need to canonicalize the *parent* of the final path if it doesn't exist yet.
   let parent_dir = final_path
     .parent()
-    .ok_or_else(|| AppError::InvalidInput(format!(
-      "Invalid final path structure"
-    )))?;
+    .ok_or_else(|| AppError::InvalidInput(format!("Invalid final path structure")))?;
 
   // Ensure parent directory exists *before* canonicalization checks involving final_path itself
   fs::create_dir_all(parent_dir).await?;
@@ -463,15 +533,13 @@ async fn save_file_to_storage(
   }
 
   // Check if path already exists, handle possible path conflicts
-  if final_path.exists() {
-    if handle_existing_path(&final_path).await? {
-      // If it's a file and already exists (handle_existing_path returned true),
-      // assume content is the same (due to hash) and skip the move/copy.
-      return Ok(file_meta.url());
-    }
-    // If handle_existing_path returned false, it means it was a directory that got deleted,
-    // or some other state where we should proceed with creating the file.
+  if final_path.exists() && handle_existing_path(&final_path).await? {
+    // If it's a file and already exists (handle_existing_path returned true),
+    // assume content is the same (due to hash) and skip the move/copy.
+    return Ok(file_meta.url());
   }
+  // If handle_existing_path returned false, it means it was a directory that got deleted,
+  // or some other state where we should proceed with creating the file.
 
   // Move or copy the temporary file to the final path
   match fs::rename(temp_path, &final_path).await {
@@ -520,6 +588,23 @@ async fn handle_existing_path(path: &std::path::Path) -> Result<bool, AppError> 
   }
 }
 
+/// 上传文件
+#[utoipa::path(
+    post,
+    path = "/api/upload",
+    security(
+        ("access_token" = [])
+    ),
+    // 由于 Multipart 没有 ToSchema，这里仅作文本描述，具体上传方式需查阅实现
+    // request_body(description = "Multipart form data for file upload."), 
+    responses(
+        (status = 200, description = "Files uploaded successfully", body = Vec<String>),
+        (status = 400, description = "Invalid input", body = ErrorOutput),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 413, description = "File too large", body = ErrorOutput)
+    ),
+    tag = "files"
+)]
 pub(crate) async fn upload_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
@@ -540,10 +625,7 @@ pub(crate) async fn upload_handler(
     Ok(Some(f)) => Some(f),
     Ok(None) => None,
     Err(e) => {
-      return Err(AppError::ChatFileError(format!(
-        "Multipart error: {}",
-        e
-      )));
+      return Err(AppError::ChatFileError(format!("Multipart error: {}", e)));
     }
   } {
     let original_filename = match field.file_name() {
@@ -588,11 +670,23 @@ pub(crate) async fn upload_handler(
   Ok(Json(file_urls))
 }
 
-/// Fix file storage structure issues
-/// Search for all cases like this in the workspace:
-/// - File path (e.g. 1/abc/123/hash.ext) is a directory
-/// - Directory contains only one file
-/// - Move the file to the correct path
+/// 修复文件存储结构
+#[utoipa::path(
+    post,
+    path = "/api/workspaces/{ws_id}/fix-storage",
+    params(
+        ("ws_id" = i64, Path, description = "Workspace ID")
+    ),
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 200, description = "Storage fix completed"),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 403, description = "Permission denied", body = ErrorOutput)
+    ),
+    tag = "files"
+)]
 pub(crate) async fn fix_file_storage_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
@@ -605,8 +699,7 @@ pub(crate) async fn fix_file_storage_handler(
   if user.workspace_id != ws_id {
     return Err(AppError::ChatPermissionError(format!(
       "User {} does not have access to workspace {}",
-      user.id,
-      ws_id
+      user.id, ws_id
     )));
   }
 
@@ -713,12 +806,16 @@ pub(crate) async fn fix_file_storage_handler(
 
 #[cfg(test)]
 mod tests {
+  use std::sync::Arc;
+
   use super::*;
-  use crate::models::Message;
+
   use crate::setup_test_users;
   use axum::extract::FromRequest;
   use axum::http::StatusCode;
-
+  use dashmap::DashMap;
+  use fechatter_core::Message;
+  use tempfile::tempdir;
   use tokio::fs;
   use tokio::io::AsyncWriteExt;
 
@@ -776,8 +873,7 @@ mod tests {
     assert_eq!(&body_bytes[..], b"hello world");
   }
   #[tokio::test]
-  async fn send_message_handlershould_work() {
-    // Create 3 users instead of 2
+  async fn send_message_handler_should_work() {
     let (_tdb, state, users) = setup_test_users!(3).await;
     let user1 = &users[0];
     let user2 = &users[1];
@@ -793,22 +889,23 @@ mod tests {
     });
 
     // Create a chat with 3 members
-    let chat = crate::models::create_new_chat(
-      &state,
-      user1.id,
-      "Test Chat",
-      crate::models::ChatType::Group,
-      Some(vec![user1.id, user2.id, user3.id]), // Include user3
-      Some("Test chat for sending messages"),
-      user1.workspace_id,
-    )
-    .await
-    .expect("Failed to create chat");
+    let chat = state
+      .create_new_chat(
+        user1.id,
+        "Test Chat",
+        crate::models::ChatType::Group,
+        Some(vec![user1.id, user2.id, user3.id]), // Include user3
+        Some("Test chat for sending messages"),
+        user1.workspace_id,
+      )
+      .await
+      .expect("Failed to create chat");
 
     let chat_id = chat.id;
     let message_request = CreateMessage {
       content: "Hello, this is a test message".to_string(),
       files: vec![],
+      idempotency_key: uuid::Uuid::now_v7(),
     };
 
     let result = send_message_handler(
@@ -846,16 +943,39 @@ mod tests {
 
   #[tokio::test]
   async fn list_message_handler_should_work() {
-    let (_tdb, state, _) = setup_test_users!(2).await;
+    let (_tdb, state, users) = setup_test_users!(3).await;
+    let user = &users[0];
+    let user2 = &users[1];
+    let user3 = &users[2];
 
-    let chat_id = 1;
+    // Create a chat with the user as a member
+    let chat = state
+      .create_new_chat(
+        user.id,
+        "Test Chat",
+        crate::models::ChatType::Group,
+        Some(vec![user.id, user2.id, user3.id]),
+        Some("Test chat for messages"),
+        user.workspace_id,
+      )
+      .await
+      .expect("Failed to create chat");
 
-    let query = ListMessage {
+    let query = ListMessages {
       last_id: None,
       limit: 10,
     };
 
-    let result = list_messages_handler(State(state.clone()), Path(chat_id), Query(query)).await;
+    let auth_user = Extension(AuthUser {
+      id: user.id,
+      email: user.email.clone(),
+      workspace_id: user.workspace_id,
+      fullname: user.fullname.clone(),
+      status: user.status,
+      created_at: user.created_at,
+    });
+    let result =
+      list_messages_handler(State(state.clone()), auth_user, Path(chat.id), Query(query)).await;
 
     assert!(result.is_ok());
 
@@ -883,7 +1003,7 @@ mod tests {
     eprintln!("Using test dir: {}", config.server.base_dir.display());
 
     // Create AppState with custom config
-    let (_tdb, state) = crate::AppState::test_new(config)
+    let (_tdb, state) = crate::AppState::test_new()
       .await
       .expect("Failed to create test state");
 
@@ -893,7 +1013,8 @@ mod tests {
     let email = "test_user@example.com".to_string();
     let workspace = "TestWorkspace".to_string();
     let user_payload = crate::models::CreateUser::new(&fullname, &email, &workspace, "password");
-    let user = crate::models::User::create(&user_payload, &state.pool)
+    let user = state
+      .create_user(&user_payload, None)
       .await
       .expect("Failed to create test user");
     users.push(user);
@@ -962,37 +1083,30 @@ mod tests {
   #[tokio::test]
   async fn test_file_handler_integration() {
     use crate::models::ChatFile;
-    use std::env;
 
-    // Create test directory in the project directory instead of /tmp
-    let current_dir = env::current_dir().expect("Failed to get current directory");
-    let test_dir = current_dir.join("target").join("test_files");
+    // 创建临时目录
+    let temp_dir = tempdir().expect("Failed to create temp dir");
+    let test_dir = temp_dir.path().to_path_buf();
+    eprintln!("Using test dir: {}", test_dir.display());
 
-    // Create a custom AppState with our test directory
-    let mut config = crate::AppConfig::load().expect("Failed to load config");
-    config.server.base_dir = test_dir.clone();
-
-    // Create test directory
-    let _ = fs::create_dir_all(&config.server.base_dir).await;
-    eprintln!("Using test dir: {}", config.server.base_dir.display());
-
-    // Create AppState with custom config
-    let (_tdb, state) = crate::AppState::test_new(config)
+    // 创建 AppState
+    let (_tdb, state) = crate::AppState::test_new()
       .await
       .expect("Failed to create test state");
 
-    // Create test users with our state
+    // 创建测试用户
     let mut users = Vec::new();
     let fullname = "TestUser".to_string();
     let email = "test_user@example.com".to_string();
     let workspace = "TestWorkspace".to_string();
     let user_payload = crate::models::CreateUser::new(&fullname, &email, &workspace, "password");
-    let user = crate::models::User::create(&user_payload, &state.pool)
+    let user = state
+      .create_user(&user_payload, None)
       .await
       .expect("Failed to create test user");
     users.push(user);
 
-    // Rest of test with our custom state
+    // 测试用户
     let user = &users[0];
     let auth_user = Extension(AuthUser {
       id: user.id,
@@ -1007,54 +1121,82 @@ mod tests {
     let file_name = "test_file.txt";
     let ws_id = user.workspace_id;
 
-    // Create the ChatFile object
+    // 创建 ChatFile 对象
     let file_meta = ChatFile::new(ws_id, file_name, &test_content);
 
-    // Use the path with our test directory
-    let file_path = file_meta.from_path(&state.config.server.base_dir);
-    eprintln!("File path: {}", file_path.display());
+    // 打印出哈希路径和URL以便调试
+    let hash_path = file_meta.hash_to_path();
+    let file_url = file_meta.url();
+    eprintln!("ChatFile hash_path: {}", hash_path);
+    eprintln!("ChatFile URL: {}", file_url);
 
-    // Ensure parent directory exists
+    // 临时替换 state.inner.config.server.base_dir 为我们的临时目录
+    let test_state = {
+      let mut config = state.config.clone(); // 克隆配置
+      config.server.base_dir = temp_dir.path().to_path_buf(); // 修改克隆的配置
+
+      // 创建新的 AppState 使用修改后的配置
+      crate::AppState {
+        inner: Arc::new(crate::AppStateInner {
+          config,
+          service_provider: state.service_provider.clone(),
+          chat_list_cache: DashMap::new(),
+        }),
+      }
+    };
+
+    // 使用新的 test_state 来获取正确的物理路径
+    let file_path = file_meta.from_path(&test_state.config.server.base_dir);
+    eprintln!("File will be created at: {}", file_path.display());
+
+    // 确保父目录存在
     if let Some(parent) = file_path.parent() {
       eprintln!("Creating parent directory: {}", parent.display());
       let _ = fs::create_dir_all(parent).await;
-      // Verify directory was created successfully
       assert!(parent.exists(), "Parent directory should be created");
     }
 
-    // Delete existing file to avoid conflicts
-    if file_path.exists() {
-      fs::remove_file(&file_path).await.unwrap();
-    }
-
-    // Create and write file
+    // 创建并写入文件
     eprintln!("Creating file at: {}", file_path.display());
     let mut file = File::create(&file_path).await.unwrap();
     file.write_all(&test_content).await.unwrap();
+    file.flush().await.unwrap();
 
-    // Verify file was created successfully
+    // 验证文件创建成功
     assert!(
       file_path.exists(),
       "File should be created at expected path"
     );
-    let read_content = fs::read(&file_path).await.unwrap();
-    assert_eq!(read_content, test_content, "File content should match");
 
-    // Build correct URL path string
+    // 读取并验证文件内容
+    let read_content = fs::read(&file_path).await.unwrap();
+    assert_eq!(
+      read_content, test_content,
+      "File content should match after writing"
+    );
+
+    // 构建正确的 URL 路径
     let url = file_meta.url();
     let file_path_str_with_wsid = url.strip_prefix("/files/").unwrap();
     eprintln!("Path string with wsid: {}", file_path_str_with_wsid);
 
-    // Extract the path part *after* the ws_id
+    // 提取 ws_id 后的路径部分
     let remaining_path = file_path_str_with_wsid
       .split_once('/')
       .map(|(_, path)| path)
       .unwrap_or(file_path_str_with_wsid);
     eprintln!("Remaining path string: {}", remaining_path);
 
-    // Call file handler with correct tuple
+    // 再次检查文件是否存在于预期位置
+    assert!(
+      file_path.exists(),
+      "File should exist before calling handler"
+    );
+    eprintln!("File exists at the path: {}", file_path.display());
+
+    // 调用 file_handler 使用新的 test_state
     let response = file_handler(
-      State(state.clone()),
+      State(test_state.clone()),
       auth_user.clone(),
       Path((ws_id, remaining_path.to_string())),
     )
@@ -1064,12 +1206,36 @@ mod tests {
       eprintln!("file_handler returned error: {:?}", e);
       match ChatFile::from_str(&url) {
         Ok(cf) => {
-          let resolved_path = cf.from_path(&state.config.server.base_dir);
+          let resolved_path = cf.from_path(&test_state.config.server.base_dir);
           eprintln!(
             "Resolved path: {}, exists: {}",
             resolved_path.display(),
             resolved_path.exists()
           );
+
+          if resolved_path.exists() {
+            if let Ok(content) = fs::read(&resolved_path).await {
+              eprintln!(
+                "File content length: {}, content: {:?}",
+                content.len(),
+                content
+              );
+            }
+          } else {
+            // 如果文件不存在，查看目录结构
+            let dir_path = resolved_path.parent().unwrap_or(&resolved_path);
+            if dir_path.exists() {
+              eprintln!("Parent directory exists, listing contents:");
+              if let Ok(entries) = fs::read_dir(dir_path).await {
+                let mut entries_vec = Vec::new();
+                let mut entry_stream = entries;
+                while let Ok(Some(entry)) = entry_stream.next_entry().await {
+                  entries_vec.push(entry.path());
+                }
+                eprintln!("Directory contents: {:?}", entries_vec);
+              }
+            }
+          }
         }
         Err(e) => eprintln!("Failed to parse URL: {}, error: {:?}", url, e),
       }
@@ -1089,13 +1255,19 @@ mod tests {
       .unwrap()
       .to_bytes();
 
+    eprintln!(
+      "Response body length: {}, content: {:?}",
+      body_bytes.len(),
+      body_bytes
+    );
+
     assert_eq!(
       &body_bytes[..],
       test_content.as_slice(),
       "Response body should match original file"
     );
 
-    // Test non-exist file
+    // 测试不存在的文件
     let nonexistent_hash = "nonexist_hash_12345.txt";
     let auth_user2 = Extension(AuthUser {
       id: user.id,
@@ -1106,15 +1278,11 @@ mod tests {
       workspace_id: user.workspace_id,
     });
 
-    let nonexistent_ws_dir = state
-      .config
-      .server
-      .base_dir
-      .join(user.workspace_id.to_string());
+    let nonexistent_ws_dir = temp_dir.path().join(user.workspace_id.to_string());
     let _ = fs::create_dir_all(&nonexistent_ws_dir).await;
 
     let nonexistent_file_meta = ChatFile::new(user.workspace_id, nonexistent_hash, &[]);
-    let nonexistent_path = nonexistent_file_meta.from_path(&state.config.server.base_dir);
+    let nonexistent_path = nonexistent_file_meta.from_path(&test_state.config.server.base_dir);
 
     if nonexistent_path.exists() {
       fs::remove_file(&nonexistent_path).await.unwrap();
@@ -1130,7 +1298,7 @@ mod tests {
       .unwrap_or(nonexistent_path_str_with_wsid);
 
     let error_response = file_handler(
-      State(state),
+      State(test_state.clone()),
       auth_user2,
       Path((user.workspace_id, nonexistent_remaining_path.to_string())),
     )
@@ -1144,7 +1312,7 @@ mod tests {
       },
     }
 
-    let _ = fs::remove_dir_all(&test_dir).await;
+    // 不需要手动清理，tempdir 会自动清理
   }
 
   #[tokio::test]
@@ -1152,17 +1320,17 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(10).await;
     let user1 = &users[0];
 
-    let chat = crate::models::create_new_chat(
-      &state,
-      user1.id,
-      "Large Message Test",
-      crate::models::ChatType::Group,
-      Some(users.iter().map(|u| u.id).collect()),
-      Some("Chat for testing large message volumes"),
-      user1.workspace_id,
-    )
-    .await
-    .expect("Failed to create chat");
+    let chat = state
+      .create_new_chat(
+        user1.id,
+        "Large Message Test",
+        fechatter_core::ChatType::Group,
+        Some(users.iter().map(|u| u.id).collect()),
+        Some("Chat for testing large message volumes"),
+        user1.workspace_id,
+      )
+      .await
+      .expect("Failed to create chat");
 
     info!("Created test chat successfully, ID: {}", chat.id);
 
@@ -1175,9 +1343,10 @@ mod tests {
     for i in 0..MESSAGE_COUNT {
       let sender = &users[i % users.len()];
 
-      let message_payload = CreateMessage {
+      let message_payload = crate::models::CreateMessage {
         content: format!("Test message #{} from {}", i, sender.fullname),
         files: vec![],
+        idempotency_key: uuid::Uuid::now_v7(),
       };
 
       let message = state
@@ -1209,14 +1378,27 @@ mod tests {
     for page in 0..11 {
       info!("Querying page {} of messages...", page + 1);
 
-      let query = ListMessage {
+      let query = ListMessages {
         last_id,
         limit: PAGE_SIZE,
       };
 
-      let result = list_messages_handler(State(state.clone()), Path(chat.id), Query(query.clone()))
-        .await
-        .expect("Failed to list messages");
+      let auth_user = Extension(AuthUser {
+        id: user1.id,
+        email: user1.email.clone(),
+        workspace_id: user1.workspace_id,
+        fullname: user1.fullname.clone(),
+        status: user1.status,
+        created_at: user1.created_at,
+      });
+      let result = list_messages_handler(
+        State(state.clone()),
+        auth_user,
+        Path(chat.id),
+        Query(query.clone()),
+      )
+      .await
+      .expect("Failed to list messages");
 
       let response = result.into_response();
       assert_eq!(response.status(), StatusCode::OK);
@@ -1325,8 +1507,9 @@ mod tests {
     // Extract the path part *after* the ws_id
     let remaining_path = path_with_wsid
       .split_once('/')
-      .map(|(_wsid, path)| path)
+      .map(|(_, path)| path)
       .unwrap_or(path_with_wsid);
+    eprintln!("Remaining path string: {}", remaining_path);
 
     let new_format_response = file_handler(
       State(state.clone()),

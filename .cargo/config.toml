@@ -1,0 +1,7 @@
+# 为fechatter_server包定义命令别名
+[alias]
+# 当运行cargo test时，自动为fechatter_server启用test-util feature
+"test:server" = "test -p fechatter_server --features test-util"
+ 
+# 也可以设置全局测试命令，但这可能会影响其他包
+# "test" = "test --features test-util" 

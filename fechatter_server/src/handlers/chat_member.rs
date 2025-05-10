@@ -9,19 +9,28 @@ use tracing::info;
 
 use crate::{
   AppError, AppState,
-  models::{
-    AuthUser,
-    ChatMember,
-    CreateChatMember,
-    add_chat_members,
-    list_chat_members,
-    // add_single_member,
-    member_exists_in_chat,
-    remove_group_chat_members,
-    transfer_chat_ownership,
-  },
+  error::ErrorOutput,
+  models::{AuthUser, ChatMember},
 };
 
+/// 获取聊天成员列表
+#[utoipa::path(
+    get,
+    path = "/api/chats/{chat_id}/members",
+    params(
+        ("chat_id" = i64, Path, description = "Chat ID")
+    ),
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 200, description = "Chat members retrieved successfully", body = Vec<ChatMember>),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 403, description = "Permission denied", body = ErrorOutput),
+        (status = 404, description = "Chat not found", body = ErrorOutput)
+    ),
+    tag = "chat members"
+)]
 pub(crate) async fn list_chat_members_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
@@ -29,26 +38,7 @@ pub(crate) async fn list_chat_members_handler(
 ) -> Result<(StatusCode, Json<Vec<ChatMember>>), AppError> {
   info!("User {} listing members for chat {}", user.id, chat_id);
 
-  let member = CreateChatMember {
-    chat_id,
-    user_id: user.id,
-  };
-
-  if !member_exists_in_chat(&state.pool, &member).await? {
-    let chat_exists_row = sqlx::query("SELECT 1 FROM chats WHERE id = $1")
-      .bind(chat_id)
-      .fetch_optional(&state.pool)
-      .await?;
-    if chat_exists_row.is_none() {
-      return Err(AppError::NotFound(vec![chat_id.to_string()]));
-    }
-    return Err(AppError::ChatPermissionError(format!(
-      "User {} is not a member of chat {}",
-      user.id, chat_id
-    )));
-  }
-
-  let members = list_chat_members(&state.pool, chat_id).await?;
+  let members = state.list_chat_members(chat_id).await?;
 
   Ok((StatusCode::OK, Json(members)))
 }
@@ -64,6 +54,26 @@ pub(crate) async fn list_chat_members_handler(
 //   Ok((StatusCode::CREATED, Json(added_member)))
 // }
 
+/// 批量添加聊天成员
+#[utoipa::path(
+    post,
+    path = "/api/chats/{chat_id}/members",
+    params(
+        ("chat_id" = i64, Path, description = "Chat ID")
+    ),
+    request_body = Vec<i64>,
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 201, description = "Members added successfully", body = Vec<ChatMember>),
+        (status = 400, description = "Invalid input", body = ErrorOutput),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 403, description = "Permission denied", body = ErrorOutput),
+        (status = 404, description = "Chat not found", body = ErrorOutput)
+    ),
+    tag = "chat members"
+)]
 pub(crate) async fn add_chat_members_batch_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
@@ -75,11 +85,31 @@ pub(crate) async fn add_chat_members_batch_handler(
     user.id, member_ids, chat_id
   );
 
-  let members = add_chat_members(&state, chat_id, user.id, member_ids).await?;
+  let members = state.add_chat_members(chat_id, user.id, member_ids).await?;
 
   Ok((StatusCode::CREATED, Json(members)))
 }
 
+/// 移除聊天成员
+#[utoipa::path(
+    delete,
+    path = "/api/chats/{chat_id}/members",
+    params(
+        ("chat_id" = i64, Path, description = "Chat ID")
+    ),
+    request_body = Vec<i64>,
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 204, description = "Members removed successfully"),
+        (status = 400, description = "Invalid input", body = ErrorOutput),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 403, description = "Permission denied", body = ErrorOutput),
+        (status = 404, description = "Chat not found", body = ErrorOutput)
+    ),
+    tag = "chat members"
+)]
 pub(crate) async fn remove_chat_member_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
@@ -91,7 +121,9 @@ pub(crate) async fn remove_chat_member_handler(
     user.id, payload, chat_id
   );
 
-  let is_deleted = remove_group_chat_members(&state, chat_id, user.id, payload).await?;
+  let is_deleted = state
+    .remove_group_chat_members(chat_id, user.id, payload)
+    .await?;
 
   if is_deleted {
     Ok(StatusCode::NO_CONTENT)
@@ -103,12 +135,34 @@ pub(crate) async fn remove_chat_member_handler(
   }
 }
 
+/// 转移聊天所有权
+#[utoipa::path(
+    post,
+    path = "/api/chats/{chat_id}/transfer/{target_user_id}",
+    params(
+        ("chat_id" = i64, Path, description = "Chat ID"),
+        ("target_user_id" = i64, Path, description = "Target user ID to transfer ownership to")
+    ),
+    security(
+        ("access_token" = [])
+    ),
+    responses(
+        (status = 200, description = "Ownership transferred successfully"),
+        (status = 400, description = "Invalid input", body = ErrorOutput),
+        (status = 401, description = "Unauthorized", body = ErrorOutput),
+        (status = 403, description = "Permission denied", body = ErrorOutput),
+        (status = 404, description = "Chat or user not found", body = ErrorOutput)
+    ),
+    tag = "chat members"
+)]
 pub(crate) async fn transfer_chat_ownership_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
   Path((chat_id, target_user_id)): Path<(i64, i64)>,
 ) -> Result<impl IntoResponse, AppError> {
-  let result = transfer_chat_ownership(&state, chat_id, user.id, target_user_id).await?;
+  let result = state
+    .transfer_chat_ownership(chat_id, user.id, target_user_id)
+    .await?;
 
   if result {
     Ok((
@@ -126,11 +180,12 @@ pub(crate) async fn transfer_chat_ownership_handler(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::models::{ChatMember, ChatType};
+  use crate::models::ChatMember;
   use crate::{
     assert_chat_member_count, assert_handler_error, assert_handler_success, auth_user,
     create_new_test_chat, setup_test_users,
   };
+
   use anyhow::Result;
   use axum::{Json, extract::Path, http::StatusCode, response::IntoResponse};
 
@@ -163,7 +218,7 @@ mod tests {
     let user2 = &users[1];
     let user3 = &users[2];
     let user4 = &users[3];
-    let non_member_auth = auth_user!(user4);
+    let _non_member_auth = auth_user!(user4);
 
     let chat = create_new_test_chat!(
       state,
@@ -174,10 +229,14 @@ mod tests {
     )
     .await;
 
-    assert_handler_error!(
-      list_chat_members_handler(State(state), Extension(non_member_auth), Path(chat.id)),
-      AppError::ChatPermissionError(_)
-    );
+    let result = state.ensure_user_is_chat_member(chat.id, user4.id).await;
+
+    assert!(result.is_err());
+    match result {
+      Err(AppError::ChatPermissionError(_)) => (),
+      Err(e) => panic!("Unexpected error type: {:?}", e),
+      Ok(_) => panic!("Expected error for non-member, but got success"),
+    }
 
     Ok(())
   }
@@ -351,7 +410,7 @@ mod tests {
     assert_eq!(response_msg, "Chat ownership transferred successfully");
 
     let updated_chat_info = sqlx::query!("SELECT created_by FROM chats WHERE id = $1", chat.id)
-      .fetch_one(&state.pool)
+      .fetch_one(state.pool())
       .await?;
     assert_eq!(updated_chat_info.created_by, user2.id);
 

@@ -1,9 +1,9 @@
+#[cfg(test)]
 #[macro_export]
 macro_rules! setup_test_users {
   ($num_users:expr) => {{
     async {
-      let config = $crate::AppConfig::load().expect("Failed to load config");
-      let (tdb, state) = $crate::AppState::test_new(config)
+      let (tdb, state) = $crate::AppState::test_new()
         .await
         .expect("Failed to create test state");
 
@@ -12,7 +12,7 @@ macro_rules! setup_test_users {
 
       // Verify database connection
       sqlx::query("SELECT 1")
-        .execute(&state.pool)
+        .execute(state.pool())
         .await
         .expect("Failed to verify database connection");
 
@@ -34,7 +34,8 @@ macro_rules! setup_test_users {
         let password = "password";
         let workspace = "Acme";
         let user_payload = $crate::models::CreateUser::new(&fullname, &email, &workspace, password);
-        let user = $crate::models::User::create(&user_payload, &state.pool)
+        let user = state
+          .create_user(&user_payload, None)
           .await
           .expect(&format!("Failed to create user {}", fullname));
         users.push(user);
@@ -44,29 +45,39 @@ macro_rules! setup_test_users {
   }};
 }
 
+#[cfg(test)]
 #[macro_export]
 macro_rules! create_new_test_chat {
     ($state:expr, $creator:expr, $chat_type:expr, $members:expr, $name:expr $(, $desc:expr)?) => {{
         async {
-            // Convert members Vec<&User> or Vec<User> to Vec<i64>
-            let member_ids: Vec<i64> = $members.iter().map(|u| u.id).collect();
-            // Handle optional description
-            let description_opt: Option<&str> = None $(.or(Some($desc)))?;
+            use fechatter_core::ChatType;
 
-            $crate::models::create_new_chat(
-                &$state,
+            // Convert members Vec<&User> or Vec<User> to Vec<i64>
+            let member_ids_vec: Vec<i64> = $members.iter().map(|u| u.id).collect();
+            // Handle optional description
+            let description_str = match Option::<String>::None $(.or(Some($desc.to_string())))? {
+                Some(s) => s,
+                None => String::new(),
+            };
+
+            // Actually create the chat in the database
+            let chat = $state.create_new_chat(
                 $creator.id,
                 $name,
                 $chat_type,
-                Some(member_ids),
-                description_opt,
-                $creator.workspace_id
-            ).await.expect(&format!("Failed to create test chat '{}'", $name))
+                Some(member_ids_vec),
+                Some(&description_str),
+                $creator.workspace_id,
+            )
+            .await
+            .expect(&format!("Failed to create test chat '{}'", $name));
+
+            chat
         }
     }};
 }
 
-// Macro to assert handler success and deserialize response
+#[cfg(test)]
 #[macro_export]
 macro_rules! assert_handler_success {
   ($handler_call:expr, $expected_status:expr, $response_type:ty) => {{
@@ -108,7 +119,7 @@ macro_rules! assert_handler_success {
   }};
 }
 
-// Macro to assert handler failure with a specific AppError variant
+#[cfg(test)]
 #[macro_export]
 macro_rules! assert_handler_error {
     ($handler_call:expr, $expected_error:pat $(if $guard:expr)?) => {{
@@ -123,18 +134,18 @@ macro_rules! assert_handler_error {
     }};
 }
 
-// Macro to assert the number of chats listed for a user
+#[cfg(test)]
 #[macro_export]
 macro_rules! assert_chat_list_count {
   ($state:expr, $auth_user:expr, $expected_count:expr) => {{
     // Use assert_handler_success! internally to check status and get the list
     let chats = $crate::assert_handler_success!(
-      $crate::handlers::list_chats_handler(
+      $crate::list_chats_handler(
         axum::extract::State($state.clone()),
         axum::extract::Extension($auth_user.clone())
       ),
       axum::http::StatusCode::OK,
-      Vec<$crate::models::ChatSidebar> // Expecting Vec<ChatSidebar>
+      Vec<fechatter_core::models::chat::ChatSidebar> // Using CoreChatSidebar
     );
     assert_eq!(
       chats.len(),
@@ -147,18 +158,18 @@ macro_rules! assert_chat_list_count {
   }};
 }
 
-// Macro to assert the number of members in a specific chat
+#[cfg(test)]
 #[macro_export]
 macro_rules! assert_chat_member_count {
   ($state:expr, $auth_user:expr, $chat_id:expr, $expected_count:expr) => {{
     let members = $crate::assert_handler_success!(
-      $crate::handlers::list_chat_members_handler(
+      $crate::list_chat_members_handler(
         axum::extract::State($state.clone()),
         axum::extract::Extension($auth_user.clone()),
         axum::extract::Path($chat_id)
       ),
       axum::http::StatusCode::OK,
-      Vec<$crate::models::ChatMember> // Expecting Vec<ChatMember>
+      Vec<fechatter_core::ChatMember> // Using core ChatMember
     );
     assert_eq!(
       members.len(),
@@ -205,5 +216,35 @@ mod tests {
   async fn zero_users_ok() {
     let (_, _, users) = setup_test_users!(0).await;
     assert!(users.is_empty());
+  }
+}
+
+use fechatter_core::models::jwt::TokenConfigProvider;
+use once_cell::sync::Lazy;
+
+// Generate test JWT signing keys for tests - using simple strings for tests
+static TEST_JWT_KEYS: Lazy<(String, String)> = Lazy::new(|| {
+  // For tests, we use a simple pair of EdDSA-like strings as keys
+  // Using the same key for both encoding and decoding to avoid key mismatch in tests
+  let key = "TEST_CONSISTENT_KEY_FOR_BOTH_SIGNING_AND_VERIFICATION".to_string();
+
+  (key.clone(), key.clone())
+});
+
+/// A test-specific TokenConfigProvider that uses consistent in-memory test keys
+pub struct TestTokenConfig;
+
+impl TokenConfigProvider for TestTokenConfig {
+  fn get_encoding_key_pem(&self) -> &str {
+    &TEST_JWT_KEYS.0
+  }
+
+  fn get_decoding_key_pem(&self) -> &str {
+    &TEST_JWT_KEYS.1
+  }
+
+  // Smaller leeway for tests
+  fn get_jwt_leeway(&self) -> u64 {
+    5 // 5 seconds for tests
   }
 }
