@@ -15,8 +15,10 @@ use futures::{StreamExt, TryStreamExt, stream::BoxStream};
 use sha2::{Digest, Sha256};
 use std::path::{Path as StdPath, PathBuf};
 use std::str::FromStr as _;
-use tokio::fs::{self, File};
-use tokio::io::AsyncWriteExt;
+use tokio::{
+  fs::{self, File},
+  io::AsyncWriteExt as _,
+};
 use tokio_util::io::ReaderStream;
 use tracing::{info, warn};
 
@@ -711,13 +713,16 @@ pub(crate) async fn fix_file_storage_handler(
 
 #[cfg(test)]
 mod tests {
+  use std::sync::Arc;
+
   use super::*;
 
   use crate::setup_test_users;
   use axum::extract::FromRequest;
   use axum::http::StatusCode;
-
+  use dashmap::DashMap;
   use fechatter_core::Message;
+  use tempfile::tempdir;
   use tokio::fs;
   use tokio::io::AsyncWriteExt;
 
@@ -985,26 +990,18 @@ mod tests {
   #[tokio::test]
   async fn test_file_handler_integration() {
     use crate::models::ChatFile;
-    use std::env;
 
-    // Create test directory in the project directory instead of /tmp
-    let current_dir = env::current_dir().expect("Failed to get current directory");
-    let test_dir = current_dir.join("target").join("test_files");
+    // 创建临时目录
+    let temp_dir = tempdir().expect("Failed to create temp dir");
+    let test_dir = temp_dir.path().to_path_buf();
+    eprintln!("Using test dir: {}", test_dir.display());
 
-    // Create a custom AppState with our test directory
-    let mut config = crate::AppConfig::load().expect("Failed to load config");
-    config.server.base_dir = test_dir.clone();
-
-    // Create test directory
-    let _ = fs::create_dir_all(&config.server.base_dir).await;
-    eprintln!("Using test dir: {}", config.server.base_dir.display());
-
-    // Create AppState with custom config
+    // 创建 AppState
     let (_tdb, state) = crate::AppState::test_new()
       .await
       .expect("Failed to create test state");
 
-    // Create test users with our state
+    // 创建测试用户
     let mut users = Vec::new();
     let fullname = "TestUser".to_string();
     let email = "test_user@example.com".to_string();
@@ -1016,7 +1013,7 @@ mod tests {
       .expect("Failed to create test user");
     users.push(user);
 
-    // Rest of test with our custom state
+    // 测试用户
     let user = &users[0];
     let auth_user = Extension(AuthUser {
       id: user.id,
@@ -1031,54 +1028,82 @@ mod tests {
     let file_name = "test_file.txt";
     let ws_id = user.workspace_id;
 
-    // Create the ChatFile object
+    // 创建 ChatFile 对象
     let file_meta = ChatFile::new(ws_id, file_name, &test_content);
 
-    // Use the path with our test directory
-    let file_path = file_meta.from_path(&state.config.server.base_dir);
-    eprintln!("File path: {}", file_path.display());
+    // 打印出哈希路径和URL以便调试
+    let hash_path = file_meta.hash_to_path();
+    let file_url = file_meta.url();
+    eprintln!("ChatFile hash_path: {}", hash_path);
+    eprintln!("ChatFile URL: {}", file_url);
 
-    // Ensure parent directory exists
+    // 临时替换 state.inner.config.server.base_dir 为我们的临时目录
+    let test_state = {
+      let mut config = state.config.clone(); // 克隆配置
+      config.server.base_dir = temp_dir.path().to_path_buf(); // 修改克隆的配置
+
+      // 创建新的 AppState 使用修改后的配置
+      crate::AppState {
+        inner: Arc::new(crate::AppStateInner {
+          config,
+          service_provider: state.service_provider.clone(),
+          chat_list_cache: DashMap::new(),
+        }),
+      }
+    };
+
+    // 使用新的 test_state 来获取正确的物理路径
+    let file_path = file_meta.from_path(&test_state.config.server.base_dir);
+    eprintln!("File will be created at: {}", file_path.display());
+
+    // 确保父目录存在
     if let Some(parent) = file_path.parent() {
       eprintln!("Creating parent directory: {}", parent.display());
       let _ = fs::create_dir_all(parent).await;
-      // Verify directory was created successfully
       assert!(parent.exists(), "Parent directory should be created");
     }
 
-    // Delete existing file to avoid conflicts
-    if file_path.exists() {
-      fs::remove_file(&file_path).await.unwrap();
-    }
-
-    // Create and write file
+    // 创建并写入文件
     eprintln!("Creating file at: {}", file_path.display());
     let mut file = File::create(&file_path).await.unwrap();
     file.write_all(&test_content).await.unwrap();
+    file.flush().await.unwrap();
 
-    // Verify file was created successfully
+    // 验证文件创建成功
     assert!(
       file_path.exists(),
       "File should be created at expected path"
     );
-    let read_content = fs::read(&file_path).await.unwrap();
-    assert_eq!(read_content, test_content, "File content should match");
 
-    // Build correct URL path string
+    // 读取并验证文件内容
+    let read_content = fs::read(&file_path).await.unwrap();
+    assert_eq!(
+      read_content, test_content,
+      "File content should match after writing"
+    );
+
+    // 构建正确的 URL 路径
     let url = file_meta.url();
     let file_path_str_with_wsid = url.strip_prefix("/files/").unwrap();
     eprintln!("Path string with wsid: {}", file_path_str_with_wsid);
 
-    // Extract the path part *after* the ws_id
+    // 提取 ws_id 后的路径部分
     let remaining_path = file_path_str_with_wsid
       .split_once('/')
       .map(|(_, path)| path)
       .unwrap_or(file_path_str_with_wsid);
     eprintln!("Remaining path string: {}", remaining_path);
 
-    // Call file handler with correct tuple
+    // 再次检查文件是否存在于预期位置
+    assert!(
+      file_path.exists(),
+      "File should exist before calling handler"
+    );
+    eprintln!("File exists at the path: {}", file_path.display());
+
+    // 调用 file_handler 使用新的 test_state
     let response = file_handler(
-      State(state.clone()),
+      State(test_state.clone()),
       auth_user.clone(),
       Path((ws_id, remaining_path.to_string())),
     )
@@ -1088,12 +1113,36 @@ mod tests {
       eprintln!("file_handler returned error: {:?}", e);
       match ChatFile::from_str(&url) {
         Ok(cf) => {
-          let resolved_path = cf.from_path(&state.config.server.base_dir);
+          let resolved_path = cf.from_path(&test_state.config.server.base_dir);
           eprintln!(
             "Resolved path: {}, exists: {}",
             resolved_path.display(),
             resolved_path.exists()
           );
+
+          if resolved_path.exists() {
+            if let Ok(content) = fs::read(&resolved_path).await {
+              eprintln!(
+                "File content length: {}, content: {:?}",
+                content.len(),
+                content
+              );
+            }
+          } else {
+            // 如果文件不存在，查看目录结构
+            let dir_path = resolved_path.parent().unwrap_or(&resolved_path);
+            if dir_path.exists() {
+              eprintln!("Parent directory exists, listing contents:");
+              if let Ok(entries) = fs::read_dir(dir_path).await {
+                let mut entries_vec = Vec::new();
+                let mut entry_stream = entries;
+                while let Ok(Some(entry)) = entry_stream.next_entry().await {
+                  entries_vec.push(entry.path());
+                }
+                eprintln!("Directory contents: {:?}", entries_vec);
+              }
+            }
+          }
         }
         Err(e) => eprintln!("Failed to parse URL: {}, error: {:?}", url, e),
       }
@@ -1113,13 +1162,19 @@ mod tests {
       .unwrap()
       .to_bytes();
 
+    eprintln!(
+      "Response body length: {}, content: {:?}",
+      body_bytes.len(),
+      body_bytes
+    );
+
     assert_eq!(
       &body_bytes[..],
       test_content.as_slice(),
       "Response body should match original file"
     );
 
-    // Test non-exist file
+    // 测试不存在的文件
     let nonexistent_hash = "nonexist_hash_12345.txt";
     let auth_user2 = Extension(AuthUser {
       id: user.id,
@@ -1130,15 +1185,11 @@ mod tests {
       workspace_id: user.workspace_id,
     });
 
-    let nonexistent_ws_dir = state
-      .config
-      .server
-      .base_dir
-      .join(user.workspace_id.to_string());
+    let nonexistent_ws_dir = temp_dir.path().join(user.workspace_id.to_string());
     let _ = fs::create_dir_all(&nonexistent_ws_dir).await;
 
     let nonexistent_file_meta = ChatFile::new(user.workspace_id, nonexistent_hash, &[]);
-    let nonexistent_path = nonexistent_file_meta.from_path(&state.config.server.base_dir);
+    let nonexistent_path = nonexistent_file_meta.from_path(&test_state.config.server.base_dir);
 
     if nonexistent_path.exists() {
       fs::remove_file(&nonexistent_path).await.unwrap();
@@ -1154,7 +1205,7 @@ mod tests {
       .unwrap_or(nonexistent_path_str_with_wsid);
 
     let error_response = file_handler(
-      State(state),
+      State(test_state.clone()),
       auth_user2,
       Path((user.workspace_id, nonexistent_remaining_path.to_string())),
     )
@@ -1168,7 +1219,7 @@ mod tests {
       },
     }
 
-    let _ = fs::remove_dir_all(&test_dir).await;
+    // 不需要手动清理，tempdir 会自动清理
   }
 
   #[tokio::test]
@@ -1363,8 +1414,9 @@ mod tests {
     // Extract the path part *after* the ws_id
     let remaining_path = path_with_wsid
       .split_once('/')
-      .map(|(_wsid, path)| path)
+      .map(|(_, path)| path)
       .unwrap_or(path_with_wsid);
+    eprintln!("Remaining path string: {}", remaining_path);
 
     let new_format_response = file_handler(
       State(state.clone()),

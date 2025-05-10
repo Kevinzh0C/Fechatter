@@ -728,6 +728,7 @@ dependencies = [
  "sha2",
  "sqlx",
  "sqlx-db-tester",
+ "tempfile",
  "thiserror 2.0.12",
  "tokio",
  "tokio-stream",
