@@ -129,18 +129,19 @@ mod refresh_token_tests {
     let refresh_token = tokens.refresh_token.token;
 
     // 重要：要将用户实际设置为禁用状态
-    sqlx::query("UPDATE users SET status = $1 WHERE id = $2")
+    let query = "UPDATE users SET status = $1 WHERE id = $2";
+    sqlx::query(query)
       .bind(UserStatus::Suspended)
       .bind(user.id)
       .execute(state.pool())
       .await?;
 
     // 确保数据库更新实际上已经生效，读取最新的用户状态
-    let updated_user =
-      sqlx::query_as::<_, crate::models::User>("SELECT * FROM users WHERE id = $1")
-        .bind(user.id)
-        .fetch_one(state.pool())
-        .await?;
+    let query = "SELECT * FROM users WHERE id = $1";
+    let updated_user = sqlx::query_as::<_, crate::models::User>(query)
+      .bind(user.id)
+      .fetch_one(state.pool())
+      .await?;
 
     // 验证用户状态确实已更新
     assert_eq!(updated_user.status, UserStatus::Suspended);
@@ -244,18 +245,19 @@ mod refresh_token_tests {
 
     // 测试时修改一下数据库中的某些数据，但只有服务器实现中会检查
     // 例如：将用户状态设置为已禁用
-    sqlx::query("UPDATE users SET status = $1 WHERE id = $2")
+    let query = "UPDATE users SET status = $1 WHERE id = $2";
+    sqlx::query(query)
       .bind(UserStatus::Suspended)
       .bind(user.id)
       .execute(state.pool())
       .await?;
 
     // 验证用户状态确实已更新
-    let updated_user =
-      sqlx::query_as::<_, crate::models::User>("SELECT * FROM users WHERE id = $1")
-        .bind(user.id)
-        .fetch_one(state.pool())
-        .await?;
+    let query = "SELECT * FROM users WHERE id = $1";
+    let updated_user = sqlx::query_as::<_, crate::models::User>(query)
+      .bind(user.id)
+      .fetch_one(state.pool())
+      .await?;
     assert_eq!(updated_user.status, UserStatus::Suspended);
 
     // 使用服务器的实现（通过create_auth_service!宏）来刷新token

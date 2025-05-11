@@ -136,27 +136,35 @@ impl AppState {
 
     self.ensure_user_is_chat_creator(chat_id, user_id).await?;
 
-    let added_members = sqlx::query_as!(
-      ChatMember,
-      r#"
+    let query = r#"
       INSERT INTO chat_members (chat_id, user_id)
       SELECT $1, user_id_to_add
       FROM UNNEST($2::bigint[]) AS t(user_id_to_add)
       ON CONFLICT (chat_id, user_id) DO NOTHING
       RETURNING chat_id, user_id, joined_at
-      "#,
-      chat_id,
-      &member_ids
-    )
-    .fetch_all(self.pool())
-    .await
-    .map_err(|e: sqlx::Error| {
-      error!(
-        "Database error batch inserting members into chat_id {}: {:?}",
-        chat_id, e
-      );
-      e
-    })?;
+    "#;
+
+    let rows = sqlx::query(query)
+      .bind(chat_id)
+      .bind(&member_ids)
+      .fetch_all(self.pool())
+      .await
+      .map_err(|e: sqlx::Error| {
+        error!(
+          "Database error batch inserting members into chat_id {}: {:?}",
+          chat_id, e
+        );
+        e
+      })?;
+
+    let added_members: Vec<ChatMember> = rows
+      .into_iter()
+      .map(|row| ChatMember {
+        chat_id: row.try_get("chat_id").unwrap(),
+        user_id: row.try_get("user_id").unwrap(),
+        joined_at: row.try_get("joined_at").unwrap(),
+      })
+      .collect();
 
     if !added_members.is_empty() {
       for member in &added_members {
@@ -182,29 +190,47 @@ impl AppState {
       return Ok(false);
     }
 
-    // --- Fetch Chat Info (Separate Queries) ---
+    // --- Fetch Basic Info ---
+    // Convert PostgreSQL enum to text explicitly
+    let query = "SELECT created_by, type::text as chat_type_str FROM chats WHERE id = $1";
 
-    // 1. Fetch creator_id and chat_type
-    let chat_info = sqlx::query!(
-      r#"SELECT created_by, type AS "chat_type: ChatType" FROM chats WHERE id = $1"#,
-      chat_id
-    )
-    .fetch_optional(self.pool())
-    .await?;
+    let chat_info = sqlx::query(query)
+      .bind(chat_id)
+      .fetch_optional(self.pool())
+      .await?;
 
     let (created_by, chat_type) = match chat_info {
-      Some(info) => (info.created_by, info.chat_type),
+      Some(row) => {
+        let created_by: i64 = row.try_get("created_by")?;
+        let chat_type_str: String = row.try_get("chat_type_str")?;
+
+        let chat_type = match chat_type_str.to_lowercase().as_str() {
+          "single" => ChatType::Single,
+          "group" => ChatType::Group,
+          "privatechannel" => ChatType::PrivateChannel,
+          "publicchannel" => ChatType::PublicChannel,
+          _ => {
+            return Err(AppError::ChatValidationError(format!(
+              "Unknown chat type: {}",
+              chat_type_str
+            )));
+          }
+        };
+
+        (created_by, chat_type)
+      }
       None => return Err(AppError::NotFound(vec![chat_id.to_string()])), // Chat not found
     };
 
     // 2. Fetch current member count
-    let current_member_count = sqlx::query_scalar!(
-      "SELECT COUNT(*) FROM chat_members WHERE chat_id = $1",
-      chat_id
-    )
-    .fetch_one(self.pool())
-    .await?
-    .unwrap_or(0); // COUNT should always return a row, handle Option just in case
+    let query = "SELECT COUNT(*) FROM chat_members WHERE chat_id = $1";
+
+    let count_row = sqlx::query(query)
+      .bind(chat_id)
+      .fetch_one(self.pool())
+      .await?;
+
+    let current_member_count: i64 = count_row.try_get(0)?;
 
     // --- Type Check ---
     if chat_type != ChatType::Group {
@@ -221,15 +247,14 @@ impl AppState {
       )));
     }
 
-    // --- Minimum Member Check (Potentially combined with deletion later if using CTEs) ---
-    // Fetching count separately for now to maintain clarity without complex SQL yet.
-    let actual_members_to_remove = sqlx::query_scalar!(
-      "SELECT user_id FROM chat_members WHERE chat_id = $1 AND user_id = ANY($2)",
-      chat_id,
-      &target_member_ids
-    )
-    .fetch_all(self.pool())
-    .await?;
+    // --- Minimum Member Check ---
+    let query = "SELECT user_id FROM chat_members WHERE chat_id = $1 AND user_id = ANY($2)";
+
+    let actual_members_to_remove = sqlx::query_scalar::<_, i64>(query)
+      .bind(chat_id)
+      .bind(&target_member_ids)
+      .fetch_all(self.pool())
+      .await?;
 
     if actual_members_to_remove.is_empty() {
       info!(
@@ -254,21 +279,21 @@ impl AppState {
     }
 
     // --- Execute Batch Deletion and Get Actually Deleted IDs ---
-    let deleted_ids = sqlx::query_scalar!(
-      r#"
+    let query = r#"
       DELETE FROM chat_members
       WHERE chat_id = $1 AND user_id = ANY($2::bigint[])
       RETURNING user_id
-      "#,
-      chat_id,
-      &actual_members_to_remove // Use the filtered list of actual members
-    )
-    .fetch_all(self.pool()) // Fetch all returned user_ids
-    .await
-    .map_err(|e: sqlx::Error| {
-      error!("Database error batch deleting members from chat {}: {:?}", chat_id, e);
-      e
-    })?;
+    "#;
+
+    let deleted_ids = sqlx::query_scalar::<_, i64>(query)
+      .bind(chat_id)
+      .bind(&actual_members_to_remove) // Use the filtered list of actual members
+      .fetch_all(self.pool()) // Fetch all returned user_ids
+      .await
+      .map_err(|e: sqlx::Error| {
+        error!("Database error batch deleting members from chat {}: {:?}", chat_id, e);
+        e
+      })?;
 
     let rows_affected = deleted_ids.len() as u64;
 
@@ -293,8 +318,7 @@ impl AppState {
   }
 
   pub async fn list_chat_members(&self, chat_id: i64) -> Result<Vec<ChatMember>, AppError> {
-    let rows = sqlx::query!(
-      r#"
+    let query = r#"
       SELECT
         chat_id,
         user_id,
@@ -302,25 +326,26 @@ impl AppState {
       FROM chat_members
       WHERE chat_id = $1
       ORDER BY joined_at ASC
-      "#,
-      chat_id
-    )
-    .fetch_all(self.pool())
-    .await
-    .map_err(|e: sqlx::Error| {
-      error!(
-        "Database error listing chat members for chat_id {}: {:?}",
-        chat_id, e
-      );
-      e
-    })?;
+    "#;
+
+    let rows = sqlx::query(query)
+      .bind(chat_id)
+      .fetch_all(self.pool())
+      .await
+      .map_err(|e: sqlx::Error| {
+        error!(
+          "Database error listing chat members for chat_id {}: {:?}",
+          chat_id, e
+        );
+        e
+      })?;
 
     let members: Vec<ChatMember> = rows
       .into_iter()
       .map(|row| ChatMember {
-        chat_id: row.chat_id,
-        user_id: row.user_id,
-        joined_at: row.joined_at,
+        chat_id: row.try_get("chat_id").unwrap(),
+        user_id: row.try_get("user_id").unwrap(),
+        joined_at: row.try_get("joined_at").unwrap(),
       })
       .collect();
 
@@ -340,27 +365,27 @@ impl AppState {
       return Err(AppError::NotFound(vec![member.chat_id.to_string()]));
     }
 
-    let result = sqlx::query!(
-      r#"
+    let query = r#"
       SELECT EXISTS(
         SELECT 1 FROM chat_members
         WHERE user_id = $1 AND chat_id = $2
-      ) as "exists!"
-      "#,
-      member.user_id,
-      member.chat_id
-    )
-    .fetch_one(self.pool())
-    .await
-    .map_err(|e: sqlx::Error| {
-      error!(
-        "Database error checking if member exists (user_id: {}, chat_id: {}): {:?}",
-        member.user_id, member.chat_id, e
-      );
-      e
-    })?;
+      ) as exists
+    "#;
 
-    let exists = result.exists;
+    let result = sqlx::query(query)
+      .bind(member.user_id)
+      .bind(member.chat_id)
+      .fetch_one(self.pool())
+      .await
+      .map_err(|e: sqlx::Error| {
+        error!(
+          "Database error checking if member exists (user_id: {}, chat_id: {}): {:?}",
+          member.user_id, member.chat_id, e
+        );
+        e
+      })?;
+
+    let exists: bool = result.try_get("exists")?;
     info!(
       "Member exists check for user_id {} in chat_id {}: {}",
       member.user_id, member.chat_id, exists
@@ -381,45 +406,62 @@ impl AppState {
       return Err(AppError::NotFound(vec![member.chat_id.to_string()]));
     }
 
-    let result = sqlx::query!(
-      r#"
+    let query = r#"
       SELECT EXISTS(
         SELECT 1 FROM chats WHERE id = $1 AND created_by = $2
-      ) as "exists!"
-      "#,
-      member.chat_id,
-      member.user_id
-    )
-    .fetch_one(self.pool())
-    .await?;
+      ) as exists
+    "#;
 
-    Ok(result.exists)
+    let result = sqlx::query(query)
+      .bind(member.chat_id)
+      .bind(member.user_id)
+      .fetch_one(self.pool())
+      .await?;
+
+    let exists: bool = result.try_get("exists")?;
+    Ok(exists)
   }
 
   #[allow(unused)]
   pub async fn count_members(&self, chat_id: i64) -> Result<i64, AppError> {
-    let result = sqlx::query!(
-      r#"
-      SELECT COUNT(*) as "count!"
+    let query = r#"
+      SELECT COUNT(*) as count
       FROM chat_members
       WHERE chat_id = $1
-      "#,
-      chat_id
-    )
-    .fetch_one(self.pool())
-    .await?;
+    "#;
 
-    Ok(result.count)
-  }
-
-  #[allow(unused)]
-  pub async fn get_chat_type(&self, chat_id: i64) -> Result<ChatType, AppError> {
-    let result = sqlx::query_as::<_, Chat>("SELECT type as chat_type FROM chats WHERE id = $1")
+    let result = sqlx::query(query)
       .bind(chat_id)
       .fetch_one(self.pool())
       .await?;
 
-    Ok(result.chat_type)
+    let count: i64 = result.try_get(0)?;
+    Ok(count)
+  }
+
+  #[allow(unused)]
+  pub async fn get_chat_type(&self, chat_id: i64) -> Result<ChatType, AppError> {
+    let row = sqlx::query("SELECT type::text as chat_type_str FROM chats WHERE id = $1")
+      .bind(chat_id)
+      .fetch_one(self.pool())
+      .await?;
+
+    let chat_type_str: String = row.try_get("chat_type_str")?;
+
+    let chat_type = match chat_type_str.to_lowercase().as_str() {
+      "single" => ChatType::Single,
+      "group" => ChatType::Group,
+      "privatechannel" => ChatType::PrivateChannel,
+      "publicchannel" => ChatType::PublicChannel,
+      _ => {
+        return Err(AppError::ChatValidationError(format!(
+          "Unknown chat type: {}",
+          chat_type_str
+        )));
+      }
+    };
+
+    Ok(chat_type)
   }
 
   #[allow(unused)]
@@ -432,30 +474,45 @@ impl AppState {
     let mut tx = self.pool().begin().await?;
 
     // Fetch chat details, including members for potential invalidation
-    let chat = sqlx::query_as::<_, Chat>(
-      "SELECT id, created_by, type as chat_type, chat_members,
-       chat_name as name, COALESCE(description, '') as description,
-       created_at, updated_at, workspace_id
-       FROM chats
-       WHERE id = $1
-       FOR UPDATE",
-    )
-    .bind(chat_id)
-    .fetch_optional(&mut *tx)
-    .await?
-    .ok_or(AppError::NotFound(vec![format!(
-      "Chat with id {} not found",
-      chat_id
-    )]))?;
+    let query = "SELECT id, created_by, type::text as chat_type_str, chat_members, chat_name as name, COALESCE(description, '') as description, created_at, updated_at, workspace_id FROM chats WHERE id = $1 FOR UPDATE";
 
-    if chat.chat_type != ChatType::Group {
+    let row = sqlx::query(query)
+      .bind(chat_id)
+      .fetch_optional(&mut *tx)
+      .await?
+      .ok_or(AppError::NotFound(vec![format!(
+        "Chat with id {} not found",
+        chat_id
+      )]))?;
+
+    // Extract data from the row
+    let created_by: i64 = row.try_get("created_by")?;
+    let chat_members: Vec<i64> = row.try_get("chat_members")?;
+    let chat_type_str: String = row.try_get("chat_type_str")?;
+
+    // Convert chat_type string to enum
+    let chat_type = match chat_type_str.to_lowercase().as_str() {
+      "single" => ChatType::Single,
+      "group" => ChatType::Group,
+      "privatechannel" => ChatType::PrivateChannel,
+      "publicchannel" => ChatType::PublicChannel,
+      _ => {
+        tx.rollback().await?;
+        return Err(AppError::ChatValidationError(format!(
+          "Unknown chat type: {}",
+          chat_type_str
+        )));
+      }
+    };
+
+    if chat_type != ChatType::Group {
       tx.rollback().await?;
       return Err(AppError::ChatValidationError(
         "Only group chats can be transferred".to_string(),
       ));
     }
 
-    if chat.created_by != from_user_id {
+    if created_by != from_user_id {
       tx.rollback().await?;
       return Err(AppError::ChatPermissionError(format!(
         "User {} is not the creator of chat {}",
@@ -464,7 +521,7 @@ impl AppState {
     }
 
     // Check if the target user is already a member using the fetched members
-    if !chat.chat_members.contains(&to_user_id) {
+    if !chat_members.contains(&to_user_id) {
       tx.rollback().await?; // Rollback before returning error
       return Err(AppError::ChatValidationError(format!(
         "User {} is not a member of chat {}",
@@ -473,18 +530,19 @@ impl AppState {
     }
 
     // Update the creator
-    let rows_affected = sqlx::query!(
-      r#"
+    let query = r#"
       UPDATE chats
       SET created_by = $1
       WHERE id = $2
-      "#,
-      to_user_id,
-      chat_id
-    )
-    .execute(&mut *tx)
-    .await?
-    .rows_affected();
+    "#;
+
+    let result = sqlx::query(query)
+      .bind(to_user_id)
+      .bind(chat_id)
+      .execute(&mut *tx)
+      .await?;
+
+    let rows_affected = result.rows_affected();
 
     if rows_affected == 0 {
       tx.rollback().await?;
@@ -498,7 +556,7 @@ impl AppState {
 
     // --- Cache Invalidation ---
     // Invalidate cache for all members of the chat, as ownership change might affect visibility/sorting
-    for &member_id in &chat.chat_members {
+    for &member_id in &chat_members {
       self.chat_list_cache.remove(&member_id);
       info!(
         "Invalidated chat list cache for user {} due to ownership transfer of chat {}",
