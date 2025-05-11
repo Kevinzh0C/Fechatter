@@ -4,7 +4,7 @@ use anyhow::Result;
 
 pub mod embedded {
     use sqlx::migrate::Migrator;
-    pub const MIGRATIONS: Migrator = sqlx::migrate!("../../migrations");
+    pub const MIGRATIONS: Migrator = sqlx::migrate!("../migrations");
 }
 
 pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
