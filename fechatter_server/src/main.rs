@@ -3,9 +3,6 @@ use fechatter_server::{AppConfig, AppState, get_router};
 use shuttle_runtime::SecretStore;
 use sqlx::PgPool;
 use tracing::{debug, info};
-use tracing_subscriber::{
-  EnvFilter, Layer as _, fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt,
-};
 
 mod migration;
 
@@ -14,22 +11,7 @@ async fn main(
   #[shuttle_shared_db::Postgres] pool: PgPool,
   #[shuttle_runtime::Secrets] secrets: SecretStore,
 ) -> shuttle_axum::ShuttleAxum {
-  let fmt_layer = Layer::new();
-
-  let filter_layer = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-    // 默认显示INFO级别，但是对于auth和中间件相关模块使用DEBUG级别
-    EnvFilter::new(
-      "info,fechatter_server::middlewares=debug,fechatter_server::handlers::auth=debug",
-    )
-  });
-
-  tracing_subscriber::registry()
-    .with(filter_layer)
-    .with(fmt_layer)
-    .init();
-
-  debug!("Debug logging enabled");
-
+  
   info!("Running database migrations");
   migration::run_migrations(&pool)
     .await
@@ -37,10 +19,12 @@ async fn main(
 
   // Load app configuration
   let mut config = AppConfig::load().expect("Failed to load configuration");
+  
+  config.server.db_url = pool.connect_opts().get_database()
+    .map(|db| format!("postgres://{}", db))
+    .unwrap_or_else(|| pool.to_string());
 
-  config.server.db_url = pool.to_string();
-
-  info!("Using Shuttle-provided PostgreSQL database");
+  info!("Using Shuttle-provided PostgreSQL database: {}", config.server.db_url);
 
   let state = AppState::try_new(config)
     .await

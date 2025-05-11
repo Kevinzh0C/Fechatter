@@ -1,5 +1,1 @@
-[activities.primary]
-crate_dir = "fechatter_server"
-
-[activities.notify]
-crate_dir = "notify_server"
+id = "proj_01JV0A6M70PSKQ0XJMBRBWC0NW"

@@ -74,3 +74,6 @@ app.yml
 
 # RFC templates
 rfcs/template.md
+/target
+.shuttle*
+Secrets*.toml
