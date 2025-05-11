@@ -1,7 +1,7 @@
 name = "fechatter"
 
 [shuttle-shared-db.postgres]
-local_uri = "postgres://postgres:postgres@localhost/fechatter"
+# Shuttle will automatically provision a database
 
 # 注：这是一个多服务项目
 [workspace]
