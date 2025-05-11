@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n      SELECT revoked, replaced_by \n      FROM refresh_tokens \n      WHERE id = $1\n      FOR UPDATE\n      ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "revoked",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 1,
+        "name": "replaced_by",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "028ee06e0a9ecf01ef21e6db26e95ace58ef7460a24e6e50a101a5a899f363a9"
+}

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n      SELECT id FROM UNNEST($1::bigint[]) AS ids(id)\n      WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = ids.id)\n      ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "deefa647a9dc65f6860bc003a1338777c03e7c3a01e27a15157f11d05c93db7d"
+}
