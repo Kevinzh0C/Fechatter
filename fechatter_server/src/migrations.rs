@@ -3,8 +3,8 @@ use tracing::info;
 use anyhow::Result;
 
 pub mod embedded {
-    use sqlx::migrate::MigrationSource;
-    pub const MIGRATIONS: MigrationSource<'static> = sqlx::migrate!("../../migrations");
+    use sqlx::migrate::Migrator;
+    pub const MIGRATIONS: Migrator = sqlx::migrate!("../../migrations");
 }
 
 pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
