@@ -199,21 +199,21 @@ impl UserRepository for FechatterUserRepository {
       return Ok(());
     }
 
-    let missing_ids = sqlx::query_scalar!(
-      r#"
+    let query = r#"
       SELECT id FROM UNNEST($1::bigint[]) AS ids(id)
       WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = ids.id)
-      "#,
-      ids
-    )
-    .fetch_all(&*self.pool)
-    .await
-    .map_err(|e| CoreError::Internal(e.to_string()))?;
+    "#;
+
+    let missing_ids = sqlx::query_scalar(query)
+      .bind(ids)
+      .fetch_all(&*self.pool)
+      .await
+      .map_err(|e| CoreError::Internal(e.to_string()))?;
 
     if !missing_ids.is_empty() {
       let missing_ids_str = missing_ids
         .iter()
-        .map(|id| id.unwrap().to_string())
+        .map(|id: &Option<i64>| id.unwrap().to_string())
         .collect::<Vec<String>>();
       return Err(CoreError::NotFound(format!(
         "Users not found: {}",
@@ -279,20 +279,20 @@ impl AppState {
       return Ok(());
     }
 
-    let missing_ids = sqlx::query_scalar!(
-      r#"
+    let query = r#"
       SELECT id FROM UNNEST($1::bigint[]) AS ids(id)
       WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = ids.id)
-      "#,
-      ids
-    )
-    .fetch_all(self.pool())
-    .await?;
+    "#;
+
+    let missing_ids = sqlx::query_scalar(query)
+      .bind(ids)
+      .fetch_all(self.pool())
+      .await?;
 
     if !missing_ids.is_empty() {
       let missing_ids_str = missing_ids
         .iter()
-        .map(|id| id.unwrap().to_string())
+        .map(|id: &Option<i64>| id.unwrap().to_string())
         .collect::<Vec<String>>();
       return Err(AppError::NotFound(missing_ids_str));
     }
