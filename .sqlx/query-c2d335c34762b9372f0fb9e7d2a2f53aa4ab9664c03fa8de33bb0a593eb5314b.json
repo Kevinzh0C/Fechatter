@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n      UPDATE refresh_tokens\n      SET revoked = TRUE, replaced_by = $1\n      WHERE id = $2\n      ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c2d335c34762b9372f0fb9e7d2a2f53aa4ab9664c03fa8de33bb0a593eb5314b"
+}
