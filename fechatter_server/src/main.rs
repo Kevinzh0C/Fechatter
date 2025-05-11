@@ -12,9 +12,11 @@ async fn main(
 ) -> shuttle_axum::ShuttleAxum {
   
   info!("Running database migrations");
-  migrations::run_migrations(&pool)
-    .await
-    .expect("Failed to run migrations");
+  if let Err(err) = migrations::run_migrations(&pool).await {
+    info!("Migration error: {}", err);
+  } else {
+    info!("Database migrations completed successfully");
+  }
 
   // Load app configuration
   let mut config = AppConfig::load().expect("Failed to load configuration");
