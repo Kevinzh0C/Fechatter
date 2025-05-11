@@ -1,8 +1,7 @@
-use anyhow::Result;
 use fechatter_server::{AppConfig, AppState, get_router};
 use shuttle_runtime::SecretStore;
 use sqlx::PgPool;
-use tracing::{debug, info};
+use tracing::info;
 
 mod migration;
 
