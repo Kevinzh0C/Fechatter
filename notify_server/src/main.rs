@@ -10,18 +10,16 @@ use tracing_subscriber::{
 };
 
 #[shuttle_runtime::main]
-async fn main(
-  #[shuttle_shared_db::Postgres] pool: PgPool,
-) -> shuttle_axum::ShuttleAxum {
+async fn main(#[shuttle_shared_db::Postgres] pool: PgPool) -> shuttle_axum::ShuttleAxum {
   // Initialize tracing for logging
   let layer = Layer::new().with_filter(LevelFilter::INFO);
   tracing_subscriber::registry().with(layer).init();
 
   let config = AppConfig::load().expect("Failed to load config");
-  
+
   let app = get_router(config).await.expect("Failed to create router");
-  
+
   info!("Notify server initialized with Shuttle");
-  
+
   Ok(app.into())
 }

@@ -20,8 +20,7 @@ pub(crate) trait OpenApiRouter {
 /// API Documentation
 #[derive(OpenApi)]
 #[openapi(
-        paths(
-            // Auth endpoints
+        paths(            // Auth endpoints
             auth::signup_handler,
             auth::signin_handler,
             auth::refresh_token_handler,
@@ -30,7 +29,7 @@ pub(crate) trait OpenApiRouter {
             
             // Chat endpoints
             chat::list_chats_handler,
-            chat::create_chat_handler, 
+            chat::create_chat_handler,
             chat::update_chat_handler,
             chat::delete_chat_handler,
             
@@ -50,20 +49,19 @@ pub(crate) trait OpenApiRouter {
         ),
         components(
             schemas(
-                AuthUser, 
-                Chat, 
-                ChatType, 
-                ChatUser, 
-                CreateChat, 
-                CreateMessage, 
-                CreateUser, 
-                ErrorOutput, 
-                ListMessages, 
-                Message, 
-                SigninUser, 
-                User, 
+                AuthUser,
+                Chat,
+                ChatType,
+                ChatUser,
+                CreateChat,
+                CreateMessage,
+                CreateUser,
+                ErrorOutput,
+                ListMessages,
+                Message,
+                SigninUser,
+                User,
                 Workspace,
-                
                 auth::AuthResponse
             )
         ),
@@ -97,8 +95,9 @@ impl Modify for SecurityAddon {
 
 impl OpenApiRouter for Router<AppState> {
   fn openapi(self) -> Self {
-      self.merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
-          .merge(Redoc::with_url("/redoc", ApiDoc::openapi()))
-          .merge(RapiDoc::new("/api-docs/openapi.json").path("/rapidoc"))
+    self
+      .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+      .merge(Redoc::with_url("/redoc", ApiDoc::openapi()))
+      .merge(RapiDoc::new("/api-docs/openapi.json").path("/rapidoc"))
   }
 }

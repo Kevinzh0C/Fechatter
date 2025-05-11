@@ -1,7 +1,7 @@
 use anyhow::Result;
 use fechatter_server::{AppConfig, AppState, get_router};
-use sqlx::PgPool;
 use shuttle_runtime::SecretStore;
+use sqlx::PgPool;
 use tracing::{debug, info};
 use tracing_subscriber::{
   EnvFilter, Layer as _, fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt,
@@ -31,18 +31,22 @@ async fn main(
   debug!("Debug logging enabled");
 
   info!("Running database migrations");
-  migration::run_migrations(&pool).await.expect("Failed to run migrations");
+  migration::run_migrations(&pool)
+    .await
+    .expect("Failed to run migrations");
 
   // Load app configuration
   let mut config = AppConfig::load().unwrap_or_default();
-  
+
   config.server.db_url = pool.connect_lazy_options().connection_string().to_string();
-  
+
   info!("Using Shuttle-provided PostgreSQL database");
 
-  let state = AppState::try_new(config).await.expect("Failed to create AppState");
+  let state = AppState::try_new(config)
+    .await
+    .expect("Failed to create AppState");
   let app = get_router(state).await.expect("Failed to create router");
-  
+
   info!("Fechatter server initialized with Shuttle");
 
   Ok(app.into())

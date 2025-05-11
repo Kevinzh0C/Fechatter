@@ -5,8 +5,7 @@ use axum::{
 };
 use fechatter_core::{User, Workspace};
 
-
-use crate::{error::ErrorOutput, models::AuthUser, AppError, AppState};
+use crate::{AppError, AppState, error::ErrorOutput, models::AuthUser};
 
 /// 获取工作区所有用户
 #[utoipa::path(

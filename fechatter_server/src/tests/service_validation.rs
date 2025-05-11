@@ -5,8 +5,7 @@ mod service_validation_tests {
   use fechatter_core::middlewares::TokenVerifier;
   use fechatter_core::{
     LogoutService, RefreshTokenService, SigninService, SignupService, TokenService,
-    middlewares::ActualAuthServiceProvider,
-    models::jwt::UserClaims,
+    middlewares::ActualAuthServiceProvider, models::jwt::UserClaims,
   };
 
   /// 验证AppState使用正确的实现路径创建AuthService
