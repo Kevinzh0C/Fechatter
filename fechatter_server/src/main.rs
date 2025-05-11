@@ -21,16 +21,17 @@ async fn main(
   // Load app configuration
   let mut config = AppConfig::load().expect("Failed to load configuration");
   
-  if let Ok(db_url) = std::env::var("DATABASE_URL") {
-    config.server.db_url = db_url;
-    info!("Using Shuttle-provided PostgreSQL database");
-  } else {
-    info!("Using configured database from config file");
-  }
-
-  let state = AppState::try_new(config)
-    .await
-    .expect("Failed to create AppState");
+  let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+    info!("DATABASE_URL not found, using configured database");
+    config.server.db_url.clone()
+  });
+  
+  config.server.db_url = db_url;
+  info!("Using database connection from environment");
+  
+  let state = AppState::new_with_pool(config, pool.clone())
+    .expect("Failed to create AppState with provided pool");
+  
   let app = get_router(state).await.expect("Failed to create router");
 
   info!("Fechatter server initialized with Shuttle");

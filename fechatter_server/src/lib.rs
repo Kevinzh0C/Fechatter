@@ -289,6 +289,30 @@ impl AppState {
       inner: Arc::new(state),
     })
   }
+  
+  pub fn new_with_pool(config: AppConfig, pool: PgPool) -> Result<Self, AppError> {
+    // Create refresh token adapter and token manager
+    let refresh_token_repo = Arc::new(RefreshTokenAdaptor::new(Arc::new(pool.clone())));
+    let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo)?;
+
+    // Create service provider with the provided pool
+    let service_provider =
+      crate::services::service_provider::ServiceProvider::new(pool, token_manager);
+
+    // Create chat list cache
+    let chat_list_cache = DashMap::new();
+
+    // Create application state
+    let state = AppStateInner {
+      config,
+      service_provider,
+      chat_list_cache,
+    };
+
+    Ok(Self {
+      inner: Arc::new(state),
+    })
+  }
 }
 
 #[cfg(any(test, feature = "test-util"))]
