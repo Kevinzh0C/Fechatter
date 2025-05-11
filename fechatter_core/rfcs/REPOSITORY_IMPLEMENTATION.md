@@ -50,7 +50,7 @@ impl UserRepository for PgUserRepository {
         .bind(&input.email)
         .bind(&password_hash)
         .bind(UserStatus::Active)
-        .bind(workspace_id)
+        .bind(&input.workspace_id)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| {
