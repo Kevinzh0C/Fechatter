@@ -3,5 +3,6 @@ name = "fechatter"
 [shuttle-shared-db.postgres]
 # Shuttle will automatically provision a database
 
-# 注：这是一个多服务项目
-[workspace]
+# Include migrations directory in the deployment
+[shuttle.deployment]
+include = ["migrations"]
