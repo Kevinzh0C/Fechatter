@@ -1,0 +1,5 @@
+[activities.primary]
+crate_dir = "fechatter_server"
+
+[activities.notify]
+crate_dir = "notify_server"

@@ -49,6 +49,10 @@ sha2 = "0.10.7"
 hex = "0.4.3"
 rand = "0.9.1"
 dashmap = { version = "6.1.0" }
+# Shuttle dependencies
+shuttle-runtime = "0.54.0"
+shuttle-axum = "0.54.0"
+shuttle-shared-db = { version = "0.54.0", features = ["sqlx", "postgres"] }
 
 utoipa = { version = "5.3.1", features = ["uuid", "chrono", "axum_extras"] }
 utoipa-rapidoc = { version = "6.0.0", features = ["axum"] }
@@ -60,6 +64,3 @@ fechatter_core = { path = "./fechatter_core" }
 fechatter_server = { path = "./fechatter_server" }
 notify_server = { path = "./notify_server" }
 fechatter_macro = { path = "./fechatter_macro" }
-
-
-

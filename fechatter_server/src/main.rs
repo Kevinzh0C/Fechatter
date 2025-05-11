@@ -1,13 +1,19 @@
 use anyhow::Result;
 use fechatter_server::{AppConfig, AppState, get_router};
-use tokio::net::TcpListener;
+use sqlx::PgPool;
+use shuttle_runtime::SecretStore;
 use tracing::{debug, info};
 use tracing_subscriber::{
   EnvFilter, Layer as _, fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt,
 };
 
-#[tokio::main]
-async fn main() -> Result<()> {
+mod migration;
+
+#[shuttle_runtime::main]
+async fn main(
+  #[shuttle_shared_db::Postgres] pool: PgPool,
+  #[shuttle_runtime::Secrets] secrets: SecretStore,
+) -> shuttle_axum::ShuttleAxum {
   let fmt_layer = Layer::new();
 
   let filter_layer = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
@@ -24,16 +30,20 @@ async fn main() -> Result<()> {
 
   debug!("Debug logging enabled");
 
+  info!("Running database migrations");
+  migration::run_migrations(&pool).await.expect("Failed to run migrations");
+
   // Load app configuration
-  let config = AppConfig::load()?;
-  let addr = format!("0.0.0.0:{}", config.server.port);
+  let mut config = AppConfig::load().unwrap_or_default();
+  
+  config.server.db_url = pool.connect_lazy_options().connection_string().to_string();
+  
+  info!("Using Shuttle-provided PostgreSQL database");
 
-  let state = AppState::try_new(config).await?;
-  let app = get_router(state).await?;
-  let listener = TcpListener::bind(&addr).await?;
-  info!("Listening on: {}", addr);
+  let state = AppState::try_new(config).await.expect("Failed to create AppState");
+  let app = get_router(state).await.expect("Failed to create router");
+  
+  info!("Fechatter server initialized with Shuttle");
 
-  axum::serve(listener, app.into_make_service()).await?;
-
-  Ok(())
+  Ok(app.into())
 }

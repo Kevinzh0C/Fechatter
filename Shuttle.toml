@@ -1,0 +1,7 @@
+name = "fechatter"
+
+[shuttle-shared-db.postgres]
+local_uri = "postgres://postgres:postgres@localhost/fechatter"
+
+# 注：这是一个多服务项目
+[workspace]
