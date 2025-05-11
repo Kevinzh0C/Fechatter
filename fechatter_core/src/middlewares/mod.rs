@@ -18,7 +18,6 @@ use tracing::Level;
 use crate::models::AuthUser;
 use crate::models::jwt::AuthServiceTrait;
 
-
 pub use self::bearer_auth::verify_token_middleware;
 pub use self::custom_builder::*;
 pub use self::request_id::request_id_middleware;
