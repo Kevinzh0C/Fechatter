@@ -26,23 +26,19 @@ pub(crate) trait OpenApiRouter {
             auth::refresh_token_handler,
             auth::logout_handler,
             auth::logout_all_handler,
-            
             // Chat endpoints
             chat::list_chats_handler,
             chat::create_chat_handler,
             chat::update_chat_handler,
             chat::delete_chat_handler,
-            
             // Chat members endpoints
             chat_member::list_chat_members_handler,
             chat_member::add_chat_members_batch_handler,
             chat_member::remove_chat_member_handler,
             chat_member::transfer_chat_ownership_handler,
-            
             // Messages endpoints
             messages::send_message_handler,
             messages::list_messages_handler,
-            
             // Workspace endpoints
             workspace::list_all_workspace_users_handler,
             workspace::get_workspace_by_id
