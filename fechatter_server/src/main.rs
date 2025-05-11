@@ -38,7 +38,7 @@ async fn main(
   // Load app configuration
   let mut config = AppConfig::load().expect("Failed to load configuration");
 
-  config.server.db_url = pool.connect_options().connection_string().to_string();
+  config.server.db_url = pool.to_string();
 
   info!("Using Shuttle-provided PostgreSQL database");
 
