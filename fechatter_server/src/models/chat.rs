@@ -364,38 +364,42 @@ impl AppState {
     chat_id: i64,
     user_id: i64,
   ) -> Result<Vec<i64>, AppError> {
-    let chat_info = sqlx::query!(
-      "SELECT chat_members, created_by FROM chats WHERE id = $1 FOR UPDATE",
-      chat_id
-    )
-    .fetch_optional(&mut **tx)
-    .await?;
+    let query = "SELECT chat_members, created_by FROM chats WHERE id = $1 FOR UPDATE";
 
-    let chat_info = match chat_info {
-      Some(info) => info,
+    let chat_info_row = sqlx::query(query)
+      .bind(chat_id)
+      .fetch_optional(&mut **tx)
+      .await?;
+
+    let chat_info = match chat_info_row {
+      Some(row) => {
+        let created_by: i64 = row.get("created_by");
+        let chat_members: Vec<i64> = row.get("chat_members");
+        (created_by, chat_members)
+      }
       None => return Err(AppError::NotFound(vec![chat_id.to_string()])),
     };
 
-    if chat_info.created_by != user_id {
+    let (created_by, chat_members) = chat_info;
+
+    if created_by != user_id {
       return Err(AppError::ChatPermissionError(format!(
         "User {} is not the creator of chat {}",
         user_id, chat_id
       )));
     }
 
-    sqlx::query!("DELETE FROM chat_members WHERE chat_id = $1", chat_id)
-      .execute(&mut **tx)
-      .await?;
+    let query = "DELETE FROM chat_members WHERE chat_id = $1";
+    sqlx::query(query).bind(chat_id).execute(&mut **tx).await?;
 
-    let result = sqlx::query!("DELETE FROM chats WHERE id = $1", chat_id)
-      .execute(&mut **tx)
-      .await?;
+    let query = "DELETE FROM chats WHERE id = $1";
+    let result = sqlx::query(query).bind(chat_id).execute(&mut **tx).await?;
 
     if result.rows_affected() == 0 {
       return Err(AppError::NotFound(vec![chat_id.to_string()]));
     }
 
-    Ok(chat_info.chat_members)
+    Ok(chat_members)
   }
 }
 

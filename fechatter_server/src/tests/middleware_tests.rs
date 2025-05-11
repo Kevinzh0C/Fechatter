@@ -3,6 +3,7 @@ mod token_refresh_tests {
   use crate::{call_service, create_auth_service, setup_test_users, verify_token};
   use anyhow::Result;
   use fechatter_core::{RefreshTokenService, TokenService};
+  use sqlx::Row;
 
   #[tokio::test]
   async fn test_refresh_token_cookie_mechanism() -> Result<()> {
@@ -89,6 +90,7 @@ mod list_messages_auth_tests {
   };
   use anyhow::Result;
   use axum::extract::{Extension, Path, Query, State};
+  use sqlx::Row;
 
   #[tokio::test]
   async fn test_list_messages_requires_chat_membership() -> Result<()> {
@@ -110,13 +112,18 @@ mod list_messages_auth_tests {
       .await?;
 
     // 确认user3不是聊天成员
-    let is_member = sqlx::query_scalar!(
-      "SELECT EXISTS(SELECT 1 FROM chat_members WHERE chat_id = $1 AND user_id = $2) as exists",
-      chat.id,
-      user3.id
-    )
-    .fetch_one(state.pool())
-    .await?;
+    let query =
+      "SELECT EXISTS(SELECT 1 FROM chat_members WHERE chat_id = $1 AND user_id = $2) as exists";
+
+    let is_member_row = sqlx::query(query)
+      .bind(chat.id)
+      .bind(user3.id)
+      .fetch_one(state.pool())
+      .await?;
+
+    let is_member: Option<bool> = is_member_row
+      .try_get("exists")
+      .map_err(|e| anyhow::anyhow!("Failed to get exists: {}", e))?;
     assert!(!is_member.unwrap_or(true), "User3应该不是聊天成员");
 
     let non_member_auth = Extension(AuthUser {
@@ -150,13 +157,18 @@ mod list_messages_auth_tests {
 
     // 如果要做更完整的测试，可以加上：
     // 模拟中间件校验逻辑
-    let middleware_would_allow = sqlx::query_scalar!(
-      "SELECT EXISTS(SELECT 1 FROM chat_members WHERE chat_id = $1 AND user_id = $2) as exists",
-      chat.id,
-      user3.id
-    )
-    .fetch_one(state.pool())
-    .await?;
+    let query =
+      "SELECT EXISTS(SELECT 1 FROM chat_members WHERE chat_id = $1 AND user_id = $2) as exists";
+
+    let middleware_row = sqlx::query(query)
+      .bind(chat.id)
+      .bind(user3.id)
+      .fetch_one(state.pool())
+      .await?;
+
+    let middleware_would_allow: Option<bool> = middleware_row
+      .try_get("exists")
+      .map_err(|e| anyhow::anyhow!("Failed to get exists: {}", e))?;
     assert!(
       !middleware_would_allow.unwrap_or(true),
       "中间件应该会阻止非成员访问"

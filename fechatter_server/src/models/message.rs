@@ -3,6 +3,7 @@ use crate::AppError;
 use crate::AppState;
 
 use fechatter_core::{Message, error::CoreError, models::CreateMessage, models::ListMessages};
+use sqlx::Row;
 use std::str::FromStr;
 use uuid;
 
@@ -80,7 +81,7 @@ impl AppState {
       _ => 100,
     };
 
-    let messages: Vec<Message> = sqlx::query_as(
+    let messages: Vec<Message> = sqlx::query_as::<_, Message>(
       r#"
         SELECT id, chat_id, sender_id, content, files, created_at::timestamptz, idempotency_key
         FROM messages
