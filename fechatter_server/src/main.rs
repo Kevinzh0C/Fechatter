@@ -36,9 +36,9 @@ async fn main(
     .expect("Failed to run migrations");
 
   // Load app configuration
-  let mut config = AppConfig::load().unwrap_or_default();
+  let mut config = AppConfig::load().expect("Failed to load configuration");
 
-  config.server.db_url = pool.connect_lazy_options().connection_string().to_string();
+  config.server.db_url = pool.connect_options().connection_string().to_string();
 
   info!("Using Shuttle-provided PostgreSQL database");
 
