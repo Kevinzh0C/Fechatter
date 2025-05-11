@@ -20,11 +20,12 @@ async fn main(
   // Load app configuration
   let mut config = AppConfig::load().expect("Failed to load configuration");
   
-  config.server.db_url = pool.connect_opts().get_database()
-    .map(|db| format!("postgres://{}", db))
-    .unwrap_or_else(|| pool.to_string());
-
-  info!("Using Shuttle-provided PostgreSQL database: {}", config.server.db_url);
+  if let Ok(db_url) = std::env::var("DATABASE_URL") {
+    config.server.db_url = db_url;
+    info!("Using Shuttle-provided PostgreSQL database");
+  } else {
+    info!("Using configured database from config file");
+  }
 
   let state = AppState::try_new(config)
     .await
