@@ -3,7 +3,7 @@ use shuttle_runtime::SecretStore;
 use sqlx::PgPool;
 use tracing::info;
 
-mod migration;
+mod migrations;
 
 #[shuttle_runtime::main]
 async fn main(
@@ -12,7 +12,7 @@ async fn main(
 ) -> shuttle_axum::ShuttleAxum {
   
   info!("Running database migrations");
-  migration::run_migrations(&pool)
+  migrations::run_migrations(&pool)
     .await
     .expect("Failed to run migrations");
 
