@@ -7,7 +7,7 @@ use fechatter_core::jwt::{
   RefreshToken as CoreRefreshToken, RefreshTokenRepository, ReplaceTokenPayload, StoreTokenPayload,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row, postgres::PgRow};
 use std::sync::Arc;
 
 pub const REFRESH_TOKEN_EXPIRATION: usize = 14 * 24 * 60 * 60; // 14 days
@@ -175,17 +175,17 @@ impl RefreshTokenStorage {
 
     // 首先检查令牌是否已经被撤销或替换
     // 使用 FOR UPDATE 获取行锁，确保在事务期间其他会话无法修改该行
-    let token_status = sqlx::query!(
-      r#"
+    let query = r#"
       SELECT revoked, replaced_by 
       FROM refresh_tokens 
       WHERE id = $1
       FOR UPDATE
-      "#,
-      old_token_id
-    )
-    .fetch_optional(&mut *tx)
-    .await?;
+    "#;
+
+    let token_status = sqlx::query(query)
+      .bind(old_token_id)
+      .fetch_optional(&mut *tx)
+      .await?;
 
     // 如果令牌不存在或已经被撤销/替换，返回错误
     match token_status {
@@ -196,27 +196,35 @@ impl RefreshTokenStorage {
           old_token_id
         )]));
       }
-      Some(status) if status.revoked || status.replaced_by.is_some() => {
-        tx.rollback().await?;
-        return Err(AppError::JwtError(jsonwebtoken::errors::Error::from(
-          jsonwebtoken::errors::ErrorKind::InvalidToken,
-        )));
+      Some(status) => {
+        let revoked: bool = status
+          .try_get("revoked")
+          .map_err(|_| AppError::SqlxError(sqlx::Error::RowNotFound))?;
+        let replaced_by: Option<String> = status
+          .try_get("replaced_by")
+          .map_err(|_| AppError::SqlxError(sqlx::Error::RowNotFound))?;
+
+        if revoked || replaced_by.is_some() {
+          tx.rollback().await?;
+          return Err(AppError::JwtError(jsonwebtoken::errors::Error::from(
+            jsonwebtoken::errors::ErrorKind::InvalidToken,
+          )));
+        }
       }
-      _ => {} // 令牌存在且未被撤销
     }
 
     // 使用新令牌替换旧令牌
-    sqlx::query!(
-      r#"
+    let query = r#"
       UPDATE refresh_tokens
       SET revoked = TRUE, replaced_by = $1
       WHERE id = $2
-      "#,
-      &new_token_hash,
-      old_token_id
-    )
-    .execute(&mut *tx)
-    .await?;
+    "#;
+
+    sqlx::query(query)
+      .bind(&new_token_hash)
+      .bind(old_token_id)
+      .execute(&mut *tx)
+      .await?;
 
     // 创建新的刷新令牌
     let refresh_token = sqlx::query_as::<_, RefreshTokenEntity>(

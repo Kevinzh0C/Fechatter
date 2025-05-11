@@ -13,7 +13,6 @@ use crate::{
   models::{AuthUser, ChatMember},
 };
 
-/// 获取聊天成员列表
 #[utoipa::path(
     get,
     path = "/api/chats/{chat_id}/members",
@@ -121,17 +120,21 @@ pub(crate) async fn remove_chat_member_handler(
     user.id, payload, chat_id
   );
 
-  let is_deleted = state
+  match state
     .remove_group_chat_members(chat_id, user.id, payload)
-    .await?;
-
-  if is_deleted {
-    Ok(StatusCode::NO_CONTENT)
-  } else {
-    Err(AppError::ChatValidationError(format!(
-      "User {} was not found in chat {} or already removed.",
-      user.id, chat_id
-    )))
+    .await
+  {
+    Ok(is_deleted) => {
+      if is_deleted {
+        Ok(StatusCode::NO_CONTENT)
+      } else {
+        Err(AppError::ChatValidationError(format!(
+          "User {} was not found in chat {} or already removed.",
+          user.id, chat_id
+        )))
+      }
+    }
+    Err(e) => Err(e),
   }
 }
 
@@ -185,9 +188,9 @@ mod tests {
     assert_chat_member_count, assert_handler_error, assert_handler_success, auth_user,
     create_new_test_chat, setup_test_users,
   };
-
   use anyhow::Result;
   use axum::{Json, extract::Path, http::StatusCode, response::IntoResponse};
+  use sqlx::Row;
 
   #[tokio::test]
   async fn test_list_chat_members_handler_success() -> Result<()> {
@@ -409,10 +412,16 @@ mod tests {
     );
     assert_eq!(response_msg, "Chat ownership transferred successfully");
 
-    let updated_chat_info = sqlx::query!("SELECT created_by FROM chats WHERE id = $1", chat.id)
+    let query = "SELECT created_by FROM chats WHERE id = $1";
+    let updated_chat_info = sqlx::query(query)
+      .bind(chat.id)
       .fetch_one(state.pool())
       .await?;
-    assert_eq!(updated_chat_info.created_by, user2.id);
+
+    let created_by: i64 = updated_chat_info
+      .try_get("created_by")
+      .map_err(|e| AppError::SqlxError(e))?;
+    assert_eq!(created_by, user2.id);
 
     Ok(())
   }
