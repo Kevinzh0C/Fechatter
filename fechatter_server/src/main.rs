@@ -9,7 +9,7 @@ mod migration;
 #[shuttle_runtime::main]
 async fn main(
   #[shuttle_shared_db::Postgres] pool: PgPool,
-  #[shuttle_runtime::Secrets] secrets: SecretStore,
+  #[shuttle_runtime::Secrets] _secrets: SecretStore,
 ) -> shuttle_axum::ShuttleAxum {
   
   info!("Running database migrations");

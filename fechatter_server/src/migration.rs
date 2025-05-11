@@ -2,7 +2,7 @@ use anyhow::Result;
 use sqlx::PgPool;
 use tracing::info;
 
-sqlx::migrate!("../migrations");
+sqlx::migrate!();
 
 pub async fn run_migrations(pool: &PgPool) -> Result<()> {
   info!("Running embedded database migrations");
