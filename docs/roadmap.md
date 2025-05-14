@@ -19,7 +19,7 @@ Fechatter currently provides the following key features:
 
 ### Meilisearch Integration
 
-[Meilisearch](https://github.com/Kevinzh0C/meilisearch) will be integrated to provide powerful search capabilities:
+[Meilisearch](https://github.com/meilisearch/meilisearch) will be integrated to provide powerful search capabilities:
 
 - **Message Search**: Fast, typo-tolerant search across chat messages
 - **Search-as-you-type**: Real-time search results with sub-50ms response times
@@ -28,7 +28,7 @@ Fechatter currently provides the following key features:
 
 ### NATS JetStream Integration
 
-[NATS JetStream](https://github.com/Kevinzh0C/nats.rs) will enhance our real-time communication infrastructure:
+[NATS JetStream](https://github.com/nats-io/nats.rs) will enhance our real-time communication infrastructure:
 
 - **Persistent Message Streams**: Reliable message delivery with configurable storage
 - **Horizontal Scaling**: Improved scalability for notify servers
@@ -66,7 +66,7 @@ Fechatter currently provides the following key features:
 
 ### Pingora Gateway Configuration
 
-[Pingora](https://github.com/Kevinzh0C/pingora) will be implemented as an API gateway:
+[Pingora](https://github.com/cloudflare/pingora) will be implemented as an API gateway:
 
 - **High-Performance Proxy**: Efficient HTTP routing with Rust performance
 - **TLS Termination**: Secure connection handling

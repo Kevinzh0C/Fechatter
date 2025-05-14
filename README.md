@@ -33,7 +33,7 @@ The application enables users to:
 
 For detailed documentation on architecture, API endpoints, chat types, and more, see the [detailed documentation](./docs/detailed_documentation.md).
 
-For information about our development roadmap and upcoming features, see the [project roadmap](./docs/roadmap.md).
+For information about our development roadmap and upcoming features, see the [Project Roadmap](./docs/roadmap.md).
 
 ## Prerequisites
 
