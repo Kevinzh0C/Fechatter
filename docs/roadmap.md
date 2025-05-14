@@ -22,7 +22,6 @@ Fechatter currently provides the following key features:
 [Meilisearch](https://github.com/meilisearch/meilisearch) will be integrated to provide powerful search capabilities:
 
 - [ ] **Message Search**: Fast, typo-tolerant search across chat messages
-- [ ] **Search-as-you-type**: Real-time search results with sub-50ms response times
 - [ ] **Faceted Search**: Filter search results by date, sender, chat type, etc.
 - [ ] **Relevancy Tuning**: Customize search relevance based on message context and user preferences
 
