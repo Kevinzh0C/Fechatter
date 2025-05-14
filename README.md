@@ -23,7 +23,17 @@ The application enables users to:
 - Real-time communication using Server-Sent Events (SSE)
 - RESTful API design with PostgreSQL persistence
 
+## Upcoming Features
+
+- Meilisearch integration for powerful message search capabilities
+- NATS JetStream for enhanced real-time messaging infrastructure
+- Backend and frontend integration with TypeScript UI
+- ChatGPT chatbot service integration
+- OpenTelemetry monitoring and Pingora gateway integration
+
 For detailed documentation on architecture, API endpoints, chat types, and more, see the [detailed documentation](./docs/detailed_documentation.md).
+
+For information about our development roadmap and upcoming features, see the [project roadmap](./docs/roadmap.md).
 
 ## Prerequisites
 
