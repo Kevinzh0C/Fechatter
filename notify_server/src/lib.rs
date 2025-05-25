@@ -1,5 +1,6 @@
 mod config;
 mod error;
+mod nats_subscriber;
 mod notify;
 mod sse;
 
@@ -41,7 +42,15 @@ const INDEX_HTML: &str = include_str!("../index.html");
 
 pub async fn get_router(config: AppConfig) -> anyhow::Result<Router> {
   let state = AppState::new(config).expect("Failed to create app state");
-  notify::set_up_pg_listener(state.clone()).await?;
+
+  // Choose notification mechanism based on configuration
+  if state.config.messaging.enabled {
+    tracing::info!("Using NATS for messaging");
+    nats_subscriber::setup_nats_subscriber(state.clone()).await?;
+  } else {
+    tracing::info!("Using PostgreSQL NOTIFY for messaging");
+    notify::set_up_pg_listener(state.clone()).await?;
+  }
 
   let app = Router::new()
     .route("/events", get(sse_handler))

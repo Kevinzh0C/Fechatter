@@ -75,6 +75,15 @@ pub enum AppError {
 
   #[error("chat file error: {0}")]
   ChatFileError(String),
+
+  #[error("NATS error: {0}")]
+  NatsError(String),
+
+  #[error("event publishing error: {0}")]
+  EventPublishingError(String),
+
+  #[error("search error: {0}")]
+  SearchError(String),
 }
 
 impl ErrorMapper for AppError {
@@ -128,6 +137,9 @@ impl IntoResponse for AppError {
       AppError::Conflict(_) => StatusCode::CONFLICT,
       AppError::IOError(_) => StatusCode::INTERNAL_SERVER_ERROR,
       AppError::ChatFileError(_) => StatusCode::NOT_FOUND,
+      AppError::NatsError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+      AppError::EventPublishingError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+      AppError::SearchError(_) => StatusCode::INTERNAL_SERVER_ERROR,
     };
 
     let code = status.as_u16();

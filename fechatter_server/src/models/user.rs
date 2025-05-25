@@ -445,10 +445,17 @@ mod tests {
   async fn create_user_should_work() -> Result<()> {
     let (_tdb, state, _users) = setup_test_users!(0).await;
 
-    let input = CreateUser::new("Alice", "alice1@acme.test", "Acme", "hunter4332");
+    // Generate unique email to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_email = format!("alice{}@acme.test", timestamp);
+
+    let input = CreateUser::new("Alice", &unique_email, "Acme", "hunter4332");
     let user = state.create_user(&input, None).await?;
 
-    assert_eq!(user.email, "alice1@acme.test");
+    assert_eq!(user.email, unique_email);
     assert_eq!(user.fullname, "Alice");
     assert!(user.id > 0);
 

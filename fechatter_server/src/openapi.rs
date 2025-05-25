@@ -4,6 +4,8 @@ use axum::Router;
 use fechatter_core::{
   AuthUser, Chat, ChatType, ChatUser, CreateChat, CreateMessage, CreateUser, ListMessages, Message,
   SigninUser, User, Workspace,
+  SearchMessages, SearchResult, SearchableMessage, SearchMetadata, PaginationInfo,
+  TextHighlight, SearchType, DateRange, SortOrder, SearchFacets, FacetCount, DateFacet, SenderFacet,
 };
 use utoipa::{
   Modify, OpenApi,
@@ -43,6 +45,7 @@ pub(crate) trait OpenApiRouter {
             // Messages endpoints
             messages::send_message_handler,
             messages::list_messages_handler,
+            messages::search_messages,
             
             // Workspace endpoints
             workspace::list_all_workspace_users_handler,
@@ -64,6 +67,21 @@ pub(crate) trait OpenApiRouter {
                 User, 
                 Workspace,
                 
+                // Search related components
+                SearchMessages,
+                SearchResult,
+                SearchableMessage,
+                SearchMetadata,
+                PaginationInfo,
+                TextHighlight,
+                SearchType,
+                DateRange,
+                SortOrder,
+                SearchFacets,
+                FacetCount,
+                DateFacet,
+                SenderFacet,
+                
                 auth::AuthResponse
             )
         ),
@@ -73,6 +91,7 @@ pub(crate) trait OpenApiRouter {
             (name = "chats", description = "Chat management operations"),
             (name = "chat members", description = "Chat member management operations"),
             (name = "messages", description = "Message operations"),
+            (name = "search", description = "Search operations"),
             (name = "workspace", description = "Workspace operations")
         )
     )]

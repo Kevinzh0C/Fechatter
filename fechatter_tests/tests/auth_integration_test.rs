@@ -2,16 +2,16 @@
 mod auth_integration_tests {
   use anyhow::Result;
   use axum::{
-    Router,
-    body::{Body, to_bytes},
-    http::{Method, Request, StatusCode, header},
+    body::{to_bytes, Body},
+    http::{header, Method, Request, StatusCode},
     response::Response,
+    Router,
   };
   use axum_extra::extract::cookie::Cookie;
   use fechatter_core::CreateUser;
-  use fechatter_server::AppState;
   use fechatter_server::handlers::auth::AuthResponse;
-  use serde_json::{Value, json};
+  use fechatter_server::AppState;
+  use serde_json::{json, Value};
   use sqlx_db_tester::TestPg;
   use tower::ServiceExt;
 
@@ -64,7 +64,7 @@ mod auth_integration_tests {
       .iter()
       .filter_map(|v| v.to_str().ok())
       .filter_map(|s| Cookie::parse(s).ok())
-      .find(|c| c.name() == name)
+      .find(|c: &Cookie| c.name() == name)
   }
 
   // Helper function - register a user and return the auth tokens

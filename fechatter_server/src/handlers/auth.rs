@@ -498,9 +498,16 @@ mod tests {
   async fn signup_handler_should_work() -> Result<()> {
     let (_tdb, state, _users) = setup_test_users!(0).await;
 
+    // Generate unique email to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_email = format!("testuser1{}@acme.test", timestamp);
+
     let payload = CreateUser {
       fullname: "Test User".to_string(),
-      email: "testuser1@acme.test".to_string(),
+      email: unique_email,
       password: "password".to_string(),
       workspace: "Acme".to_string(),
     };

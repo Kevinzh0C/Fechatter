@@ -23,3 +23,4 @@ dashmap = { workspace = true }
 fechatter_core = { workspace = true }
 jsonwebtoken = { workspace = true }
 chrono = { workspace = true }
+async-nats = "0.41.0"

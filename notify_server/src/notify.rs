@@ -84,9 +84,9 @@ impl From<MessagePayload> for Message {
 // Payload for duplicate_message_attempted event
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DuplicateMessagePayload {
-  idempotency_key: Uuid,
-  chat_id: i64,
-  sender_id: i64,
+  pub idempotency_key: Uuid,
+  pub chat_id: i64,
+  pub sender_id: i64,
 }
 
 pub async fn set_up_pg_listener(state: AppState) -> Result<()> {

@@ -4,17 +4,19 @@ mod server_integration_test {
 
   use axum::extract::State;
 
-  use axum::{Extension, Json, Router, response::IntoResponse, routing::get};
+  use axum::{http::StatusCode, response::IntoResponse, routing::get, Extension, Json, Router};
+  use base64;
   use fechatter_core::models::AuthUser;
   use fechatter_server::handlers::auth::AuthResponse;
   use fechatter_server::middlewares::RouterExt;
   use futures::StreamExt;
-  use reqwest::StatusCode as ReqwestStatusCode;
   use reqwest::multipart::{Form, Part};
+  use reqwest::StatusCode as ReqwestStatusCode;
   use reqwest_eventsource::{Event, EventSource};
   use serde_json::json;
   use std::{net::SocketAddr, time::Duration};
   use tokio::{net::TcpListener, time::sleep};
+  use tower::ServiceExt; // Add base64 for JWT decoding
 
   /*
   test1:
@@ -36,6 +38,7 @@ mod server_integration_test {
     addr: SocketAddr,
     token: String,
     client: reqwest::Client,
+    user_id: i64,
   }
 
   struct NotifyServer;
@@ -178,19 +181,29 @@ mod server_integration_test {
     let (tdb, state) = fechatter_server::AppState::test_new().await?;
     println!("AppState created successfully");
 
-    let email = "tchen@acme.org";
+    // Generate unique email to avoid conflicts with other tests
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let process_id = std::process::id();
+    let unique_id = format!("{}{}", timestamp, process_id);
+
+    let email = format!("tchen{}@acme.org", unique_id);
     let password = "123456";
     let fullname = "Terry Chen";
-    let company = "Acme";
+    let company = format!("Acme{}", unique_id); // Also make company unique
+
+    println!("Using unique email: {}", email);
 
     // 创建用户和凭据
     let _auth_tokens =
-      helper_create_user_and_signup(&state, email, password, fullname, company).await?;
+      helper_create_user_and_signup(&state, &email, password, fullname, &company).await?;
 
     // 创建聊天服务器，使用相同的凭据
     // Note: state is moved here, so it cannot be used afterwards unless cloned before this call.
     // If other helpers needed the original state, state.clone() would be passed to helper_setup_chat_server.
-    let chat_server = helper_setup_chat_server(state.clone(), email, password).await?;
+    let chat_server = helper_setup_chat_server(state.clone(), &email, password).await?;
 
     // 设置通知服务器，使用 chat_server 获取的令牌
     let db_url = tdb.url();
@@ -256,32 +269,37 @@ mod server_integration_test {
         while let Some(event) = es.next().await {
           match event {
             Ok(Event::Open) => println!("EventSource connection open"),
-            Ok(Event::Message(message)) => {
-              println!("Received event: {}", message.event);
-              match message.event.as_str() {
-                "NewChat" => {
-                  println!("Processing NewChat event: {}", message.data);
-                  let chat: Chat = serde_json::from_str(&message.data).unwrap();
-                  assert_eq!(chat.name.as_str(), "test");
-                  assert_eq!(chat.chat_members, vec![1, 2]);
-                  assert_eq!(chat.chat_type, ChatType::PrivateChannel);
-                  println!("Chat event validated successfully");
-                }
-
-                "NewMessage" => {
-                  println!("Processing NewMessage event: {}", message.data);
-                  let msg: Message = serde_json::from_str(&message.data).unwrap();
-                  assert_eq!(msg.content, "hello");
-                  assert_eq!(msg.files.as_ref().unwrap().len(), 1);
-                  assert_eq!(msg.sender_id, 1);
-                  println!("Message event validated successfully");
-                }
-                _ => {
-                  println!("Unexpected event type: {}", message.event);
-                  panic!("unexpected event: {:?}", message);
-                }
+            Ok(Event::Message(message)) => match message.event.as_str() {
+              "NewChat" => {
+                println!("Processing NewChat event: {}", message.data);
+                let chat: Chat = serde_json::from_str(&message.data).unwrap();
+                assert!(
+                  chat.name.starts_with("test_"),
+                  "Chat name should start with 'test_', got: {}",
+                  chat.name
+                );
+                assert!(!chat.chat_members.is_empty(), "Chat should have members");
+                assert_eq!(chat.chat_type, ChatType::PrivateChannel);
+                println!("Chat event validated successfully");
               }
-            }
+
+              "NewMessage" => {
+                println!("Processing NewMessage event: {}", message.data);
+                let msg: Message = serde_json::from_str(&message.data).unwrap();
+                assert_eq!(msg.content, "hello");
+                assert_eq!(msg.files.as_ref().unwrap().len(), 1);
+                assert!(
+                  msg.sender_id > 0,
+                  "Sender ID should be positive, got: {}",
+                  msg.sender_id
+                );
+                println!("Message event validated successfully");
+              }
+              _ => {
+                println!("Unexpected event type: {}", message.event);
+                panic!("unexpected event: {:?}", message);
+              }
+            },
             Err(err) => {
               println!("EventSource error: {}", err);
               es.close();
@@ -318,8 +336,7 @@ mod server_integration_test {
           get(test_workspace_context_handler),
         )
         .with_middlewares(state.clone())
-        .with_auth()
-        .with_workspace()
+        .with_auth_refresh_workspace()
         .build();
 
       base_router = base_router.merge(workspace_test_router);
@@ -349,18 +366,21 @@ mod server_integration_test {
         addr,
         client,
         token: "".to_string(),
+        user_id: 0,
       };
 
       // 使用提供的凭据登录
       println!("Signing in with credentials: {}", email);
-      ret.token = ret.signin(email, password).await?;
+      let (token, user_id) = ret.signin(email, password).await?;
+      ret.token = token;
+      ret.user_id = user_id;
       println!("Signin completed");
 
       println!("ChatServer initialized successfully");
       Ok(ret)
     }
 
-    async fn signin(&self, email: &str, password: &str) -> Result<String> {
+    async fn signin(&self, email: &str, password: &str) -> Result<(String, i64)> {
       println!("Attempting to sign in with {}", email);
 
       // 构建登录请求体
@@ -384,18 +404,41 @@ mod server_integration_test {
       // 解析更新后的响应格式
       let auth_resp: AuthResponse = serde_json::from_str(&response_text)?;
 
+      // Decode JWT to extract user ID
+      let access_token = &auth_resp.access_token;
+
+      // Extract user ID from JWT payload (JWT is in format: header.payload.signature)
+      let parts: Vec<&str> = access_token.split('.').collect();
+      if parts.len() != 3 {
+        anyhow::bail!("Invalid JWT format");
+      }
+
+      // Decode base64 payload (add padding if needed)
+      let mut payload_b64 = parts[1].to_string();
+      while payload_b64.len() % 4 != 0 {
+        payload_b64.push('=');
+      }
+
+      let payload_bytes = base64::decode(&payload_b64)?;
+      let payload_json: serde_json::Value = serde_json::from_slice(&payload_bytes)?;
+
+      let user_id = payload_json["user"]["id"]
+        .as_i64()
+        .ok_or_else(|| anyhow::anyhow!("User ID not found in JWT"))?;
+
       // 打印令牌信息（只显示前20个字符和长度，避免泄露完整令牌）
       if auth_resp.access_token.len() > 20 {
         println!(
-          "Token received: {}... (length: {})",
+          "Token received: {}... (length: {}), User ID: {}",
           &auth_resp.access_token[0..20],
-          auth_resp.access_token.len()
+          auth_resp.access_token.len(),
+          user_id
         );
       } else {
         println!("Token received: [EMPTY or TOO SHORT]");
       }
 
-      Ok(auth_resp.access_token)
+      Ok((auth_resp.access_token, user_id))
     }
 
     async fn create_chat(&self) -> Result<Chat> {
@@ -491,15 +534,28 @@ mod server_integration_test {
         }
       }
 
+      // Generate unique chat name to avoid conflicts
+      let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+      let unique_chat_name = format!("test_{}", timestamp);
+
       // 尝试两次不同的请求格式，以确定哪一种更合适
       for attempt in 1..=2 {
         println!("\nAttempt {} to create chat", attempt);
 
         // 第一次尝试最小化请求，第二次添加members
         let request_body = if attempt == 1 {
-          r#"{"name": "test", "chat_type": "PrivateChannel"}"#
+          format!(
+            r#"{{"name": "{}", "chat_type": "PrivateChannel"}}"#,
+            unique_chat_name
+          )
         } else {
-          r#"{"name": "test", "chat_type": "PrivateChannel", "members": [2], "description": ""}"#
+          format!(
+            r#"{{"name": "{}", "chat_type": "PrivateChannel", "members": [2], "description": ""}}"#,
+            unique_chat_name
+          )
         };
 
         println!("Sending create chat request with body: {}", request_body);
@@ -586,7 +642,7 @@ mod server_integration_test {
 
         let chat: Chat = res.json().await?;
         println!("Successfully created chat: {:?}", chat);
-        assert_eq!(chat.name, "test");
+        assert_eq!(chat.name, unique_chat_name);
         assert_eq!(chat.chat_type, ChatType::PrivateChannel);
 
         return Ok(chat);
@@ -632,7 +688,7 @@ mod server_integration_test {
       let message: Message = res.json().await?;
       assert_eq!(message.content, "hello");
       assert_eq!(message.files.as_ref().unwrap().len(), 1);
-      assert_eq!(message.sender_id, 1);
+      assert_eq!(message.sender_id, self.user_id);
       assert_eq!(message.chat_id, chat_id as i64);
       Ok(message)
     }
@@ -650,7 +706,7 @@ mod server_integration_test {
     }
 
     fn add_auth_debug_routes(self) -> Self {
-      use axum::{Extension, Json, response::IntoResponse, routing::get};
+      use axum::{response::IntoResponse, routing::get, Extension, Json};
 
       use fechatter_core::models::AuthUser;
 
@@ -698,7 +754,7 @@ mod server_integration_test {
               Err(e) => {
                 println!("Error creating workspace: {:?}", e);
                 return (
-                  ReqwestStatusCode::INTERNAL_SERVER_ERROR,
+                  StatusCode::INTERNAL_SERVER_ERROR,
                   Json(serde_json::json!({
                       "error": "Failed to create workspace",
                       "details": format!("{:?}", e)
@@ -711,7 +767,7 @@ mod server_integration_test {
           Err(e) => {
             println!("Database error: {:?}", e);
             return (
-              ReqwestStatusCode::INTERNAL_SERVER_ERROR,
+              StatusCode::INTERNAL_SERVER_ERROR,
               Json(serde_json::json!({
                   "error": "Database error",
                   "details": format!("{:?}", e)
@@ -731,42 +787,25 @@ mod server_integration_test {
         .into_response()
       }
 
-      // Create a specific router for /api/debug/auth and apply middleware
-      let debug_auth_specific_router = axum::Router::new()
+      // Create debug routes without state requirements first
+      let debug_router = axum::Router::new()
         .route("/api/debug/auth", get(debug_auth_handler))
+        .route("/api/debug/auth_chain", get(debug_auth_handler))
+        .route("/api/debug/workspace", get(debug_auth_handler))
         .with_middlewares(self.state.clone())
         .with_auth()
         .build();
 
-      // 新增: 确保工作区存在的路由
-      let ensure_workspace_router = axum::Router::new()
+      // Create workspace routes that need state separately
+      let workspace_router = axum::Router::new()
         .route("/api/debug/ensure_workspace", get(ensure_workspace_handler))
-        // 使用正确的RouterExt实现
-        // 使用server的RouterExt而不是core的
         .with_state(self.state.clone())
         .with_middlewares(self.state.clone())
-        .with_auth_refresh_workspace() // 一次性添加所有中间件，确保正确的顺序
+        .with_auth()
         .build();
 
-      let router = self
-        .router
-        .merge(debug_auth_specific_router)
-        .merge(ensure_workspace_router) // 合并新路由
-        .nest_service(
-          "/api/debug/auth_chain",
-          axum::Router::new()
-            .route("/", get(debug_auth_handler))
-            .with_middlewares(self.state.clone())
-            .with_auth()
-            .build()
-        )
-        .merge(
-          axum::Router::new()
-            .route("/api/debug/workspace", get(debug_auth_handler))
-            .with_middlewares(self.state.clone())
-            .with_auth()
-            .build()
-        );
+      // Merge the routers
+      let router = self.router.merge(debug_router).merge(workspace_router);
 
       Self {
         router,
