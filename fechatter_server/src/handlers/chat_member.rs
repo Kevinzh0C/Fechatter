@@ -193,19 +193,26 @@ mod tests {
   use sqlx::Row;
 
   #[tokio::test]
-  async fn test_list_chat_members_handler_success() -> Result<()> {
+  async fn list_chat_members_handler_should_work() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(3).await;
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];
     let auth_user = auth_user!(user1);
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("List Member Test Chat {}", timestamp);
+
     let chat = create_new_test_chat!(
       state,
       user1,
       ChatType::Group,
       [user2, user3],
-      "List Member Test Chat"
+      &unique_chat_name
     )
     .await;
 
@@ -215,7 +222,7 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_list_chat_members_handler_not_member() -> Result<()> {
+  async fn list_chat_members_handler_should_deny_non_member() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(4).await;
     let user1 = &users[0];
     let user2 = &users[1];
@@ -223,12 +230,19 @@ mod tests {
     let user4 = &users[3];
     let _non_member_auth = auth_user!(user4);
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("List Member Permission Test {}", timestamp);
+
     let chat = create_new_test_chat!(
       state,
       user1,
       ChatType::Group,
       [user2, user3],
-      "List Member Permission Test"
+      &unique_chat_name
     )
     .await;
 
@@ -245,7 +259,7 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_add_chat_members_batch_handler_success() -> Result<()> {
+  async fn add_chat_members_batch_handler_should_work() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(4).await;
     let user1 = &users[0];
     let user2 = &users[1];
@@ -253,12 +267,19 @@ mod tests {
     let user4 = &users[3];
     let creator_auth = auth_user!(user1);
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Add Member Batch Test {}", timestamp);
+
     let chat = create_new_test_chat!(
       state,
       user1,
       ChatType::Group,
       [user2, user3],
-      "Add Member Batch Test"
+      &unique_chat_name
     )
     .await;
 
@@ -285,7 +306,7 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_add_chat_members_batch_handler_permission_denied() -> Result<()> {
+  async fn add_chat_members_batch_handler_should_deny_non_creator() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(4).await;
     let user1 = &users[0];
     let user2 = &users[1];
@@ -293,12 +314,19 @@ mod tests {
     let user4 = &users[3];
     let non_creator_auth = auth_user!(user2);
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Add Member Perm Test {}", timestamp);
+
     let chat = create_new_test_chat!(
       state,
       user1,
       ChatType::Group,
       [user2, user3],
-      "Add Member Perm Test"
+      &unique_chat_name
     )
     .await;
 
@@ -318,7 +346,7 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_remove_chat_member_handler_success() -> Result<()> {
+  async fn remove_chat_member_handler_should_work() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(4).await;
     let user1 = &users[0];
     let user2 = &users[1];
@@ -326,12 +354,19 @@ mod tests {
     let user4 = &users[3];
     let creator_auth = auth_user!(user1);
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Remove Member Test {}", timestamp);
+
     let chat = create_new_test_chat!(
       state,
       user1,
       ChatType::Group,
       [user2, user3, user4],
-      "Remove Member Test"
+      &unique_chat_name
     )
     .await;
 
@@ -353,7 +388,7 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_remove_chat_member_handler_permission_denied() -> Result<()> {
+  async fn remove_chat_member_handler_should_deny_non_creator() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(4).await;
     let user1 = &users[0];
     let user2 = &users[1];
@@ -361,12 +396,19 @@ mod tests {
     let user4 = &users[3];
     let non_creator_auth = auth_user!(user2);
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Remove Member Perm Test {}", timestamp);
+
     let chat = create_new_test_chat!(
       state,
       user1,
       ChatType::Group,
       [user2, user3, user4],
-      "Remove Member Perm Test"
+      &unique_chat_name
     )
     .await;
 
@@ -385,19 +427,26 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_transfer_chat_ownership_handler_success() -> Result<()> {
+  async fn transfer_chat_ownership_handler_should_work() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(3).await;
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];
     let creator_auth = auth_user!(user1);
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Transfer Owner Test {}", timestamp);
+
     let chat = create_new_test_chat!(
       state,
       user1,
       ChatType::Group,
       [user2, user3],
-      "Transfer Owner Test"
+      &unique_chat_name
     )
     .await;
 
@@ -427,19 +476,26 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_transfer_chat_ownership_handler_not_creator() -> Result<()> {
+  async fn transfer_chat_ownership_handler_should_deny_non_creator() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(3).await;
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];
     let non_creator_auth = auth_user!(user2);
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Transfer Owner Perm Test {}", timestamp);
+
     let chat = create_new_test_chat!(
       state,
       user1,
       ChatType::Group,
       [user2, user3],
-      "Transfer Owner Perm Test"
+      &unique_chat_name
     )
     .await;
 
@@ -456,7 +512,7 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_transfer_chat_ownership_handler_target_not_member() -> Result<()> {
+  async fn transfer_chat_ownership_handler_should_reject_non_member_target() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(4).await;
     let user1 = &users[0];
     let user2 = &users[1];
@@ -464,12 +520,19 @@ mod tests {
     let user4 = &users[3];
     let creator_auth = auth_user!(user1);
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Transfer Target Member Test {}", timestamp);
+
     let chat = create_new_test_chat!(
       state,
       user1,
       ChatType::Group,
       [user2, user3],
-      "Transfer Target Member Test"
+      &unique_chat_name
     )
     .await;
 

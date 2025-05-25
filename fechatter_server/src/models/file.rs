@@ -13,11 +13,25 @@ impl ChatFile {
   pub fn new(ws_id: i64, filename: &str, data: &[u8]) -> Self {
     let sha1_file_hash = Sha1::digest(data);
     let hash = hex::encode(sha1_file_hash);
+
+    // 安全的扩展名提取逻辑
     let ext = filename
       .rsplit_once('.')
-      .unwrap_or(("", "txt"))
-      .1
-      .to_string();
+      .map(|(_, ext)| {
+        // 只保留安全的字符：字母、数字、连字符
+        let safe_ext: String = ext
+          .chars()
+          .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
+          .collect();
+
+        // 如果过滤后为空或过长，使用默认扩展名
+        if safe_ext.is_empty() || safe_ext.len() > 10 {
+          "txt".to_string()
+        } else {
+          safe_ext.to_lowercase()
+        }
+      })
+      .unwrap_or_else(|| "txt".to_string());
 
     Self {
       workspace_id: ws_id,

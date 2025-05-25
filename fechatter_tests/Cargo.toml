@@ -1,39 +1,44 @@
 [package]
 name = "fechatter_tests"
 version = "0.1.0"
-edition = "2024"
-
-
-[dev-dependencies]
-anyhow = { workspace = true }
-axum = { workspace = true }
-axum-extra = { workspace = true }
-fechatter_core = { workspace = true }
-fechatter_server = { workspace = true, features = ["test-util"] }
-notify_server = { workspace = true }
-reqwest = { version = "0.12.4", default-features = false, features = [
-  "rustls-tls",
-  "json",
-  "multipart",
-  "stream",
-] }
-sqlx = { workspace = true }
-tower = { workspace = true }
-tower-http = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-uuid = { workspace = true }
-chrono = { workspace = true }
-reqwest-eventsource = "0.6.0"
-serde = { workspace = true }
-serde_json = "1.0.116"
-tokio = { workspace = true }
-tokio-stream = { workspace = true }
-tokio-util = { workspace = true }
-sqlx-db-tester = "0.6.0"
+edition = "2021"
 
 [dependencies]
+# Core dependencies
+tokio = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+tower = { workspace = true }
 
-hyper = "1.6.0"
-futures = "0.3.30"
-bytes = "1.10.1"
+# HTTP and API testing
+reqwest = { version = "0.11", features = ["json", "cookies", "multipart"] }
+axum = { workspace = true }
+axum-extra = { workspace = true }
+futures = { workspace = true }
+reqwest-eventsource = "0.6"
+
+# Database testing
+sqlx = { workspace = true }
+sqlx-db-tester = "0.6.0"
+
+# NATS testing
+async-nats = "0.41"
+tokio-stream = { workspace = true }
+async-stream = "0.3"
+
+# Time handling
+chrono = { workspace = true }
+
+# Test utilities
+tempfile = "3.10"
+md5 = "0.7"
+base64 = "0.22.1" 
+
+# Local project dependencies
+fechatter_core = { workspace = true }
+fechatter_server = { path = "../fechatter_server", features = ["test-util"] }
+notify_server = { workspace = true }

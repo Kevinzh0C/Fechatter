@@ -100,10 +100,17 @@ mod list_messages_auth_tests {
     let user3 = &users[2]; // This user will NOT be a member
     let user4 = &users[3];
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Test Chat {}", timestamp);
+
     let chat = state
       .create_new_chat(
         user1.id,
-        "Test Chat",
+        &unique_chat_name,
         ChatType::Group,
         Some(vec![user1.id, user2.id, user4.id]), // Only user1, user2, and user4 are members
         Some("Test chat for messages"),
@@ -184,10 +191,17 @@ mod list_messages_auth_tests {
     let user2 = &users[1];
     let user3 = &users[2];
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Test Chat {}", timestamp);
+
     let chat = state
       .create_new_chat(
         user1.id,
-        "Test Chat",
+        &unique_chat_name,
         ChatType::Group,
         Some(vec![user1.id, user2.id, user3.id]), // All users are members
         Some("Test chat for messages"),

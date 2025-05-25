@@ -23,14 +23,25 @@ macro_rules! setup_test_users {
         "Tracy", "Ursula", "Victor", "Wendy", "Xavier", "Yvonne", "Zoe",
       ];
 
+      // Generate unique identifier combining timestamp, process ID, and thread ID
+      let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+      let process_id = std::process::id();
+      let thread_id = std::thread::current().id();
+      // Create a simple hash of thread ID to make it numeric
+      let thread_hash = format!("{:?}", thread_id).len() as u64;
+      let unique_id = format!("{}{}{}", timestamp, process_id, thread_hash);
+
       for i in 0..($num_users as usize) {
         let fullname = names
           .get(i)
           .map(|&n| n.to_string())
           .unwrap_or_else(|| format!("User {}", i + 1));
         let email_name_part = fullname.to_lowercase().replace(' ', "");
-        // Use index for uniqueness within the test run
-        let email = format!("{}{}@acme.test", email_name_part, i + 1);
+        // Use unique_id and index for uniqueness across test runs
+        let email = format!("{}{}{}@acme.test", email_name_part, i + 1, unique_id);
         let password = "password";
         let workspace = "Acme";
         let user_payload = $crate::models::CreateUser::new(&fullname, &email, &workspace, password);

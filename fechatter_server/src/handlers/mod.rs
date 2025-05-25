@@ -6,6 +6,8 @@ pub mod workspace;
 
 use axum::response::IntoResponse;
 
+pub use messages::search_messages;
+
 pub async fn index_handler() -> impl IntoResponse {
   "index"
 }

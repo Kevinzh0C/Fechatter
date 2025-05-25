@@ -619,11 +619,18 @@ mod tests {
     let user2 = &users[1];
     let user3 = &users[2];
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Test Chat {}", timestamp);
+
     // Create a group chat with user1 as creator and user2, user3 as members
     let chat = state
       .create_new_chat(
         user1.id,
-        "Test Chat",
+        &unique_chat_name,
         ChatType::Group,
         Some(vec![user2.id, user3.id]),
         None,
@@ -674,11 +681,18 @@ mod tests {
     let user2 = &users[1];
     let user3 = &users[2];
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Test Chat {}", timestamp);
+
     // Create a chat with the user as creator
     let chat = state
       .create_new_chat(
         user1.id,
-        "Test Chat",
+        &unique_chat_name,
         ChatType::Group,
         Some(vec![user2.id, user3.id]),
         Some("Test Description"),
@@ -715,11 +729,18 @@ mod tests {
     let user2 = &users[1];
     let user3 = &users[2];
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Test Chat {}", timestamp);
+
     // Create a chat with user1 as creator and user2, user3 as members
     let chat = state
       .create_new_chat(
         user1.id,
-        "Test Chat",
+        &unique_chat_name,
         ChatType::Group,
         Some(vec![user2.id, user3.id]),
         None,
@@ -773,11 +794,18 @@ mod tests {
     let user4 = &users[3];
     let user5 = &users[4];
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Test Chat {}", timestamp);
+
     // Create a chat with user1 as creator and initial members
     let chat = state
       .create_new_chat(
         user1.id,
-        "Test Chat",
+        &unique_chat_name,
         ChatType::Group,
         Some(vec![user2.id, user3.id]),
         None,
@@ -857,11 +885,18 @@ mod tests {
     let user2 = &users[1];
     let user3 = &users[2];
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Test Chat {}", timestamp);
+
     // Create a chat with user1 as creator and user2, user3 as members
     let chat = state
       .create_new_chat(
         user1.id,
-        "Test Chat",
+        &unique_chat_name,
         ChatType::Group,
         Some(vec![user2.id, user3.id]),
         None,

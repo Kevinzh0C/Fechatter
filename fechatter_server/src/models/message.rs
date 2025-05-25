@@ -5,6 +5,7 @@ use crate::AppState;
 use fechatter_core::{Message, error::CoreError, models::CreateMessage, models::ListMessages};
 use sqlx::Row;
 use std::str::FromStr;
+use tracing::{error, info, warn};
 use uuid;
 
 impl AppState {
@@ -46,8 +47,24 @@ impl AppState {
     .fetch_optional(self.pool())
     .await?;
 
-    // 如果已经存在相同的消息，则直接返回
+    // 如果已经存在相同的消息，发布重复消息尝试事件并返回现有消息
     if let Some(message) = existing_message {
+      info!(
+        "Duplicate message detected: idempotency_key={}",
+        input.idempotency_key
+      );
+
+      // 发布重复消息尝试事件（如果启用了NATS）
+      if let Some(event_publisher) = self.event_publisher() {
+        if let Err(e) = event_publisher
+          .publish_duplicate_message_attempted(input.idempotency_key, chat_id, user_id)
+          .await
+        {
+          error!("Failed to publish duplicate message attempted event: {}", e);
+          // 不阻止消息返回，只记录错误
+        }
+      }
+
       return Ok(message);
     }
 
@@ -65,7 +82,73 @@ impl AppState {
     .fetch_one(self.pool())
     .await?;
 
+    info!(
+      "Message created successfully: message_id={}, chat_id={}, sender_id={}",
+      message.id, chat_id, user_id
+    );
+
+    // 发布消息创建事件（如果启用了NATS）
+    if let Some(event_publisher) = self.event_publisher() {
+      match self.get_chat_members(chat_id).await {
+        Ok(chat_members) => {
+          if let Err(e) = event_publisher
+            .publish_message_created(&message, chat_members)
+            .await
+          {
+            error!("Failed to publish message created event: {}", e);
+            // 不阻止消息创建，只记录错误
+          }
+        }
+        Err(e) => {
+          error!("Failed to get chat members for event publishing: {}", e);
+          // 不阻止消息创建，只记录错误
+        }
+      }
+    }
+
+    // Index message for search (if search service is enabled)
+    if let Some(search_service) = self.search_service() {
+      // Get chat and sender information for indexing
+      match self.get_chat_and_sender_info(chat_id, user_id).await {
+        Ok((chat_name, sender_name, chat_type, workspace_id)) => {
+          if let Err(e) = search_service
+            .index_message(&message, &chat_name, &sender_name, &chat_type, workspace_id)
+            .await
+          {
+            error!(
+              "Failed to index message in search engine: message_id={}, error={}",
+              message.id, e
+            );
+            // Don't block message creation, just log the error
+          } else {
+            info!(
+              "Message indexed successfully: message_id={}, chat_id={}",
+              message.id, chat_id
+            );
+          }
+        }
+        Err(e) => {
+          error!(
+            "Failed to get chat and sender info for search indexing: message_id={}, error={}",
+            message.id, e
+          );
+          // Don't block message creation, just log the error
+        }
+      }
+    }
+
     Ok(message)
+  }
+
+  /// 获取聊天成员列表
+  async fn get_chat_members(&self, chat_id: i64) -> Result<Vec<i64>, AppError> {
+    let members =
+      sqlx::query_scalar::<_, i64>("SELECT unnest(chat_members) FROM chats WHERE id = $1")
+        .bind(chat_id)
+        .fetch_all(self.pool())
+        .await?;
+
+    Ok(members)
   }
 
   pub async fn list_messages(
@@ -98,6 +181,58 @@ impl AppState {
     .await?;
 
     Ok(messages)
+  }
+
+  /// Get chat and sender information for search indexing
+  async fn get_chat_and_sender_info(
+    &self,
+    chat_id: i64,
+    user_id: i64,
+  ) -> Result<(String, String, String, i64), AppError> {
+    // Get chat information
+    let chat_query = sqlx::query(
+      r#"SELECT chat_name as name, type::text as chat_type, workspace_id 
+         FROM chats WHERE id = $1"#,
+    )
+    .bind(chat_id)
+    .fetch_optional(self.pool())
+    .await?;
+
+    let (chat_name, chat_type, workspace_id) = match chat_query {
+      Some(row) => {
+        let name: String = row.try_get("name")?;
+        let chat_type: String = row.try_get("chat_type")?;
+        let workspace_id: i64 = row.try_get("workspace_id")?;
+        (name, chat_type, workspace_id)
+      }
+      None => {
+        return Err(AppError::NotFound(vec![format!(
+          "Chat with id {} not found",
+          chat_id
+        )]));
+      }
+    };
+
+    // Get sender information
+    let sender_query = sqlx::query("SELECT fullname FROM users WHERE id = $1")
+      .bind(user_id)
+      .fetch_optional(self.pool())
+      .await?;
+
+    let sender_name = match sender_query {
+      Some(row) => {
+        let fullname: String = row.try_get("fullname")?;
+        fullname
+      }
+      None => {
+        return Err(AppError::NotFound(vec![format!(
+          "User with id {} not found",
+          user_id
+        )]));
+      }
+    };
+
+    Ok((chat_name, sender_name, chat_type, workspace_id))
   }
 }
 
@@ -150,11 +285,18 @@ mod tests {
     let user2 = &users[1];
     let user3 = &users[2];
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Test Chat {}", timestamp);
+
     // Create a chat first
     let chat = state
       .create_new_chat(
         user1.id,
-        "Test Chat",
+        &unique_chat_name,
         crate::models::ChatType::Group,
         Some(vec![user1.id, user2.id, user3.id]),
         Some("Test chat for messages"),
@@ -250,11 +392,18 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(10).await;
     let user1 = &users[0];
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Test Chat {}", timestamp);
+
     // Create a chat first
     let chat = state
       .create_new_chat(
         user1.id,
-        "Test Chat",
+        &unique_chat_name,
         crate::models::ChatType::Group,
         Some(users.iter().map(|u| u.id).collect()),
         Some("Test chat for messages"),
