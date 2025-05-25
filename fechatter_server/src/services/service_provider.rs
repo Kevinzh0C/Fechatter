@@ -59,6 +59,8 @@ pub struct ServiceProvider {
   pool: Arc<PgPool>,
   /// JWT token manager
   token_manager: Arc<TokenManager>,
+  /// Search service (optional)
+  search_service: Option<Arc<crate::services::SearchService>>,
 }
 
 impl ServiceProvider {
@@ -76,6 +78,30 @@ impl ServiceProvider {
     Self {
       pool: Arc::new(pool),
       token_manager: Arc::new(token_manager),
+      search_service: None,
+    }
+  }
+
+  /// Creates a new service provider with search service enabled.
+  ///
+  /// # Arguments
+  ///
+  /// * `pool` - PostgreSQL connection pool
+  /// * `token_manager` - JWT token manager for authentication
+  /// * `search_service` - Optional search service
+  ///
+  /// # Returns
+  ///
+  /// A new ServiceProvider instance with search capabilities
+  pub fn new_with_search(
+    pool: PgPool,
+    token_manager: TokenManager,
+    search_service: Option<crate::services::SearchService>,
+  ) -> Self {
+    Self {
+      pool: Arc::new(pool),
+      token_manager: Arc::new(token_manager),
+      search_service: search_service.map(Arc::new),
     }
   }
 
@@ -87,6 +113,11 @@ impl ServiceProvider {
   /// Returns a reference to the token manager.
   pub fn token_manager(&self) -> &TokenManager {
     &self.token_manager
+  }
+
+  /// Returns a reference to the search service if available.
+  pub fn search_service(&self) -> Option<&crate::services::SearchService> {
+    self.search_service.as_ref().map(|s| s.as_ref())
   }
 
   pub fn create<T: ServiceFactory>(&self) -> T::Service {
@@ -826,6 +857,7 @@ mod tests {
       config,
       service_provider,
       chat_list_cache: dashmap::DashMap::new(),
+      event_publisher: None,
     };
 
     let app_state = crate::AppState {

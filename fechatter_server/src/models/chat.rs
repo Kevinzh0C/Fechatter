@@ -418,10 +418,16 @@ mod tests {
     let user2 = &users[1];
     let user3 = &users[2];
 
+    // Generate unique names to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+
     // 1. Create single chat
     let single_members = vec![user2.id];
     let single_chat = CreateChat::new(
-      "Single Chat with Bob",
+      &format!("Single Chat with Bob {}", timestamp),
       ChatType::Single,
       single_members.clone(),
       "One-on-one chat",
@@ -447,7 +453,7 @@ mod tests {
     // 2. Create group chat
     let group_members = vec![user2.id, user3.id];
     let group_chat = CreateChat::new(
-      "Work Team",
+      &format!("Work Team {}", timestamp),
       ChatType::Group,
       group_members.clone(),
       "Work group",
@@ -474,7 +480,7 @@ mod tests {
     let private_chat = state
       .create_new_chat(
         user1.id,
-        "Project Updates",
+        &format!("Project Updates {}", timestamp),
         ChatType::PrivateChannel,
         Some(channel_members.clone()),
         Some("Invite only"),
@@ -489,7 +495,7 @@ mod tests {
     let public_chat = state
       .create_new_chat(
         user1.id,
-        "Company Announcements",
+        &format!("Company Announcements {}", timestamp),
         ChatType::PublicChannel,
         None, // No members for public channel
         Some("Company announcements"),
@@ -514,10 +520,16 @@ mod tests {
     let user2 = &users[1];
     let user3 = &users[2];
 
+    // Generate unique names to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+
     let single_chat = state
       .create_new_chat(
         user1.id,
-        "Single Chat with Bob (for update/delete)",
+        &format!("Single Chat with Bob (for update/delete) {}", timestamp),
         ChatType::Single,
         Some(vec![user2.id]),
         Some("One-on-one chat"),
@@ -530,7 +542,7 @@ mod tests {
     let group_chat = state
       .create_new_chat(
         user1.id,
-        "Work Team",
+        &format!("Work Team {}", timestamp),
         ChatType::Group,
         Some(group_members),
         Some("Work group"),
@@ -545,13 +557,16 @@ mod tests {
         single_chat.id,
         user1.id,
         UpdateChat {
-          name: Some("Updated Single Chat".to_string()),
+          name: Some(format!("Updated Single Chat {}", timestamp)),
           description: Some("Updated description".to_string()),
         },
       )
       .await?;
 
-    assert_eq!(updated_single_chat.name, "Updated Single Chat");
+    assert_eq!(
+      updated_single_chat.name,
+      format!("Updated Single Chat {}", timestamp)
+    );
     assert_eq!(updated_single_chat.description, "Updated description");
 
     let updated_group_chat = state
@@ -559,13 +574,16 @@ mod tests {
         group_chat.id,
         user1.id,
         UpdateChat {
-          name: Some("Updated Group Chat".to_string()),
+          name: Some(format!("Updated Group Chat {}", timestamp)),
           description: Some("Updated description".to_string()),
         },
       )
       .await?;
 
-    assert_eq!(updated_group_chat.name, "Updated Group Chat");
+    assert_eq!(
+      updated_group_chat.name,
+      format!("Updated Group Chat {}", timestamp)
+    );
     assert_eq!(updated_group_chat.description, "Updated description");
 
     let chats = state.list_chats_of_user(user1.id).await?;
@@ -594,6 +612,12 @@ mod tests {
     let user3 = &users[2];
     let user4 = &users[3];
 
+    // Generate unique names to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+
     // 1. Test creating a chat with no name (should fail)
     let result = state
       .create_new_chat(
@@ -611,7 +635,7 @@ mod tests {
     let result = state
       .create_new_chat(
         user1.id,
-        "Self Chat",
+        &format!("Self Chat {}", timestamp),
         ChatType::Single,
         Some(vec![user1.id]),
         None,
@@ -624,7 +648,7 @@ mod tests {
     let result = state
       .create_new_chat(
         user1.id,
-        "No Target Chat",
+        &format!("No Target Chat {}", timestamp),
         ChatType::Single,
         None,
         None,
@@ -637,7 +661,7 @@ mod tests {
     let result = state
       .create_new_chat(
         user1.id,
-        "Empty Members Chat",
+        &format!("Empty Members Chat {}", timestamp),
         ChatType::Single,
         Some(vec![]),
         None,
@@ -650,7 +674,7 @@ mod tests {
     let result = state
       .create_new_chat(
         user1.id,
-        "Multi Target Chat",
+        &format!("Multi Target Chat {}", timestamp),
         ChatType::Single,
         Some(vec![user2.id, user3.id]),
         None,
@@ -663,7 +687,7 @@ mod tests {
     let result = state
       .create_new_chat(
         user1.id,
-        "Small Group",
+        &format!("Small Group {}", timestamp),
         ChatType::Group,
         Some(vec![user2.id]),
         None,
@@ -676,7 +700,7 @@ mod tests {
     let result = state
       .create_new_chat(
         user1.id,
-        "No Members Group",
+        &format!("No Members Group {}", timestamp),
         ChatType::Group,
         None,
         None,
@@ -689,7 +713,7 @@ mod tests {
     let result = state
       .create_new_chat(
         user1.id,
-        "Empty Members Group",
+        &format!("Empty Members Group {}", timestamp),
         ChatType::Group,
         Some(vec![]),
         None,
@@ -702,7 +726,7 @@ mod tests {
     let result = state
       .create_new_chat(
         user1.id,
-        "Duplicate Members Group",
+        &format!("Duplicate Members Group {}", timestamp),
         ChatType::Group,
         Some(vec![user2.id, user3.id, user2.id, user3.id]),
         None,
@@ -715,7 +739,7 @@ mod tests {
     let result = state
       .create_new_chat(
         user1.id,
-        "Self Included Group",
+        &format!("Self Included Group {}", timestamp),
         ChatType::Group,
         Some(vec![user1.id, user2.id, user3.id]),
         None,
@@ -729,7 +753,7 @@ mod tests {
     let result = state
       .create_new_chat(
         user1.id,
-        "Empty Private Channel",
+        &format!("Empty Private Channel {}", timestamp),
         ChatType::PrivateChannel,
         None,
         None,
@@ -743,7 +767,7 @@ mod tests {
     let result = state
       .create_new_chat(
         user1.id,
-        "Self Included Private Channel",
+        &format!("Self Included Private Channel {}", timestamp),
         ChatType::PrivateChannel,
         Some(vec![user1.id, user2.id]),
         None,
@@ -757,7 +781,7 @@ mod tests {
     let result = state
       .create_new_chat(
         user1.id,
-        "Duplicate Private Channel",
+        &format!("Duplicate Private Channel {}", timestamp),
         ChatType::PrivateChannel,
         Some(vec![user2.id, user2.id, user3.id, user3.id]),
         None,
@@ -770,7 +794,7 @@ mod tests {
     let result = state
       .create_new_chat(
         user1.id,
-        "Public Channel No Members",
+        &format!("Public Channel No Members {}", timestamp),
         ChatType::PublicChannel,
         None,
         None,
@@ -784,7 +808,7 @@ mod tests {
     let result = state
       .create_new_chat(
         user1.id,
-        "Public Channel With Members",
+        &format!("Public Channel With Members {}", timestamp),
         ChatType::PublicChannel,
         Some(vec![user2.id, user3.id, user4.id]),
         None,
@@ -795,7 +819,7 @@ mod tests {
     assert_eq!(result.chat_members[0], user1.id);
 
     // 16. Test chat with extremely long name (database constraint is 128 characters)
-    let long_name = "a".repeat(130);
+    let long_name = format!("a{}", "b".repeat(129)); // 130 characters total, should fail
     let result = state
       .create_new_chat(
         user1.id,
@@ -812,7 +836,7 @@ mod tests {
     let result = state
       .create_new_chat(
         user1.id,
-        "Chat With Description",
+        &format!("Chat With Description {}", timestamp),
         ChatType::Single,
         Some(vec![user2.id]),
         Some("This is a test description that should be saved correctly"),
@@ -840,12 +864,18 @@ mod tests {
     let user4 = &users[3]; // David
     let user5 = &users[4]; // Eve
 
+    // Generate unique names to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+
     // 1. Create department group chat
     let department_members = Some(vec![user2.id, user3.id, user4.id, user5.id]);
     let department_chat = state
       .create_new_chat(
         user1.id, // Alice as creator
-        "Marketing Department",
+        &format!("Marketing Department {}", timestamp),
         ChatType::Group,
         department_members,
         Some("Department internal communication group"),
@@ -860,7 +890,7 @@ mod tests {
     let project_chat = state
       .create_new_chat(
         user1.id, // Alice as creator
-        "Website Redesign",
+        &format!("Website Redesign {}", timestamp),
         ChatType::Group,
         project_members,
         Some("Website redesign project discussion"),
@@ -874,7 +904,7 @@ mod tests {
     let announce_channel = state
       .create_new_chat(
         user1.id, // Alice as manager
-        "Company Announcements",
+        &format!("Company Announcements {}", timestamp),
         ChatType::PublicChannel,
         None,
         Some("Company important announcements"),
@@ -888,7 +918,7 @@ mod tests {
     let one_on_one = state
       .create_new_chat(
         user1.id, // Alice
-        "Alice & Bob",
+        &format!("Alice & Bob {}", timestamp),
         ChatType::Single,
         Some(vec![user2.id]), // Bob
         None,
@@ -919,11 +949,17 @@ mod tests {
     let user7 = &users[6]; // Grace
     let user8 = &users[7]; // Hank
 
+    // Generate unique names to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+
     // ===== 1. Test unique constraint conflict (duplicate name) =====
 
     // Create first chat
     let first_chat = CreateChat::new(
-      "Unique Name Test",
+      &format!("Unique Name Test {}", timestamp),
       ChatType::Group,
       vec![user2.id, user3.id],
       "",
@@ -943,8 +979,8 @@ mod tests {
     // Try to create chat with same name (should fail)
     let result = state
       .create_new_chat(
-        user4.id,           // Different creator
-        "Unique Name Test", // Same name
+        user4.id,                                   // Different creator
+        &format!("Unique Name Test {}", timestamp), // Same name
         ChatType::Group,
         Some(vec![user5.id, user6.id]), // Different members
         None,
@@ -957,8 +993,9 @@ mod tests {
     // ===== 2. Test special character names =====
 
     // Use various special characters as chat name
-    let special_name = "!@#$%^&*()_+-=[]{}|;':\",./<>?";
-    let special_chat = CreateChat::new(special_name, ChatType::Group, vec![user2.id, user3.id], "");
+    let special_name = format!("!@#$%^&*()_+-=[]{{}}|;':\",./<>? {}", timestamp);
+    let special_chat =
+      CreateChat::new(&special_name, ChatType::Group, vec![user2.id, user3.id], "");
     let special_chat = state
       .create_new_chat(
         user1.id,
@@ -977,7 +1014,7 @@ mod tests {
     // Create chat with long description
     let long_desc = "a".repeat(1000); // Very long description
     let long_desc_chat = CreateChat::new(
-      "Long Description Chat",
+      &format!("Long Description Chat {}", timestamp),
       ChatType::Group,
       vec![user2.id, user3.id],
       &long_desc,
@@ -999,7 +1036,7 @@ mod tests {
 
     // Create group chat with all test users
     let large_group = CreateChat::new(
-      "Large Group Chat",
+      &format!("Large Group Chat {}", timestamp),
       ChatType::Group,
       vec![
         user2.id, user3.id, user4.id, user5.id, user6.id, user7.id, user8.id,
@@ -1025,7 +1062,12 @@ mod tests {
     let members = vec![user2.id];
 
     // Single chat
-    let single_chat = CreateChat::new("Same Members Single", ChatType::Single, members.clone(), "");
+    let single_chat = CreateChat::new(
+      &format!("Same Members Single {}", timestamp),
+      ChatType::Single,
+      members.clone(),
+      "",
+    );
     let single_chat = state
       .create_new_chat(
         user1.id,
@@ -1039,7 +1081,7 @@ mod tests {
 
     // Private channel
     let private_channel = CreateChat::new(
-      "Same Members Private",
+      &format!("Same Members Private {}", timestamp),
       ChatType::PrivateChannel,
       members.clone(),
       "",
@@ -1083,7 +1125,7 @@ mod tests {
 
     // Create group chat with creator included in target_members, check that creator appears only once and is first
     let creator_included = CreateChat::new(
-      "Creator In Members",
+      &format!("Creator In Members {}", timestamp),
       ChatType::Group,
       vec![user2.id, user3.id, user1.id, user3.id],
       "",
@@ -1105,7 +1147,17 @@ mod tests {
     // ===== 8. Test name at database limit =====
 
     // Name exactly 128 characters (database limit is 128)
-    let name_128 = "a".repeat(128);
+    // Use unique characters to avoid conflicts, but keep it exactly 128 chars
+    let timestamp_str = timestamp.to_string();
+    let unique_prefix = format!("LongName{}", timestamp_str);
+    let padding_length = 128 - unique_prefix.len();
+    let name_128 = if padding_length > 0 {
+      format!("{}{}", unique_prefix, "x".repeat(padding_length))
+    } else {
+      // If somehow the prefix is too long, just truncate to 128
+      unique_prefix.chars().take(128).collect::<String>()
+    };
+
     let result = state
       .create_new_chat(
         user1.id,
@@ -1123,7 +1175,7 @@ mod tests {
 
     // Create chat and verify relationship records for all members
     let relation_test = CreateChat::new(
-      "Relation Test Chat",
+      &format!("Relation Test Chat {}", timestamp),
       ChatType::Group,
       vec![user2.id, user3.id],
       "",
@@ -1146,7 +1198,7 @@ mod tests {
 
     // Create a normal group chat
     let normal_chat = CreateChat::new(
-      "Normal Group Chat",
+      &format!("Normal Group Chat {}", timestamp),
       ChatType::Group,
       vec![user2.id, user3.id],
       "",
@@ -1169,17 +1221,17 @@ mod tests {
 
     // Adding implementation for edit members, etc. to satisfy TODO
     // Add a new member to the chat
-    let user4_id = 999; // Simulating another user
+    let non_existent_user_id = i64::MAX; // Use a very large ID that definitely doesn't exist
     let add_result = state
       .add_chat_members(
         normal_chat.id,
         user1.id, // Creator is performing the action
-        vec![user4_id],
+        vec![non_existent_user_id],
       )
       .await;
 
-    // This should fail as user4 doesn't exist, but verifies the function is callable
-    assert!(add_result.is_err());
+    // This should fail as the user doesn't exist, but verifies the function is callable
+    assert!(add_result.is_err(), "Adding non-existent user should fail");
 
     // Test deleting a member
     let remove_result = state
@@ -1196,7 +1248,7 @@ mod tests {
 
     // Create chat with non-English content
     let non_english_chat = CreateChat::new(
-      "Chat with non-English name test",
+      &format!("Chat with non-English name test {}", timestamp),
       ChatType::Group,
       vec![user2.id, user3.id],
       "This is a non-English description, testing UTF-8 support",
@@ -1212,7 +1264,10 @@ mod tests {
       )
       .await?;
 
-    assert_eq!(non_english_chat.name, "Chat with non-English name test");
+    assert_eq!(
+      non_english_chat.name,
+      format!("Chat with non-English name test {}", timestamp)
+    );
     assert_eq!(
       non_english_chat.description,
       "This is a non-English description, testing UTF-8 support"
@@ -1222,7 +1277,7 @@ mod tests {
 
     // Create chat with emoji in name
     let emoji_chat = CreateChat::new(
-      "😀 Emoji Chat 🎉",
+      &format!("😀 Emoji Chat 🎉 {}", timestamp),
       ChatType::Group,
       vec![user2.id, user3.id],
       "Testing emoji support 😊👍",
@@ -1238,7 +1293,7 @@ mod tests {
       )
       .await?;
 
-    assert_eq!(emoji_chat.name, "😀 Emoji Chat 🎉");
+    assert_eq!(emoji_chat.name, format!("😀 Emoji Chat 🎉 {}", timestamp));
     assert_eq!(emoji_chat.description, "Testing emoji support 😊👍");
 
     let chats = state.list_chats_of_user(user1.id).await?;
@@ -1254,12 +1309,18 @@ mod tests {
     let user2 = &users[1];
     let user3 = &users[2];
 
-    let chat_name = "Unique Test Chat";
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let chat_name = format!("Unique Test Chat {}", timestamp);
+
     let members = vec![user2.id, user3.id];
     let first_chat = state
       .create_new_chat(
         user1.id,
-        chat_name,
+        &chat_name,
         ChatType::Group,
         Some(members.clone()),
         Some("First chat description"),
@@ -1273,7 +1334,7 @@ mod tests {
     let result = state
       .create_new_chat(
         user1.id,
-        chat_name, // same name
+        &chat_name, // same name
         ChatType::Group,
         Some(members.clone()),
         Some("Second chat description"),
@@ -1301,11 +1362,18 @@ mod tests {
     let user2 = &users[1];
     let user3 = &users[2];
 
-    let first_chat_name = "First Chat Name";
+    // Generate unique chat names to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let first_chat_name = format!("First Chat Name {}", timestamp);
+    let second_chat_name = format!("Second Chat Name {}", timestamp);
+
     state
       .create_new_chat(
         user1.id,
-        first_chat_name,
+        &first_chat_name,
         ChatType::Group,
         Some(vec![user2.id, user3.id]),
         Some("First chat description"),
@@ -1313,11 +1381,10 @@ mod tests {
       )
       .await?;
 
-    let second_chat_name = "Second Chat Name";
     let second_chat = state
       .create_new_chat(
         user1.id,
-        second_chat_name,
+        &second_chat_name,
         ChatType::Group,
         Some(vec![user2.id, user3.id]),
         Some("Second chat description"),
@@ -1330,7 +1397,7 @@ mod tests {
         second_chat.id,
         user1.id,
         UpdateChat {
-          name: Some(first_chat_name.to_string()),
+          name: Some(first_chat_name.clone()),
           description: None,
         },
       )
@@ -1363,7 +1430,6 @@ mod process_chat_members_data_driven_tests {
   const USER_2: i64 = 2;
   const USER_3: i64 = 3;
 
-  // 使用与AppState实现相同的函数，但作为静态函数
   fn process_chat_members(
     chat_type: &ChatType,
     creator_id: i64,

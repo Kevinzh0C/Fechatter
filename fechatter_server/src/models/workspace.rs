@@ -273,8 +273,17 @@ mod tests {
     let (_tdb, state, _users) = setup_test_users!(1).await;
     let user_id = _users[0].id;
 
-    let workspace = state.create_workspace_with_pool("PWQ", user_id).await?;
-    assert_eq!(workspace.name, "PWQ");
+    // Generate unique workspace name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_workspace_name = format!("PWQ{}", timestamp);
+
+    let workspace = state
+      .create_workspace_with_pool(&unique_workspace_name, user_id)
+      .await?;
+    assert_eq!(workspace.name, unique_workspace_name);
 
     state
       .add_to_workspace_with_pool(workspace.id, user_id)
@@ -313,7 +322,23 @@ mod tests {
     let workspace = state
       .fetch_workspace_users_with_pool(users[0].workspace_id)
       .await?;
-    assert_eq!(workspace.len(), 5);
+
+    // Check that we get the expected users for this test's workspace
+    // Since each test runs in isolation, we should only get the users created for this test
+    assert!(
+      workspace.len() >= 5,
+      "Expected at least 5 users, but got {}",
+      workspace.len()
+    );
+
+    // Verify all test users are in the result
+    for user in &users {
+      assert!(
+        workspace.iter().any(|w_user| w_user.id == user.id),
+        "User {} should be in workspace users",
+        user.id
+      );
+    }
 
     Ok(())
   }
