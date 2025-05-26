@@ -28,7 +28,7 @@ pub(crate) async fn list_chats_handler(
   Extension(user): Extension<AuthUser>,
 ) -> Result<impl IntoResponse, AppError> {
   info!("User {} listing chats", user.id);
-  let chats_arc = state.list_chats_of_user(user.id).await?;
+  let chats_arc = state.list_chats_of_user(user.id.into()).await?;
   Ok((StatusCode::OK, Json(chats_arc)))
 }
 
@@ -54,12 +54,15 @@ pub(crate) async fn create_chat_handler(
 ) -> Result<impl IntoResponse, AppError> {
   let chat = state
     .create_new_chat(
-      user.id,
+      user.id.into(),
       &payload.name,
       payload.chat_type,
-      payload.members,
-      Some(payload.description.as_deref().unwrap_or("")),
-      user.workspace_id,
+      payload
+        .members
+        .as_ref()
+        .map(|members| members.iter().map(|id| (*id).into()).collect()),
+      payload.description.as_deref(),
+      user.workspace_id.into(),
     )
     .await?;
 
@@ -94,7 +97,7 @@ pub(crate) async fn update_chat_handler(
 ) -> Result<impl IntoResponse, AppError> {
   info!("User {} updating chat: {}", user.id, chat_id);
 
-  let updated_chat = state.update_chat(chat_id, user.id, payload).await?;
+  let updated_chat = state.update_chat(chat_id, user.id.into(), payload).await?;
 
   Ok((StatusCode::OK, Json(updated_chat)))
 }
@@ -124,7 +127,7 @@ pub(crate) async fn delete_chat_handler(
 ) -> Result<impl IntoResponse, AppError> {
   info!("User {} deleting chat: {}", user.id, chat_id);
 
-  let deleted = state.delete_chat(chat_id, user.id).await?;
+  let deleted = state.delete_chat(chat_id, user.id.into()).await?;
 
   if deleted {
     Ok(StatusCode::NO_CONTENT.into_response())
@@ -301,7 +304,7 @@ mod tests {
       update_chat_handler(
         State(state),
         Extension(auth_user),
-        Path(chat.id),
+        Path(chat.id.into()),
         Json(payload)
       ),
       StatusCode::OK,
@@ -348,7 +351,7 @@ mod tests {
       update_chat_handler(
         State(state),
         Extension(non_creator_auth),
-        Path(chat.id),
+        Path(chat.id.into()),
         Json(payload)
       ),
       AppError::ChatPermissionError(_)
@@ -385,7 +388,7 @@ mod tests {
       delete_chat_handler(
         State(state.clone()),
         Extension(auth_user.clone()),
-        Path(chat.id)
+        Path(chat.id.into())
       ),
       StatusCode::NO_CONTENT
     );
@@ -420,7 +423,11 @@ mod tests {
     .await;
 
     assert_handler_error!(
-      delete_chat_handler(State(state), Extension(non_creator_auth), Path(chat.id)),
+      delete_chat_handler(
+        State(state),
+        Extension(non_creator_auth),
+        Path(chat.id.into())
+      ),
       AppError::ChatPermissionError(_)
     );
 
@@ -436,7 +443,7 @@ mod tests {
 
     assert_handler_error!(
       delete_chat_handler(State(state),
-      Extension(auth_user), Path(non_existent_chat_id)),
+      Extension(auth_user), Path(non_existent_chat_id.into())),
       AppError::NotFound(ids) if ids.len() == 1 && ids[0] == non_existent_chat_id.to_string()
     );
 

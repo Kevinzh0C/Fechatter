@@ -1,6 +1,6 @@
 use crate::{
   error::CoreError,
-  models::{ChatUser, Workspace},
+  models::{ChatUser, UserId, Workspace, WorkspaceId},
 };
 use serde::{Deserialize, Serialize};
 use std::future::Future;
@@ -11,7 +11,7 @@ pub trait WorkspaceRepository: Send + Sync {
 
   fn find_by_id(
     &self,
-    id: i64,
+    id: WorkspaceId,
   ) -> impl Future<Output = Result<Option<Workspace>, CoreError>> + Send;
 
   fn find_by_name(
@@ -21,19 +21,19 @@ pub trait WorkspaceRepository: Send + Sync {
 
   fn update_owner(
     &self,
-    id: i64,
-    owner_id: i64,
+    id: WorkspaceId,
+    owner_id: UserId,
   ) -> impl Future<Output = Result<Workspace, CoreError>> + Send;
 
   fn fetch_all_users(
     &self,
-    workspace_id: i64,
+    workspace_id: WorkspaceId,
   ) -> impl Future<Output = Result<Vec<ChatUser>, CoreError>> + Send;
 
   fn add_user_to_workspace(
     &self,
-    workspace_id: i64,
-    user_id: i64,
+    workspace_id: WorkspaceId,
+    user_id: UserId,
   ) -> impl Future<Output = Result<Workspace, CoreError>> + Send;
 }
 

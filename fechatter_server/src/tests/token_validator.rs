@@ -20,19 +20,19 @@ mod tests {
     let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo)?;
 
     let user = User {
-      id: 1,
+      id: fechatter_core::UserId(1),
       fullname: "John Doe".to_string(),
       email: "john.doe@example.com".to_string(),
       password_hash: Default::default(),
       status: UserStatus::Active,
       created_at: Utc::now(),
-      workspace_id: 1,
+      workspace_id: fechatter_core::WorkspaceId(1),
     };
 
     // Create user claims from user
     let user_claims = fechatter_core::models::jwt::UserClaims {
       id: user.id,
-      workspace_id: user.workspace_id,
+      workspace_id: user.workspace_id.into(),
       fullname: user.fullname.clone(),
       email: user.email.clone(),
       status: user.status,
@@ -61,19 +61,19 @@ mod tests {
     let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo)?;
 
     let user = User {
-      id: 1,
+      id: fechatter_core::UserId(1),
       fullname: "John Doe".to_string(),
       email: "john.doe@example.com".to_string(),
       password_hash: Default::default(),
       status: UserStatus::Active,
       created_at: Utc::now(),
-      workspace_id: 1,
+      workspace_id: fechatter_core::WorkspaceId(1),
     };
 
     // Create user claims from user
     let user_claims = fechatter_core::models::jwt::UserClaims {
       id: user.id,
-      workspace_id: user.workspace_id,
+      workspace_id: user.workspace_id.into(),
       fullname: user.fullname.clone(),
       email: user.email.clone(),
       status: user.status,
@@ -99,8 +99,8 @@ mod tests {
     let app_state = AppState::try_new(config).await?;
 
     let user_claims = UserClaims {
-      id: 1,
-      workspace_id: 1,
+      id: fechatter_core::UserId(1),
+      workspace_id: fechatter_core::WorkspaceId(1),
       fullname: "Test User".to_string(),
       email: "test@example.com".to_string(),
       status: fechatter_core::UserStatus::Active,

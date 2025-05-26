@@ -57,14 +57,3 @@ impl ErrorMapper for NotifyError {
     }
   }
 }
-
-#[derive(Debug)]
-pub struct ErrOutput {
-  pub error: String,
-}
-
-impl ErrOutput {
-  pub fn new(error: String) -> Self {
-    Self { error }
-  }
-}

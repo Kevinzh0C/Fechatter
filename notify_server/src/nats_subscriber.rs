@@ -1,10 +1,11 @@
 use crate::{AppState, NotifyEvent, notify::ChatMemberEventData, notify::DuplicateMessagePayload};
-use async_nats::{Client as NatsClient, jetstream};
+use async_nats::jetstream;
 use fechatter_core::Message;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, sync::Arc};
 use tokio_stream::StreamExt;
 use tracing::{error, info, warn};
+use uuid;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MessageCreatedEvent {
@@ -297,26 +298,22 @@ fn parse_duration(duration_str: &str) -> anyhow::Result<std::time::Duration> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{
-    AppState, NotifyEvent,
-    notify::{ChatMemberEventData, DuplicateMessagePayload},
-  };
-  use chrono::Utc;
-  use fechatter_core::{Message, UserStatus};
-  use std::collections::HashMap;
+  use crate::NotifyEvent;
+  use fechatter_core::Message;
+
   use std::sync::Arc;
-  use tokio::sync::broadcast;
+
   use uuid::Uuid;
 
   // 创建测试用的消息
   fn create_test_message() -> Message {
     Message {
-      id: 1,
-      chat_id: 100,
-      sender_id: 10,
+      id: fechatter_core::MessageId(1),
+      chat_id: fechatter_core::ChatId(100),
+      sender_id: fechatter_core::UserId(10),
       content: "Test message content".to_string(),
       files: Some(vec!["file1.txt".to_string(), "file2.jpg".to_string()]),
-      created_at: Utc::now(),
+      created_at: chrono::Utc::now(),
       idempotency_key: Some(Uuid::new_v4()),
     }
   }
@@ -349,7 +346,7 @@ mod tests {
     let event = ChatMemberEvent {
       chat_id: 100,
       user_id: 10,
-      joined_at: Utc::now(),
+      joined_at: chrono::Utc::now(),
     };
 
     // 测试序列化和反序列化
@@ -413,7 +410,7 @@ mod tests {
     let event = ChatMemberEvent {
       chat_id: 100,
       user_id: 10,
-      joined_at: Utc::now(),
+      joined_at: chrono::Utc::now(),
     };
 
     let notification = create_user_joined_notification(event.clone());
@@ -438,7 +435,7 @@ mod tests {
     let event = ChatMemberEvent {
       chat_id: 100,
       user_id: 10,
-      joined_at: Utc::now(),
+      joined_at: chrono::Utc::now(),
     };
 
     let notification = create_user_left_notification(event.clone());
@@ -573,7 +570,7 @@ mod tests {
     let chat_member_event = ChatMemberEvent {
       chat_id: 100,
       user_id: 10,
-      joined_at: Utc::now(),
+      joined_at: chrono::Utc::now(),
     };
 
     let duplicate_event = DuplicateMessageEvent {

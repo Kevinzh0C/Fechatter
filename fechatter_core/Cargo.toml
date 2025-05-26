@@ -37,3 +37,4 @@ validator = { version = "0.20.0", features = ["derive"] }
 
 [dev-dependencies]
 mockall = "0.13.1"
+futures = { workspace = true }

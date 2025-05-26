@@ -1,12 +1,12 @@
 use super::ChatFile;
+use sqlx::Row;
 use crate::AppError;
 use crate::AppState;
+use crate::services::indexer_sync_service::ChatInfo;
 
 use fechatter_core::{Message, error::CoreError, models::CreateMessage, models::ListMessages};
-use sqlx::Row;
 use std::str::FromStr;
 use tracing::{error, info, warn};
-use uuid;
 
 impl AppState {
   pub async fn create_message(
@@ -104,35 +104,30 @@ impl AppState {
           // 不阻止消息创建，只记录错误
         }
       }
-    }
 
-    // Index message for search (if search service is enabled)
-    if let Some(search_service) = self.search_service() {
-      // Get chat and sender information for indexing
-      match self.get_chat_and_sender_info(chat_id, user_id).await {
-        Ok((chat_name, sender_name, chat_type, workspace_id)) => {
-          if let Err(e) = search_service
-            .index_message(&message, &chat_name, &sender_name, &chat_type, workspace_id)
-            .await
-          {
-            error!(
-              "Failed to index message in search engine: message_id={}, error={}",
-              message.id, e
-            );
-            // Don't block message creation, just log the error
-          } else {
-            info!(
-              "Message indexed successfully: message_id={}, chat_id={}",
-              message.id, chat_id
-            );
+      // 发布异步搜索索引事件（如果启用了搜索）
+      if self.config.search.enabled && self.config.search.async_indexing.enabled {
+        match self.get_chat_and_sender_info(chat_id, user_id).await {
+          Ok((chat_name, sender_name, chat_type, workspace_id)) => {
+            let chat_info = ChatInfo {
+              chat_name,
+              sender_name,
+              chat_type,
+              workspace_id,
+            };
+
+            // 发布异步索引事件
+            if let Err(e) = event_publisher
+              .publish_search_index_event(&message, &chat_info)
+              .await
+            {
+              warn!("Failed to publish search index event: {}", e);
+              // 不阻止消息创建，只记录警告
+            }
           }
-        }
-        Err(e) => {
-          error!(
-            "Failed to get chat and sender info for search indexing: message_id={}, error={}",
-            message.id, e
-          );
-          // Don't block message creation, just log the error
+          Err(e) => {
+            warn!("Failed to get chat info for async indexing: {}", e);
+          }
         }
       }
     }
@@ -143,7 +138,7 @@ impl AppState {
   /// 获取聊天成员列表
   async fn get_chat_members(&self, chat_id: i64) -> Result<Vec<i64>, AppError> {
     let members =
-      sqlx::query_scalar::<_, i64>("SELECT unnest(chat_members) FROM chats WHERE id = $1")
+      sqlx::query_scalar::<_, i64>("SELECT user_id FROM chat_members WHERE chat_id = $1")
         .bind(chat_id)
         .fetch_all(self.pool())
         .await?;
@@ -294,14 +289,13 @@ mod tests {
 
     // Create a chat first
     let chat = state
-      .create_new_chat(
-        user1.id,
+      .create_new_chat(user1.id.into(),
         &unique_chat_name,
         crate::models::ChatType::Group,
-        Some(vec![user1.id, user2.id, user3.id]),
+        Some(vec![user1.id.into(), user2.id.into(), user3.id.into()]),
         Some("Test chat for messages"),
-        user1.workspace_id,
-      )
+        user1.workspace_id.into(),
+    )
       .await?;
 
     let message_payload1 = CreateMessage {
@@ -311,7 +305,7 @@ mod tests {
     };
 
     let message1 = state
-      .create_message(message_payload1, chat.id, user1.id)
+      .create_message(message_payload1, chat.id.into(), user1.id.into())
       .await
       .expect("Failed to create message");
 
@@ -333,7 +327,7 @@ mod tests {
     };
 
     let message2 = state
-      .create_message(message_payload2, chat.id, user2.id)
+      .create_message(message_payload2, chat.id.into(), user2.id.into())
       .await
       .expect("Failed to create message");
 
@@ -348,7 +342,7 @@ mod tests {
     };
 
     let message3 = state
-      .create_message(message_payload3, chat.id, user3.id)
+      .create_message(message_payload3, chat.id.into(), user3.id.into())
       .await
       .expect("Failed to create file-only message");
 
@@ -369,13 +363,13 @@ mod tests {
     };
 
     let message4 = state
-      .create_message(message_payload4.clone(), chat.id, user1.id)
+      .create_message(message_payload4.clone(), chat.id.into(), user1.id.into())
       .await
       .expect("Failed to create message");
 
     // Send the exact same message again
     let message5 = state
-      .create_message(message_payload4, chat.id, user1.id)
+      .create_message(message_payload4, chat.id.into(), user1.id.into())
       .await
       .expect("Failed to create duplicate message");
 
@@ -401,14 +395,13 @@ mod tests {
 
     // Create a chat first
     let chat = state
-      .create_new_chat(
-        user1.id,
+      .create_new_chat(user1.id.into(),
         &unique_chat_name,
         crate::models::ChatType::Group,
-        Some(users.iter().map(|u| u.id).collect()),
+        Some(users.iter().map(|u| u.id.into()).collect()),
         Some("Test chat for messages"),
-        user1.workspace_id,
-      )
+        user1.workspace_id.into(),
+    )
       .await?;
 
     let mut messages_payload = Vec::with_capacity(10);
@@ -425,7 +418,7 @@ mod tests {
     let mut message_ids = Vec::new();
     for i in 0..10 {
       let m: Message = state
-        .create_message(messages_payload[i].clone(), chat.id, users[i].id)
+        .create_message(messages_payload[i].clone(), chat.id.into(), users[i].id.into())
         .await
         .expect("Failed to create message");
       message_ids.push(m.id);
@@ -433,12 +426,12 @@ mod tests {
 
     // Use the highest message ID + 1 as last_id to ensure we get all messages
     let input = ListMessages {
-      last_id: Some(message_ids.iter().max().unwrap() + 1),
+      last_id: Some(i64::from(*message_ids.iter().max().unwrap()) + 1),
       limit: 10,
     };
 
     let messages = state
-      .list_messages(input, chat.id)
+      .list_messages(input, chat.id.into())
       .await
       .expect("Failed to list messages");
     assert_eq!(messages.len(), 10);

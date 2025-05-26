@@ -1,11 +1,11 @@
-//! Fechatter 集成测试库
+//! Fechatter Integration Test Library
 //!
-//! 这个库包含了 Fechatter 项目的集成测试，包括：
-//! - API 端到端测试
-//! - NATS 消息传递测试
-//! - 数据库集成测试
-//! - 文件上传下载测试
-//! - 实时通知测试
+//! This library contains integration tests for the Fechatter project, including:
+//! - API end-to-end tests
+//! - NATS messaging tests
+//! - Database integration tests
+//! - File upload/download tests
+//! - Real-time notification tests
 
 pub mod api_tests;
 pub mod common;
@@ -14,7 +14,13 @@ pub mod file_tests;
 pub mod nats_tests;
 pub mod notification_tests;
 
-// 重新导出常用的测试工具
+// Additional test modules
+mod auth_tests;
+mod search_tests;
+mod stress_tests;
+mod workspace_tests;
+
+// Re-export common test utilities
 pub use common::*;
 
 pub fn add(left: usize, right: usize) -> usize {

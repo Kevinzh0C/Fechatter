@@ -1,10 +1,5 @@
-use crate::services::EventPublisher;
-use crate::utils::refresh_token::RefreshTokenAdaptor;
-use crate::{AppConfig, AppError, AppState, AppStateInner};
-use dashmap::DashMap;
-use fechatter_core::models::jwt::TokenManager;
+use crate::{AppConfig, AppError, AppState};
 use sqlx_db_tester::TestPg;
-use std::sync::Arc;
 use tokio::fs;
 
 #[cfg(any(test, feature = "test-util"))]

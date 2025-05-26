@@ -1,7 +1,6 @@
 // This is a comprehensive test suite to ensure we never call the core placeholders
 #[cfg(test)]
 mod tests {
-  use chrono::Utc;
   use fechatter_core::{
     ActualAuthServiceProvider, CreateUser, LogoutService, RefreshTokenService, SigninService,
     SigninUser, SignupService, UserClaims, UserStatus,
@@ -76,12 +75,12 @@ mod tests {
     };
 
     let user_claims = UserClaims {
-      id: 1,
-      workspace_id: 1,
-      email: create_user.email.clone(),
-      fullname: create_user.fullname.clone(),
+      id: fechatter_core::UserId(1),
+      workspace_id: fechatter_core::WorkspaceId(1),
+      fullname: "Test User".to_string(),
+      email: "test@example.com".to_string(),
       status: UserStatus::Active,
-      created_at: Utc::now(),
+      created_at: chrono::Utc::now(),
     };
 
     (create_user, signin_user, user_claims)
@@ -142,7 +141,8 @@ mod tests {
     let _ =
       <AuthService as RefreshTokenService>::refresh_token(&auth_service, "test_token", None).await;
     let _ = <AuthService as LogoutService>::logout(&auth_service, "test_token").await;
-    let _ = <AuthService as LogoutService>::logout_all(&auth_service, 1).await;
+    let _ =
+      <AuthService as LogoutService>::logout_all(&auth_service, fechatter_core::UserId(1)).await;
 
     // If we got here, we didn't hit the core placeholders
     assert!(true);
@@ -202,7 +202,8 @@ mod tests {
     let _ =
       <AuthService as RefreshTokenService>::refresh_token(&auth_service, "test_token", None).await;
     let _ = <AuthService as LogoutService>::logout(&auth_service, "test_token").await;
-    let _ = <AuthService as LogoutService>::logout_all(&auth_service, 1).await;
+    let _ =
+      <AuthService as LogoutService>::logout_all(&auth_service, fechatter_core::UserId(1)).await;
 
     // If we got here, we didn't hit the core placeholders
     assert!(true);
@@ -226,7 +227,7 @@ mod tests {
     let _ = app_state.signin(&signin_user, None).await;
     let _ = app_state.refresh_token("test_token", None).await;
     let _ = app_state.logout("test_token").await;
-    let _ = app_state.logout_all(1).await;
+    let _ = app_state.logout_all(fechatter_core::UserId(1)).await;
 
     // If we got here, we didn't hit the core placeholders
     assert!(

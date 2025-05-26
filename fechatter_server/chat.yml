@@ -43,22 +43,25 @@ messaging:
       max_msg_size: 1048576 # 1MB
       max_age: 24 # 1 day retention
 
-# 搜索配置（针对聊天内搜索优化）
 search:
   enabled: true
   provider: "meilisearch"
+  async_indexing:
+    enabled: true
+    batch_size: 10
+    batch_timeout_ms: 1000
   meilisearch:
     url: "http://localhost:7700"
     api_key: ""
-    connection_timeout_ms: 3000
-    request_timeout_ms: 5000
+    connection_timeout_ms: 2000
+    request_timeout_ms: 3000
     indexes:
       messages:
         name: "fechatter_messages"
         primary_key: "id"
-        searchable_fields: [ "content", "sender_name", "file_names" ]
+        searchable_fields: [ "content", "sender_name" ]
         displayed_fields: [ "id", "chat_id", "sender_id", "content", "created_at", "sender_name", "files", "relevance_score" ]
-        filterable_fields: [ "chat_id", "sender_id", "created_at", "workspace_id", "chat_type" ]
-        sortable_fields: [ "created_at", "relevance_score" ]
+        filterable_fields: [ "chat_id", "workspace_id" ]
+        sortable_fields: [ "created_at" ]
     settings:
-      pagination_limit: 50
+      pagination_limit: 20

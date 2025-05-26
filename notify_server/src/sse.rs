@@ -6,7 +6,6 @@ use axum::{
 
 use axum_extra::{TypedHeader, headers};
 use futures::Stream;
-use serde::Deserialize;
 use std::{
   convert::Infallible,
   pin::Pin,
@@ -22,11 +21,6 @@ use fechatter_core::AuthUser;
 
 const CHANNEL_CAPACITY: usize = 256;
 
-#[derive(Debug, Deserialize)]
-pub struct EventQuery {
-  token: Option<String>,
-}
-
 pub struct EventStream {
   _tx: Sender<Result<Event, Infallible>>,
   rx: Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>>,
@@ -40,7 +34,9 @@ impl Stream for EventStream {
   }
 }
 
-pub async fn sse_handler(
+#[allow(dead_code)]
+pub
+async fn sse_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
   TypedHeader(user_agent): TypedHeader<headers::UserAgent>,
@@ -50,11 +46,11 @@ pub async fn sse_handler(
   let user_id = user.id;
   let users = state.users.clone();
 
-  let rx = if let Some(tx) = users.get(&user_id) {
+  let rx = if let Some(tx) = users.get(&user_id.into()) {
     tx.subscribe()
   } else {
     let (tx, rx) = broadcast::channel(CHANNEL_CAPACITY);
-    state.users.insert(user_id, tx);
+    state.users.insert(user_id.into(), tx);
     rx
   };
   info!("User {} subscribed to channel", user_id);
