@@ -84,7 +84,9 @@ pub(crate) async fn add_chat_members_batch_handler(
     user.id, member_ids, chat_id
   );
 
-  let members = state.add_chat_members(chat_id, user.id, member_ids).await?;
+  let members = state
+    .add_chat_members(chat_id, user.id.into(), member_ids)
+    .await?;
 
   Ok((StatusCode::CREATED, Json(members)))
 }
@@ -121,7 +123,7 @@ pub(crate) async fn remove_chat_member_handler(
   );
 
   match state
-    .remove_group_chat_members(chat_id, user.id, payload)
+    .remove_group_chat_members(chat_id, user.id.into(), payload)
     .await
   {
     Ok(is_deleted) => {
@@ -164,7 +166,7 @@ pub(crate) async fn transfer_chat_ownership_handler(
   Path((chat_id, target_user_id)): Path<(i64, i64)>,
 ) -> Result<impl IntoResponse, AppError> {
   let result = state
-    .transfer_chat_ownership(chat_id, user.id, target_user_id)
+    .transfer_chat_ownership(chat_id, user.id.into(), target_user_id)
     .await?;
 
   if result {
@@ -216,7 +218,8 @@ mod tests {
     )
     .await;
 
-    assert_chat_member_count!(state, auth_user, chat.id, 3);
+    let chat_id_i64: i64 = chat.id.into();
+    assert_chat_member_count!(state, auth_user, chat_id_i64, 3);
 
     Ok(())
   }
@@ -246,7 +249,11 @@ mod tests {
     )
     .await;
 
-    let result = state.ensure_user_is_chat_member(chat.id, user4.id).await;
+    let chat_id_i64: i64 = chat.id.into();
+    let user4_id_i64: i64 = user4.id.into();
+    let result = state
+      .ensure_user_is_chat_member(chat_id_i64, user4_id_i64)
+      .await;
 
     assert!(result.is_err());
     match result {
@@ -283,13 +290,15 @@ mod tests {
     )
     .await;
 
-    let members_to_add = vec![user4.id];
+    let user4_id_i64: i64 = user4.id.into();
+    let members_to_add: Vec<i64> = vec![user4_id_i64];
+    let chat_id_i64: i64 = chat.id.into();
 
     let added_members = assert_handler_success!(
       add_chat_members_batch_handler(
         State(state.clone()),
         Extension(creator_auth),
-        Path(chat.id),
+        Path(chat_id_i64),
         Json(members_to_add.clone()),
       ),
       StatusCode::CREATED,
@@ -297,10 +306,13 @@ mod tests {
     );
 
     assert_eq!(added_members.len(), 1);
-    let added_member_ids: Vec<i64> = added_members.iter().map(|m| m.user_id).collect();
-    assert!(added_member_ids.contains(&user4.id));
+    let added_member_ids: Vec<i64> = added_members
+      .iter()
+      .map(|m| -> i64 { m.user_id.into() })
+      .collect();
+    assert!(added_member_ids.contains(&user4_id_i64));
 
-    assert_chat_member_count!(state, auth_user!(user1), chat.id, 4);
+    assert_chat_member_count!(state, auth_user!(user1), chat_id_i64, 4);
 
     Ok(())
   }
@@ -330,13 +342,15 @@ mod tests {
     )
     .await;
 
-    let members_to_add = vec![user4.id];
+    let user4_id_i64: i64 = user4.id.into();
+    let members_to_add: Vec<i64> = vec![user4_id_i64];
+    let chat_id_i64: i64 = chat.id.into();
 
     assert_handler_error!(
       add_chat_members_batch_handler(
         State(state),
         Extension(non_creator_auth),
-        Path(chat.id),
+        Path(chat_id_i64),
         Json(members_to_add),
       ),
       AppError::ChatPermissionError(_)
@@ -370,19 +384,22 @@ mod tests {
     )
     .await;
 
-    let members_to_remove = vec![user3.id, user4.id];
+    let user3_id_i64: i64 = user3.id.into();
+    let user4_id_i64: i64 = user4.id.into();
+    let chat_id_i64: i64 = chat.id.into();
+    let members_to_remove: Vec<i64> = vec![user3_id_i64, user4_id_i64];
 
     assert_handler_success!(
       remove_chat_member_handler(
         State(state.clone()),
         Extension(creator_auth),
-        Path(chat.id),
+        Path(chat_id_i64),
         Json(members_to_remove.clone()),
       ),
       StatusCode::NO_CONTENT
     );
 
-    assert_chat_member_count!(state, auth_user!(user1), chat.id, 2);
+    assert_chat_member_count!(state, auth_user!(user1), chat_id_i64, 2);
 
     Ok(())
   }
@@ -412,13 +429,15 @@ mod tests {
     )
     .await;
 
-    let members_to_remove = vec![user3.id];
+    let user3_id_i64: i64 = user3.id.into();
+    let chat_id_i64: i64 = chat.id.into();
+    let members_to_remove: Vec<i64> = vec![user3_id_i64];
 
     assert_handler_error!(
       remove_chat_member_handler(
         State(state),
         Extension(non_creator_auth),
-        Path(chat.id),
+        Path(chat_id_i64),
         Json(members_to_remove),
       ),
       AppError::ChatPermissionError(_)
@@ -450,11 +469,14 @@ mod tests {
     )
     .await;
 
+    let chat_id_i64: i64 = chat.id.into();
+    let user2_id_i64: i64 = user2.id.into();
+
     let response_msg: String = assert_handler_success!(
       transfer_chat_ownership_handler(
         State(state.clone()),
         Extension(creator_auth),
-        Path((chat.id, user2.id)),
+        Path((chat_id_i64, user2_id_i64)),
       ),
       StatusCode::OK,
       String
@@ -463,14 +485,14 @@ mod tests {
 
     let query = "SELECT created_by FROM chats WHERE id = $1";
     let updated_chat_info = sqlx::query(query)
-      .bind(chat.id)
+      .bind(chat_id_i64)
       .fetch_one(state.pool())
       .await?;
 
     let created_by: i64 = updated_chat_info
       .try_get("created_by")
       .map_err(|e| AppError::SqlxError(e))?;
-    assert_eq!(created_by, user2.id);
+    assert_eq!(created_by, user2_id_i64);
 
     Ok(())
   }
@@ -499,11 +521,14 @@ mod tests {
     )
     .await;
 
+    let chat_id_i64: i64 = chat.id.into();
+    let user3_id_i64: i64 = user3.id.into();
+
     assert_handler_error!(
       transfer_chat_ownership_handler(
         State(state),
         Extension(non_creator_auth),
-        Path((chat.id, user3.id)),
+        Path((chat_id_i64, user3_id_i64)),
       ),
       AppError::ChatPermissionError(_)
     );
@@ -536,11 +561,14 @@ mod tests {
     )
     .await;
 
+    let chat_id_i64: i64 = chat.id.into();
+    let user4_id_i64: i64 = user4.id.into();
+
     assert_handler_error!(
       transfer_chat_ownership_handler(
         State(state),
         Extension(creator_auth),
-        Path((chat.id, user4.id)),
+        Path((chat_id_i64, user4_id_i64)),
       ),
       AppError::ChatValidationError(_)
     );

@@ -5,8 +5,7 @@ use axum::{
 };
 use fechatter_core::{User, Workspace};
 
-
-use crate::{error::ErrorOutput, models::AuthUser, AppError, AppState};
+use crate::{AppError, AppState, error::ErrorOutput, models::AuthUser};
 
 /// 获取工作区所有用户
 #[utoipa::path(
@@ -25,7 +24,9 @@ pub async fn list_all_workspace_users_handler(
   State(state): State<AppState>,
   Extension(user): Extension<AuthUser>,
 ) -> Result<impl IntoResponse, AppError> {
-  let users = state.get_users_in_workspace(user.workspace_id).await?;
+  let users = state
+    .get_users_in_workspace(user.workspace_id.into())
+    .await?;
   Ok(Json(users))
 }
 
@@ -53,7 +54,7 @@ pub async fn get_workspace_by_id(
   Path(id): Path<i64>,
   Extension(user): Extension<AuthUser>,
 ) -> Result<impl IntoResponse, AppError> {
-  if user.workspace_id != id {
+  if user.workspace_id != fechatter_core::WorkspaceId(id) {
     return Err(AppError::ChatPermissionError(
       "No access to this workspace".into(),
     ));

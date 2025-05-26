@@ -64,7 +64,11 @@ where
 
 #[cfg(test)]
 mod tests {
-  use crate::{UserClaims, jwt::TokenManager};
+  use crate::{
+    UserClaims,
+    jwt::TokenManager,
+    models::{UserId, WorkspaceId},
+  };
 
   use super::*;
 
@@ -130,14 +134,14 @@ mod tests {
         Ok(())
       }
 
-      async fn revoke_all_for_user(&self, _user_id: i64) -> Result<(), CoreError> {
+      async fn revoke_all_for_user(&self, _user_id: UserId) -> Result<(), CoreError> {
         Ok(())
       }
 
       async fn create(&self, _payload: StoreTokenPayload) -> Result<RefreshToken, CoreError> {
         Ok(RefreshToken {
           id: 1,
-          user_id: 1,
+          user_id: UserId::new(1),
           token_hash: "test_hash".to_string(),
           expires_at: Utc::now() + chrono::Duration::hours(1),
           issued_at: Utc::now(),
@@ -206,13 +210,13 @@ mod tests {
 
     // 创建测试用户
     let user = User {
-      id: 1,
+      id: UserId::new(1),
       fullname: "Test User".to_string(),
       email: "test@example.com".to_string(),
       password_hash: Some("".to_string()),
       status: crate::models::UserStatus::Active,
       created_at: chrono::Utc::now(),
-      workspace_id: 1,
+      workspace_id: WorkspaceId::new(1),
     };
 
     // 设置测试路由

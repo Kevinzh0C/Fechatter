@@ -1,6 +1,6 @@
+use sqlx::Row;
 use std::{sync::Arc, time::Duration};
 
-use sqlx::Row;
 use tokio::time::Instant;
 
 use crate::{AppError, AppState, models::ChatType};
@@ -67,7 +67,7 @@ impl AppState {
       };
 
       chats.push(ChatSidebar {
-        id,
+        id: fechatter_core::ChatId(id),
         name,
         chat_type,
         is_creator: created_by == user_id,
@@ -244,12 +244,12 @@ impl AppState {
       })?;
 
     let chat_id = chat.id;
-    crate::models::chat_member::insert_chat_members(chat_id, &chat_members, &mut tx).await?;
+    crate::models::chat_member::insert_chat_members(chat_id.into(), &chat_members, &mut tx).await?;
 
     tx.commit().await?;
 
     for &member in &chat_members {
-      self.chat_list_cache.remove(&member);
+      self.chat_list_cache.remove(&member.into());
     }
 
     Ok(chat)
@@ -316,7 +316,7 @@ impl AppState {
 
     if payload.name.is_some() || payload.description.is_some() {
       for &member_id in &chat_result.chat_members {
-        self.chat_list_cache.remove(&member_id);
+        self.chat_list_cache.remove(&member_id.into());
       }
     }
 
@@ -352,7 +352,7 @@ impl AppState {
     tx.commit().await?;
 
     for &member in &members_to_invalidate {
-      self.chat_list_cache.remove(&member);
+      self.chat_list_cache.remove(&member.into());
     }
 
     Ok(true)
@@ -425,7 +425,7 @@ mod tests {
       .as_nanos();
 
     // 1. Create single chat
-    let single_members = vec![user2.id];
+    let single_members = vec![user2.id.into()];
     let single_chat = CreateChat::new(
       &format!("Single Chat with Bob {}", timestamp),
       ChatType::Single,
@@ -434,12 +434,12 @@ mod tests {
     );
     let single_chat_created = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &single_chat.name,
         single_chat.chat_type,
-        Some(single_members),
+        Some(single_members.into_iter().map(|id| id.into()).collect()),
         Some(single_chat.description.as_deref().unwrap_or("")),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -460,12 +460,12 @@ mod tests {
     );
     let chat = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &group_chat.name,
         group_chat.chat_type,
-        Some(group_members),
+        Some(group_members.into_iter().map(|id| id.into()).collect()),
         Some(group_chat.description.as_deref().unwrap_or("")),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -476,15 +476,21 @@ mod tests {
     assert!(chat.chat_members.contains(&user3.id));
 
     // 3. Create private channel
-    let channel_members = vec![user2.id];
+    let channel_members = vec![user2.id.into()];
     let private_chat = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("Project Updates {}", timestamp),
         ChatType::PrivateChannel,
-        Some(channel_members.clone()),
+        Some(
+          channel_members
+            .clone()
+            .into_iter()
+            .map(|id: fechatter_core::UserId| id.into())
+            .collect(),
+        ),
         Some("Invite only"),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -494,12 +500,12 @@ mod tests {
     // 4. Create public channel
     let public_chat = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("Company Announcements {}", timestamp),
         ChatType::PublicChannel,
         None, // No members for public channel
         Some("Company announcements"),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -507,7 +513,7 @@ mod tests {
     assert_eq!(public_chat.chat_members.len(), 1);
 
     // Use the correct function signature for listing chats
-    let chats = state.list_chats_of_user(user1.id).await?;
+    let chats = state.list_chats_of_user(user1.id.into()).await?;
     assert_eq!(chats.len(), 4);
 
     Ok(())
@@ -528,12 +534,12 @@ mod tests {
 
     let single_chat = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("Single Chat with Bob (for update/delete) {}", timestamp),
         ChatType::Single,
-        Some(vec![user2.id]),
+        Some(vec![user2.id.into()]),
         Some("One-on-one chat"),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
     assert_eq!(single_chat.chat_type, ChatType::Single);
@@ -541,12 +547,12 @@ mod tests {
     let group_members = vec![user2.id, user3.id];
     let group_chat = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("Work Team {}", timestamp),
         ChatType::Group,
-        Some(group_members),
+        Some(group_members.into_iter().map(|id| id.into()).collect()),
         Some("Work group"),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
     assert_eq!(group_chat.chat_type, ChatType::Group);
@@ -554,8 +560,8 @@ mod tests {
 
     let updated_single_chat = state
       .update_chat(
-        single_chat.id,
-        user1.id,
+        single_chat.id.into(),
+        user1.id.into(),
         UpdateChat {
           name: Some(format!("Updated Single Chat {}", timestamp)),
           description: Some("Updated description".to_string()),
@@ -571,8 +577,8 @@ mod tests {
 
     let updated_group_chat = state
       .update_chat(
-        group_chat.id,
-        user1.id,
+        group_chat.id.into(),
+        user1.id.into(),
         UpdateChat {
           name: Some(format!("Updated Group Chat {}", timestamp)),
           description: Some("Updated description".to_string()),
@@ -586,19 +592,23 @@ mod tests {
     );
     assert_eq!(updated_group_chat.description, "Updated description");
 
-    let chats = state.list_chats_of_user(user1.id).await?;
+    let chats = state.list_chats_of_user(user1.id.into()).await?;
     assert_eq!(chats.len(), 2);
 
-    let deleted_single_chat = state.delete_chat(single_chat.id, user1.id).await?;
+    let deleted_single_chat = state
+      .delete_chat(single_chat.id.into(), user1.id.into())
+      .await?;
     assert!(deleted_single_chat);
 
-    let chats = state.list_chats_of_user(user1.id).await?;
+    let chats = state.list_chats_of_user(user1.id.into()).await?;
     assert_eq!(chats.len(), 1);
 
-    let deleted_group_chat = state.delete_chat(group_chat.id, user1.id).await?;
+    let deleted_group_chat = state
+      .delete_chat(group_chat.id.into(), user1.id.into())
+      .await?;
     assert!(deleted_group_chat);
 
-    let chats = state.list_chats_of_user(user1.id).await?;
+    let chats = state.list_chats_of_user(user1.id.into()).await?;
     assert_eq!(chats.len(), 0);
 
     Ok(())
@@ -621,12 +631,12 @@ mod tests {
     // 1. Test creating a chat with no name (should fail)
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         "",
         ChatType::Single,
-        Some(vec![user2.id]),
+        Some(vec![user2.id.into()]),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await;
     assert!(result.is_err());
@@ -634,12 +644,12 @@ mod tests {
     // 2. Try to create a single chat with yourself (should fail)
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("Self Chat {}", timestamp),
         ChatType::Single,
-        Some(vec![user1.id]),
+        Some(vec![user1.id.into()]),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await;
     assert!(result.is_err());
@@ -647,12 +657,12 @@ mod tests {
     // 3. Test single chat without specifying members
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("No Target Chat {}", timestamp),
         ChatType::Single,
         None,
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await;
     assert!(result.is_err());
@@ -660,12 +670,12 @@ mod tests {
     // 4. Test single chat with empty member list
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("Empty Members Chat {}", timestamp),
         ChatType::Single,
         Some(vec![]),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await;
     assert!(result.is_err());
@@ -673,12 +683,12 @@ mod tests {
     // 5. Test single chat with multiple members
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("Multi Target Chat {}", timestamp),
         ChatType::Single,
-        Some(vec![user2.id, user3.id]),
+        Some(vec![user2.id.into(), user3.id.into()]),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await;
     assert!(result.is_err());
@@ -686,12 +696,12 @@ mod tests {
     // 6. Create a group with insufficient members (should fail)
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("Small Group {}", timestamp),
         ChatType::Group,
-        Some(vec![user2.id]),
+        Some(vec![user2.id.into()]),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await;
     assert!(result.is_err());
@@ -699,12 +709,12 @@ mod tests {
     // 7. Test group chat without specifying target members (should fail as total members < 3)
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("No Members Group {}", timestamp),
         ChatType::Group,
         None,
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await;
     assert!(result.is_err());
@@ -712,12 +722,12 @@ mod tests {
     // 8. Test group chat with empty member list (should fail as total members < 3)
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("Empty Members Group {}", timestamp),
         ChatType::Group,
         Some(vec![]),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await;
     assert!(result.is_err());
@@ -725,12 +735,17 @@ mod tests {
     // 9. Test group chat with duplicate members (should succeed but deduplicate)
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("Duplicate Members Group {}", timestamp),
         ChatType::Group,
-        Some(vec![user2.id, user3.id, user2.id, user3.id]),
+        Some(vec![
+          user2.id.into(),
+          user3.id.into(),
+          user2.id.into(),
+          user3.id.into(),
+        ]),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
     assert_eq!(result.chat_members.len(), 3);
@@ -738,12 +753,12 @@ mod tests {
     // 10. Test group chat that includes the creator (should succeed but not duplicate creator)
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("Self Included Group {}", timestamp),
         ChatType::Group,
-        Some(vec![user1.id, user2.id, user3.id]),
+        Some(vec![user1.id.into(), user2.id.into(), user3.id.into()]),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
     assert_eq!(result.chat_members.len(), 3);
@@ -752,12 +767,12 @@ mod tests {
     // 11. Test empty members private channel (should succeed with only creator)
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("Empty Private Channel {}", timestamp),
         ChatType::PrivateChannel,
         None,
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
     assert_eq!(result.chat_members.len(), 1);
@@ -766,12 +781,12 @@ mod tests {
     // 12. Test private channel that includes creator (should succeed but not duplicate)
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("Self Included Private Channel {}", timestamp),
         ChatType::PrivateChannel,
-        Some(vec![user1.id, user2.id]),
+        Some(vec![user1.id.into(), user2.id.into()]),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
     assert_eq!(result.chat_members.len(), 2);
@@ -780,12 +795,17 @@ mod tests {
     // 13. Test private channel with duplicate members (should succeed but deduplicate)
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("Duplicate Private Channel {}", timestamp),
         ChatType::PrivateChannel,
-        Some(vec![user2.id, user2.id, user3.id, user3.id]),
+        Some(vec![
+          user2.id.into(),
+          user2.id.into(),
+          user3.id.into(),
+          user3.id.into(),
+        ]),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
     assert_eq!(result.chat_members.len(), 3);
@@ -793,12 +813,12 @@ mod tests {
     // 14. Test public channel (always succeeds, ignores all member parameters)
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("Public Channel No Members {}", timestamp),
         ChatType::PublicChannel,
         None,
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
     assert_eq!(result.chat_members.len(), 1);
@@ -807,12 +827,12 @@ mod tests {
     // 15. Test public channel with specified members (should succeed but ignore members)
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("Public Channel With Members {}", timestamp),
         ChatType::PublicChannel,
-        Some(vec![user2.id, user3.id, user4.id]),
+        Some(vec![user2.id.into(), user3.id.into(), user4.id.into()]),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
     assert_eq!(result.chat_members.len(), 1);
@@ -822,12 +842,12 @@ mod tests {
     let long_name = format!("a{}", "b".repeat(129)); // 130 characters total, should fail
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &long_name,
         ChatType::Single,
-        Some(vec![user2.id]),
+        Some(vec![user2.id.into()]),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await;
     assert!(result.is_err());
@@ -835,12 +855,12 @@ mod tests {
     // 17. Test chat with description
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &format!("Chat With Description {}", timestamp),
         ChatType::Single,
-        Some(vec![user2.id]),
+        Some(vec![user2.id.into()]),
         Some("This is a test description that should be saved correctly"),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
     assert_eq!(
@@ -848,7 +868,7 @@ mod tests {
       "This is a test description that should be saved correctly"
     );
 
-    let chats = state.list_chats_of_user(user1.id).await?;
+    let chats = state.list_chats_of_user(user1.id.into()).await?;
     assert_eq!(chats.len(), 8);
 
     Ok(())
@@ -874,27 +894,32 @@ mod tests {
     let department_members = Some(vec![user2.id, user3.id, user4.id, user5.id]);
     let department_chat = state
       .create_new_chat(
-        user1.id, // Alice as creator
+        user1.id.into(), // Alice as creator
         &format!("Marketing Department {}", timestamp),
         ChatType::Group,
-        department_members,
+        department_members.map(|members| members.into_iter().map(|id| id.into()).collect()),
         Some("Department internal communication group"),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
     assert_eq!(department_chat.chat_members.len(), 5);
 
     // 2. Create project team
-    let project_members = Some(vec![user2.id, user3.id]); // Bob and Charlie
+    let project_members = Some(vec![user2.id.into(), user3.id.into()]); // Bob and Charlie
     let project_chat = state
       .create_new_chat(
-        user1.id, // Alice as creator
+        user1.id.into(), // Alice as creator
         &format!("Website Redesign {}", timestamp),
         ChatType::Group,
-        project_members,
+        project_members.map(|members| {
+          members
+            .into_iter()
+            .map(|id: fechatter_core::UserId| id.into())
+            .collect()
+        }),
         Some("Website redesign project discussion"),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -903,12 +928,12 @@ mod tests {
     // 3. Create company announcement channel
     let announce_channel = state
       .create_new_chat(
-        user1.id, // Alice as manager
+        user1.id.into(), // Alice as manager
         &format!("Company Announcements {}", timestamp),
         ChatType::PublicChannel,
         None,
         Some("Company important announcements"),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -917,12 +942,12 @@ mod tests {
     // 4. Alice and Bob's one-on-one chat
     let one_on_one = state
       .create_new_chat(
-        user1.id, // Alice
+        user1.id.into(), // Alice
         &format!("Alice & Bob {}", timestamp),
         ChatType::Single,
-        Some(vec![user2.id]), // Bob
+        Some(vec![user2.id.into()]), // Bob
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -930,7 +955,7 @@ mod tests {
     assert!(one_on_one.chat_members.contains(&user1.id));
     assert!(one_on_one.chat_members.contains(&user2.id));
 
-    let chats = state.list_chats_of_user(user1.id).await?;
+    let chats = state.list_chats_of_user(user1.id.into()).await?;
     assert_eq!(chats.len(), 4);
 
     Ok(())
@@ -966,12 +991,14 @@ mod tests {
     );
     let first_chat = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &first_chat.name,
         first_chat.chat_type,
-        first_chat.members,
+        first_chat
+          .members
+          .map(|members| members.into_iter().map(|id| id.into()).collect()),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
     assert_eq!(first_chat.chat_members.len(), 3);
@@ -979,12 +1006,12 @@ mod tests {
     // Try to create chat with same name (should fail)
     let result = state
       .create_new_chat(
-        user4.id,                                   // Different creator
+        user4.id.into(),                            // Different creator
         &format!("Unique Name Test {}", timestamp), // Same name
         ChatType::Group,
-        Some(vec![user5.id, user6.id]), // Different members
+        Some(vec![user5.id.into(), user6.id.into()]), // Different members
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await;
 
@@ -998,12 +1025,14 @@ mod tests {
       CreateChat::new(&special_name, ChatType::Group, vec![user2.id, user3.id], "");
     let special_chat = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &special_chat.name,
         special_chat.chat_type,
-        special_chat.members,
+        special_chat
+          .members
+          .map(|members| members.into_iter().map(|id| id.into()).collect()),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -1021,12 +1050,14 @@ mod tests {
     );
     let long_desc_chat = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &long_desc_chat.name,
         long_desc_chat.chat_type,
-        long_desc_chat.members,
+        long_desc_chat
+          .members
+          .map(|members| members.into_iter().map(|id| id.into()).collect()),
         Some(long_desc_chat.description.as_deref().unwrap_or("")),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -1045,12 +1076,14 @@ mod tests {
     );
     let large_group = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &large_group.name,
         large_group.chat_type,
-        large_group.members,
+        large_group
+          .members
+          .map(|members| members.into_iter().map(|id| id.into()).collect()),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -1059,7 +1092,7 @@ mod tests {
     // ===== 5. Test different chat types with same members =====
 
     // Create different chat types for the same group of users
-    let members = vec![user2.id];
+    let members = vec![user2.id.into()];
 
     // Single chat
     let single_chat = CreateChat::new(
@@ -1070,12 +1103,14 @@ mod tests {
     );
     let single_chat = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &single_chat.name,
         single_chat.chat_type,
-        single_chat.members,
+        single_chat
+          .members
+          .map(|members| members.into_iter().map(|id| id.into()).collect()),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -1088,12 +1123,14 @@ mod tests {
     );
     let private_channel = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &private_channel.name,
         private_channel.chat_type,
-        private_channel.members,
+        private_channel
+          .members
+          .map(|members| members.into_iter().map(|id| id.into()).collect()),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -1110,12 +1147,14 @@ mod tests {
     let all_spaces = CreateChat::new("   ", ChatType::Group, vec![user2.id, user3.id], "");
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &all_spaces.name,
         all_spaces.chat_type,
-        all_spaces.members,
+        all_spaces
+          .members
+          .map(|members| members.into_iter().map(|id| id.into()).collect()),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await;
 
@@ -1132,12 +1171,14 @@ mod tests {
     );
     let creator_included = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &creator_included.name,
         creator_included.chat_type,
-        creator_included.members,
+        creator_included
+          .members
+          .map(|members| members.into_iter().map(|id| id.into()).collect()),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -1160,12 +1201,12 @@ mod tests {
 
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &name_128,
         ChatType::Single,
-        Some(vec![user2.id]),
+        Some(vec![user2.id.into()]),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -1182,12 +1223,14 @@ mod tests {
     );
     let relation_test = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &relation_test.name,
         relation_test.chat_type,
-        relation_test.members,
+        relation_test
+          .members
+          .map(|members| members.into_iter().map(|id| id.into()).collect()),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -1205,12 +1248,14 @@ mod tests {
     );
     let normal_chat = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &normal_chat.name,
         normal_chat.chat_type,
-        normal_chat.members,
+        normal_chat
+          .members
+          .map(|members| members.into_iter().map(|id| id.into()).collect()),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -1224,8 +1269,8 @@ mod tests {
     let non_existent_user_id = i64::MAX; // Use a very large ID that definitely doesn't exist
     let add_result = state
       .add_chat_members(
-        normal_chat.id,
-        user1.id, // Creator is performing the action
+        normal_chat.id.into(),
+        user1.id.into(), // Creator is performing the action
         vec![non_existent_user_id],
       )
       .await;
@@ -1236,9 +1281,9 @@ mod tests {
     // Test deleting a member
     let remove_result = state
       .remove_group_chat_members(
-        normal_chat.id,
-        user1.id, // Creator is performing the action
-        vec![user3.id],
+        normal_chat.id.into(),
+        user1.id.into(), // Creator is performing the action
+        vec![user3.id.into()],
       )
       .await?;
 
@@ -1255,12 +1300,14 @@ mod tests {
     );
     let non_english_chat = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &non_english_chat.name,
         non_english_chat.chat_type,
-        non_english_chat.members,
+        non_english_chat
+          .members
+          .map(|members| members.into_iter().map(|id| id.into()).collect()),
         Some(non_english_chat.description.as_deref().unwrap_or("")),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -1284,19 +1331,21 @@ mod tests {
     );
     let emoji_chat = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &emoji_chat.name,
         emoji_chat.chat_type,
-        emoji_chat.members,
+        emoji_chat
+          .members
+          .map(|members| members.into_iter().map(|id| id.into()).collect()),
         Some(emoji_chat.description.as_deref().unwrap_or("")),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
     assert_eq!(emoji_chat.name, format!("😀 Emoji Chat 🎉 {}", timestamp));
     assert_eq!(emoji_chat.description, "Testing emoji support 😊👍");
 
-    let chats = state.list_chats_of_user(user1.id).await?;
+    let chats = state.list_chats_of_user(user1.id.into()).await?;
     assert_eq!(chats.len(), 12);
 
     Ok(())
@@ -1319,12 +1368,12 @@ mod tests {
     let members = vec![user2.id, user3.id];
     let first_chat = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &chat_name,
         ChatType::Group,
-        Some(members.clone()),
+        Some(members.clone().into_iter().map(|id| id.into()).collect()),
         Some("First chat description"),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -1333,12 +1382,12 @@ mod tests {
     // Attempt to create a second chat with the same name
     let result = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &chat_name, // same name
         ChatType::Group,
-        Some(members.clone()),
+        Some(members.into_iter().map(|id| id.into()).collect()),
         Some("Second chat description"),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await;
 
@@ -1372,30 +1421,30 @@ mod tests {
 
     state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &first_chat_name,
         ChatType::Group,
-        Some(vec![user2.id, user3.id]),
+        Some(vec![user2.id.into(), user3.id.into()]),
         Some("First chat description"),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
     let second_chat = state
       .create_new_chat(
-        user1.id,
+        user1.id.into(),
         &second_chat_name,
         ChatType::Group,
-        Some(vec![user2.id, user3.id]),
+        Some(vec![user2.id.into(), user3.id.into()]),
         Some("Second chat description"),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
     let update_result = state
       .update_chat(
-        second_chat.id,
-        user1.id,
+        second_chat.id.into(),
+        user1.id.into(),
         UpdateChat {
           name: Some(first_chat_name.clone()),
           description: None,

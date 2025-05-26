@@ -1,8 +1,8 @@
 use crate::{
-  AuthContext, AuthService, AuthUser, CreateUser, SigninUser, UserClaims,
+  AuthContext, AuthService, AuthUser, CreateUser, SigninUser,
   error::CoreError,
-  jwt::{AuthTokens, RefreshTokenData},
-  models::UserStatus,
+  jwt::{AuthTokens, RefreshTokenData, UserClaims},
+  models::{UserId, UserStatus, WorkspaceId},
 };
 use chrono::Utc;
 use std::future::Future;
@@ -65,14 +65,14 @@ impl AuthService for MockAuthService {
     async move { Ok(()) }
   }
 
-  fn logout_all(&self, _user_id: i64) -> impl Future<Output = Result<(), CoreError>> + Send {
-    async move { Ok(()) }
+  fn logout_all(&self, _user_id: UserId) -> impl Future<Output = Result<(), CoreError>> + Send {
+    async { Ok(()) }
   }
 
   fn verify_token(&self, _token: &str) -> Result<UserClaims, CoreError> {
     Ok(UserClaims {
-      id: 1,
-      workspace_id: 1,
+      id: UserId::new(1),
+      workspace_id: WorkspaceId::new(1),
       fullname: "Mock User".to_string(),
       email: "mock@example.com".to_string(),
       status: UserStatus::Active,

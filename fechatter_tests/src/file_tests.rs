@@ -2,13 +2,14 @@
 //!
 //! Tests file upload, download and storage functionality
 
-use crate::common::*;
+use crate::common::TestEnvironment;
 use anyhow::Result;
-use tracing::info;
+use log::info;
+use std::collections::HashSet;
 
 /// File storage path test
 #[tokio::test]
-async fn test_file_storage_paths() -> Result<()> {
+async fn test_file_storage_paths() -> Result<(), Box<dyn std::error::Error>> {
   let mut env = TestEnvironment::new().await?;
 
   // Create test user
@@ -19,7 +20,7 @@ async fn test_file_storage_paths() -> Result<()> {
   let filename = "path_test.txt";
 
   let file_meta =
-    fechatter_server::models::ChatFile::new(user.workspace_id, filename, test_content);
+    fechatter_server::models::ChatFile::new(user.workspace_id.into(), filename, test_content);
 
   // Verify path format
   let hash_path = file_meta.hash_to_path();
@@ -39,7 +40,7 @@ async fn test_file_storage_paths() -> Result<()> {
 
 /// File content validation test
 #[tokio::test]
-async fn test_file_content_validation() -> Result<()> {
+async fn test_file_content_validation() -> Result<(), Box<dyn std::error::Error>> {
   let mut env = TestEnvironment::new().await?;
 
   // Create test user
@@ -54,7 +55,8 @@ async fn test_file_content_validation() -> Result<()> {
   ];
 
   for (filename, content) in test_cases {
-    let file_meta = fechatter_server::models::ChatFile::new(user.workspace_id, filename, &content);
+    let file_meta =
+      fechatter_server::models::ChatFile::new(user.workspace_id.into(), filename, &content);
 
     // Verify hash generation
     assert!(!file_meta.hash.is_empty());
@@ -76,7 +78,7 @@ async fn test_file_content_validation() -> Result<()> {
 
 /// File hash consistency test
 #[tokio::test]
-async fn test_file_hash_consistency() -> Result<()> {
+async fn test_file_hash_consistency() -> Result<(), Box<dyn std::error::Error>> {
   let mut env = TestEnvironment::new().await?;
 
   // Create test user
@@ -86,12 +88,14 @@ async fn test_file_hash_consistency() -> Result<()> {
   let filename = "consistency_test.txt";
 
   // Create multiple file objects with same content
-  let file1 = fechatter_server::models::ChatFile::new(user.workspace_id, filename, test_content);
+  let file1 =
+    fechatter_server::models::ChatFile::new(user.workspace_id.into(), filename, test_content);
 
-  let file2 = fechatter_server::models::ChatFile::new(user.workspace_id, filename, test_content);
+  let file2 =
+    fechatter_server::models::ChatFile::new(user.workspace_id.into(), filename, test_content);
 
   let file3 = fechatter_server::models::ChatFile::new(
-    user.workspace_id,
+    user.workspace_id.into(),
     "different_name.txt", // Different filename
     test_content,
   );
@@ -115,7 +119,7 @@ async fn test_file_hash_consistency() -> Result<()> {
 
 /// File path security test
 #[tokio::test]
-async fn test_file_path_security() -> Result<()> {
+async fn test_file_path_security() -> Result<(), Box<dyn std::error::Error>> {
   let mut env = TestEnvironment::new().await?;
 
   // Create test user
@@ -135,7 +139,7 @@ async fn test_file_path_security() -> Result<()> {
 
   for filename in malicious_filenames {
     let file_meta =
-      fechatter_server::models::ChatFile::new(user.workspace_id, filename, test_content);
+      fechatter_server::models::ChatFile::new(user.workspace_id.into(), filename, test_content);
 
     let url = file_meta.url();
     let hash_path = file_meta.hash_to_path();
@@ -172,9 +176,7 @@ async fn test_file_path_security() -> Result<()> {
 
 /// File storage directory structure test
 #[tokio::test]
-async fn test_file_storage_structure() -> Result<()> {
-  use std::collections::HashSet;
-
+async fn test_file_storage_structure() -> Result<(), Box<dyn std::error::Error>> {
   let mut env = TestEnvironment::new().await?;
 
   // Create test user
@@ -193,7 +195,8 @@ async fn test_file_storage_structure() -> Result<()> {
   let mut hash_prefixes = HashSet::new();
 
   for (filename, content) in test_files {
-    let file_meta = fechatter_server::models::ChatFile::new(user.workspace_id, filename, &content);
+    let file_meta =
+      fechatter_server::models::ChatFile::new(user.workspace_id.into(), filename, &content);
 
     let hash_path = file_meta.hash_to_path();
     let url = file_meta.url();
@@ -229,7 +232,7 @@ async fn test_file_storage_structure() -> Result<()> {
 
 /// Large file handling test
 #[tokio::test]
-async fn test_large_file_handling() -> Result<()> {
+async fn test_large_file_handling() -> Result<(), Box<dyn std::error::Error>> {
   let mut env = TestEnvironment::new().await?;
 
   // Create test user
@@ -248,7 +251,8 @@ async fn test_large_file_handling() -> Result<()> {
 
     let start_time = std::time::Instant::now();
 
-    let file_meta = fechatter_server::models::ChatFile::new(user.workspace_id, filename, &content);
+    let file_meta =
+      fechatter_server::models::ChatFile::new(user.workspace_id.into(), filename, &content);
 
     let creation_time = start_time.elapsed();
 
@@ -271,7 +275,7 @@ async fn test_large_file_handling() -> Result<()> {
 
 /// Concurrent file operations test
 #[tokio::test]
-async fn test_concurrent_file_operations() -> Result<()> {
+async fn test_concurrent_file_operations() -> Result<(), Box<dyn std::error::Error>> {
   let mut env = TestEnvironment::new().await?;
 
   // Create test user
@@ -281,12 +285,12 @@ async fn test_concurrent_file_operations() -> Result<()> {
   let mut handles = Vec::new();
 
   for i in 0..10 {
-    let user_id = user.workspace_id;
+    let user_workspace_id = user.workspace_id;
     let handle = tokio::spawn(async move {
       let content = format!("Concurrent file content {}", i).into_bytes();
       let filename = format!("concurrent_file_{}.txt", i);
 
-      fechatter_server::models::ChatFile::new(user_id, &filename, &content)
+      fechatter_server::models::ChatFile::new(user_workspace_id.into(), &filename, &content)
     });
 
     handles.push(handle);

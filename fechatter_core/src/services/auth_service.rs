@@ -1,19 +1,13 @@
 use crate::{
   error::CoreError,
   error::TokenValidationError,
-  jwt::{
-    AuthTokens, RefreshToken, RefreshTokenData, RefreshTokenRepository, ReplaceTokenPayload,
-    UserClaims,
-  },
-  models::{CreateUser, SigninUser, user::UserRepository},
+  jwt::{AuthTokens, RefreshTokenData, RefreshTokenRepository, ReplaceTokenPayload, UserClaims},
+  models::{CreateUser, SigninUser, UserId, user::UserRepository},
   services::AuthContext,
 };
 use chrono::Utc;
 
 use uuid::Uuid;
-
-// Define RefreshTokenInfo as an alias for RefreshToken
-type RefreshTokenInfo = RefreshToken;
 
 // Function to generate a refresh token
 fn generate_refresh_token() -> String {
@@ -24,11 +18,12 @@ fn generate_refresh_token() -> String {
 pub trait TokenService: Send + Sync {
   fn generate_token(&self, user_claims: &UserClaims) -> Result<String, CoreError>;
   fn verify_token(&self, token: &str) -> Result<UserClaims, CoreError>;
-  fn generate_auth_tokens(
+  async fn generate_auth_tokens(
     &self,
     user_claims: &UserClaims,
-    auth_context: Option<AuthContext>,
-  ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<AuthTokens, CoreError>> + Send>>;
+    user_agent: Option<String>,
+    ip_address: Option<String>,
+  ) -> Result<AuthTokens, CoreError>;
 }
 
 // Core service that orchestrates the business logic without DB operations
@@ -61,16 +56,21 @@ where
     let user_claims = UserClaims {
       id: user.id,
       workspace_id: user.workspace_id,
-      fullname: user.fullname,
-      email: user.email,
+      fullname: user.fullname.clone(),
+      email: user.email.clone(),
       status: user.status,
       created_at: user.created_at,
     };
-    let tokens = self
+    let auth_context_data = auth_context.clone().unwrap_or_default();
+    let auth_tokens = self
       .token_service
-      .generate_auth_tokens(&user_claims, auth_context)
+      .generate_auth_tokens(
+        &user_claims,
+        auth_context_data.user_agent,
+        auth_context_data.ip_address,
+      )
       .await?;
-    Ok(tokens)
+    Ok(auth_tokens)
   }
 
   pub async fn signin(
@@ -83,16 +83,21 @@ where
         let user_claims = UserClaims {
           id: user.id,
           workspace_id: user.workspace_id,
-          fullname: user.fullname,
-          email: user.email,
+          fullname: user.fullname.clone(),
+          email: user.email.clone(),
           status: user.status,
           created_at: user.created_at,
         };
-        let tokens = self
+        let auth_context_data = auth_context.clone().unwrap_or_default();
+        let auth_tokens = self
           .token_service
-          .generate_auth_tokens(&user_claims, auth_context)
+          .generate_auth_tokens(
+            &user_claims,
+            auth_context_data.user_agent,
+            auth_context_data.ip_address,
+          )
           .await?;
-        Ok(Some(tokens))
+        Ok(Some(auth_tokens))
       }
       None => Ok(None),
     }
@@ -103,117 +108,105 @@ where
     refresh_token_str: &str,
     auth_context: Option<AuthContext>,
   ) -> Result<AuthTokens, CoreError> {
-    let token_record = self.validate_refresh_token(refresh_token_str).await?;
+    let refresh_token = self
+      .refresh_token_repository
+      .find_by_token(refresh_token_str)
+      .await?
+      .ok_or_else(|| CoreError::InvalidToken(TokenValidationError::NotFound))?;
 
-    // Only validate user agent if the token has one AND auth_context is provided
-    // This allows clients without user agent support to still refresh tokens
-    if let Some(saved_agent) = &token_record.user_agent {
-      if let Some(ctx) = &auth_context {
-        // Auth context is provided, so we can validate the user agent
-        if let Some(current_agent) = &ctx.user_agent {
-          // Check if user agents match
-          if current_agent != saved_agent {
+    if refresh_token.expires_at < Utc::now() {
+      return Err(CoreError::InvalidToken(TokenValidationError::Expired));
+    }
+
+    if refresh_token.revoked {
+      return Err(CoreError::InvalidToken(TokenValidationError::Revoked));
+    }
+
+    if refresh_token.absolute_expires_at < Utc::now() {
+      return Err(CoreError::InvalidToken(TokenValidationError::Expired));
+    }
+
+    if let Some(ctx) = &auth_context {
+      if let Some(token_user_agent) = &refresh_token.user_agent {
+        if let Some(request_user_agent) = &ctx.user_agent {
+          if token_user_agent != request_user_agent {
             return Err(CoreError::InvalidToken(
               TokenValidationError::SecurityMismatch,
             ));
           }
         }
-        // If auth_context has no user_agent, we'll still allow the refresh
-        // This is more permissive than before but necessary for some clients
       }
-      // If no auth_context provided but token has user_agent,
-      // we'll also allow the refresh for better compatibility with different clients
     }
 
     let user = self
       .user_repository
-      .find_by_id(token_record.user_id)
+      .find_by_id(refresh_token.user_id)
       .await?
-      .ok_or_else(|| CoreError::NotFound(format!("User linked to refresh token not found")))?;
+      .ok_or_else(|| CoreError::NotFound("User not found".to_string()))?;
 
     let user_claims = UserClaims {
       id: user.id,
       workspace_id: user.workspace_id,
-      fullname: user.fullname,
-      email: user.email,
+      fullname: user.fullname.clone(),
+      email: user.email.clone(),
       status: user.status,
       created_at: user.created_at,
     };
 
-    let new_raw_token = generate_refresh_token();
-
-    let user_agent = auth_context.as_ref().and_then(|ctx| ctx.user_agent.clone());
-    let ip_address = auth_context.as_ref().and_then(|ctx| ctx.ip_address.clone());
-
+    let new_access_token = self.token_service.generate_token(&user_claims)?;
+    let new_raw_refresh_token = generate_refresh_token();
     let now = Utc::now();
     let new_expires_at =
       now + chrono::Duration::seconds(crate::models::jwt::REFRESH_TOKEN_EXPIRATION as i64);
-    let new_absolute_expires_at =
-      now + chrono::Duration::seconds(crate::models::jwt::REFRESH_TOKEN_MAX_LIFETIME as i64);
+    let new_absolute_expires_at = refresh_token.absolute_expires_at;
 
+    let auth_context_data = auth_context.unwrap_or_default();
     let replace_payload = ReplaceTokenPayload {
-      old_token_id: token_record.id,
-      new_raw_token: new_raw_token.clone(),
+      old_token_id: refresh_token.id,
+      new_raw_token: new_raw_refresh_token.clone(),
       new_expires_at,
       new_absolute_expires_at,
-      user_agent,
-      ip_address,
+      user_agent: auth_context_data.user_agent,
+      ip_address: auth_context_data.ip_address,
     };
 
-    let new_token_record = self
+    let new_refresh_token_record = self
       .refresh_token_repository
       .replace(replace_payload)
       .await?;
 
-    let access_token = self.token_service.generate_token(&user_claims)?;
+    let refresh_token_data = RefreshTokenData {
+      token: new_raw_refresh_token,
+      expires_at: new_refresh_token_record.expires_at,
+      absolute_expires_at: new_refresh_token_record.absolute_expires_at,
+    };
 
     Ok(AuthTokens {
-      access_token,
-      refresh_token: RefreshTokenData {
-        token: new_raw_token,
-        expires_at: new_token_record.expires_at,
-        absolute_expires_at: new_token_record.absolute_expires_at,
-      },
+      access_token: new_access_token,
+      refresh_token: refresh_token_data,
     })
   }
 
   pub async fn logout(&self, refresh_token_str: &str) -> Result<(), CoreError> {
-    if let Some(token_record) = self
+    let refresh_token = self
       .refresh_token_repository
       .find_by_token(refresh_token_str)
       .await?
-    {
-      self
-        .refresh_token_repository
-        .revoke(token_record.id)
-        .await?;
-    }
+      .ok_or_else(|| CoreError::InvalidToken(TokenValidationError::NotFound))?;
+
+    self
+      .refresh_token_repository
+      .revoke(refresh_token.id)
+      .await?;
+
     Ok(())
   }
 
-  pub async fn logout_all(&self, user_id: i64) -> Result<(), CoreError> {
+  pub async fn logout_all(&self, user_id: UserId) -> Result<(), CoreError> {
     self
       .refresh_token_repository
       .revoke_all_for_user(user_id)
       .await?;
     Ok(())
-  }
-
-  async fn validate_refresh_token(&self, token_str: &str) -> Result<RefreshTokenInfo, CoreError> {
-    let token_record = self
-      .refresh_token_repository
-      .find_by_token(token_str)
-      .await?
-      .ok_or_else(|| CoreError::InvalidToken(TokenValidationError::NotFound))?;
-
-    if token_record.expires_at < chrono::Utc::now() {
-      return Err(CoreError::InvalidToken(TokenValidationError::Expired));
-    }
-
-    if token_record.revoked {
-      return Err(CoreError::InvalidToken(TokenValidationError::Revoked));
-    }
-
-    Ok(token_record)
   }
 }

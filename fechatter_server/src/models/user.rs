@@ -62,14 +62,14 @@ impl FechatterUserRepository {
 
 #[async_trait]
 impl UserRepository for FechatterUserRepository {
-  async fn find_by_id(&self, id: i64) -> Result<Option<User>, CoreError> {
+  async fn find_by_id(&self, id: fechatter_core::UserId) -> Result<Option<User>, CoreError> {
     let user = sqlx::query_as::<_, User>(
       "SELECT id, fullname, email, password_hash, status, created_at, workspace_id FROM users WHERE id = $1",
     )
-    .bind(id)
+    .bind(i64::from(id))
     .fetch_optional(&*self.pool)
     .await
-    .map_err(|e| CoreError::Internal(e.to_string()))?;
+    .map_err(|e| CoreError::Database(e.to_string()))?;
 
     Ok(user)
   }
@@ -99,7 +99,7 @@ impl UserRepository for FechatterUserRepository {
       .map_err(|e| CoreError::Internal(e.to_string()))?;
 
     let mut is_new_workspace = false;
-    if workspace.owner_id == 0 {
+    if workspace.owner_id == fechatter_core::UserId(0) {
       is_new_workspace = true;
     }
 
@@ -194,7 +194,10 @@ impl UserRepository for FechatterUserRepository {
     Ok(user)
   }
 
-  async fn validate_users_exists_by_ids(&self, ids: &[i64]) -> Result<(), CoreError> {
+  async fn validate_users_exists_by_ids(
+    &self,
+    ids: &[fechatter_core::UserId],
+  ) -> Result<(), CoreError> {
     if ids.is_empty() {
       return Ok(());
     }
@@ -457,7 +460,7 @@ mod tests {
 
     assert_eq!(user.email, unique_email);
     assert_eq!(user.fullname, "Alice");
-    assert!(user.id > 0);
+    assert!(user.id > fechatter_core::UserId(0));
 
     let user_check = state.email_user_exists(&input.email).await?;
     assert!(user_check.is_some());
@@ -509,7 +512,7 @@ mod tests {
 
     // Change password
     state
-      .change_password(user.id, "password", "newpassword")
+      .change_password(user.id.into(), "password", "newpassword")
       .await?;
 
     // Try to authenticate with new password

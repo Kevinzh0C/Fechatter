@@ -39,7 +39,7 @@ pub async fn ensure_workspace_member(
   next: Next,
 ) -> Response {
   // Validate user is a member of the workspace
-  if auth_user.workspace_id != ws_id {
+  if auth_user.workspace_id != fechatter_core::WorkspaceId(ws_id) {
     return StatusCode::FORBIDDEN.into_response();
   }
 
@@ -62,7 +62,10 @@ pub async fn with_workspace_context(
   );
 
   // Find workspace
-  let workspace = match state.find_by_id_with_pool(auth_user.workspace_id).await {
+  let workspace = match state
+    .find_by_id_with_pool(auth_user.workspace_id.into())
+    .await
+  {
     Ok(Some(workspace)) => {
       tracing::debug!(
         "Workspace found: id={}, name={}, owner_id={}",
@@ -91,7 +94,7 @@ pub async fn with_workspace_context(
       );
 
       match state
-        .create_workspace_with_pool(&new_workspace_name, auth_user.id)
+        .create_workspace_with_pool(&new_workspace_name, auth_user.id.into())
         .await
       {
         Ok(new_workspace) => {
