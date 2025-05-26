@@ -3,7 +3,7 @@ members = ["fechatter_core", "fechatter_server", "notify_server", "fechatter_tes
 resolver = "2"
 
 [workspace.dependencies]
-tokio = { version = "1.32", features = [
+tokio = { version = "1.45", features = [
   "full",
   "macros",
   "rt",
@@ -21,9 +21,9 @@ axum = { version = "0.8.3", features = [
   "macros",
 ] }
 axum-extra = { version = "0.10.0", features = ["typed-header", "cookie"] }
-sqlx = { version = "0.8.0", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "chrono", "macros"] }
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "chrono", "macros"] }
 async-trait = "0.1"
-uuid = { version = "1.4", features = ["v4", "v7", "serde"] }
+uuid = { version = "1.17", features = ["v4", "v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2.0.12"
 tracing = "0.1"
@@ -37,7 +37,7 @@ jsonwebtoken = "9.1"
 futures = "0.3"
 tower = { version = "0.5.2", features = ["util"] }
 tower-service = "0.3"
-tower-http = { version = "0.6.2", features = [
+tower-http = { version = "0.6.4", features = [
   "compression-full",
   "cors",
   "trace",
@@ -53,7 +53,7 @@ dashmap = { version = "6.1.0" }
 utoipa = { version = "5.3.1", features = ["uuid", "chrono", "axum_extras"] }
 utoipa-rapidoc = { version = "6.0.0", features = ["axum"] }
 utoipa-redoc = { version = "6.0.0", features = ["axum"] }
-utoipa-swagger-ui = { version = "9.0.1", features = ["axum"] }
+utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
 utoipa-scalar = { version = "0.3.0", features = ["axum"] }
 
 fechatter_core = { path = "./fechatter_core" }
