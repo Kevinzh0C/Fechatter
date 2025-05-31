@@ -4,8 +4,9 @@ use axum::Router;
 use fechatter_core::{
   AuthUser, Chat, ChatType, ChatUser, CreateChat, CreateMessage, CreateUser, ListMessages, Message,
   SigninUser, User, Workspace,
-  SearchMessages, SearchResult, SearchableMessage,
+  SearchMessages, SearchableMessage,
 };
+use fechatter_core::models::message::SearchResult;
 
 use utoipa::{
   Modify, OpenApi,
@@ -22,44 +23,7 @@ pub(crate) trait OpenApiRouter {
 /// API Documentation
 #[derive(OpenApi)]
 #[openapi(
-        paths(
-            // Health endpoints
-            crate::handlers::health_check,
-            crate::handlers::simple_health_check,
-            
-            // Auth endpoints
-            crate::handlers::signup_handler,
-            crate::handlers::signin_handler,
-            crate::handlers::refresh_token_handler,
-            crate::handlers::logout_handler,
-            crate::handlers::logout_all_handler,
-            
-            // Chat endpoints
-            crate::handlers::list_chats_handler,
-            crate::handlers::create_chat_handler, 
-            crate::handlers::update_chat_handler,
-            crate::handlers::delete_chat_handler,
-            
-            // Chat members endpoints
-            crate::handlers::list_chat_members_handler,
-            crate::handlers::add_chat_members_batch_handler,
-            crate::handlers::remove_chat_member_handler,
-            crate::handlers::transfer_chat_ownership_handler,
-            
-            // Messages endpoints
-            crate::handlers::send_message_handler,
-            crate::handlers::list_messages_handler,
-            crate::handlers::search_messages,
-            
-            // File endpoints
-            crate::handlers::file_handler,
-            crate::handlers::upload_handler,
-            crate::handlers::fix_file_storage_handler,
-            
-            // Workspace endpoints
-            crate::handlers::list_all_workspace_users_handler,
-            crate::handlers::get_workspace_by_id
-        ),
+        // TODO: Re-enable paths when handlers have proper utoipa annotations
         components(
             schemas(
                 // Error schemas

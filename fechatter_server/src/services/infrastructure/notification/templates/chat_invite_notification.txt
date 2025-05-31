@@ -1,0 +1,16 @@
+Hi {{user_name}},
+
+You've been invited to join "{{notification_title}}"!
+
+{{truncate notification_message 200}}
+
+{{#if chat_url}}
+Join the chat: {{chat_url}}
+{{/if}}
+
+---
+This invitation was sent at {{timestamp}}.
+To manage your notification settings, visit: {{base_url}}/settings/notifications
+
+Best regards,
+The Fechatter Team 

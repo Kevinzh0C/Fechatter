@@ -65,3 +65,35 @@ search:
         sortable_fields: [ "created_at" ]
     settings:
       pagination_limit: 20
+
+# Notification system configuration - Focus on in-app notifications
+notification:
+  # Primary notification system (in-app notifications)
+  in_app:
+    enabled: true # Enable in-app notifications
+    realtime_enabled: true # Enable real-time WebSocket notifications
+    max_notifications_per_user: 100 # Max notifications to keep per user
+    retention_days: 30 # Days to keep read notifications
+
+  # Optional email notifications (for offline users only)
+  # email:
+  #   enabled: false                     # Set to true to enable email notifications
+  #   smtp_host: "smtp.gmail.com"        # SMTP server host
+  #   smtp_port: 587                     # SMTP port (587=TLS, 465=SSL)
+  #   smtp_username: "your-email@gmail.com"  # SMTP username
+  #   smtp_password: "your-app-password"      # SMTP password
+  #   from_email: "noreply@fechatter.com"     # From email address
+  #   from_name: "Fechatter"                  # From display name
+  #   use_tls: true                           # Use TLS encryption
+
+  # Push notification settings (future implementation)
+  push:
+    enabled: false
+    fcm_key: "" # Firebase Cloud Messaging key
+    apns_key: "" # Apple Push Notification Service key
+
+  # Notification delivery configuration
+  delivery:
+    max_retries: 3 # Maximum retry attempts for failed notifications
+    retry_delay_seconds: 5 # Delay between retry attempts
+    batch_size: 10 # Number of notifications to process in a batch

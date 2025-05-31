@@ -12,7 +12,14 @@ use axum_extra::{
 };
 use tracing::warn;
 
-use crate::{TokenVerifier, models::AuthUser};
+use crate::{
+  TokenVerifier,
+  error::CoreError,
+  models::{
+    AuthUser, UserId, WorkspaceId,
+    jwt::{TokenConfigProvider, TokenManager, UserClaims},
+  },
+};
 
 /// Generic `T` is any application state that implements
 /// [`TokenVerifier`](crate::middlewares::TokenVerifier).  The function is intended to be
@@ -65,8 +72,7 @@ where
 #[cfg(test)]
 mod tests {
   use crate::{
-    UserClaims,
-    jwt::TokenManager,
+    models::jwt::{TokenManager, UserClaims},
     models::{UserId, WorkspaceId},
   };
 
@@ -108,15 +114,15 @@ mod tests {
   #[tokio::test]
   async fn verify_token_middleware_should_work() -> Result<()> {
     use crate::error::CoreError;
-    use crate::jwt::{TokenConfigProvider, TokenManager};
     use crate::models::User;
     use crate::models::jwt::{
       RefreshToken, RefreshTokenRepository, ReplaceTokenPayload, StoreTokenPayload,
     };
+    use crate::models::jwt::{TokenConfigProvider, TokenManager};
     use chrono::Utc;
     use std::sync::Arc;
 
-    // 创建一个简单化的mock RefreshTokenRepository
+    // Create a simplified mock RefreshTokenRepository
     struct MockRefreshTokenRepository;
 
     #[async_trait]
@@ -154,12 +160,12 @@ mod tests {
       }
     }
 
-    // 定义测试需要的常量
+    // Define test constants
     const JWT_LEEWAY: u64 = 60;
     const JWT_AUDIENCE: &str = "fechatter-web";
     const JWT_ISSUER: &str = "fechatter-server";
 
-    // 测试用TokenConfig - 使用与文件中读取的密钥
+    // Test TokenConfig - using keys read from files
     struct AuthConfig {
       sk: String,
       pk: String,
@@ -191,10 +197,10 @@ mod tests {
       pk: std::fs::read_to_string(decoding_path)?,
     };
 
-    // 使用mock仓库
+    // Use mock repository
     let refresh_token_repository = Arc::new(MockRefreshTokenRepository);
 
-    // 创建TokenManager实例用于测试
+    // Create TokenManager instance for testing
     let token_manager = match TokenManager::from_config(&auth_config, refresh_token_repository) {
       Ok(tm) => tm,
       Err(e) => {
@@ -203,12 +209,12 @@ mod tests {
       }
     };
 
-    // 创建测试应用状态
+    // Create test application state
     let state = Appstate {
       inner: Arc::new(AppstateInner { token_manager }),
     };
 
-    // 创建测试用户
+    // Create test user
     let user = User {
       id: UserId::new(1),
       fullname: "Test User".to_string(),
@@ -219,7 +225,7 @@ mod tests {
       workspace_id: WorkspaceId::new(1),
     };
 
-    // 设置测试路由
+    // Set up test router
     let app = Router::new()
       .route("/api", get(handler))
       .layer(from_fn_with_state(
@@ -227,7 +233,7 @@ mod tests {
         verify_token_middleware::<Appstate>,
       ));
 
-    // 生成JWT令牌
+    // Generate JWT token
     let token = match state.inner.token_manager.generate_token_for_user(&user) {
       Ok(t) => {
         println!("Successfully generated token: {}", t);
@@ -239,7 +245,7 @@ mod tests {
       }
     };
 
-    // 验证令牌是否有效
+    // Verify token validity
     match state.inner.token_manager.verify_token(&token) {
       Ok(claims) => println!(
         "✅ Token verification succeeded! Claims user id: {}",
@@ -247,11 +253,11 @@ mod tests {
       ),
       Err(e) => {
         eprintln!("❌ Token verification failed: {:?}", e);
-        // 不要在这里返回错误，继续测试请求处理
+        // Don't return error here, continue with request processing
       }
     }
 
-    // 执行带有Authorization头的测试请求
+    // Execute test request with Authorization header
     let req = Request::builder()
       .uri("/api")
       .header("Authorization", format!("Bearer {}", token))
@@ -262,7 +268,7 @@ mod tests {
     let response = app.oneshot(req).await.unwrap();
     println!("Response status: {:?}", response.status());
 
-    // 验证响应状态为200 OK
+    // Verify response status is 200 OK
     assert_eq!(response.status(), StatusCode::OK);
 
     Ok(())

@@ -84,37 +84,118 @@ pub enum AppError {
 
   #[error("search error: {0}")]
   SearchError(String),
+
+  #[error("permission denied: {0}")]
+  PermissionDenied(String),
+
+  #[error("forbidden: {0}")]
+  Forbidden(String),
+
+  #[error("validation error: {0}")]
+  ValidationError(String),
+
+  #[error("server error: {0}")]
+  ServerError(String),
+
+  #[error("external service error: {0}")]
+  ExternalService(String),
+
+  #[error("internal error: {0}")]
+  Internal(String),
+
+  #[error("transport error: {0}")]
+  TransportError(EventTransportError),
+
+  #[error("redis error: {0}")]
+  RedisError(String),
+
+  #[error("configuration error: {0}")]
+  Configuration(String),
+}
+
+/// Error types for event transport operations - Centralized Error Management
+#[derive(Debug, Error)]
+pub enum EventTransportError {
+  #[error("Connection error: {0}")]
+  Connection(String),
+
+  #[error("Publish error: {0}")]
+  Publish(String),
+
+  #[error("Invalid header: {0}")]
+  InvalidHeader(String),
+
+  #[error("Timeout: {0}")]
+  Timeout(String),
+
+  #[error("IO error: {0}")]
+  Io(String),
+
+  #[error("Not implemented: {0}")]
+  NotImplemented(String),
+
+  #[error("Unknown error: {0}")]
+  Other(String),
+}
+
+impl EventTransportError {
+  /// Check if this error is retryable
+  pub fn is_retryable(&self) -> bool {
+    matches!(
+      self,
+      EventTransportError::Connection(_)
+        | EventTransportError::Timeout(_)
+        | EventTransportError::Io(_)
+    )
+  }
+}
+
+/// Convert async_nats errors to EventTransportError - Centralized Error Management
+impl From<async_nats::Error> for EventTransportError {
+  fn from(error: async_nats::Error) -> Self {
+    // Simplified error handling for compatibility
+    EventTransportError::Other(error.to_string())
+  }
+}
+
+/// Pure error type conversion - No business logic
+/// Maps CoreError to AppError for application layer use
+pub fn map_core_error_to_app_error(core_error: CoreError) -> AppError {
+  match core_error {
+    CoreError::Database(msg) => AppError::Internal(format!("Database error: {}", msg)),
+    CoreError::Internal(msg) => AppError::Internal(msg),
+    CoreError::NotFound(msg) => AppError::NotFound(vec![msg]),
+    CoreError::Validation(msg) => AppError::InvalidInput(msg),
+    CoreError::ChatValidation(e) => match e {
+      ChatValidationError::InvalidName(msg) => AppError::ChatValidationError(msg),
+      ChatValidationError::InvalidMembers(msg) => AppError::ChatValidationError(msg),
+      ChatValidationError::PermissionDenied(msg) => AppError::ChatPermissionError(msg),
+      ChatValidationError::MemberNotFound(msg) => AppError::NotFound(vec![msg]),
+      ChatValidationError::ChatNotFound(msg) => AppError::NotFound(vec![msg]),
+    },
+    CoreError::Unauthorized(msg) => AppError::ChatPermissionError(msg),
+    CoreError::UserAlreadyExists(msg) => AppError::InvalidInput(msg),
+    CoreError::Conflict(msg) => AppError::Conflict(msg),
+    CoreError::Authentication(msg) => AppError::Unauthorized(msg),
+    CoreError::InvalidToken(_) => AppError::Unauthorized("Invalid token".to_string()),
+    CoreError::VectorDbError(e) => AppError::InvalidInput(format!("Vector database error: {}", e)),
+    CoreError::ValidationError(e) => AppError::ValidationError(e),
+    CoreError::PublishError(e) => AppError::EventPublishingError(e.to_string()),
+    CoreError::Unimplemented(e) => AppError::AnyError(anyhow::anyhow!(e)),
+  }
 }
 
 impl ErrorMapper for AppError {
   type Error = AppError;
-
   fn map_error(error: CoreError) -> Self::Error {
-    match error {
-      CoreError::Database(e) => AppError::SqlxError(sqlx::Error::Io(std::io::Error::new(
-        std::io::ErrorKind::Other,
-        e,
-      ))),
-      CoreError::UserAlreadyExists(e) => AppError::UserAlreadyExists(e),
-      CoreError::Validation(e) => AppError::ChatValidationError(e),
-      CoreError::ChatValidation(e) => match e {
-        ChatValidationError::InvalidName(msg) => AppError::ChatValidationError(msg),
-        ChatValidationError::InvalidMembers(msg) => AppError::ChatValidationError(msg),
-        ChatValidationError::PermissionDenied(msg) => AppError::ChatPermissionError(msg),
-        ChatValidationError::MemberNotFound(msg) => AppError::NotFound(vec![msg]),
-        ChatValidationError::ChatNotFound(msg) => AppError::NotFound(vec![msg]),
-      },
-      CoreError::NotFound(e) => AppError::NotFound(vec![e]),
-      CoreError::Conflict(e) => AppError::Conflict(e),
-      CoreError::Authentication(_e) => AppError::JwtError(jsonwebtoken::errors::Error::from(
-        jsonwebtoken::errors::ErrorKind::InvalidToken,
-      )),
-      CoreError::InvalidToken(_msg) => AppError::JwtError(jsonwebtoken::errors::Error::from(
-        jsonwebtoken::errors::ErrorKind::InvalidToken,
-      )),
-      CoreError::Unauthorized(e) => AppError::Unauthorized(e),
-      CoreError::Internal(e) => AppError::AnyError(anyhow::anyhow!(e)),
-    }
+    map_core_error_to_app_error(error)
+  }
+}
+
+/// Convert EventTransportError to AppError
+impl From<EventTransportError> for AppError {
+  fn from(error: EventTransportError) -> Self {
+    AppError::TransportError(error)
   }
 }
 
@@ -140,6 +221,15 @@ impl IntoResponse for AppError {
       AppError::NatsError(_) => StatusCode::INTERNAL_SERVER_ERROR,
       AppError::EventPublishingError(_) => StatusCode::INTERNAL_SERVER_ERROR,
       AppError::SearchError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+      AppError::PermissionDenied(_) => StatusCode::FORBIDDEN,
+      AppError::Forbidden(_) => StatusCode::FORBIDDEN,
+      AppError::ValidationError(_) => StatusCode::BAD_REQUEST,
+      AppError::ServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+      AppError::ExternalService(_) => StatusCode::INTERNAL_SERVER_ERROR,
+      AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+      AppError::TransportError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+      AppError::RedisError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+      AppError::Configuration(_) => StatusCode::INTERNAL_SERVER_ERROR,
     };
 
     let code = status.as_u16();

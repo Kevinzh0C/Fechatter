@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Auth State</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .info { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .token { word-break: break-all; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Debug Auth State</h1>
+    
+    <div class="info">
+        <h3>Current URL:</h3>
+        <p id="current-url"></p>
+    </div>
+    
+    <div class="info">
+        <h3>LocalStorage Token:</h3>
+        <p id="token-info" class="token"></p>
+    </div>
+    
+    <div class="info">
+        <h3>All LocalStorage:</h3>
+        <pre id="all-storage"></pre>
+    </div>
+    
+    <div>
+        <button onclick="clearStorage()">Clear Storage</button>
+        <button onclick="goToLogin()">Go to Login</button>
+        <button onclick="goToHome()">Go to Home</button>
+        <button onclick="refresh()">Refresh</button>
+    </div>
+    
+    <script>
+        function updateInfo() {
+            document.getElementById('current-url').textContent = window.location.href;
+            
+            const token = localStorage.getItem('token');
+            document.getElementById('token-info').textContent = token || 'No token found';
+            
+            const allStorage = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                allStorage[key] = localStorage.getItem(key);
+            }
+            document.getElementById('all-storage').textContent = JSON.stringify(allStorage, null, 2);
+        }
+        
+        function clearStorage() {
+            localStorage.clear();
+            sessionStorage.clear();
+            updateInfo();
+            alert('Storage cleared!');
+        }
+        
+        function goToLogin() {
+            window.location.href = '/login';
+        }
+        
+        function goToHome() {
+            window.location.href = '/';
+        }
+        
+        function refresh() {
+            window.location.reload();
+        }
+        
+        // Update info on load
+        updateInfo();
+        
+        // Update info every 2 seconds
+        setInterval(updateInfo, 2000);
+    </script>
+</body>
+</html> 

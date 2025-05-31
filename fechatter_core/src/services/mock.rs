@@ -1,19 +1,20 @@
+use crate::models::jwt::RefreshTokenData;
 use crate::{
-  AuthContext, AuthService, AuthUser, CreateUser, SigninUser,
+  contracts::AuthService,
   error::CoreError,
-  jwt::{AuthTokens, RefreshTokenData, UserClaims},
-  models::{UserId, UserStatus, WorkspaceId},
+  models::jwt::{AuthTokens, UserClaims},
+  models::{AuthUser, CreateUser, SigninUser, UserId, UserStatus, WorkspaceId},
 };
 use chrono::Utc;
 use std::future::Future;
 
 pub struct MockAuthService;
 
-impl AuthService for MockAuthService {
+impl crate::services::AuthService for MockAuthService {
   fn signup(
     &self,
     _payload: &CreateUser,
-    _auth_context: Option<AuthContext>,
+    _auth_context: Option<crate::services::AuthContext>,
   ) -> impl Future<Output = Result<AuthTokens, CoreError>> + Send {
     async move {
       Ok(AuthTokens {
@@ -30,7 +31,7 @@ impl AuthService for MockAuthService {
   fn signin(
     &self,
     _payload: &SigninUser,
-    _auth_context: Option<AuthContext>,
+    _auth_context: Option<crate::services::AuthContext>,
   ) -> impl Future<Output = Result<Option<AuthTokens>, CoreError>> + Send {
     async move {
       Ok(Some(AuthTokens {
@@ -47,7 +48,7 @@ impl AuthService for MockAuthService {
   fn refresh_token(
     &self,
     _refresh_token: &str,
-    _auth_context: Option<AuthContext>,
+    _auth_context: Option<crate::services::AuthContext>,
   ) -> impl Future<Output = Result<AuthTokens, CoreError>> + Send {
     async move {
       Ok(AuthTokens {

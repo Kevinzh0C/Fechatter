@@ -11,14 +11,21 @@ pub struct NoAuth;
 pub struct HasAuth;
 pub struct AuthAndRefresh;
 
-use crate::jwt::TokenManager;
 use crate::middlewares::bearer_auth::verify_token_middleware;
 use crate::middlewares::token_refresh::refresh_token_middleware;
 use crate::middlewares::{
   ActualAuthServiceProvider, HasIdField, TokenVerifier, WithServiceProvider, WithTokenManager,
 };
-use crate::models::AuthUser;
-use crate::models::jwt::UserClaims;
+use crate::models::jwt::TokenManager;
+use crate::{
+  AuthUser,
+  contracts::services::AuthContext,
+  error::CoreError,
+  models::jwt::{AuthTokens, UserClaims},
+};
+
+#[cfg(test)]
+use crate::models::{CreateUser, SigninUser, UserId, UserStatus, WorkspaceId};
 
 //==============================================================================
 // MIDDLEWARE SYSTEM
@@ -698,11 +705,9 @@ fn create_test_access_token() -> String {
 mod tests {
   use super::*;
   use crate::{
-    AuthUser, CreateUser, SigninUser,
+    AuthUser,
     error::CoreError,
-    jwt::{AuthTokens, UserClaims},
-    models::{UserId, UserStatus, WorkspaceId},
-    services::AuthContext,
+    models::jwt::{AuthTokens, UserClaims},
   };
   use axum::{
     Extension, Router,
@@ -711,11 +716,13 @@ mod tests {
     routing::get,
   };
   use chrono::Utc;
-  use std::sync::{Arc, Mutex};
-  use std::time::Duration;
+  use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+  };
   use tower::ServiceExt;
 
-  // 为 MockAuthService 实现所有必要的 trait
+  // Implement all necessary traits for MockAuthService
   use crate::models::jwt::{
     AuthServiceTrait, LogoutService, RefreshTokenService, SigninService, SignupService,
   };
@@ -778,7 +785,7 @@ mod tests {
     token_behavior: Arc<Mutex<TokenBehavior>>,
   }
 
-  // Token behavior simulation - 移除 Copy trait
+  // Token behavior simulation - Remove Copy trait
   #[derive(Debug, Clone)]
   #[allow(dead_code)]
   enum TokenBehavior {
@@ -1011,7 +1018,8 @@ mod tests {
 
   impl AuthServiceTrait for MockAuthService {}
 
-  impl crate::services::AuthService for MockAuthService {
+  #[async_trait]
+  impl crate::contracts::AuthService for MockAuthService {
     async fn signup(
       &self,
       _payload: &CreateUser,

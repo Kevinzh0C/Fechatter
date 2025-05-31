@@ -35,6 +35,14 @@ pub trait WorkspaceRepository: Send + Sync {
     workspace_id: WorkspaceId,
     user_id: UserId,
   ) -> impl Future<Output = Result<Workspace, CoreError>> + Send;
+
+  fn check_user_access(
+    &self,
+    user_id: UserId,
+    workspace_id: WorkspaceId,
+  ) -> impl Future<Output = Result<bool, CoreError>> + Send;
+
+  fn list_all(&self) -> impl Future<Output = Result<Vec<Workspace>, CoreError>> + Send;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]

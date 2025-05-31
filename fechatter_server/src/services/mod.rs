@@ -1,11 +1,40 @@
-pub mod auth_service;
-pub mod event_publisher;
-pub mod indexer_sync_service;
-pub mod search_service;
-pub mod service_provider;
-pub use service_provider::*;
+//! # Services Layer - Main Entry Point
+//!
+//! **Design Philosophy**: Service layer architecture divided by responsibilities
+//! **Layer**: Service Layer - Unified service provision layer
 
-pub use auth_service::AuthService;
-pub use event_publisher::EventPublisher;
-pub use indexer_sync_service::{ChatInfo, IndexerSyncWorker, MessageIndexEvent};
-pub use search_service::SearchService;
+// =============================================================================
+// APPLICATION SERVICES
+// =============================================================================
+pub mod application;
+
+// =============================================================================
+// INFRASTRUCTURE SERVICES
+// =============================================================================
+pub mod infrastructure;
+
+// =============================================================================
+// SERVICE PROVIDER
+// =============================================================================
+pub mod service_provider;
+
+// =============================================================================
+// AI SERVICES
+// =============================================================================
+pub mod ai;
+
+// =============================================================================
+// PUBLIC EXPORTS
+// =============================================================================
+
+// Re-export core services
+pub use service_provider::{ServerTokenService, ServiceProvider};
+
+// Re-export application services
+pub use application::*;
+
+// Re-export infrastructure services - focused by responsibility
+pub use infrastructure::{EventPublisher, LocalStorage, RedisCacheService, SearchService};
+
+// Re-export auth service (from application layer) 
+pub use application::auth_app_service::AuthService;

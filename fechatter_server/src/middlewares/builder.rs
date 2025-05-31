@@ -1,5 +1,5 @@
 use axum::{Router, middleware::from_fn};
-use fechatter_core::SetLayer as _;
+use fechatter_core::middlewares::SetLayer as _;
 use std::sync::Arc;
 
 // Locally define type state markers instead of importing
@@ -64,24 +64,11 @@ pub fn add_chat_membership_middleware<S>(router: Router<S>, state: AppState) -> 
 where
   S: Clone + Send + Sync + 'static,
 {
-  // The from_fn middleware expects a function that returns Future<Output = Response>
-  router.layer(from_fn(move |req: Request<Body>, next: Next| {
-    let state_clone = state.clone();
-
-    // Pass the AppState directly, not wrapped in State
-    async move {
-      // First, verify that user is authenticated (safety check)
-      let extension = req.extensions().get::<AuthUser>().cloned();
-
-      if let Some(_auth_user) = extension {
-        // AuthUser exists, proceed with chat membership check
-        verify_chat_membership_middleware(state_clone, req, next).await
-      } else {
-        // Auth user extension is missing, return 401
-        StatusCode::UNAUTHORIZED.into_response()
-      }
-    }
-  }))
+  // Use from_fn_with_state directly for middleware that expects State extractor
+  router.layer(axum::middleware::from_fn_with_state(
+    state,
+    verify_chat_membership_middleware,
+  ))
 }
 
 // Use bit flags to represent applied middleware types

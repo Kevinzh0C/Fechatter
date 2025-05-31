@@ -1,9 +1,11 @@
 use crate::{
+  contracts::AuthContext,
   error::CoreError,
   error::TokenValidationError,
-  jwt::{AuthTokens, RefreshTokenData, RefreshTokenRepository, ReplaceTokenPayload, UserClaims},
+  models::jwt::{
+    AuthTokens, RefreshTokenData, RefreshTokenRepository, ReplaceTokenPayload, UserClaims,
+  },
   models::{CreateUser, SigninUser, UserId, user::UserRepository},
-  services::AuthContext,
 };
 use chrono::Utc;
 
@@ -15,6 +17,7 @@ fn generate_refresh_token() -> String {
 }
 
 // Define interfaces for the dependencies
+#[allow(async_fn_in_trait)]
 pub trait TokenService: Send + Sync {
   fn generate_token(&self, user_claims: &UserClaims) -> Result<String, CoreError>;
   fn verify_token(&self, token: &str) -> Result<UserClaims, CoreError>;

@@ -1,18 +1,15 @@
 pub mod auth_service;
 pub mod mock;
+pub mod retry;
 pub mod service_provider;
+pub mod workspace_service;
 
-#[derive(Debug, Clone, Default)]
-pub struct AuthContext {
-  pub user_agent: Option<String>,
-  pub ip_address: Option<String>,
-}
-
+use crate::models::user::AuthUser;
 use crate::{
-  AuthUser, CreateUser, SigninUser,
+  contracts::AuthContext,
   error::CoreError,
-  jwt::{AuthTokens, UserClaims},
-  models::UserId,
+  models::jwt::{AuthTokens, UserClaims},
+  models::{CreateUser, SigninUser, UserId},
 };
 
 pub trait AuthService: Send + Sync {
@@ -48,3 +45,8 @@ pub trait AuthService: Send + Sync {
 
   fn user_from_claims(&self, claims: UserClaims) -> AuthUser;
 }
+
+// 重新导出 - 保持向后兼容性
+pub use auth_service::*;
+pub use service_provider::*;
+pub use workspace_service::*;
