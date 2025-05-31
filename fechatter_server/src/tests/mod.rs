@@ -30,6 +30,9 @@ pub mod search_tests_simplified;
 #[cfg(any(test, feature = "test-util"))]
 pub mod test_utils;
 
+#[cfg(feature = "integration_tests")]
+mod redis_integration_test;
+
 // Re-export commonly used test utilities
 // #[cfg(test)]
 // pub use test_utils::*;

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{notification_title}}</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 300; }
+        .content { padding: 30px; }
+        .message-box { background-color: #f8f9fa; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px; }
+        .cta-button { display: inline-block; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; margin: 20px 0; font-weight: 500; transition: transform 0.2s; }
+        .cta-button:hover { transform: translateY(-1px); }
+        .footer { background-color: #f8f9fa; padding: 20px; border-radius: 0 0 8px 8px; text-align: center; color: #666; font-size: 12px; }
+        .footer a { color: #28a745; text-decoration: none; }
+        @media (max-width: 600px) { .container { margin: 10px; } .content, .header { padding: 20px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💬 New Message</h1>
+        </div>
+        
+        <div class="content">
+            <h2>Hi {{user_name}},</h2>
+            
+            <p>You have a new message: <strong>"{{notification_title}}"</strong></p>
+            
+            <div class="message-box">
+                <strong>Message:</strong><br>
+                {{truncate notification_message 200}}
+            </div>
+            
+            {{#if chat_url}}
+            <center>
+                <a href="{{chat_url}}" class="cta-button">Reply Now →</a>
+            </center>
+            {{/if}}
+            
+            <p>Keep the conversation going! Click the button above to reply.</p>
+        </div>
+        
+        <div class="footer">
+            <p>This notification was sent at {{timestamp}}.</p>
+            <p><a href="{{base_url}}/settings/notifications">Manage notification settings</a> | <a href="{{base_url}}/unsubscribe">Unsubscribe</a></p>
+            <p>&copy; 2024 Fechatter. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html> 

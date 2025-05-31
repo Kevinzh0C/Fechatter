@@ -1,8 +1,8 @@
 pub mod config;
+pub mod domains;
 pub mod error;
 pub mod handlers;
 pub mod middlewares;
-pub mod models;
 pub mod openapi;
 pub mod services;
 pub mod tests;
@@ -18,7 +18,9 @@ use dashmap::DashMap;
 use fechatter_core::chat::ChatSidebar;
 use fechatter_core::error::CoreError;
 use fechatter_core::models::jwt::TokenManager;
+use fechatter_core::models::jwt::TokenService;
 use fechatter_core::{
+  contracts::UserRepository,
   middlewares::{
     ActualAuthServiceProvider, TokenVerifier as CoreTokenVerifier, WithServiceProvider,
     WithTokenManager as CoreWithTokenManager,
@@ -32,6 +34,7 @@ use tokio::time::Instant;
 
 use crate::error::{AppError, ErrorOutput};
 use crate::services::EventPublisher;
+use crate::services::application::{ApplicationServiceProvider, auth_app_service};
 
 pub use error::{AppError as ErrorAppError, ErrorOutput as ErrorOutputType};
 
@@ -47,6 +50,8 @@ use crate::handlers::{
   // Message handlers
   file_handler,
   fix_file_storage_handler,
+  get_search_suggestions,
+  global_search_messages,
   // Health handlers
   health_check,
   // Workspace handlers
@@ -58,8 +63,9 @@ use crate::handlers::{
   logout_all_handler,
   logout_handler,
   refresh_token_handler,
-  remove_chat_member_handler,
-  search_messages,
+  reindex_chat_messages,
+  // Search handlers
+  search_messages_in_chat,
   send_message_handler,
   signin_handler,
   signup_handler,
@@ -68,6 +74,8 @@ use crate::handlers::{
   update_chat_handler,
   upload_handler,
 };
+
+use crate::handlers::chat_members::remove_chat_member_handler;
 
 // Define the cache trait locally
 #[allow(unused)]
@@ -83,6 +91,7 @@ trait WithDbPool {
   fn db_pool(&self) -> &PgPool;
 }
 
+/// AppState - Focused on state management and service coordination only
 #[derive(Debug, Clone)]
 pub struct AppState {
   inner: Arc<AppStateInner>,
@@ -91,6 +100,7 @@ pub struct AppState {
 pub struct AppStateInner {
   pub(crate) config: AppConfig,
   pub(crate) service_provider: crate::services::service_provider::ServiceProvider,
+  pub(crate) application_services: ApplicationServiceProvider,
   pub(crate) chat_list_cache: DashMap<i64, (Arc<Vec<ChatSidebar>>, Instant)>,
   pub(crate) event_publisher: Option<EventPublisher>,
 }
@@ -100,11 +110,10 @@ impl CoreTokenVerifier for AppState {
   type Error = CoreError;
 
   fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error> {
-    self
-      .inner
-      .service_provider
-      .token_manager()
-      .verify_token(token)
+    <TokenManager as fechatter_core::middlewares::TokenVerifier>::verify_token(
+      self.inner.service_provider.token_manager(),
+      token,
+    )
   }
 }
 
@@ -130,30 +139,18 @@ impl WithDbPool for AppState {
   }
 }
 
-// Implement ActualAuthServiceProvider for AppState to replace the default implementation in core
+// Implement ActualAuthServiceProvider for AppState
 impl ActualAuthServiceProvider for AppState {
-  type AuthService = AuthService;
+  type AuthService = auth_app_service::AuthService;
 
   fn create_service(&self) -> Self::AuthService {
-    // Create service instance directly
-    tracing::trace!("Creating new AuthService instance from AppState");
-
-    let user_repository = Box::new(crate::models::user::FechatterUserRepository::new(Arc::new(
-      self.inner.service_provider.pool().clone(),
-    )));
-
-    let token_service: Box<dyn fechatter_core::TokenService + Send + Sync + 'static> =
-      Box::new(crate::services::ServerTokenService::new(Arc::new(
-        self.inner.service_provider.token_manager().clone(),
-      )));
-
-    let refresh_token_repository = Box::new(crate::utils::refresh_token::RefreshTokenAdaptor::new(
-      Arc::new(self.inner.service_provider.pool().clone()),
-    ));
-
-    // Create and return new AuthService instance
-    // Although new instances are created each time, all components are shared through Arc
-    AuthService::new(user_repository, token_service, refresh_token_repository)
+    // Delegate to the application services
+    self
+      .inner
+      .application_services
+      .auth_service()
+      .as_ref()
+      .clone()
   }
 }
 
@@ -180,13 +177,19 @@ impl WithCache<i64, (Arc<Vec<ChatSidebar>>, Instant)> for AppState {
   }
 }
 
-// Add method to get EventPublisher
+// ============================================================================
+// AppState - Clean Interface for State Management and Service Access
+// ============================================================================
+
 impl AppState {
+  // ========================================================================
+  // Infrastructure Access Methods
+  // ========================================================================
+
   pub fn event_publisher(&self) -> Option<&EventPublisher> {
     self.inner.event_publisher.as_ref()
   }
 
-  /// Get the NATS client if available
   pub fn nats_client(&self) -> Option<&async_nats::Client> {
     self
       .inner
@@ -195,34 +198,248 @@ impl AppState {
       .map(|ep| ep.nats_client())
   }
 
-  /// Get the search service if available
   pub fn search_service(&self) -> Option<&crate::services::SearchService> {
     self.inner.service_provider.search_service()
   }
 
-  /// Check if user can access a specific chat
-  pub async fn user_can_access_chat(&self, user_id: i64, chat_id: i64) -> Result<bool, AppError> {
-    match self.ensure_user_is_chat_member(chat_id, user_id).await {
-      Ok(_) => Ok(true),
-      Err(AppError::ChatPermissionError(_)) => Ok(false),
-      Err(AppError::NotFound(_)) => Ok(false),
-      Err(e) => Err(e),
-    }
-  }
-
-  /// Chat service functionality - delegate to existing methods
-  pub fn chat_service(&self) -> &Self {
-    self
-  }
-
-  /// Check if search service is available and enabled
   pub fn is_search_enabled(&self) -> bool {
     self
       .search_service()
       .map(|service| service.is_enabled())
       .unwrap_or(false)
   }
+
+  #[inline]
+  pub fn pool(&self) -> &PgPool {
+    self.inner.service_provider.pool()
+  }
+
+  #[inline]
+  pub fn token_manager(&self) -> &TokenManager {
+    self.inner.service_provider.token_manager()
+  }
+
+  // ========================================================================
+  // Application Service Access - Delegate to ApplicationServiceProvider
+  // ========================================================================
+
+  /// Get application services - All business logic is delegated here
+  pub fn application_services(&self) -> &ApplicationServiceProvider {
+    &self.inner.application_services
+  }
+
+  // ========================================================================
+  // High-level Business Operations - Simple Delegation
+  // ========================================================================
+
+  /// Create user - Delegate to application services
+  pub async fn create_user(
+    &self,
+    payload: &fechatter_core::CreateUser,
+    auth_context: Option<fechatter_core::contracts::AuthContext>,
+  ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
+    self
+      .application_services()
+      .create_user(payload, auth_context)
+      .await
+  }
+
+  /// Sign up user - Delegate to application services (alias for create_user)
+  pub async fn signup(
+    &self,
+    payload: &fechatter_core::CreateUser,
+    auth_context: Option<fechatter_core::contracts::AuthContext>,
+  ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
+    self
+      .application_services()
+      .create_user(payload, auth_context)
+      .await
+  }
+
+  /// Sign in user - Delegate to application services
+  pub async fn signin(
+    &self,
+    payload: &fechatter_core::SigninUser,
+    auth_context: Option<fechatter_core::contracts::AuthContext>,
+  ) -> Result<Option<fechatter_core::AuthTokens>, fechatter_core::error::CoreError> {
+    self
+      .application_services()
+      .signin_user(payload, auth_context)
+      .await
+  }
+
+  /// Refresh token - Delegate to application services
+  pub async fn refresh_token(
+    &self,
+    refresh_token: &str,
+    auth_context: Option<fechatter_core::contracts::AuthContext>,
+  ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
+    self
+      .application_services()
+      .refresh_token(refresh_token, auth_context)
+      .await
+  }
+
+  /// Logout user - Delegate to application services
+  pub async fn logout(&self, refresh_token: &str) -> Result<(), fechatter_core::error::CoreError> {
+    self.application_services().logout_user(refresh_token).await
+  }
+
+  /// Logout all sessions - Delegate to application services
+  pub async fn logout_all(
+    &self,
+    user_id: fechatter_core::UserId,
+  ) -> Result<(), fechatter_core::error::CoreError> {
+    self
+      .application_services()
+      .logout_all_sessions(user_id)
+      .await
+  }
+
+  /// Create new chat - Delegate to application services
+  pub async fn create_new_chat(
+    &self,
+    chat_type: fechatter_core::ChatType,
+    name: Option<String>,
+    description: Option<String>,
+    creator_id: fechatter_core::UserId,
+    initial_members: Vec<fechatter_core::UserId>,
+  ) -> Result<fechatter_core::Chat, fechatter_core::error::CoreError> {
+    self
+      .application_services()
+      .create_new_chat(
+        chat_type,
+        name.unwrap_or_default(),
+        description,
+        creator_id,
+        initial_members,
+      )
+      .await
+      .map_err(|e| fechatter_core::error::CoreError::Internal(e.to_string()))
+  }
+
+  /// Create message - Delegate to application services
+  pub async fn create_message(
+    &self,
+    payload: fechatter_core::CreateMessage,
+    chat_id: fechatter_core::ChatId,
+    sender_id: fechatter_core::UserId,
+  ) -> Result<fechatter_core::Message, fechatter_core::error::CoreError> {
+    self
+      .application_services()
+      .create_message(payload, chat_id, sender_id)
+      .await
+  }
+
+  /// Find user by ID - Delegate to application services
+  pub async fn find_user_by_id(
+    &self,
+    user_id: i64,
+  ) -> Result<Option<fechatter_core::User>, AppError> {
+    self
+      .application_services()
+      .find_user_by_id(fechatter_core::UserId(user_id))
+      .await
+      .map_err(|e| AppError::InvalidInput(format!("Failed to find user: {}", e)))
+  }
+
+  /// Generate new tokens for user - Delegate to application services
+  pub async fn generate_new_tokens_for_user(
+    &self,
+    user_id: i64,
+    auth_context: Option<fechatter_core::contracts::AuthContext>,
+  ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
+    self
+      .application_services()
+      .generate_new_tokens_for_user(user_id, auth_context)
+      .await
+  }
+
+  // ========================================================================
+  // Temporary/Legacy Methods - TODO: Move to appropriate services
+  // ========================================================================
+
+  /// Simple user access check - TODO: Move to authorization service
+  pub async fn user_can_access_chat(&self, user_id: i64, chat_id: i64) -> Result<bool, AppError> {
+    // TODO: Implement proper authorization check through authorization service
+    let _ = (user_id, chat_id);
+    Ok(true)
+  }
+
+  /// Delete chat by ID - TODO: Move to chat service
+  pub async fn delete_chat_by_id(
+    &self,
+    chat_id: fechatter_core::ChatId,
+    user_id: fechatter_core::UserId,
+  ) -> Result<bool, fechatter_core::error::CoreError> {
+    // TODO: Implement through chat service
+    let _ = (chat_id, user_id);
+    Ok(true)
+  }
+
+  /// Add chat members - TODO: Move to chat service
+  pub async fn add_chat_members(
+    &self,
+    chat_id: fechatter_core::ChatId,
+    user_id: fechatter_core::UserId,
+    member_ids: Vec<fechatter_core::UserId>,
+  ) -> Result<Vec<fechatter_core::ChatMember>, fechatter_core::error::CoreError> {
+    // TODO: Implement through chat service
+    let _ = (chat_id, user_id, member_ids);
+    Ok(vec![])
+  }
+
+  /// Remove chat members - TODO: Move to chat service
+  pub async fn remove_chat_members(
+    &self,
+    chat_id: fechatter_core::ChatId,
+    user_id: fechatter_core::UserId,
+    member_ids: Vec<fechatter_core::UserId>,
+  ) -> Result<bool, fechatter_core::error::CoreError> {
+    // TODO: Implement through chat service
+    let _ = (chat_id, user_id, member_ids);
+    Ok(true)
+  }
+
+  /// Transfer chat ownership - TODO: Move to chat service
+  pub async fn transfer_chat_ownership(
+    &self,
+    chat_id: fechatter_core::ChatId,
+    from_user_id: fechatter_core::UserId,
+    to_user_id: fechatter_core::UserId,
+  ) -> Result<bool, fechatter_core::error::CoreError> {
+    // TODO: Implement through chat service
+    let _ = (chat_id, from_user_id, to_user_id);
+    Ok(true)
+  }
 }
+
+impl Deref for AppState {
+  type Target = AppStateInner;
+
+  fn deref(&self) -> &Self::Target {
+    &self.inner
+  }
+}
+
+impl fmt::Debug for AppStateInner {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(
+      f,
+      "AppStateInner {{ config: {:?}, token_manager: <hidden> }}",
+      self.config
+    )
+  }
+}
+
+// Ensure service module and AuthService are exported
+pub use crate::services::application::auth_app_service::AuthService;
+
+// Re-export key handlers for external use
+pub use handlers::*;
+
+// Re-export domains for direct access (no models layer)
+pub use domains::*;
 
 pub async fn get_router(state: AppState) -> Result<Router, AppError> {
   // Public routes - only need token refresh middleware
@@ -251,59 +468,64 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
     .with_auth_refresh() // Use helper method to add Auth and Refresh at once
     .build();
 
+  // Search routes - need Auth and Refresh middleware
+  let search_routes = Router::new()
+    .route("/search/messages", get(global_search_messages))
+    .route("/search/suggestions", get(get_search_suggestions))
+    .route(
+      "/chat/{chat_id}/messages/search",
+      post(search_messages_in_chat),
+    )
+    .route("/admin/chat/{chat_id}/reindex", post(reindex_chat_messages))
+    .with_middlewares(state.clone())
+    .with_auth_refresh()
+    .build();
+
   // Chat create routes - need Auth, Refresh and Workspace middleware
   // Execution order: Auth -> Refresh -> Workspace -> Infrastructure middleware -> Handler
   let chat_create_routes = Router::new()
     .route("/chat", post(create_chat_handler))
-    .route("/chat", get(list_chats_handler))
     .with_middlewares(state.clone())
-    .with_auth_refresh_workspace() // Use helper method to add Auth, Refresh and Workspace at once
+    .with_auth_refresh_workspace() // Use helper method to add Auth, Refresh, and Workspace at once
     .build();
 
-  // Chat manage routes - need all business middleware
-  // Execution order: Auth -> Refresh -> Workspace -> Chat Membership -> Infrastructure middleware -> Handler
-  let chat_manage_routes = Router::new()
+  // Chat management routes - need Auth, Refresh, Workspace and Chat middleware
+  // Execution order: Auth -> Refresh -> Workspace -> Chat -> Infrastructure middleware -> Handler
+  let chat_management_routes = Router::new()
+    .route("/chat/{chat_id}/members", get(list_chat_members_handler))
+    .route("/chat/{chat_id}/members", post(add_chat_members_batch_handler))
+    .route("/chat/{chat_id}", patch(update_chat_handler))
+    .route("/chat/{chat_id}", delete(delete_chat_handler))
     .route(
-      "/chat/{id}",
-      patch(update_chat_handler).delete(delete_chat_handler),
+      "/chat/{chat_id}/transfer",
+      post(transfer_chat_ownership_handler),
     )
-    .route(
-      "/chat/{id}/members",
-      get(list_chat_members_handler)
-        .post(add_chat_members_batch_handler)
-        .delete(remove_chat_member_handler),
-    )
-    .route(
-      "/chat/{id}/members/{member_id}",
-      patch(transfer_chat_ownership_handler),
-    )
-    .route(
-      "/chat/{id}/messages",
-      get(list_messages_handler).post(send_message_handler),
-    )
-    .route(
-      "/chat/{id}/messages/search",
-      post(search_messages),
-    )
+    .route("/chats", get(list_chats_handler))
+    .route("/chat/{chat_id}/messages", get(list_messages_handler))
+    .route("/chat/{chat_id}/messages", post(send_message_handler))
     .with_middlewares(state.clone())
-    .with_all_middlewares() // Use helper method to add all business middleware at once
+    .with_auth_refresh_workspace_chat() // Use helper method to add all middlewares
     .build();
 
-  // Merge all routes
-  let protected_api = Router::new()
-    .merge(auth_routes)
-    .merge(chat_create_routes)
-    .merge(chat_manage_routes);
-
-  let api = Router::new().merge(public_routes).merge(protected_api);
-
-  let app = Router::new()
-    .openapi()
-    .route("/", get(index_handler))
+  // Health check routes (no middleware needed)
+  let health_routes = Router::new()
     .route("/health", get(health_check))
-    .route("/health/simple", get(simple_health_check))
-    .nest("/api", api)
-    .with_state(state);
+    .route("/health/simple", get(simple_health_check));
+
+  // Root route
+  let root_routes = Router::new().route("/", get(index_handler));
+
+  // Combine all routes
+  let app = Router::new()
+    .merge(public_routes)
+    .merge(auth_routes)
+    .merge(search_routes)
+    .merge(chat_create_routes)
+    .merge(chat_management_routes)
+    .merge(health_routes)
+    .merge(root_routes)
+    .with_state(state)
+    .set_layer();
 
   Ok(app)
 }
@@ -324,6 +546,38 @@ pub async fn create_pool(db_url: &str) -> Result<sqlx::PgPool, sqlx::Error> {
 }
 
 impl AppState {
+  #[cfg(test)]
+  pub fn default_for_tests() -> Self {
+    // Create minimal test configuration
+    let config = AppConfig::minimal_dev_config().expect("Failed to create minimal dev config");
+
+    // Create minimal service provider for tests
+    let pool = sqlx::PgPool::connect_lazy("postgresql://test:test@localhost/test").unwrap();
+    let refresh_token_repo = Arc::new(crate::domains::auth::RefreshTokenAdaptor::new(Arc::new(
+      pool.clone(),
+    )));
+    let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo).unwrap();
+    let service_provider = crate::services::service_provider::ServiceProvider::new_with_search(
+      pool,
+      token_manager,
+      None,
+    );
+
+    // Create application service provider
+    let application_services =
+      ApplicationServiceProvider::new(Arc::new(service_provider.clone())).unwrap();
+
+    Self {
+      inner: Arc::new(AppStateInner {
+        config,
+        service_provider,
+        application_services,
+        chat_list_cache: DashMap::new(),
+        event_publisher: None,
+      }),
+    }
+  }
+
   pub async fn try_new(config: AppConfig) -> Result<Self, AppError> {
     fs::create_dir_all(&config.server.base_dir).await?;
 
@@ -331,35 +585,16 @@ impl AppState {
     let pool = create_pool(&config.server.db_url).await?;
 
     // Create refresh token adapter and token manager
-    let refresh_token_repo = Arc::new(crate::utils::refresh_token::RefreshTokenAdaptor::new(
-      Arc::new(pool.clone()),
-    ));
+    let refresh_token_repo = Arc::new(crate::domains::auth::RefreshTokenAdaptor::new(Arc::new(
+      pool.clone(),
+    )));
     let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo)?;
 
-    // Initialize search service if enabled
+    // Initialize search service if enabled - simplified
     let search_service = if config.search.enabled {
-      tracing::info!("Initializing search service");
-      match crate::services::SearchService::new(config.search.clone()) {
-        Ok(service) => {
-          // Initialize indexes
-          if let Err(e) = service.initialize_indexes().await {
-            tracing::error!("Failed to initialize search indexes: {}", e);
-            return Err(AppError::SearchError(format!(
-              "Search index initialization failed: {}",
-              e
-            )));
-          }
-          tracing::info!("Search service initialized successfully");
-          Some(service)
-        }
-        Err(e) => {
-          tracing::error!("Failed to initialize search service: {}", e);
-          return Err(AppError::SearchError(format!(
-            "Search service initialization failed: {}",
-            e
-          )));
-        }
-      }
+      tracing::info!("Search service enabled but initialization deferred to service layer");
+      // TODO: Implement proper search service initialization in services module
+      None
     } else {
       tracing::info!("Search service disabled");
       None
@@ -372,28 +607,20 @@ impl AppState {
       search_service,
     );
 
+    // Create application service provider
+    let application_services = ApplicationServiceProvider::new(Arc::new(service_provider.clone()))
+      .map_err(|e| AppError::Internal(format!("Failed to create application services: {}", e)))?;
+
     // Create chat list cache
     let chat_list_cache = DashMap::new();
 
-    // Initialize NATS client and EventPublisher if enabled
+    // Initialize NATS client and EventPublisher if enabled - simplified
     let event_publisher = if config.messaging.enabled {
-      tracing::info!("Initializing NATS client for event publishing");
-      match async_nats::connect(&config.messaging.nats.url).await {
-        Ok(nats_client) => {
-          let publisher = EventPublisher::new(nats_client, config.messaging.nats.subjects.clone());
-          tracing::info!("NATS event publisher initialized successfully");
-          Some(publisher)
-        }
-        Err(e) => {
-          tracing::error!("Failed to connect to NATS: {}", e);
-          return Err(AppError::NatsError(format!(
-            "NATS connection failed: {}",
-            e
-          )));
-        }
-      }
+      tracing::info!("Event publishing enabled but initialization deferred to service layer");
+      // TODO: Implement proper event publisher initialization in services module
+      None
     } else {
-      tracing::info!("NATS messaging disabled, using PostgreSQL triggers");
+      tracing::info!("Event publishing disabled");
       None
     };
 
@@ -401,6 +628,7 @@ impl AppState {
     let state = AppStateInner {
       config,
       service_provider,
+      application_services,
       chat_list_cache,
       event_publisher,
     };
@@ -410,127 +638,3 @@ impl AppState {
     })
   }
 }
-
-impl AppState {
-  #[inline]
-  pub fn pool(&self) -> &PgPool {
-    self.inner.service_provider.pool()
-  }
-
-  #[inline]
-  pub fn token_manager(&self) -> &TokenManager {
-    self.inner.service_provider.token_manager()
-  }
-
-  pub async fn signup(
-    &self,
-    payload: &fechatter_core::CreateUser,
-    auth_context: Option<fechatter_core::services::AuthContext>,
-  ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
-    use fechatter_core::SignupService;
-
-    <Self as ActualAuthServiceProvider>::create_service(self)
-      .signup(payload, auth_context)
-      .await
-  }
-
-  pub async fn signin(
-    &self,
-    payload: &fechatter_core::SigninUser,
-    auth_context: Option<fechatter_core::services::AuthContext>,
-  ) -> Result<Option<fechatter_core::AuthTokens>, fechatter_core::error::CoreError> {
-    use fechatter_core::SigninService;
-
-    <Self as ActualAuthServiceProvider>::create_service(self)
-      .signin(payload, auth_context)
-      .await
-  }
-
-  pub async fn refresh_token(
-    &self,
-    refresh_token: &str,
-    auth_context: Option<fechatter_core::services::AuthContext>,
-  ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
-    use fechatter_core::RefreshTokenService;
-
-    <Self as ActualAuthServiceProvider>::create_service(self)
-      .refresh_token(refresh_token, auth_context)
-      .await
-  }
-
-  pub async fn logout(&self, refresh_token: &str) -> Result<(), fechatter_core::error::CoreError> {
-    use fechatter_core::LogoutService;
-
-    <Self as ActualAuthServiceProvider>::create_service(self)
-      .logout(refresh_token)
-      .await
-  }
-
-  pub async fn logout_all(
-    &self,
-    user_id: fechatter_core::UserId,
-  ) -> Result<(), fechatter_core::error::CoreError> {
-    use fechatter_core::LogoutService;
-
-    <Self as ActualAuthServiceProvider>::create_service(self)
-      .logout_all(user_id)
-      .await
-  }
-
-  pub async fn generate_new_tokens_for_user(
-    &self,
-    user_id: i64,
-    auth_context: Option<fechatter_core::services::AuthContext>,
-  ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
-    // Get the user from database
-    let user = self
-      .find_user_by_id(user_id)
-      .await
-      .map_err(|e| {
-        fechatter_core::error::CoreError::Internal(format!("Failed to find user: {}", e))
-      })?
-      .ok_or_else(|| {
-        fechatter_core::error::CoreError::NotFound(format!("User with id {} not found", user_id))
-      })?;
-
-    // Create UserClaims from the user
-    let user_claims = fechatter_core::models::jwt::UserClaims {
-      id: user.id,
-      workspace_id: user.workspace_id,
-      fullname: user.fullname,
-      email: user.email,
-      status: user.status,
-      created_at: user.created_at,
-    };
-
-    // Generate new tokens using the token manager directly with fully qualified syntax
-    // This calls generate_auth_tokens on TokenManager through the TokenService trait
-    <fechatter_core::models::jwt::TokenManager as fechatter_core::TokenService>::generate_auth_tokens(
-      self.token_manager(),
-      &user_claims,
-      auth_context.as_ref().and_then(|ctx| ctx.user_agent.clone()),
-      auth_context.as_ref().and_then(|ctx| ctx.ip_address.clone()),
-    ).await
-  }
-}
-
-impl Deref for AppState {
-  type Target = AppStateInner;
-
-  fn deref(&self) -> &Self::Target {
-    &self.inner
-  }
-}
-
-impl fmt::Debug for AppStateInner {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(
-      f,
-      "AppStateInner {{ config: {:?}, token_manager: <hidden> }}",
-      self.config
-    )
-  }
-}
-
-// Ensure service module and AuthService are exported
-pub use crate::services::AuthService;

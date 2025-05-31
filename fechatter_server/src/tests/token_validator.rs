@@ -3,10 +3,15 @@ mod tests {
   use chrono::Utc;
   use std::sync::Arc;
 
+  use sqlx::PgPool;
+  use sqlx_db_tester::TestPg;
+
   use crate::{
-    AppConfig, AppError, AppState,
+    AppError, AppState,
+    config::AppConfig,
+    domains::auth::RefreshTokenAdaptor,
     models::{User, UserClaims, UserStatus, jwt::TokenManager},
-    utils::RefreshTokenAdaptor,
+    services::{EventPublisher, service_provider::ServiceProvider},
     verify_token,
   };
   use fechatter_core::{TokenService, middlewares::TokenVerifier};

@@ -7,11 +7,18 @@ use axum::{
 };
 use tracing::{error, info};
 
-use crate::{AppState, error::AppError, models::AuthUser};
-use fechatter_core::middlewares::TokenVerifier;
+use crate::{AppState, error::AppError};
+
+// Import AuthUser from fechatter_core where it's publicly available
+use fechatter_core::AuthUser;
+// Import TokenService trait to use verify_token method
+use fechatter_core::models::jwt::TokenService;
+
+// Import the ChatMembershipExtensions trait to use ensure_user_is_chat_member
+use crate::services::application::adapters::ChatMembershipExtensions;
 
 pub async fn verify_chat_membership_middleware(
-  state: AppState,
+  State(state): State<AppState>,
   req: Request,
   next: Next,
 ) -> Response {
@@ -113,35 +120,27 @@ pub async fn verify_chat_membership_middleware(
     }
   };
 
+  // Chat membership validation through AppState
   match state
-    .ensure_user_is_chat_member(chat_id, user.id.into())
+    .ensure_user_is_chat_member(i64::from(user.id), chat_id)
     .await
   {
-    Ok(true) => {
+    Ok(()) => {
+      // User is a valid member, proceed with request
       let req = Request::from_parts(parts, body);
       next.run(req).await
     }
-    Ok(false) => {
-      info!(
-        "Permission denied: User {} is not a member of chat {}",
-        user.id, chat_id
-      );
-      AppError::ChatPermissionError(format!(
-        "User {} is not a member of chat {}",
-        user.id, chat_id
-      ))
-      .into_response()
+    Err(AppError::ChatPermissionError(msg)) => {
+      info!("Permission denied: {}", msg);
+      (
+        StatusCode::FORBIDDEN,
+        "Access denied: You are not a member of this chat",
+      )
+        .into_response()
     }
     Err(e) => {
       error!("Error checking chat membership: {:?}", e);
-      match e {
-        AppError::NotFound(_) => {
-          // If chat doesn't exist, provide more consistent error
-          AppError::NotFound(vec![format!("Chat with id {} not found", chat_id)]).into_response()
-        }
-        AppError::ChatPermissionError(_) => e.into_response(),
-        _ => AppError::from(e).into_response(),
-      }
+      (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
     }
   }
 }

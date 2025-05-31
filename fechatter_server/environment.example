@@ -1,0 +1,79 @@
+# Fechatter Server Environment Configuration Example
+# Copy these environment variables to your .env file or export them in your shell
+
+# ============================================================================
+# Server Configuration
+# ============================================================================
+export FECHATTER_PORT=8080
+export DATABASE_URL="postgresql://username:password@localhost/fechatter"
+
+# ============================================================================
+# Authentication Configuration
+# ============================================================================
+# IMPORTANT: Generate your own RSA key pair for production!
+# Use: openssl genrsa -out private.pem 2048
+#      openssl rsa -in private.pem -pubout -out public.pem
+export FECHATTER_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----
+REPLACE_WITH_YOUR_PUBLIC_KEY
+-----END PUBLIC KEY-----"
+
+export FECHATTER_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----
+REPLACE_WITH_YOUR_PRIVATE_KEY
+-----END PRIVATE KEY-----"
+
+# ============================================================================
+# Messaging Configuration (NATS)
+# ============================================================================
+export FECHATTER_MESSAGING_ENABLED=true
+export FECHATTER_MESSAGING_PROVIDER=nats
+export NATS_URL=nats://localhost:4222
+export NATS_AUTH_ENABLED=false
+
+# NATS Subject Configuration
+export NATS_SUBJECT_MESSAGE_CREATED=chat.message.created
+export NATS_SUBJECT_MESSAGE_UPDATED=chat.message.updated
+export NATS_SUBJECT_MESSAGE_DELETED=chat.message.deleted
+export NATS_SUBJECT_CHAT_CREATED=chat.chat.created
+export NATS_SUBJECT_CHAT_UPDATED=chat.chat.updated
+export NATS_SUBJECT_USER_JOINED=chat.user.joined
+export NATS_SUBJECT_USER_LEFT=chat.user.left
+export NATS_SUBJECT_DUPLICATE_MESSAGE=chat.message.duplicate
+
+# JetStream Configuration
+export JETSTREAM_ENABLED=false
+export JETSTREAM_STREAM=CHAT_EVENTS
+export JETSTREAM_STORAGE=memory
+
+# ============================================================================
+# Search Configuration (Meilisearch)
+# ============================================================================
+export SEARCH_ENABLED=false
+export SEARCH_PROVIDER=meilisearch
+export MEILISEARCH_URL=http://localhost:7700
+export MEILISEARCH_API_KEY=your_meilisearch_master_key
+
+# Async Indexing
+export ASYNC_INDEXING_ENABLED=false
+
+# ============================================================================
+# Notification Configuration
+# ============================================================================
+export IN_APP_NOTIFICATIONS_ENABLED=true
+export REALTIME_NOTIFICATIONS_ENABLED=true
+
+# Email Configuration (Optional)
+export EMAIL_ENABLED=false
+export SMTP_HOST=smtp.gmail.com
+export SMTP_PORT=587
+export SMTP_USERNAME=your-email@gmail.com
+export SMTP_PASSWORD=your-app-password
+export FROM_EMAIL=noreply@yourcompany.com
+export FROM_NAME=Fechatter
+export SMTP_USE_TLS=true
+
+# ============================================================================
+# Development/Testing
+# ============================================================================
+# For development only - NOT for production
+export RUST_LOG=info
+export RUST_BACKTRACE=1 

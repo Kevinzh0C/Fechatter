@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Storage</title>
+</head>
+<body>
+    <h1>Clearing storage...</h1>
+    <script>
+        // Clear all localStorage
+        localStorage.clear();
+        
+        // Clear all sessionStorage
+        sessionStorage.clear();
+        
+        // Redirect to login page
+        setTimeout(() => {
+            window.location.href = '/login';
+        }, 1000);
+    </script>
+    <p>Storage cleared. Redirecting to login page...</p>
+</body>
+</html> 

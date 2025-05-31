@@ -24,6 +24,71 @@ pub enum AppError {
 
   #[error("invalid input: {0}")]
   InvalidInput(String),
+
+  #[error("publish error: {0}")]
+  PublishError(PublishError),
+}
+
+/// Event publishing error types
+#[derive(Error, Debug, Clone, Serialize, Deserialize)]
+pub enum PublishError {
+  /// Serialization errors
+  #[error("serialization error: {0}")]
+  Serialize(String),
+
+  /// Network connection errors
+  #[error("network error: {0}")]
+  Network(String),
+
+  /// Timeout errors
+  #[error("timeout error: {0}")]
+  Timeout(String),
+
+  /// Configuration errors
+  #[error("configuration error: {0}")]
+  Configuration(String),
+
+  /// Authentication errors for event publishing
+  #[error("authentication error: {0}")]
+  Authentication(String),
+
+  /// Rate limiting errors
+  #[error("rate limit exceeded: {0}")]
+  RateLimit(String),
+}
+
+impl PublishError {
+  /// Check if this error type is retryable
+  pub fn is_retryable(&self) -> bool {
+    match self {
+      PublishError::Network(_) | PublishError::Timeout(_) | PublishError::RateLimit(_) => true,
+      PublishError::Serialize(_)
+      | PublishError::Configuration(_)
+      | PublishError::Authentication(_) => false,
+    }
+  }
+}
+
+/// Vector database specific errors
+#[derive(Error, Debug, Clone, Serialize, Deserialize)]
+pub enum VectorDbError {
+  #[error("Validation error: {0}")]
+  Validation(String),
+
+  #[error("Not found: {0}")]
+  NotFound(String),
+
+  #[error("Permanent error: {0}")]
+  Permanent(String),
+
+  #[error("Authentication error: {0}")]
+  Authentication(String),
+
+  #[error("Rate limit error: {0}")]
+  RateLimit(String),
+
+  #[error("Transient error: {0}")]
+  Transient(String),
 }
 
 /// Specific token validation error types to provide more granular control
@@ -81,6 +146,10 @@ pub enum CoreError {
   #[error("validation error: {0}")]
   Validation(String),
 
+  /// Validation errors for general validation cases
+  #[error("validation error: {0}")]
+  ValidationError(String),
+
   /// Chat validation specific errors
   #[error("chat validation error: {0}")]
   ChatValidation(ChatValidationError),
@@ -109,6 +178,18 @@ pub enum CoreError {
   #[error("invalid token: {0}")]
   InvalidToken(TokenValidationError),
 
+  /// Event publishing errors
+  #[error("publish error: {0}")]
+  PublishError(PublishError),
+
+  /// Vector database errors
+  #[error("vector database error: {0}")]
+  VectorDbError(#[from] VectorDbError),
+
+  /// Unimplemented functionality (for development)
+  #[error("unimplemented: {0}")]
+  Unimplemented(String),
+
   /// Internal/unexpected errors
   #[error("internal error: {0}")]
   Internal(String),
@@ -130,6 +211,27 @@ impl From<jsonwebtoken::errors::Error> for CoreError {
 impl From<anyhow::Error> for CoreError {
   fn from(err: anyhow::Error) -> Self {
     CoreError::Internal(err.to_string())
+  }
+}
+
+impl From<PublishError> for CoreError {
+  fn from(err: PublishError) -> Self {
+    CoreError::PublishError(err)
+  }
+}
+
+impl From<serde_json::Error> for PublishError {
+  fn from(err: serde_json::Error) -> Self {
+    PublishError::Serialize(err.to_string())
+  }
+}
+
+impl From<std::io::Error> for PublishError {
+  fn from(err: std::io::Error) -> Self {
+    match err.kind() {
+      std::io::ErrorKind::TimedOut => PublishError::Timeout(err.to_string()),
+      _ => PublishError::Network(err.to_string()),
+    }
   }
 }
 

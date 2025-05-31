@@ -1,0 +1,95 @@
+# Fechatter Server Configuration Example
+# Copy this file to fechatter.toml and customize for your environment
+
+[server]
+port = 8080
+db_url = "postgresql://username:password@localhost/fechatter"
+base_dir = "/path/to/static/files"
+max_upload_size = 10485760  # 10MB in bytes
+request_timeout_ms = 30000
+
+[auth]
+# IMPORTANT: Generate your own RSA key pair for production!
+# Use: openssl genrsa -out private.pem 2048
+#      openssl rsa -in private.pem -pubout -out public.pem
+pk = """-----BEGIN PUBLIC KEY-----
+REPLACE_WITH_YOUR_PUBLIC_KEY
+-----END PUBLIC KEY-----"""
+
+sk = """-----BEGIN PRIVATE KEY-----
+REPLACE_WITH_YOUR_PRIVATE_KEY
+-----END PRIVATE KEY-----"""
+
+token_expiration = 3600              # 1 hour in seconds
+refresh_token_expiration = 604800    # 7 days in seconds
+
+[messaging]
+enabled = true
+provider = "nats"
+
+[messaging.nats]
+url = "nats://localhost:4222"
+
+[messaging.nats.auth]
+enabled = false
+
+[messaging.nats.subjects]
+message_created = "chat.message.created"
+message_updated = "chat.message.updated"
+message_deleted = "chat.message.deleted"
+chat_created = "chat.chat.created"
+chat_updated = "chat.chat.updated"
+user_joined_chat = "chat.user.joined"
+user_left_chat = "chat.user.left"
+duplicate_message_attempted = "chat.message.duplicate"
+
+[messaging.nats.jetstream]
+enabled = false
+stream = "CHAT_EVENTS"
+storage = "memory"
+max_bytes = 104857600    # 100MB
+max_msg_size = 1048576   # 1MB
+max_age = 604800         # 7 days
+
+[search]
+enabled = false
+provider = "meilisearch"
+
+[search.async_indexing]
+enabled = false
+batch_size = 100
+batch_timeout_ms = 5000
+
+[search.meilisearch]
+url = "http://localhost:7700"
+api_key = "your_meilisearch_master_key"
+connection_timeout_ms = 5000
+request_timeout_ms = 10000
+
+[search.meilisearch.indexes.messages]
+name = "messages"
+primary_key = "id"
+searchable_fields = ["content", "user_name"]
+displayed_fields = ["id", "content", "user_name", "created_at"]
+filterable_fields = ["chat_id", "user_id", "created_at"]
+sortable_fields = ["created_at"]
+
+[search.meilisearch.settings]
+pagination_limit = 100
+
+[notification.in_app]
+enabled = true
+realtime_enabled = true
+max_notifications_per_user = 1000
+retention_days = 30
+
+# Email notifications (optional)
+# [notification.email]
+# enabled = true
+# smtp_host = "smtp.gmail.com"
+# smtp_port = 587
+# smtp_username = "your-email@gmail.com"
+# smtp_password = "your-app-password"
+# from_email = "noreply@yourcompany.com"
+# from_name = "Fechatter"
+# use_tls = true 

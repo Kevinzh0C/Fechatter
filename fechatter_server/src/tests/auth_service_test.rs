@@ -8,9 +8,9 @@ mod tests {
   use sqlx::PgPool;
 
   use crate::config::AppConfig;
+  use crate::domains::auth::RefreshTokenAdaptor;
   use crate::services::ServiceProvider;
   use crate::services::service_provider::ServerTokenService;
-  use crate::utils::refresh_token::RefreshTokenAdaptor;
   use crate::{AppState, AuthService};
   use std::fs;
   use std::sync::Arc;
@@ -57,7 +57,17 @@ mod tests {
 
     let refresh_token_repository = Box::new(RefreshTokenAdaptor::new(pool));
 
-    AuthService::new(user_repository, token_service, refresh_token_repository)
+    // Create a simple event publisher for testing
+    let event_publisher = Arc::new(
+      crate::services::application::application_event_publisher::ApplicationEventPublisher::new(),
+    );
+
+    AuthService::new(
+      user_repository,
+      token_service,
+      refresh_token_repository,
+      event_publisher,
+    )
   }
 
   // Helper to create minimal test data

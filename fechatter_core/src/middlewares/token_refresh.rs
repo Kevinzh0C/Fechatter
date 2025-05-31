@@ -1,6 +1,7 @@
 use super::{HasIdField, WithServiceProvider, WithTokenManager};
 use crate::{
-  AuthContext, TokenVerifier,
+  TokenVerifier,
+  contracts::AuthContext,
   middlewares::ActualAuthServiceProvider,
   models::jwt::{RefreshTokenData, RefreshTokenService},
 };

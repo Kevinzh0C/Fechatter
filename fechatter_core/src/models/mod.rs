@@ -3,7 +3,9 @@ pub mod chat_member;
 pub mod ids;
 pub mod jwt;
 pub mod message;
+pub mod time_management;
 pub mod user;
+pub mod vector_db;
 pub mod workspace;
 
 pub use crate::error::CoreError;
@@ -12,7 +14,9 @@ pub use chat_member::*;
 pub use ids::*;
 pub use jwt::*;
 pub use message::*;
+pub use time_management::*;
 pub use user::*;
+pub use vector_db::*;
 pub use workspace::*;
 
 use chrono::{DateTime, Utc};
@@ -73,6 +77,20 @@ impl std::fmt::Display for ChatType {
       ChatType::Group => write!(f, "group"),
       ChatType::PrivateChannel => write!(f, "private_channel"),
       ChatType::PublicChannel => write!(f, "public_channel"),
+    }
+  }
+}
+
+impl std::str::FromStr for ChatType {
+  type Err = String;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    match s.to_lowercase().as_str() {
+      "single" => Ok(ChatType::Single),
+      "group" => Ok(ChatType::Group),
+      "private_channel" => Ok(ChatType::PrivateChannel),
+      "public_channel" => Ok(ChatType::PublicChannel),
+      _ => Err(format!("Invalid chat type: {}", s)),
     }
   }
 }

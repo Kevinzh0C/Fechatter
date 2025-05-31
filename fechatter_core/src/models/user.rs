@@ -31,6 +31,11 @@ pub trait UserRepository: Send + Sync {
   async fn email_user_exists(&self, email: &str) -> Result<Option<User>, CoreError>;
   async fn validate_users_exists_by_ids(&self, ids: &[UserId]) -> Result<(), CoreError>;
   async fn authenticate(&self, input: &SigninUser) -> Result<Option<User>, CoreError>;
+  async fn switch_workspace(
+    &self,
+    user_id: UserId,
+    workspace_id: WorkspaceId,
+  ) -> Result<User, CoreError>;
 }
 
 /// Utility functions for User model that don't require database access

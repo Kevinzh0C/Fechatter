@@ -1,6 +1,6 @@
 use super::{TokenVerifier, WithServiceProvider, WithTokenManager};
-use crate::jwt::TokenManager;
-use crate::models::{AuthUser, jwt::UserClaims};
+use crate::models::jwt::TokenManager;
+use crate::{error::CoreError, models::AuthUser, models::jwt::UserClaims};
 use axum::{
   body::Body,
   extract::{Request, State},

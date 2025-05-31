@@ -1,12 +1,13 @@
-use crate::error::CoreError;
-use crate::jwt::TokenManager;
 use crate::middlewares::{
   ActualAuthServiceProvider, TokenVerifier, WithServiceProvider, WithTokenManager,
 };
 use crate::models::UserId;
 use crate::models::jwt::{
   AuthServiceTrait, AuthTokens, LogoutService, RefreshTokenService, SigninService, SignupService,
-  UserClaims,
+};
+use crate::{
+  error::CoreError,
+  models::jwt::{TokenManager, UserClaims},
 };
 use async_trait::async_trait;
 use sqlx::PgPool;

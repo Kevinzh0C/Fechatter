@@ -1,0 +1,650 @@
+pub mod api;
+pub mod config;
+pub mod domains;
+pub mod dtos;
+pub mod error;
+pub mod handlers;
+pub mod middlewares;
+pub mod openapi;
+pub mod services;
+pub mod shared;
+pub mod tests;
+pub mod utils;
+use std::any::{Any, TypeId};
+use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
+use std::{fmt, ops::Deref, sync::Arc, time::Instant};
+
+use axum::{
+  body::Body,
+  middleware::from_fn_with_state,
+  response::IntoResponse,
+  routing::{delete, get, patch, post},
+  Router,
+};
+
+use sqlx::PgPool;
+use tokio::fs;
+use tower_http::cors::CorsLayer;
+
+pub use config::AppConfig;
+use fechatter_core::chat::ChatSidebar;
+use fechatter_core::error::CoreError;
+use fechatter_core::models::jwt::TokenManager;
+use fechatter_core::{
+  middlewares::{
+    ActualAuthServiceProvider, TokenVerifier as CoreTokenVerifier, WithServiceProvider,
+    WithTokenManager as CoreWithTokenManager,
+  },
+  models::jwt::UserClaims,
+  LogoutService, RefreshTokenService, SigninService, SignupService, UserId,
+};
+use openapi::OpenApiRouter;
+
+use crate::api::websocket::handler;
+use crate::error::{AppError, ErrorOutput};
+use crate::services::providers::WsConnections;
+use crate::services::{
+  AuthService, EventPublisher, MessageStreamService, RedisCacheService, UnifiedServiceProvider,
+};
+
+pub use error::{AppError as ErrorAppError, ErrorOutput as ErrorOutputType};
+
+use handlers::*;
+use middlewares::prelude::*;
+
+use crate::handlers::{
+  // Chat member handlers
+  add_chat_members_batch_handler,
+  archive_workspace_chat_handler,
+  // Group feature handlers
+  create_announcement_handler,
+  // Chat handlers
+  create_chat_handler,
+  delete_announcement_handler,
+  delete_chat_handler,
+  delete_message_handler,
+  // Message management handlers
+  edit_message_handler,
+  // Message handlers
+  file_handler,
+  fix_file_storage_handler,
+  get_all_notification_settings_handler,
+  get_message_history_handler,
+  get_message_receipts_handler,
+  // Notification settings handlers
+  get_notification_settings_handler,
+  get_unread_count_handler,
+  // Health handlers
+  health_check,
+  invite_workspace_member_handler,
+  // Workspace handlers
+  list_all_workspace_users_handler,
+  list_announcements_handler,
+  list_chat_members_handler,
+  list_chats_handler,
+  list_messages_handler,
+  list_workspace_chats_handler,
+  list_workspaces_handler,
+  // Auth handlers
+  logout_all_handler,
+  logout_handler,
+  mark_chat_messages_read_handler,
+  // Message status handlers
+  mark_messages_read_handler,
+  mute_chat_handler,
+  refresh_token_handler,
+  remove_chat_member_handler,
+  remove_workspace_member_handler,
+  search_messages_simple,
+  search_messages_with_filters,
+  send_message_handler,
+  signin_handler,
+  signup_handler,
+  simple_health_check,
+  switch_workspace_handler,
+  transfer_chat_ownership_handler,
+  transfer_workspace_ownership_handler,
+  unmute_chat_handler,
+  update_announcement_handler,
+  update_chat_handler,
+  update_notification_settings_handler,
+  update_workspace_chat_handler,
+  update_workspace_handler,
+  upload_handler,
+  // WebSocket handler
+  // ws_handler, // 暂时注释掉，需要实现
+};
+
+// New architecture modules - 暂时注释掉，需要实现
+// pub mod application;
+// pub mod interfaces;
+// pub mod shared;
+
+use crate::services::infrastructure::storage::{LocalStorage, StorageService};
+
+// Define the pool trait locally
+#[allow(unused)]
+trait WithDbPool {
+  fn db_pool(&self) -> &PgPool;
+}
+
+#[derive(Debug, Clone)]
+pub struct AppState {
+  inner: Arc<AppStateInner>,
+}
+
+pub struct AppStateInner {
+  pub(crate) config: AppConfig,
+  pub(crate) service_provider: UnifiedServiceProvider,
+  pub(crate) event_publisher: Option<EventPublisher>,
+  pub(crate) ws_connections: WsConnections,
+  pub(crate) redis_cache: Option<Arc<RedisCacheService>>,
+  pub(crate) message_stream: Option<Arc<MessageStreamService>>,
+  pub(crate) storage: Arc<dyn StorageService>,
+  // CQRS components - 暂时注释掉，需要实现shared模块
+  // pub(crate) command_bus: Arc<crate::shared::cqrs::CommandBus>,
+  // pub(crate) query_bus: Arc<crate::shared::cqrs::QueryBus>,
+  // pub(crate) domain_event_bus: Arc<crate::shared::events::EventBus>,
+}
+
+impl CoreTokenVerifier for AppState {
+  type Claims = UserClaims;
+  type Error = CoreError;
+
+  fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error> {
+    self.inner.service_provider.verify_token(token)
+  }
+}
+
+impl CoreWithTokenManager for AppState {
+  type TokenManagerType = TokenManager;
+
+  fn token_manager(&self) -> &Self::TokenManagerType {
+    self.inner.service_provider.token_manager()
+  }
+}
+
+impl WithServiceProvider for AppState {
+  type ServiceProviderType = UnifiedServiceProvider;
+
+  fn service_provider(&self) -> &Self::ServiceProviderType {
+    &self.inner.service_provider
+  }
+}
+
+impl WithDbPool for AppState {
+  fn db_pool(&self) -> &PgPool {
+    self.inner.service_provider.pool()
+  }
+}
+
+// Implement ActualAuthServiceProvider for AppState
+impl ActualAuthServiceProvider for AppState {
+  type AuthService = AuthService;
+
+  fn create_service(&self) -> Self::AuthService {
+    self.inner.service_provider.create_service()
+  }
+}
+
+// Add method to get EventPublisher
+impl AppState {
+  pub fn event_publisher(&self) -> Option<&EventPublisher> {
+    self.inner.event_publisher.as_ref()
+  }
+
+  /// Get WebSocket connections
+  pub fn ws_connections(&self) -> &WsConnections {
+    &self.inner.ws_connections
+  }
+
+  /// Get Redis cache service
+  pub fn redis_cache(&self) -> Option<&Arc<RedisCacheService>> {
+    self.inner.redis_cache.as_ref()
+  }
+
+  /// Get message stream service
+  pub fn message_stream_service(&self) -> Option<&Arc<MessageStreamService>> {
+    self.inner.message_stream.as_ref()
+  }
+
+  /// Get the NATS client if available
+  pub fn nats_client(&self) -> Option<&async_nats::Client> {
+    self
+      .inner
+      .event_publisher
+      .as_ref()
+      .map(|ep| ep.nats_client())
+  }
+
+  /// Get the search service if available
+  pub fn search_service(&self) -> Option<&str> {
+    // self.inner.service_provider.search_service()
+    None // 暂时返回None，直到实现搜索服务
+  }
+
+  /// Check if user can access a specific chat
+  pub async fn user_can_access_chat(&self, user_id: i64, chat_id: i64) -> Result<bool, AppError> {
+    // 暂时返回true，需要实现ensure_user_is_chat_member方法
+    // match self.ensure_user_is_chat_member(chat_id, user_id).await {
+    //   Ok(_) => Ok(true),
+    //   Err(AppError::ChatPermissionError(_)) => Ok(false),
+    //   Err(AppError::NotFound(_)) => Ok(false),
+    //   Err(e) => Err(e),
+    // }
+    Ok(true)
+  }
+
+  /// Chat service functionality - delegate to existing methods
+  pub fn chat_service(&self) -> &Self {
+    self
+  }
+
+  /// Check if search service is available and enabled
+  pub fn is_search_enabled(&self) -> bool {
+    self
+      .search_service()
+      .map(|_service| true) // service.is_enabled())
+      .unwrap_or(false)
+  }
+
+  /// Cache chat list using Redis instead of DashMap
+  pub async fn cache_chat_list(
+    &self,
+    user_id: i64,
+    chats: &Vec<ChatSidebar>,
+  ) -> Result<(), AppError> {
+    if let Some(ref cache) = self.inner.redis_cache {
+      // cache.cache_chat_list(user_id, chats).await?;
+      // 暂时简单实现，需要完善RedisCacheService的方法
+      let key = format!("chat_list:{}", user_id);
+      let serialized = serde_json::to_vec(chats)
+        .map_err(|e| AppError::InvalidInput(format!("Serialization error: {}", e)))?;
+      // cache.set_bytes(&key, serialized, 3600).await?;
+    }
+    Ok(())
+  }
+
+  /// Get cached chat list from Redis
+  pub async fn get_cached_chat_list(
+    &self,
+    user_id: i64,
+  ) -> Result<Option<Vec<ChatSidebar>>, AppError> {
+    if let Some(ref cache) = self.inner.redis_cache {
+      // cache.get_chat_list(user_id).await
+      // 暂时返回None，需要完善实现
+      Ok(None)
+    } else {
+      Ok(None)
+    }
+  }
+
+  /// Invalidate chat list cache
+  pub async fn invalidate_chat_list_cache(&self, user_id: i64) -> Result<(), AppError> {
+    if let Some(ref cache) = self.inner.redis_cache {
+      let _key = format!("chat_list:{}", user_id);
+      // cache.delete(&key).await?;
+      // 暂时不实现，需要完善RedisCacheService
+    }
+    Ok(())
+  }
+
+  /// Get storage service
+  pub fn storage(&self) -> &Arc<dyn StorageService> {
+    &self.inner.storage
+  }
+
+  /// 获取认证服务实例
+  pub fn auth_service(&self) -> AuthService {
+    // 直接从service_provider获取已创建的认证服务
+    self.inner.service_provider.create_service()
+  }
+
+  /// 验证Bearer Token（中间件使用）
+  pub fn verify_bearer_token(&self, token: &str) -> Result<UserClaims, AppError> {
+    self
+      .token_manager()
+      .verify_token(token)
+      .map_err(|e| AppError::AuthenticationError(e.to_string()))
+  }
+
+  /// 从Token提取用户ID（快捷方法）
+  pub fn extract_user_id(&self, token: &str) -> Result<UserId, AppError> {
+    let claims = self.verify_bearer_token(token)?;
+    Ok(claims.user_id)
+  }
+}
+
+pub async fn get_router(state: AppState) -> Result<Router, AppError> {
+  // 导入简化的中间件
+  use crate::middlewares::prelude::*;
+
+  // Public routes - 无中间件
+  let public_routes = Router::new()
+    .route("/signin", post(signin_handler))
+    .route("/signup", post(signup_handler))
+    .route(
+      "/refresh",
+      post(|state, cookies, headers, auth_user| {
+        refresh_token_handler(state, cookies, headers, auth_user)
+      }),
+    );
+
+  // Basic auth routes - 基础认证
+  let auth_routes = Router::new()
+    .route("/upload", post(upload_handler))
+    .route("/files/{ws_id}/{*path}", get(file_handler))
+    .route("/fix-files/{ws_id}", post(fix_file_storage_handler))
+    .route("/users", get(list_all_workspace_users_handler))
+    .route("/workspaces", get(list_workspaces_handler))
+    .route("/user/switch-workspace", post(switch_workspace_handler))
+    .route("/logout", post(logout_handler))
+    .route("/logout_all", post(logout_all_handler))
+    .route("/messages/read", post(mark_messages_read_handler))
+    .route("/messages/unread-count", get(get_unread_count_handler))
+    .route(
+      "/message/{message_id}/history",
+      get(get_message_history_handler),
+    )
+    .route(
+      "/message/{message_id}/receipts",
+      get(get_message_receipts_handler),
+    )
+    .route(
+      "/user/notification-settings",
+      get(get_all_notification_settings_handler),
+    )
+    .with_auth(state.clone());
+
+  // Workspace routes - 工作空间级别
+  let workspace_routes = Router::new()
+    .route("/workspace/chats", get(list_workspace_chats_handler))
+    .route(
+      "/workspace/chats/{id}",
+      patch(update_workspace_chat_handler),
+    )
+    .route(
+      "/workspace/chats/{id}/archive",
+      post(archive_workspace_chat_handler),
+    )
+    .route("/workspace/{id}", patch(update_workspace_handler))
+    .route("/workspace/invite", post(invite_workspace_member_handler))
+    .route(
+      "/workspace/users/{user_id}",
+      delete(remove_workspace_member_handler),
+    )
+    .route(
+      "/workspace/{id}/transfer",
+      patch(transfer_workspace_ownership_handler),
+    )
+    .with_workspace(state.clone());
+
+  // Chat routes - 聊天级别权限
+  let chat_routes = Router::new()
+    .route("/chat", post(create_chat_handler))
+    .route("/chat", get(list_chats_handler))
+    .route(
+      "/chat/{id}",
+      patch(update_chat_handler).delete(delete_chat_handler),
+    )
+    .route(
+      "/chat/{id}/members",
+      get(list_chat_members_handler)
+        .post(add_chat_members_batch_handler)
+        .delete(remove_chat_member_handler),
+    )
+    .route(
+      "/chat/{id}/members/{member_id}",
+      patch(transfer_chat_ownership_handler),
+    )
+    .route(
+      "/chat/{id}/messages",
+      get(list_messages_handler).post(send_message_handler),
+    )
+    .route(
+      "/chat/{id}/messages/search",
+      get(search_messages_simple).post(search_messages_with_filters),
+    )
+    .route(
+      "/chat/{chat_id}/mark-all-read",
+      post(mark_chat_messages_read_handler),
+    )
+    .route(
+      "/chat/{chat_id}/announcements",
+      get(list_announcements_handler).post(create_announcement_handler),
+    )
+    .route(
+      "/chat/{chat_id}/announcements/{announcement_id}",
+      patch(update_announcement_handler).delete(delete_announcement_handler),
+    )
+    .route(
+      "/chat/{chat_id}/notification-settings",
+      get(get_notification_settings_handler).patch(update_notification_settings_handler),
+    )
+    .route("/chat/{chat_id}/mute", post(mute_chat_handler))
+    .route("/chat/{chat_id}/unmute", post(unmute_chat_handler))
+    .with_chat(state.clone());
+
+  // Message permission routes
+  let message_routes = Router::new()
+    .route(
+      "/message/{message_id}",
+      patch(edit_message_handler).delete(delete_message_handler),
+    )
+    .with_full_auth(state.clone());
+
+  // Merge all routes
+  let protected_api = Router::new()
+    .merge(auth_routes)
+    .merge(workspace_routes)
+    .merge(chat_routes)
+    .merge(message_routes);
+
+  let api = Router::new().merge(public_routes).merge(protected_api);
+
+  let app = Router::new()
+    .openapi()
+    .route("/", get(index_handler))
+    .route("/health", get(health_check))
+    .route("/health/simple", get(simple_health_check))
+    .nest("/api", api)
+    .layer(
+      CorsLayer::new()
+        .allow_origin(tower_http::cors::Any)
+        .allow_methods(tower_http::cors::Any)
+        .allow_headers(tower_http::cors::Any),
+    )
+    .with_state(state);
+
+  Ok(app)
+}
+
+pub async fn create_pool(db_url: &str) -> Result<sqlx::PgPool, sqlx::Error> {
+  use sqlx::postgres::PgPoolOptions;
+  use std::time::Duration;
+
+  PgPoolOptions::new()
+    .max_connections(10)
+    .min_connections(1)
+    .acquire_timeout(Duration::from_secs(5))
+    .idle_timeout(Duration::from_secs(60))
+    .max_lifetime(Duration::from_secs(1800))
+    .test_before_acquire(true)
+    .connect(db_url)
+    .await
+}
+
+impl AppState {
+  pub async fn try_new(config: AppConfig) -> Result<Self, AppError> {
+    fs::create_dir_all(&config.server.base_dir).await?;
+
+    // 使用新的零 Arc 架构创建服务提供者
+    let service_provider = crate::services::providers::App::from_config(&config).await?;
+
+    // 初始化NATS事件发布器（可选）
+    let event_publisher = if config.messaging.enabled {
+      tracing::info!("Initializing NATS client for event publishing");
+      // 暂时注释掉，需要修复配置结构
+      // match async_nats::connect(&config.messaging.nats.url).await {
+      //   Ok(nats_client) => {
+      //     let publisher = EventPublisher::new(nats_client, config.messaging.nats.subjects.clone());
+      //     tracing::info!("NATS event publisher initialized successfully");
+      //     Some(publisher)
+      //   }
+      //   Err(e) => {
+      //     tracing::error!("Failed to connect to NATS: {}", e);
+      //     return Err(AppError::NatsError(format!(
+      //       "NATS connection failed: {}",
+      //       e
+      //     )));
+      //   }
+      // }
+      tracing::warn!("NATS event publisher disabled - configuration incomplete");
+      None
+    } else {
+      tracing::info!("NATS messaging disabled, using PostgreSQL triggers");
+      None
+    };
+
+    // 创建一个简单的存储适配器以满足 Arc<dyn StorageService> 接口
+    let storage_service = crate::services::infrastructure::storage::LocalStorage::new(
+      &config.server.base_dir,
+      "/files",
+    )?;
+
+    // 创建兼容的应用状态：适配新架构到旧接口
+    let state = AppStateInner {
+      config,
+      event_publisher,
+      ws_connections: service_provider.ws_connections().clone(),
+      // 暂时禁用缓存和消息流以避免复杂的类型转换
+      // 实际应用中应该重构这些组件以避免 Arc 包装
+      redis_cache: None,
+      message_stream: None,
+      // 使用新创建的存储服务实例
+      storage: Arc::new(storage_service) as Arc<dyn StorageService>,
+      service_provider,
+      // CQRS components - 暂时注释掉，需要实现shared模块
+      // command_bus: Arc::new(command_bus),
+      // query_bus: Arc::new(query_bus),
+      // domain_event_bus: Arc::new(domain_event_bus),
+    };
+
+    Ok(Self {
+      inner: Arc::new(state),
+    })
+  }
+}
+
+impl AppState {
+  #[inline]
+  pub fn pool(&self) -> &PgPool {
+    self.inner.service_provider.pool()
+  }
+
+  #[inline]
+  pub fn token_manager(&self) -> &TokenManager {
+    self.inner.service_provider.token_manager()
+  }
+
+  /// 创建HTTP认证服务实例（轻量级）
+  pub fn auth_service(&self) -> AuthService {
+    // 直接从service_provider获取已创建的认证服务
+    self.inner.service_provider.create_service()
+  }
+
+  pub async fn signup(
+    &self,
+    payload: &fechatter_core::CreateUser,
+    auth_context: Option<fechatter_core::services::AuthContext>,
+  ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
+    // 直接通过业务逻辑层处理
+    let auth_service = self.inner.service_provider.create_service();
+    auth_service.signup(payload, auth_context).await
+  }
+
+  pub async fn signin(
+    &self,
+    payload: &fechatter_core::SigninUser,
+    auth_context: Option<fechatter_core::services::AuthContext>,
+  ) -> Result<Option<fechatter_core::AuthTokens>, fechatter_core::error::CoreError> {
+    let auth_service = self.inner.service_provider.create_service();
+    auth_service.signin(payload, auth_context).await
+  }
+
+  pub async fn refresh_token(
+    &self,
+    refresh_token: &str,
+    auth_context: Option<fechatter_core::services::AuthContext>,
+  ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
+    let auth_service = self.inner.service_provider.create_service();
+    auth_service
+      .refresh_token(refresh_token, auth_context)
+      .await
+  }
+
+  pub async fn logout(&self, refresh_token: &str) -> Result<(), fechatter_core::error::CoreError> {
+    let auth_service = self.inner.service_provider.create_service();
+    <crate::services::AuthService as LogoutService>::logout(&auth_service, refresh_token).await
+  }
+
+  pub async fn logout_all(
+    &self,
+    user_id: fechatter_core::UserId,
+  ) -> Result<(), fechatter_core::error::CoreError> {
+    let auth_service = self.inner.service_provider.create_service();
+    <crate::services::AuthService as LogoutService>::logout_all(&auth_service, user_id).await
+  }
+
+  pub async fn generate_new_tokens_for_user(
+    &self,
+    user_id: i64,
+    auth_context: Option<fechatter_core::services::AuthContext>,
+  ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
+    // 暂时注释掉，需要实现find_user_by_id方法
+    Err(fechatter_core::error::CoreError::InternalError(
+      "Method not implemented yet".to_string(),
+    ))
+  }
+
+  /// Execute a command through CQRS
+  pub async fn execute_command<C: 'static>(&self, _command: C) -> Result<(), AppError> {
+    Err(AppError::NotImplemented("CQRS not implemented"))
+  }
+
+  /// Execute a query through CQRS  
+  pub async fn execute_query<Q: 'static>(&self, _query: Q) -> Result<(), AppError> {
+    Err(AppError::NotImplemented("CQRS not implemented"))
+  }
+
+  /// Publish a domain event
+  pub async fn publish_event<E: 'static>(&self, _event: E) -> Result<(), AppError> {
+    Err(AppError::NotImplemented("CQRS not implemented"))
+  }
+}
+
+impl Deref for AppState {
+  type Target = AppStateInner;
+
+  fn deref(&self) -> &Self::Target {
+    &self.inner
+  }
+}
+
+impl fmt::Debug for AppStateInner {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    f.debug_struct("AppStateInner")
+      .field("config", &self.config)
+      .field("event_publisher", &self.event_publisher.is_some())
+      .field("ws_connections", &"<ws_connections>")
+      .field("redis_cache", &self.redis_cache.is_some())
+      .field("message_stream", &self.message_stream.is_some())
+      .field("storage", &"<storage>")
+      // .field("command_bus", &"<command_bus>")
+      // .field("query_bus", &"<query_bus>")
+      // .field("domain_event_bus", &"<domain_event_bus>")
+      .finish()
+  }
+}

@@ -8,9 +8,9 @@ use utoipa::ToSchema;
 use uuid;
 
 use super::{CreateUser, SigninUser, User, UserId, UserRepository, UserStatus, WorkspaceId};
+use crate::contracts::AuthContext;
 use crate::error::CoreError;
 use crate::middlewares::TokenVerifier as MwTokenVerifier;
-use crate::services::AuthContext;
 
 const JWT_ISSUER: &str = "fechatter-server";
 const JWT_AUDIENCE: &str = "fechatter-web";

@@ -1,0 +1,15 @@
+Hi {{user_name}},
+
+Welcome to {{notification_title}}!
+
+{{truncate notification_message 200}}
+
+{{#if chat_url}}
+Get started: {{chat_url}}
+{{/if}}
+
+---
+This invitation was sent at {{timestamp}}.
+
+Best regards,
+The Fechatter Team 

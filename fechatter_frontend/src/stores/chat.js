@@ -1,0 +1,553 @@
+import { defineStore } from 'pinia';
+import axios from 'axios';
+
+export const useChatStore = defineStore('chat', {
+  state: () => ({
+    chats: [],
+    messages: [],
+    currentChatId: null,
+    loading: false,
+    error: null,
+    hasMoreMessages: true,
+    lastMessageId: null,
+    uploadProgress: 0,
+    // Pagination state
+    messagesPerPage: 20,
+    // Member management
+    chatMembers: {},
+    // File management
+    uploadedFiles: [],
+  }),
+
+  getters: {
+    getCurrentChat: (state) => {
+      return state.chats.find(chat => chat.id === state.currentChatId);
+    },
+    
+    getChatMembers: (state) => (chatId) => {
+      return state.chatMembers[chatId] || [];
+    },
+
+    getMessageById: (state) => (messageId) => {
+      return state.messages.find(msg => msg.id === messageId);
+    }
+  },
+
+  actions: {
+    // ===== CHAT MANAGEMENT =====
+    
+    async fetchChats() {
+      try {
+        this.loading = true;
+        this.error = null;
+        const response = await axios.get('/api/chat');
+        this.chats = response.data;
+        return response.data;
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to fetch chats';
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async createChat(name, members = [], description = '', chatType = 'PrivateChannel') {
+      try {
+        this.loading = true;
+        this.error = null;
+        
+        const payload = {
+          name,
+          chat_type: chatType,
+          members,
+          description
+        };
+
+        const response = await axios.post('/api/chat', payload);
+        const newChat = response.data;
+        
+        this.chats.unshift(newChat);
+        return newChat;
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to create chat';
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async updateChat(chatId, name, description) {
+      try {
+        this.loading = true;
+        this.error = null;
+        
+        const payload = { name, description };
+        const response = await axios.patch(`/api/chat/${chatId}`, payload);
+        
+        // Update local chat data
+        const chatIndex = this.chats.findIndex(chat => chat.id === chatId);
+        if (chatIndex !== -1) {
+          this.chats[chatIndex] = { ...this.chats[chatIndex], ...response.data };
+        }
+        
+        return response.data;
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to update chat';
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async deleteChat(chatId) {
+      try {
+        this.loading = true;
+        this.error = null;
+        
+        await axios.delete(`/api/chat/${chatId}`);
+        
+        // Remove from local state
+        this.chats = this.chats.filter(chat => chat.id !== chatId);
+        
+        // Clear messages if this was the current chat
+        if (this.currentChatId === chatId) {
+          this.messages = [];
+          this.currentChatId = null;
+        }
+        
+        return true;
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to delete chat';
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // ===== MESSAGE MANAGEMENT =====
+    
+    async fetchMessages(chatId, limit = null) {
+      try {
+        this.loading = true;
+        this.error = null;
+        this.currentChatId = chatId;
+        
+        // 清空之前的消息
+        this.messages = [];
+        this.hasMoreMessages = true;
+        
+        const params = {};
+        if (limit) params.limit = limit;
+        else params.limit = this.messagesPerPage;
+        
+        const response = await axios.get(`/api/chat/${chatId}/messages`, { params });
+        
+        // 设置消息列表 - 后端返回的应该是按时间倒序（新消息在前）
+        this.messages = response.data;
+        this.hasMoreMessages = response.data.length === params.limit;
+        
+        return response.data;
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to fetch messages';
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async fetchMoreMessages(chatId) {
+      if (!this.hasMoreMessages || this.loading) return;
+      
+      try {
+        this.loading = true;
+        this.error = null;
+        
+        const params = {
+          limit: this.messagesPerPage
+        };
+        
+        // 获取更老的消息 - 使用最后一条消息的ID作为起点
+        if (this.messages.length > 0) {
+          const oldestMessage = this.messages[this.messages.length - 1];
+          params.last_id = oldestMessage.id;
+        }
+        
+        const response = await axios.get(`/api/chat/${chatId}/messages`, { params });
+        
+        // 向历史方向追加更老的消息（添加到数组末尾）
+        this.messages.push(...response.data);
+        this.hasMoreMessages = response.data.length === this.messagesPerPage;
+        
+        return response.data;
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to fetch more messages';
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async sendMessage(chatId, content, files = [], idempotencyKey = null) {
+      try {
+        this.loading = true;
+        this.error = null;
+        
+        // Upload files first if any
+        let uploadedFileUrls = [];
+        if (files.length > 0) {
+          uploadedFileUrls = await this.uploadFiles(files);
+        }
+        
+        const payload = {
+          content,
+          files: uploadedFileUrls
+        };
+        
+        // Add idempotency key if provided
+        if (idempotencyKey) {
+          payload.idempotency_key = idempotencyKey;
+        }
+        
+        const response = await axios.post(`/api/chat/${chatId}/messages`, payload);
+        
+        // Add message to the beginning of the list (newest first)
+        this.messages.unshift(response.data);
+        
+        return response.data;
+      } catch (error) {
+        // Handle idempotency conflicts gracefully
+        if (error.response?.status === 409) {
+          this.error = 'Message already sent (duplicate detected)';
+        } else {
+          this.error = error.response?.data?.message || 'Failed to send message';
+        }
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // ===== FILE MANAGEMENT =====
+    
+    async uploadFiles(files) {
+      try {
+        this.uploadProgress = 0;
+        const formData = new FormData();
+        
+        files.forEach(file => {
+          formData.append('files', file);
+        });
+        
+        const response = await axios.post('/api/upload', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          },
+          onUploadProgress: (progressEvent) => {
+            this.uploadProgress = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+          }
+        });
+        
+        this.uploadedFiles.push(...response.data);
+        return response.data;
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to upload files';
+        throw error;
+      } finally {
+        this.uploadProgress = 0;
+      }
+    },
+
+    // getFileUrl moved to component level - files are served directly by backend
+
+    // ===== MEMBER MANAGEMENT =====
+    
+    async fetchChatMembers(chatId) {
+      try {
+        this.loading = true;
+        this.error = null;
+        
+        const response = await axios.get(`/api/chat/${chatId}/members`);
+        
+        // Cache members for this chat
+        this.chatMembers[chatId] = response.data;
+        
+        return response.data;
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to fetch chat members';
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async addChatMembers(chatId, memberIds) {
+      try {
+        this.loading = true;
+        this.error = null;
+        
+        const response = await axios.post(`/api/chat/${chatId}/members`, memberIds);
+        
+        // Update cached members
+        if (this.chatMembers[chatId]) {
+          // Refresh members list
+          await this.fetchChatMembers(chatId);
+        }
+        
+        return response.data;
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to add members';
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async removeChatMembers(chatId, memberIds) {
+      try {
+        this.loading = true;
+        this.error = null;
+        
+        const response = await axios.delete(`/api/chat/${chatId}/members`, {
+          data: memberIds
+        });
+        
+        // Update cached members
+        if (this.chatMembers[chatId]) {
+          this.chatMembers[chatId] = this.chatMembers[chatId].filter(
+            member => !memberIds.includes(member.id)
+          );
+        }
+        
+        return response.data;
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to remove members';
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async transferChatOwnership(chatId, newOwnerId) {
+      try {
+        this.loading = true;
+        this.error = null;
+        
+        const response = await axios.patch(`/api/chat/${chatId}/members/${newOwnerId}`, {
+          operation: 'transfer_ownership'
+        });
+        
+        // Update chat owner in local state
+        const chatIndex = this.chats.findIndex(chat => chat.id === chatId);
+        if (chatIndex !== -1) {
+          this.chats[chatIndex].owner_id = newOwnerId;
+        }
+        
+        // Refresh members to update roles
+        await this.fetchChatMembers(chatId);
+        
+        return response.data;
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to transfer ownership';
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // ===== SEARCH FUNCTIONALITY =====
+    
+    // 简单搜索 - 使用GET方法（快速、可缓存）
+    async searchMessagesSimple(chatId, query, { limit = 20, offset = 0 } = {}) {
+      try {
+        this.loading = true;
+        this.error = null;
+        
+        const params = new URLSearchParams({
+          q: query,
+          limit: limit.toString(),
+          offset: offset.toString()
+        });
+        
+        const response = await axios.get(
+          `/api/chat/${chatId}/messages/search?${params}`
+        );
+        
+        return response.data;
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to search messages';
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // 复杂搜索 - 使用POST方法（支持复杂过滤器）
+    async searchMessagesWithFilters(chatId, searchParams, limit = 20) {
+      try {
+        this.loading = true;
+        this.error = null;
+        
+        // Handle both simple string queries and advanced search objects
+        let params = { limit };
+        
+        if (typeof searchParams === 'string') {
+          // Simple search
+          params.q = searchParams;
+        } else {
+          // Advanced search
+          params.q = searchParams.query;
+          
+          // Add filters
+          if (searchParams.filters) {
+            const filters = searchParams.filters;
+            
+            // Time range filter
+            if (filters.timeRange && filters.timeRange !== 'all') {
+              const now = new Date();
+              let startDate;
+              
+              switch (filters.timeRange) {
+                case 'today':
+                  startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                  break;
+                case 'week':
+                  startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                  break;
+                case 'month':
+                  startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                  break;
+                case 'quarter':
+                  startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                  break;
+                case 'year':
+                  startDate = new Date(now.getFullYear(), 0, 1);
+                  break;
+              }
+              
+              if (startDate) {
+                params.start_date = startDate.toISOString();
+              }
+            }
+            
+            // Message type filter
+            if (filters.messageType && filters.messageType !== 'all') {
+              params.message_type = filters.messageType;
+            }
+            
+            // Sender filter
+            if (filters.senderId) {
+              params.sender_id = filters.senderId;
+            }
+          }
+          
+          // Add sorting
+          if (searchParams.sortBy) {
+            params.sort_by = searchParams.sortBy;
+          }
+          
+          if (searchParams.sortOrder) {
+            params.sort_order = searchParams.sortOrder;
+          }
+        }
+        
+        const response = await axios.post(`/api/chat/${chatId}/messages/search`, params);
+        
+        return response.data;
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to search messages';
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // 智能搜索 - 自动选择GET或POST方法
+    async searchMessages(chatId, searchParams, limit = 20) {
+      // 判断是否为简单搜索
+      const isSimpleSearch = typeof searchParams === 'string' || 
+        (!searchParams.filters && !searchParams.sortBy && !searchParams.sortOrder);
+      
+      if (isSimpleSearch) {
+        // 简单搜索使用GET方法
+        const query = typeof searchParams === 'string' ? searchParams : searchParams.query;
+        const offset = typeof searchParams === 'object' ? searchParams.offset || 0 : 0;
+        
+        return this.searchMessagesSimple(chatId, query, { limit, offset });
+      } else {
+        // 复杂搜索使用POST方法
+        return this.searchMessagesWithFilters(chatId, searchParams, limit);
+      }
+    },
+
+    // ===== UTILITY METHODS =====
+    
+    clearError() {
+      this.error = null;
+    },
+
+    clearMessages() {
+      this.messages = [];
+      this.lastMessageId = null;
+      this.hasMoreMessages = true;
+    },
+
+    setCurrentChat(chatId) {
+      this.currentChatId = chatId;
+      this.clearMessages();
+    },
+
+    // Generate a UUID v7 for idempotency keys
+    generateIdempotencyKey() {
+      const timestamp = Date.now();
+      const randomBytes = new Uint8Array(10);
+      crypto.getRandomValues(randomBytes);
+      
+      // Convert to hex and format as UUID v7
+      const hex = Array.from(randomBytes)
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
+      const timestampHex = timestamp.toString(16).padStart(12, '0');
+      
+      return `${timestampHex.slice(0, 8)}-${timestampHex.slice(8, 12)}-7${hex.slice(0, 3)}-${hex.slice(3, 7)}-${hex.slice(7, 19)}`;
+    },
+
+    // Real-time message handling (for future WebSocket integration)
+    addRealtimeMessage(message) {
+      // Check if message already exists (avoid duplicates)
+      const existingIndex = this.messages.findIndex(m => m.id === message.id);
+      if (existingIndex === -1) {
+        this.messages.unshift(message);
+      }
+    },
+
+    updateRealtimeMessage(messageId, updates) {
+      const messageIndex = this.messages.findIndex(m => m.id === messageId);
+      if (messageIndex !== -1) {
+        this.messages[messageIndex] = { ...this.messages[messageIndex], ...updates };
+      }
+    },
+
+    removeRealtimeMessage(messageId) {
+      this.messages = this.messages.filter(m => m.id !== messageId);
+    },
+
+    // File storage fix (admin operation)
+    async fixFileStorage(workspaceId) {
+      try {
+        this.loading = true;
+        this.error = null;
+        
+        const response = await axios.post(`/api/fix-files/${workspaceId}`);
+        return response.data;
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to fix file storage';
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    }
+  }
+});

@@ -1,0 +1,12 @@
+Hi {{user_name}},
+
+System Notification: {{notification_title}}
+
+{{truncate notification_message 300}}
+
+---
+This notification was sent at {{timestamp}}.
+To manage your notification settings, visit: {{base_url}}/settings/notifications
+
+Best regards,
+The Fechatter Team 

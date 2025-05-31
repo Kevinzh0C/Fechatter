@@ -1,0 +1,16 @@
+Hi {{user_name}},
+
+You have a new message: "{{notification_title}}"
+
+Message: {{truncate notification_message 200}}
+
+{{#if chat_url}}
+Reply here: {{chat_url}}
+{{/if}}
+
+---
+This notification was sent at {{timestamp}}.
+To manage your notification settings, visit: {{base_url}}/settings/notifications
+
+Best regards,
+The Fechatter Team 
