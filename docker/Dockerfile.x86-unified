@@ -1,0 +1,77 @@
+# Unified Dockerfile for all precompiled x86_64 services
+# Uses supervisor to manage multiple services in a single container
+# Optimized for development and small-scale deployments
+
+FROM alpine:3.19
+
+# Install runtime dependencies and supervisor
+RUN apk add --no-cache \
+    ca-certificates \
+    postgresql-client \
+    sqlite \
+    curl \
+    tzdata \
+    supervisor \
+    bash \
+    && rm -rf /var/cache/apk/*
+
+# Create app user for security
+RUN addgroup -g 1001 -S fechatter && \
+    adduser -u 1001 -S fechatter -G fechatter
+
+# Create necessary directories
+RUN mkdir -p \
+    /var/log/supervisor \
+    /var/run/supervisor \
+    /app/logs \
+    /app/config \
+    /app/migrations
+
+# Set working directory
+WORKDIR /app
+
+# Copy all precompiled x86_64 binaries
+COPY binaries/x86_64/fechatter_server/fechatter_server /usr/local/bin/
+COPY binaries/x86_64/analytics_server/analytics_server /usr/local/bin/
+COPY binaries/x86_64/notify_server/notify_server /usr/local/bin/
+COPY binaries/x86_64/fechatter_gateway/fechatter_gateway /usr/local/bin/
+COPY binaries/x86_64/bot_server/bot /usr/local/bin/
+COPY binaries/x86_64/bot_server/indexer /usr/local/bin/
+
+# Copy configuration files
+COPY config/ ./config/
+COPY migrations/ ./migrations/
+COPY supervisor.conf /etc/supervisor/conf.d/fechatter.conf
+
+# Set proper permissions
+RUN chmod +x /usr/local/bin/* && \
+    chown -R fechatter:fechatter /app && \
+    chown -R fechatter:fechatter /var/log/supervisor && \
+    chown -R fechatter:fechatter /var/run/supervisor
+
+# Create log files
+RUN touch /app/logs/fechatter_server.log \
+    /app/logs/analytics_server.log \
+    /app/logs/notify_server.log \
+    /app/logs/fechatter_gateway.log \
+    /app/logs/bot.log \
+    /app/logs/indexer.log \
+    && chown fechatter:fechatter /app/logs/*.log
+
+# Set environment variables
+ENV RUST_LOG=info
+ENV ENVIRONMENT=production
+ENV SUPERVISOR_LOG_LEVEL=info
+
+# Expose all service ports
+EXPOSE 8080 8081 8082 8083 8084 8085
+
+# Health check for main service
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
+
+# Switch to non-root user
+USER fechatter
+
+# Start supervisor to manage all services
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/fechatter.conf", "-n"] 

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import axios from 'axios';
+import api from '@/services/api';
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -14,16 +14,64 @@ export const useUserStore = defineStore('user', {
       try {
         this.loading = true;
         this.error = null;
-        const response = await axios.get('/api/users');
-        this.workspaceUsers = response.data;
-        return response.data;
+        
+        // Call the new /users endpoint
+        const response = await api.get('/users');
+        
+        // Handle API response
+        let usersData = [];
+        const responseData = response.data;
+        
+        if (responseData) {
+          if (responseData.data && Array.isArray(responseData.data)) {
+            // ApiResponse format: { data: [...] }
+            usersData = responseData.data;
+          } else if (Array.isArray(responseData)) {
+            // Direct array format
+            usersData = responseData;
+          } else {
+            console.warn('Unexpected users response format:', responseData);
+          }
+        }
+        
+        this.workspaceUsers = usersData;
+        return this.workspaceUsers;
       } catch (error) {
         this.error = error.response?.data?.error || 'Failed to fetch workspace users';
         console.error('Failed to fetch workspace users:', error);
+        
+        // Fallback: return current user if available
+        try {
+          const authStore = await import('@/stores/auth').then(m => m.useAuthStore());
+          const currentUser = authStore.user;
+          
+          if (currentUser) {
+            this.workspaceUsers = [{
+              id: currentUser.id,
+              fullname: currentUser.fullname || currentUser.email,
+              email: currentUser.email,
+              username: currentUser.username || currentUser.email.split('@')[0],
+              status: 'active'
+            }];
+            return this.workspaceUsers;
+          }
+        } catch (fallbackError) {
+          console.warn('Fallback user data failed:', fallbackError);
+        }
+        
         return [];
       } finally {
         this.loading = false;
       }
+    },
+
+    async getWorkspaceUsers() {
+      // If we already have users cached, return them
+      if (this.workspaceUsers.length > 0) {
+        return this.workspaceUsers;
+      }
+      // Otherwise fetch them
+      return await this.fetchWorkspaceUsers();
     },
 
     clearError() {

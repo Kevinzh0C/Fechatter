@@ -32,18 +32,18 @@
         <!-- Members List -->
         <div v-else class="space-y-3">
           <div v-for="member in members" :key="member.id" 
-               class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div class="flex items-center space-x-3">
+               class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <div class="flex items-center space-x-3 flex-1 cursor-pointer" @click="showMemberProfile(member)">
               <!-- Avatar -->
-              <div class="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center">
+              <div class="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center hover:scale-105 transition-transform">
                 <span class="text-white font-medium">
                   {{ member.fullname?.charAt(0).toUpperCase() || 'U' }}
                 </span>
               </div>
               
               <!-- Member Info -->
-              <div>
-                <p class="font-medium text-gray-900">{{ member.fullname }}</p>
+              <div class="flex-1">
+                <p class="font-medium text-gray-900 hover:text-purple-600 transition-colors">{{ member.fullname }}</p>
                 <p class="text-sm text-gray-500">{{ member.email }}</p>
                 <div class="flex items-center space-x-2 mt-1">
                   <span v-if="member.id === chat.owner_id" 
@@ -59,11 +59,11 @@
             </div>
 
             <!-- Actions -->
-            <div class="flex items-center space-x-2">
+            <div class="flex items-center space-x-2" @click.stop>
               <!-- Transfer Ownership -->
               <button v-if="canTransferOwnership(member)" 
                       @click="transferOwnership(member)"
-                      class="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded hover:bg-yellow-200"
+                      class="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded hover:bg-yellow-200 transition-colors"
                       :disabled="transferring">
                 Make Owner
               </button>
@@ -71,7 +71,7 @@
               <!-- Remove Member -->
               <button v-if="canRemoveMember(member)" 
                       @click="removeMember(member)"
-                      class="px-3 py-1 bg-red-100 text-red-800 text-sm rounded hover:bg-red-200"
+                      class="px-3 py-1 bg-red-100 text-red-800 text-sm rounded hover:bg-red-200 transition-colors"
                       :disabled="removing">
                 Remove
               </button>
@@ -172,6 +172,15 @@
     <div v-if="error" class="px-6 py-3 bg-red-50 border-t border-red-200">
       <p class="text-sm text-red-600">{{ error }}</p>
     </div>
+
+    <!-- User Profile Modal -->
+    <UserProfile 
+      v-if="showProfile && selectedMember"
+      :user="selectedMember"
+      :chat-id="chat.id"
+      @close="closeMemberProfile"
+      @dm-created="handleDMCreated"
+    />
   </div>
 </template>
 
@@ -180,6 +189,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useChatStore } from '../../stores/chat';
 import { useUserStore } from '../../stores/user';
 import { useAuthStore } from '../../stores/auth';
+import UserProfile from '../modals/UserProfile.vue';
 
 const props = defineProps({
   chat: {
@@ -188,7 +198,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['close', 'updated']);
+const emit = defineEmits(['close', 'updated', 'dm-created']);
 
 const chatStore = useChatStore();
 const userStore = useUserStore();
@@ -205,6 +215,10 @@ const searchingUsers = ref(false);
 const adding = ref(false);
 const removing = ref(false);
 const transferring = ref(false);
+
+// User Profile state
+const showProfile = ref(false);
+const selectedMember = ref(null);
 
 const currentUserId = computed(() => authStore.user?.id);
 
@@ -334,6 +348,32 @@ async function transferOwnership(member) {
   } finally {
     transferring.value = false;
   }
+}
+
+// User Profile methods
+function showMemberProfile(member) {
+  selectedMember.value = {
+    id: member.id,
+    fullname: member.fullname || 'Unknown User',
+    email: member.email || '',
+    status: member.status || 'Active',
+    created_at: member.created_at || new Date().toISOString(),
+    role: member.role,
+    // Add any other member properties
+    ...member
+  };
+  
+  showProfile.value = true;
+}
+
+function closeMemberProfile() {
+  showProfile.value = false;
+  selectedMember.value = null;
+}
+
+function handleDMCreated(dm) {
+  emit('dm-created', dm);
+  closeMemberProfile();
 }
 
 onMounted(() => {

@@ -1,3 +1,6 @@
+# Enable unstable Cargo features for Rust Edition 2024
+cargo-features = ["edition2024"]
+
 [package]
 name = "fechatter_macro"
 version = "0.1.0"
@@ -10,4 +13,3 @@ proc-macro = true
 proc-macro2 = "1.0"
 syn = { version = "2.0.1", features = ["full"] }
 quote = "1.0"
-

@@ -80,11 +80,11 @@ impl HuggingFaceClient {
       .json(&request)
       .send()
       .await
-      .map_err(|e| AppError::ExternalService(format!("HuggingFace API error: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("HuggingFace API error: {}", e)))?;
 
     if !response.status().is_success() {
       let error_text = response.text().await.unwrap_or_default();
-      return Err(AppError::ExternalService(format!(
+      return Err(AppError::ExternalServiceError(format!(
         "HuggingFace API error: {}",
         error_text
       )));
@@ -93,7 +93,7 @@ impl HuggingFaceClient {
     let sentiments: Vec<Vec<SentimentResponse>> = response
       .json()
       .await
-      .map_err(|e| AppError::ExternalService(format!("Failed to parse response: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("Failed to parse response: {}", e)))?;
 
     let best_match = sentiments
       .first()
@@ -101,7 +101,7 @@ impl HuggingFaceClient {
         s.iter()
           .max_by(|a, b| a.score.partial_cmp(&b.score).unwrap())
       })
-      .ok_or_else(|| AppError::ExternalService("No sentiment detected".to_string()))?;
+      .ok_or_else(|| AppError::ExternalServiceError("No sentiment detected".to_string()))?;
 
     Ok((best_match.label.clone(), best_match.score))
   }
@@ -121,11 +121,11 @@ impl HuggingFaceClient {
       .json(&request)
       .send()
       .await
-      .map_err(|e| AppError::ExternalService(format!("HuggingFace API error: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("HuggingFace API error: {}", e)))?;
 
     if !response.status().is_success() {
       let error_text = response.text().await.unwrap_or_default();
-      return Err(AppError::ExternalService(format!(
+      return Err(AppError::ExternalServiceError(format!(
         "HuggingFace API error: {}",
         error_text
       )));
@@ -134,7 +134,7 @@ impl HuggingFaceClient {
     let languages: Vec<Vec<LanguageDetectionResponse>> = response
       .json()
       .await
-      .map_err(|e| AppError::ExternalService(format!("Failed to parse response: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("Failed to parse response: {}", e)))?;
 
     let best_match = languages
       .first()
@@ -142,7 +142,7 @@ impl HuggingFaceClient {
         l.iter()
           .max_by(|a, b| a.score.partial_cmp(&b.score).unwrap())
       })
-      .ok_or_else(|| AppError::ExternalService("No language detected".to_string()))?;
+      .ok_or_else(|| AppError::ExternalServiceError("No language detected".to_string()))?;
 
     Ok((best_match.label.clone(), best_match.score))
   }
@@ -162,11 +162,11 @@ impl HuggingFaceClient {
       .json(&request)
       .send()
       .await
-      .map_err(|e| AppError::ExternalService(format!("HuggingFace API error: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("HuggingFace API error: {}", e)))?;
 
     if !response.status().is_success() {
       let error_text = response.text().await.unwrap_or_default();
-      return Err(AppError::ExternalService(format!(
+      return Err(AppError::ExternalServiceError(format!(
         "HuggingFace API error: {}",
         error_text
       )));
@@ -175,7 +175,7 @@ impl HuggingFaceClient {
     let entities: Vec<NERResponse> = response
       .json()
       .await
-      .map_err(|e| AppError::ExternalService(format!("Failed to parse response: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("Failed to parse response: {}", e)))?;
 
     Ok(
       entities
@@ -204,11 +204,11 @@ impl HuggingFaceClient {
       .json(&request)
       .send()
       .await
-      .map_err(|e| AppError::ExternalService(format!("HuggingFace API error: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("HuggingFace API error: {}", e)))?;
 
     if !response.status().is_success() {
       let error_text = response.text().await.unwrap_or_default();
-      return Err(AppError::ExternalService(format!(
+      return Err(AppError::ExternalServiceError(format!(
         "HuggingFace API error: {}",
         error_text
       )));
@@ -217,12 +217,12 @@ impl HuggingFaceClient {
     let translations: Vec<TranslationResponse> = response
       .json()
       .await
-      .map_err(|e| AppError::ExternalService(format!("Failed to parse response: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("Failed to parse response: {}", e)))?;
 
     translations
       .first()
       .map(|t| t.translation_text.clone())
-      .ok_or_else(|| AppError::ExternalService("No translation available".to_string()))
+      .ok_or_else(|| AppError::ExternalServiceError("No translation available".to_string()))
   }
 
   /// Check for toxic content using specialized model
@@ -239,11 +239,11 @@ impl HuggingFaceClient {
       .json(&request)
       .send()
       .await
-      .map_err(|e| AppError::ExternalService(format!("HuggingFace API error: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("HuggingFace API error: {}", e)))?;
 
     if !response.status().is_success() {
       let error_text = response.text().await.unwrap_or_default();
-      return Err(AppError::ExternalService(format!(
+      return Err(AppError::ExternalServiceError(format!(
         "HuggingFace API error: {}",
         error_text
       )));
@@ -252,7 +252,7 @@ impl HuggingFaceClient {
     let results: Vec<Vec<SentimentResponse>> = response
       .json()
       .await
-      .map_err(|e| AppError::ExternalService(format!("Failed to parse response: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("Failed to parse response: {}", e)))?;
 
     // Find the "TOXIC" label score
     Ok(
@@ -341,11 +341,11 @@ impl HuggingFaceClient {
       .json(&request)
       .send()
       .await
-      .map_err(|e| AppError::ExternalService(format!("HuggingFace API error: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("HuggingFace API error: {}", e)))?;
 
     if !response.status().is_success() {
       let error_text = response.text().await.unwrap_or_default();
-      return Err(AppError::ExternalService(format!(
+      return Err(AppError::ExternalServiceError(format!(
         "HuggingFace API error: {}",
         error_text
       )));
@@ -354,7 +354,7 @@ impl HuggingFaceClient {
     let sentiments: Vec<Vec<SentimentResponse>> = response
       .json()
       .await
-      .map_err(|e| AppError::ExternalService(format!("Failed to parse response: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("Failed to parse response: {}", e)))?;
 
     let best_match = sentiments
       .first()
@@ -362,7 +362,7 @@ impl HuggingFaceClient {
         s.iter()
           .max_by(|a, b| a.score.partial_cmp(&b.score).unwrap())
       })
-      .ok_or_else(|| AppError::ExternalService("No sentiment detected".to_string()))?;
+      .ok_or_else(|| AppError::ExternalServiceError("No sentiment detected".to_string()))?;
 
     Ok((best_match.label.clone(), best_match.score))
   }

@@ -211,6 +211,11 @@ impl<T> ApiResponse<T> {
     }
   }
 
+  /// 创建简单成功响应（for backward compatibility）
+  pub fn ok(data: T) -> Self {
+    Self::success(data, uuid::Uuid::new_v4().to_string())
+  }
+
   /// 创建错误响应
   pub fn error(error: ApiError, request_id: String) -> Self {
     Self {
@@ -284,14 +289,15 @@ impl From<CoreError> for ApiError {
         suggestion: Some("请稍后重试，如问题持续请联系技术支持".to_string()),
         help_url: None,
       },
-      CoreError::Permission(msg) => Self {
-        code: "PERMISSION_DENIED".to_string(),
-        message: msg,
+      // Handle all other CoreError variants with a generic conversion
+      _ => Self {
+        code: "INTERNAL_ERROR".to_string(),
+        message: format!("系统内部错误: {:?}", error),
         details: None,
         field: None,
         stack: Vec::new(),
-        suggestion: Some("请确认您有足够的权限执行此操作".to_string()),
-        help_url: Some("/docs/permissions".to_string()),
+        suggestion: Some("请稍后重试，如问题持续请联系技术支持".to_string()),
+        help_url: None,
       },
     }
   }

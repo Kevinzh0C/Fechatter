@@ -1,0 +1,38 @@
+# Bot Server Configuration - NATS Architecture
+# bot_server is a NATS subscriber, not HTTP server
+
+server:
+  # Remove port - bot_server doesn't need HTTP port
+  db_url: postgres://fechatter:fechatter_password@postgres:5432/fechatter
+
+# NATS messaging configuration
+messaging:
+  enabled: true
+  nats:
+    url: "nats://nats:4222"
+    subscription_subjects:
+    - "fechatter.messages.created"
+    - "fechatter.chats.member.joined"
+
+# AI Bot configuration
+bot:
+  # OpenAI configuration
+  openai:
+    # OpenAI API Key - can be set here or via OPENAI_API_KEY environment variable
+    # Environment variable takes priority over yml configuration
+    # api_key: "sk-your-openai-api-key-here"  # Uncomment and set if not using env var
+    model: "gpt-4o-mini"
+    embed_model: "text-embedding-3-small"
+
+  # Vector database
+  vector:
+    size: 1536
+
+  # Bot behavior
+  response_delay_ms: 1000
+  max_response_length: 2000
+
+# Analytics configuration
+analytics:
+  enabled: true
+  endpoint: "http://analytics-server:6690" # Fixed: use Docker service name instead of localhost

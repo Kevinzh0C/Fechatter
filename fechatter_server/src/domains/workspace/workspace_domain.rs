@@ -5,7 +5,7 @@ use fechatter_core::{ChatUser, UserId, Workspace, WorkspaceId, error::CoreError}
 
 use crate::handlers::workspaces::UpdateWorkspaceRequest;
 
-use super::repository::WorkspaceRepositoryImpl;
+use super::repository::{WorkspaceRepositoryImpl, WorkspaceUser};
 
 // Define WorkspaceChatStats locally since it's not defined elsewhere
 #[derive(Debug, Clone)]
@@ -187,6 +187,13 @@ pub trait WorkspaceDomainService: Send + Sync {
     &self,
     workspace_id: WorkspaceId,
   ) -> Result<Vec<WorkspaceChatStats>, CoreError>;
+  async fn list_users(&self, workspace_id: WorkspaceId) -> Result<Vec<WorkspaceUser>, CoreError>;
+  async fn add_members(
+    &self,
+    workspace_id: WorkspaceId,
+    member_ids: Vec<UserId>,
+    admin_user_id: UserId,
+  ) -> Result<Vec<WorkspaceUser>, CoreError>;
 }
 
 /// Workspace Domain Service implementation
@@ -358,6 +365,48 @@ impl WorkspaceDomainService for WorkspaceDomainServiceImpl {
     // WorkspaceRepositoryImpl doesn't have get_workspace_chat_stats method
     // For now, return empty stats
     Ok(Vec::new())
+  }
+
+  async fn list_users(&self, workspace_id: WorkspaceId) -> Result<Vec<WorkspaceUser>, CoreError> {
+    // Verify workspace exists
+    self
+      .repository
+      .find_by_id(workspace_id)
+      .await?
+      .ok_or_else(|| CoreError::NotFound(format!("Workspace {} not found", workspace_id)))?;
+
+    // Get users from repository
+    self.repository.list_users(workspace_id).await
+  }
+
+  async fn add_members(
+    &self,
+    workspace_id: WorkspaceId,
+    member_ids: Vec<UserId>,
+    admin_user_id: UserId,
+  ) -> Result<Vec<WorkspaceUser>, CoreError> {
+    // 1. Verify workspace exists
+    let workspace = self
+      .repository
+      .find_by_id(workspace_id)
+      .await?
+      .ok_or_else(|| CoreError::NotFound(format!("Workspace {} not found", workspace_id)))?;
+
+    // 2. Verify admin is the owner (business rule)
+    if workspace.owner_id != admin_user_id {
+      return Err(CoreError::Unauthorized(
+        "Only workspace owner can add members".to_string(),
+      ));
+    }
+
+    // 3. Check if all users exist
+    let existing_users = self.repository.check_users_exist(&member_ids).await?;
+    if existing_users.len() != member_ids.len() {
+      return Err(CoreError::Validation("Some users do not exist".to_string()));
+    }
+
+    // 4. Add members to workspace
+    self.repository.add_members(workspace_id, &member_ids).await
   }
 }
 

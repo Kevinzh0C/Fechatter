@@ -1,4 +1,4 @@
-use crate::api::v1::messages::MessageResponse;
+use crate::dtos::models::responses::message::MessageResponse;
 // TODO: SendMessageRequest should be re-exported or moved to correct location
 // use crate::dtos::models::requests::message::SendMessageRequest;
 use fechatter_core::models::Message;
@@ -30,11 +30,10 @@ impl MessageMapper {
       content: message.content.clone(),
       files: message.files.clone(),
       created_at: message.created_at,
-      reply_to: message.reply_to.map(|id| id.into()),
-      mentions: message
-        .mentions
-        .as_ref()
-        .map(|mentions| mentions.iter().map(|user_id| (*user_id).into()).collect()),
+      reply_to: None,             // Not implemented in core Message struct yet
+      mentions: Some(Vec::new()), // Not implemented in core Message struct yet
+      is_edited: false,           // Not implemented in core Message struct yet
+      idempotency_key: message.idempotency_key.map(|uuid| uuid.to_string()),
     }
   }
 }

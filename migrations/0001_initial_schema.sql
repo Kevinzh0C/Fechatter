@@ -6,6 +6,14 @@ CREATE TYPE user_status AS ENUM (
     'active'
 );
 
+-- Create enum for chat types
+CREATE TYPE chat_type AS ENUM (
+    'single',
+    'group',
+    'private_channel',
+    'public_channel'
+);
+
 -- Create users table
 CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
@@ -21,21 +29,11 @@ CREATE TABLE IF NOT EXISTS users (
 -- Create index for users for email
 CREATE UNIQUE INDEX IF NOT EXISTS email_index ON users(email);
 
--- Create enum for chat types
-CREATE TYPE chat_type AS ENUM (
-    'single',
-    'group',
-    'private_channel',
-    'public_channel'
-);
-
 -- Create chats table for chat chats
 CREATE TABLE IF NOT EXISTS chats (
     id BIGSERIAL PRIMARY KEY,
-    chat_name VARCHAR(128) NOT NULL UNIQUE,
+    name VARCHAR(128) NOT NULL UNIQUE,
     type chat_type NOT NULL,
-    -- chat_members is a list of user ids
-    chat_members BIGINT[] NOT NULL,
     description TEXT,
     created_by BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -45,16 +43,17 @@ CREATE TABLE IF NOT EXISTS chats (
 -- Create messages table for chat history
 CREATE TABLE IF NOT EXISTS messages (
     id BIGSERIAL PRIMARY KEY,
-    chat_id BIGSERIAL NOT NULL REFERENCES chats(id),
+    chat_id BIGINT NOT NULL REFERENCES chats(id),
     sender_id BIGINT NOT NULL REFERENCES users(id),
     content TEXT,
     files TEXT[] DEFAULT '{}',
-    created_at timestamp DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Create chat_members table for chat members
 CREATE TABLE IF NOT EXISTS chat_members (
-    chat_id BIGSERIAL NOT NULL REFERENCES chats(id),
+    chat_id BIGINT NOT NULL REFERENCES chats(id),
     user_id BIGINT NOT NULL REFERENCES users(id),
     joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (chat_id, user_id)

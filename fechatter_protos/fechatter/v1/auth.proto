@@ -1,0 +1,144 @@
+syntax = "proto3";
+
+package fechatter.v1;
+
+import "fechatter/v1/core.proto";
+import "google/protobuf/empty.proto";
+
+// 认证服务
+service AuthService {
+  // 用户注册
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  
+  // 用户登录
+  rpc SignIn(SignInRequest) returns (SignInResponse);
+  
+  // 用户登出
+  rpc SignOut(google.protobuf.Empty) returns (google.protobuf.Empty);
+  
+  // 刷新 Token
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  
+  // 验证 Token
+  rpc VerifyToken(VerifyTokenRequest) returns (VerifyTokenResponse);
+}
+
+// 用户管理服务
+service UserService {
+  // 获取用户信息
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  
+  // 更新用户信息
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+  
+  // 获取用户列表
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  
+  // 搜索用户
+  rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse);
+}
+
+// 注册请求
+message RegisterRequest {
+  string fullname = 1;
+  string email = 2;
+  string password = 3;
+  int64 workspace_id = 4;
+}
+
+// 注册响应
+message RegisterResponse {
+  User user = 1;
+  string access_token = 2;
+  string refresh_token = 3;
+  Error error = 4;
+}
+
+// 登录请求
+message SignInRequest {
+  string email = 1;
+  string password = 2;
+}
+
+// 登录响应
+message SignInResponse {
+  User user = 1;
+  string access_token = 2;
+  string refresh_token = 3;
+  Error error = 4;
+}
+
+// 刷新令牌请求
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+// 刷新令牌响应
+message RefreshTokenResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  Error error = 3;
+}
+
+// 验证令牌请求
+message VerifyTokenRequest {
+  string token = 1;
+}
+
+// 验证令牌响应
+message VerifyTokenResponse {
+  bool valid = 1;
+  User user = 2;
+  Error error = 3;
+}
+
+// 获取用户请求
+message GetUserRequest {
+  int64 id = 1;
+}
+
+// 获取用户响应
+message GetUserResponse {
+  User user = 1;
+  Error error = 2;
+}
+
+// 更新用户请求
+message UpdateUserRequest {
+  int64 id = 1;
+  string fullname = 2;
+  string email = 3;
+  UserStatus status = 4;
+}
+
+// 更新用户响应
+message UpdateUserResponse {
+  User user = 1;
+  Error error = 2;
+}
+
+// 用户列表请求
+message ListUsersRequest {
+  int64 workspace_id = 1;
+  Pagination pagination = 2;
+}
+
+// 用户列表响应
+message ListUsersResponse {
+  repeated User users = 1;
+  PaginatedResponse pagination = 2;
+  Error error = 3;
+}
+
+// 搜索用户请求
+message SearchUsersRequest {
+  string query = 1;
+  int64 workspace_id = 2;
+  int32 limit = 3;
+}
+
+// 搜索用户响应
+message SearchUsersResponse {
+  repeated User users = 1;
+  Error error = 2;
+} 

@@ -7,28 +7,29 @@
 //! - Integration with search application service
 
 use axum::{
-  extract::{Path, Query, State},
+  extract::{Path, Query},
   http::StatusCode,
   response::Json,
+  Extension,
 };
 use serde::{Deserialize, Serialize};
 use tracing::{error, info, instrument};
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 use validator::Validate;
 
 use crate::{
-  AppState,
   error::AppError,
-  services::application::{MessageSearchResults, SearchApplicationServiceTrait},
+  services::application::workers::search::{MessageSearchResults, SearchApplicationServiceTrait},
+  AppState,
 };
-use fechatter_core::models::{AuthUser, ChatId, UserId, WorkspaceId};
+use fechatter_core::models::{AuthUser, ChatId, UserId};
 
 // ================================================================================================
 // Request/Response DTOs
 // ================================================================================================
 
 /// Search messages request parameters
-#[derive(Debug, Deserialize, Validate, ToSchema)]
+#[derive(Debug, Deserialize, Validate, ToSchema, utoipa::IntoParams)]
 pub struct SearchMessagesQuery {
   /// Search query string
   #[validate(length(
@@ -54,7 +55,7 @@ pub struct SearchMessagesQuery {
 }
 
 /// Search suggestions request parameters
-#[derive(Debug, Deserialize, Validate, ToSchema)]
+#[derive(Debug, Deserialize, Validate, ToSchema, IntoParams)]
 pub struct SearchSuggestionsQuery {
   /// Partial search query
   #[validate(length(
@@ -112,7 +113,70 @@ fn default_sort() -> String {
 // Search Handlers
 // ================================================================================================
 
-/// Search messages in a specific chat
+/// Simple search messages in a specific chat (GET method)
+///
+/// Searches for messages within a specific chat using query parameters.
+/// This is the simple version for frontend compatibility.
+#[utoipa::path(
+  get,
+  path = "/api/chat/{chat_id}/messages/search",
+  params(
+    ("chat_id" = i64, Path, description = "Chat ID to search in"),
+    SearchMessagesQuery
+  ),
+  responses(
+    (status = 200, description = "Search results", body = SearchResponse),
+    (status = 400, description = "Invalid search parameters", body = SearchErrorResponse),
+    (status = 403, description = "Access denied to chat", body = SearchErrorResponse),
+    (status = 500, description = "Search service error", body = SearchErrorResponse)
+  ),
+  tag = "search",
+  summary = "Simple search messages in chat",
+  description = "Simple search for messages within a specific chat using query parameters."
+)]
+#[instrument(skip(state), fields(chat_id = %chat_id, user_id = %user.id))]
+pub async fn simple_search_messages_in_chat(
+  Extension(state): Extension<AppState>,
+  Path(chat_id): Path<i64>,
+  Query(params): Query<SearchMessagesQuery>,
+  Extension(user): Extension<AuthUser>,
+) -> Result<Json<SearchResponse>, AppError> {
+  // Handler responsibility: Parameter validation
+  params
+    .validate()
+    .map_err(|e| AppError::InvalidInput(format!("Invalid search parameters: {}", e)))?;
+
+  // Handler responsibility: Delegate to service layer
+  // Get search service if available
+  let search_service = match state.search_application_service() {
+    Some(service) => service,
+    None => {
+      error!("Search service not available");
+      return Err(AppError::ServiceUnavailable(
+        "Search service is not configured".to_string(),
+      ));
+    }
+  };
+
+  let results = search_service
+    .search_messages_in_chat(
+      ChatId(chat_id),
+      &params.q,
+      UserId::from(user.id),
+      params.limit,
+      params.offset,
+    )
+    .await?;
+
+  // Handler responsibility: Format response
+  Ok(Json(SearchResponse {
+    success: true,
+    data: results,
+    message: "Search completed successfully".to_string(),
+  }))
+}
+
+/// Search messages in a specific chat (POST method)
 ///
 /// Searches for messages within a specific chat that the user has access to.
 /// Requires chat membership validation.
@@ -135,10 +199,10 @@ fn default_sort() -> String {
 )]
 #[instrument(skip(state), fields(chat_id = %chat_id, user_id = %user.id))]
 pub async fn search_messages_in_chat(
-  State(state): State<AppState>,
+  Extension(state): Extension<AppState>,
   Path(chat_id): Path<i64>,
   Query(params): Query<SearchMessagesQuery>,
-  user: AuthUser,
+  Extension(user): Extension<AuthUser>,
 ) -> Result<Json<SearchResponse>, AppError> {
   // Validate input parameters
   params
@@ -156,7 +220,14 @@ pub async fn search_messages_in_chat(
   // This should check chat membership through chat service
   // For now, we'll proceed with the assumption that middleware handles this
 
-  let search_service = state.application_services().search_service();
+  let search_service = match state.search_application_service() {
+    Some(service) => service,
+    None => {
+      return Err(AppError::ServiceUnavailable(
+        "Search service not available".to_string(),
+      ));
+    }
+  };
 
   match search_service
     .search_messages_in_chat(
@@ -218,9 +289,9 @@ pub async fn search_messages_in_chat(
 )]
 #[instrument(skip(state), fields(user_id = %user.id, workspace_id = %user.workspace_id))]
 pub async fn global_search_messages(
-  State(state): State<AppState>,
+  Extension(state): Extension<AppState>,
   Query(params): Query<SearchMessagesQuery>,
-  user: AuthUser,
+  Extension(user): Extension<AuthUser>,
 ) -> Result<Json<SearchResponse>, AppError> {
   // Validate input parameters
   params
@@ -234,7 +305,14 @@ pub async fn global_search_messages(
     "Starting global message search"
   );
 
-  let search_service = state.application_services().search_service();
+  let search_service = match state.search_application_service() {
+    Some(service) => service,
+    None => {
+      return Err(AppError::ServiceUnavailable(
+        "Search service not available".to_string(),
+      ));
+    }
+  };
 
   match search_service
     .global_search_messages(
@@ -296,9 +374,9 @@ pub async fn global_search_messages(
 )]
 #[instrument(skip(state), fields(user_id = %user.id))]
 pub async fn get_search_suggestions(
-  State(state): State<AppState>,
+  Extension(state): Extension<AppState>,
   Query(params): Query<SearchSuggestionsQuery>,
-  user: AuthUser,
+  Extension(user): Extension<AuthUser>,
 ) -> Result<Json<SearchSuggestionsResponse>, AppError> {
   // Validate input parameters
   params
@@ -311,7 +389,14 @@ pub async fn get_search_suggestions(
     "Getting search suggestions"
   );
 
-  let search_service = state.application_services().search_service();
+  let search_service = match state.search_application_service() {
+    Some(service) => service,
+    None => {
+      return Err(AppError::ServiceUnavailable(
+        "Search service not available".to_string(),
+      ));
+    }
+  };
 
   match search_service
     .get_search_suggestions(&params.q, params.limit)
@@ -365,9 +450,9 @@ pub async fn get_search_suggestions(
 )]
 #[instrument(skip(state), fields(chat_id = %chat_id, user_id = %user.id))]
 pub async fn reindex_chat_messages(
-  State(state): State<AppState>,
+  Extension(state): Extension<AppState>,
   Path(chat_id): Path<i64>,
-  user: AuthUser,
+  Extension(user): Extension<AuthUser>,
 ) -> Result<Json<serde_json::Value>, AppError> {
   // TODO: Add admin permission check
   // For now, any authenticated user can trigger reindexing
@@ -378,7 +463,14 @@ pub async fn reindex_chat_messages(
     "Starting chat reindexing"
   );
 
-  let search_service = state.application_services().search_service();
+  let search_service = match state.search_application_service() {
+    Some(service) => service,
+    None => {
+      return Err(AppError::ServiceUnavailable(
+        "Search service not available".to_string(),
+      ));
+    }
+  };
 
   match search_service.reindex_chat_messages(ChatId(chat_id)).await {
     Ok(indexed_count) => {
@@ -415,12 +507,14 @@ pub async fn reindex_chat_messages(
 impl From<AppError> for (StatusCode, Json<SearchErrorResponse>) {
   fn from(err: AppError) -> Self {
     let (status, code, message) = match &err {
-      AppError::InvalidInput(msg) => (StatusCode::BAD_REQUEST, "INVALID_INPUT", msg),
+      AppError::InvalidInput(msg) => (StatusCode::BAD_REQUEST, "INVALID_INPUT", msg.as_str()),
       AppError::NotFound(_) => (StatusCode::NOT_FOUND, "NOT_FOUND", "Resource not found"),
       AppError::Unauthorized(_) => (StatusCode::FORBIDDEN, "FORBIDDEN", "Access denied"),
-      AppError::ServiceUnavailable(msg) => {
-        (StatusCode::SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE", msg)
-      }
+      AppError::ServiceUnavailable(msg) => (
+        StatusCode::SERVICE_UNAVAILABLE,
+        "SERVICE_UNAVAILABLE",
+        msg.as_str(),
+      ),
       _ => (
         StatusCode::INTERNAL_SERVER_ERROR,
         "INTERNAL_ERROR",

@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package fechatter.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// 用户信息
+message User {
+  int64 id = 1;
+  string fullname = 2;
+  string email = 3;
+  UserStatus status = 4;
+  int64 workspace_id = 5;
+  bool is_bot = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// 用户状态
+enum UserStatus {
+  USER_STATUS_UNSPECIFIED = 0;
+  USER_STATUS_ACTIVE = 1;
+  USER_STATUS_INACTIVE = 2;
+  USER_STATUS_BANNED = 3;
+}
+
+// 工作空间
+message Workspace {
+  int64 id = 1;
+  string name = 2;
+  string owner_id = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+// 聊天类型
+enum ChatType {
+  CHAT_TYPE_UNSPECIFIED = 0;
+  CHAT_TYPE_SINGLE = 1;     // 单人聊天
+  CHAT_TYPE_GROUP = 2;      // 群组聊天
+  CHAT_TYPE_CHANNEL = 3;    // 频道
+}
+
+// 聊天信息
+message Chat {
+  int64 id = 1;
+  string name = 2;
+  ChatType type = 3;
+  int64 workspace_id = 4;
+  repeated int64 members = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+// 消息
+message Message {
+  int64 id = 1;
+  int64 chat_id = 2;
+  int64 sender_id = 3;
+  string content = 4;
+  repeated string files = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+// 文件信息
+message FileInfo {
+  string id = 1;
+  string filename = 2;
+  string content_type = 3;
+  int64 size = 4;
+  string url = 5;
+  int64 uploaded_by = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+// 分页参数
+message Pagination {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+// 分页响应
+message PaginatedResponse {
+  int32 total = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  int32 total_pages = 4;
+}
+
+// 错误信息
+message Error {
+  string code = 1;
+  string message = 2;
+  map<string, string> details = 3;
+} 

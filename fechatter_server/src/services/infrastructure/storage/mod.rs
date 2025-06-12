@@ -22,13 +22,13 @@ pub trait StorageService: Send + Sync {
 
 // Local storage implementation
 pub mod local;
-pub mod minio;
-pub mod s3;
+// pub mod minio;  // Temporarily disabled - depends on S3Storage
+// pub mod s3;  // Temporarily disabled to reduce build memory usage
 
 // Re-export for convenience
 pub use local::LocalStorage;
-pub use minio::MinIOStorage;
-pub use s3::S3Storage;
+// pub use minio::MinIOStorage;  // Temporarily disabled - depends on S3Storage
+// pub use s3::S3Storage;  // Temporarily disabled to reduce build memory usage
 
 // TODO: Future storage implementations
 // pub mod s3;

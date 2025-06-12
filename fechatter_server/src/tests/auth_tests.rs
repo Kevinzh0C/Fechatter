@@ -26,7 +26,7 @@ mod cookie_refresh_tests {
   }
 
   #[allow(dead_code)]
-fn get_cookie_value(headers: &HeaderMap, name: &str) -> Option<String> {
+  fn get_cookie_value(headers: &HeaderMap, name: &str) -> Option<String> {
     headers
       .get_all(header::SET_COOKIE)
       .iter()

@@ -1,0 +1,67 @@
+[package]
+name = "fechatter_gateway"
+version = "0.2.0"
+edition = "2021"
+
+# Library and binary configuration
+[lib]
+name = "fechatter_gateway"
+path = "src/lib.rs"
+
+[[bin]]
+name = "fechatter_gateway"
+path = "src/main.rs"
+
+[dependencies]
+# Core Pingora dependencies - use stable 0.4.x to fix 0.5.0 panic issues  
+pingora = "0.4"
+pingora-core = "0.4"
+pingora-proxy = "0.4"
+pingora-http = "0.4"
+pingora-load-balancing = "0.4"
+
+# Async runtime and utilities - use workspace versions
+tokio = { workspace = true }
+async-trait = { workspace = true }
+anyhow = { workspace = true }
+
+# HTTP and networking
+http = "1.1"
+bytes = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+
+# Logging and observability
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { workspace = true }
+
+# Crypto for cache keys
+sha2 = { workspace = true }
+
+# Date and time
+chrono = { workspace = true }
+
+# Command line interface
+clap = { version = "4.5", features = ["derive"] }
+
+# HTTP client for health checks
+reqwest = { version = "0.12", features = [
+  "json",
+  "rustls-tls",
+], default-features = false }
+
+# Workspace dependency
+fechatter_core = { workspace = true }
+
+# Hyper HTTP library for production proxy
+hyper = { version = "0.14", features = ["full"] }
+rand = "0.8"
+
+[dev-dependencies]
+tokio-test = "0.4"
+assert_matches = "1.5"
+futures = "0.3"

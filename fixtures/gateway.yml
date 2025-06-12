@@ -1,0 +1,234 @@
+# Fechatter Gateway Configuration - Enhanced with Analytics & Intelligence
+
+server:
+  listen_addr: "0.0.0.0:8080"
+  worker_threads: 4
+  max_connections: 10000
+  keepalive_timeout: 60
+  request_timeout: 30
+
+# Upstream services
+upstreams:
+  fechatter-api:
+    servers:
+    - address: "fechatter-server:6688"
+      weight: 1
+      max_fails: 3
+      fail_timeout: 10
+    health_check:
+      interval: 10
+      timeout: 5
+      path: "/health"
+      expected_status: [ 200 ]
+    circuit_breaker:
+      failure_threshold: 5
+      success_threshold: 2
+      timeout: 30
+      half_open_max_requests: 3
+    retry_policy:
+      max_attempts: 3
+      backoff_ms: 100
+      retry_on_status: [ 502, 503, 504 ]
+
+  notify-service:
+    servers:
+    - address: "notify-server:6687"
+      weight: 1
+      max_fails: 3
+      fail_timeout: 10
+    health_check:
+      interval: 10
+      timeout: 5
+      path: "/health"
+      expected_status: [ 200 ]
+
+  bot-service:
+    servers:
+    - address: "bot-server:6686"
+      weight: 1
+      max_fails: 3
+      fail_timeout: 10
+    retry_policy:
+      max_attempts: 2
+      backoff_ms: 500
+      retry_on_status: [ 502, 503 ]
+
+  analytics-service:
+    servers:
+    - address: "analytics-server:6690"
+      weight: 1
+      max_fails: 3
+      fail_timeout: 10
+
+  search-service:
+    servers:
+    - address: "meilisearch:7700"
+      weight: 1
+      max_fails: 3
+      fail_timeout: 10
+
+# Routing rules
+routes:
+# API routes
+- path: "/api/v1/"
+  methods: [ "GET", "POST", "PUT", "DELETE", "PATCH" ]
+  upstream: fechatter-api
+  strip_prefix: null
+  middleware: [ "auth", "ratelimit" ]
+  timeout: 30
+
+# WebSocket/SSE routes
+- path: "/ws"
+  methods: [ "GET" ]
+  upstream: fechatter-api
+  middleware: [ "auth" ]
+  websocket: true
+
+- path: "/sse"
+  methods: [ "GET" ]
+  upstream: notify-service
+  middleware: [ "auth" ]
+  sse: true
+
+# Bot/AI routes
+- path: "/api/v1/ai/"
+  methods: [ "POST" ]
+  upstream: bot-service
+  middleware: [ "auth", "ratelimit-ai" ]
+  timeout: 60
+
+# Analytics routes
+- path: "/api/v1/analytics/"
+  methods: [ "GET", "POST" ]
+  upstream: analytics-service
+  middleware: [ "auth", "ratelimit" ]
+
+# Search routes
+- path: "/api/v1/search/"
+  methods: [ "GET", "POST" ]
+  upstream: search-service
+  strip_prefix: "/api/v1/search"
+  middleware: [ "auth", "ratelimit" ]
+
+# Health check endpoints (no auth)
+- path: "/health"
+  methods: [ "GET" ]
+  upstream: fechatter-api
+  middleware: []
+  priority: 1000
+
+- path: "/metrics"
+  methods: [ "GET" ]
+  upstream: fechatter-api
+  middleware: [ "basic-auth" ]
+  priority: 999
+
+# Analytics endpoints
+- path: "/admin/analytics"
+  methods: [ "GET", "POST" ]
+  upstream: analytics-service
+  middleware: [ "auth", "admin-only" ]
+  timeout: 60
+  priority: 900
+
+# Real-time metrics endpoint
+- path: "/admin/metrics/realtime"
+  methods: [ "GET" ]
+  upstream: fechatter-api
+  middleware: [ "auth" ]
+  sse: true
+  priority: 950
+
+# Middleware configuration
+middleware:
+  request_id: true
+  access_log: true
+
+  auth:
+    jwt:
+      secret: ${JWT_SECRET:-your-secret-key-here}
+      algorithm: "HS256"
+      header_name: "authorization"
+      cookie_name: "auth_token"
+      skip_paths:
+      - "/health"
+      - "/metrics"
+      - "/api/v1/auth/login"
+      - "/api/v1/auth/register"
+      - "/api/v1/auth/refresh"
+      - "/api/v1/auth/verify"
+
+  rate_limit:
+    backend: redis
+    redis_url: redis://:fechatter_redis_pass@redis:6379
+
+    global:
+      requests: 10000
+      window_secs: 60
+
+    per_ip:
+      requests: 100
+      window_secs: 60
+      burst: 20
+
+    per_user:
+      requests: 1000
+      window_secs: 60
+
+    custom_rules:
+    - name: "ratelimit-ai"
+      paths: [ "/api/v1/ai/*" ]
+      rule:
+        requests: 10
+        window_secs: 60
+        burst: 5
+
+  cors:
+    allowed_origins:
+    - "http://localhost:5173"
+    - "http://localhost:3000"
+    - "https://fechatter.com"
+    allowed_methods: [ "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH" ]
+    allowed_headers: [ "content-type", "authorization", "x-request-id" ]
+    exposed_headers: [ "x-request-id", "x-ratelimit-remaining" ]
+    max_age: 86400
+    allow_credentials: true
+
+  compression:
+    enabled: true
+    level: 6
+    min_size: 1024
+    types: [ "text/html", "text/css", "application/javascript", "application/json" ]
+
+# Cache configuration
+cache:
+  enabled: true
+  backend: redis
+  redis_url: redis://:fechatter_redis_pass@redis:6379
+  default_ttl: 300
+  max_size: 1073741824 # 1GB
+
+  rules:
+  - paths: [ "/api/v1/messages/*" ]
+    methods: [ "GET" ]
+    ttl: 60
+    key_params: [ "chat_id", "limit", "offset" ]
+    vary_headers: [ "authorization" ]
+
+  - paths: [ "/api/v1/search/*" ]
+    methods: [ "GET" ]
+    ttl: 300
+    key_params: [ "q", "limit", "page" ]
+    vary_headers: [ "authorization" ]
+
+# Metrics configuration
+metrics:
+  enabled: true
+  endpoint: "/metrics"
+  prometheus: true
+
+# Logging
+logging:
+  level: ${RUST_LOG:-info}
+  format: json
+  access_log: true

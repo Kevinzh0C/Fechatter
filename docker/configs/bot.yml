@@ -1,0 +1,36 @@
+# Bot Server Configuration - Docker Environment
+# Production-ready bot service configuration
+
+# Server configuration
+server:
+  db_url: "postgresql://fechatter_user:fechatter_pass@postgres:5432/fechatter_db"
+
+# NATS messaging configuration
+messaging:
+  enabled: true
+  nats:
+    url: "nats://nats:4222"
+    subscription_subjects:
+    - "fechatter.bot.requests"
+    - "fechatter.chat.events"
+    - "fechatter.message.events"
+
+# Bot configuration
+bot:
+  # OpenAI configuration
+  openai:
+    model: "gpt-3.5-turbo"
+    embed_model: "text-embedding-ada-002"
+
+  # Vector database configuration
+  vector:
+    size: 1536 # OpenAI embedding dimension
+
+  # Response behavior
+  response_delay_ms: 500
+  max_response_length: 2000
+
+# Analytics configuration
+analytics:
+  enabled: true
+  endpoint: "http://analytics-server:9091"

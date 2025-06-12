@@ -1,26 +1,29 @@
 pub mod bearer_auth;
 pub mod custom_builder;
 pub mod mw_traits;
+pub mod query_token_auth;
 pub mod request_id;
 pub mod server_time;
 pub mod token_refresh;
 
-use axum::{Router, middleware::from_fn};
+use axum::{middleware::from_fn, Router};
 
 use tower::ServiceBuilder;
 use tower_http::{
-  LatencyUnit,
   compression::CompressionLayer,
+  cors::{Any, CorsLayer},
   trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
+  LatencyUnit,
 };
 use tracing::Level;
 
+use crate::models::jwt::AuthServiceTrait;
 use crate::models::AuthUser;
 use crate::models::UserId;
-use crate::models::jwt::AuthServiceTrait;
 
 pub use self::bearer_auth::verify_token_middleware;
 pub use self::custom_builder::*;
+pub use self::query_token_auth::verify_query_token_middleware;
 pub use self::request_id::request_id_middleware;
 pub use self::server_time::ServerTimeLayer;
 
@@ -113,7 +116,7 @@ where
                 .latency_unit(LatencyUnit::Micros),
             ),
         )
-        .layer(CompressionLayer::new().gzip(true).br(true).deflate(true))
+        .layer(CompressionLayer::new().gzip(true))
         .layer(from_fn(request_id_middleware))
         .layer(ServerTimeLayer),
     )

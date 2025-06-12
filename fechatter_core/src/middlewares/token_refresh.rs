@@ -1,16 +1,16 @@
 use super::{HasIdField, WithServiceProvider, WithTokenManager};
 use crate::{
-  TokenVerifier,
   contracts::AuthContext,
   middlewares::ActualAuthServiceProvider,
   models::jwt::{RefreshTokenData, RefreshTokenService},
+  TokenVerifier,
 };
 use axum::{
   body::Body,
   extract::State,
   http::{
-    Request, StatusCode,
     header::{HeaderMap, HeaderValue, SET_COOKIE},
+    Request, StatusCode,
   },
   middleware::Next,
   response::{IntoResponse, Response},

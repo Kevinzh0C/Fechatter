@@ -74,3 +74,16 @@ app.yml
 
 # RFC templates
 rfcs/template.md
+
+# Documentation directories and files
+docs/
+doc/
+**/docs/
+**/doc/
+MIGRATION_*.md
+DEPLOYMENT.md
+QUICK_START.md
+PODMAN_*.md
+DOCKER_*.md
+SIMPLE_COMMANDS.md
+PROTOS_UPDATE.md

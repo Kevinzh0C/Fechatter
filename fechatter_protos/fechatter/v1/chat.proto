@@ -1,0 +1,261 @@
+syntax = "proto3";
+
+package fechatter.v1;
+
+import "fechatter/v1/core.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+// 聊天服务
+service ChatService {
+  // 创建聊天
+  rpc CreateChat(CreateChatRequest) returns (CreateChatResponse);
+  
+  // 获取聊天信息
+  rpc GetChat(GetChatRequest) returns (GetChatResponse);
+  
+  // 获取聊天列表
+  rpc ListChats(ListChatsRequest) returns (ListChatsResponse);
+  
+  // 更新聊天信息
+  rpc UpdateChat(UpdateChatRequest) returns (UpdateChatResponse);
+  
+  // 删除聊天
+  rpc DeleteChat(DeleteChatRequest) returns (google.protobuf.Empty);
+  
+  // 加入聊天
+  rpc JoinChat(JoinChatRequest) returns (google.protobuf.Empty);
+  
+  // 离开聊天
+  rpc LeaveChat(LeaveChatRequest) returns (google.protobuf.Empty);
+}
+
+// 消息服务
+service MessageService {
+  // 发送消息
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+  
+  // 获取消息
+  rpc GetMessage(GetMessageRequest) returns (GetMessageResponse);
+  
+  // 获取消息列表
+  rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse);
+  
+  // 更新消息
+  rpc UpdateMessage(UpdateMessageRequest) returns (UpdateMessageResponse);
+  
+  // 删除消息
+  rpc DeleteMessage(DeleteMessageRequest) returns (google.protobuf.Empty);
+  
+  // 标记消息为已读
+  rpc MarkAsRead(MarkAsReadRequest) returns (google.protobuf.Empty);
+  
+  // 批量标记消息为已读
+  rpc BatchMarkAsRead(BatchMarkAsReadRequest) returns (google.protobuf.Empty);
+}
+
+// 消息流服务
+service MessageStreamService {
+  // 实时消息流
+  rpc StreamMessages(StreamMessagesRequest) returns (stream MessageEvent);
+  
+  // 批量发送消息
+  rpc BatchSendMessages(BatchSendMessagesRequest) returns (BatchSendMessagesResponse);
+}
+
+// 消息事件
+message MessageEvent {
+  oneof event {
+    Message new_message = 1;
+    MessageUpdate message_update = 2;
+    MessageDelete message_delete = 3;
+    TypingIndicator typing_indicator = 4;
+    ReadReceipt read_receipt = 5;
+  }
+}
+
+// 消息更新事件
+message MessageUpdate {
+  int64 message_id = 1;
+  string new_content = 2;
+  google.protobuf.Timestamp updated_at = 3;
+}
+
+// 消息删除事件
+message MessageDelete {
+  int64 message_id = 1;
+  google.protobuf.Timestamp deleted_at = 2;
+}
+
+// 输入指示器
+message TypingIndicator {
+  int64 chat_id = 1;
+  int64 user_id = 2;
+  bool is_typing = 3;
+}
+
+// 已读回执
+message ReadReceipt {
+  int64 chat_id = 1;
+  int64 user_id = 2;
+  int64 last_read_message_id = 3;
+  google.protobuf.Timestamp read_at = 4;
+}
+
+// 创建聊天请求
+message CreateChatRequest {
+  string name = 1;
+  ChatType type = 2;
+  int64 workspace_id = 3;
+  repeated int64 members = 4;
+}
+
+// 创建聊天响应
+message CreateChatResponse {
+  Chat chat = 1;
+  Error error = 2;
+}
+
+// 获取聊天请求
+message GetChatRequest {
+  int64 id = 1;
+}
+
+// 获取聊天响应
+message GetChatResponse {
+  Chat chat = 1;
+  Error error = 2;
+}
+
+// 聊天列表请求
+message ListChatsRequest {
+  int64 workspace_id = 1;
+  int64 user_id = 2;
+  Pagination pagination = 3;
+}
+
+// 聊天列表响应
+message ListChatsResponse {
+  repeated Chat chats = 1;
+  PaginatedResponse pagination = 2;
+  Error error = 3;
+}
+
+// 更新聊天请求
+message UpdateChatRequest {
+  int64 id = 1;
+  string name = 2;
+  repeated int64 members = 3;
+}
+
+// 更新聊天响应
+message UpdateChatResponse {
+  Chat chat = 1;
+  Error error = 2;
+}
+
+// 删除聊天请求
+message DeleteChatRequest {
+  int64 id = 1;
+}
+
+// 加入聊天请求
+message JoinChatRequest {
+  int64 chat_id = 1;
+  int64 user_id = 2;
+}
+
+// 离开聊天请求
+message LeaveChatRequest {
+  int64 chat_id = 1;
+  int64 user_id = 2;
+}
+
+// 发送消息请求
+message SendMessageRequest {
+  int64 chat_id = 1;
+  string content = 2;
+  repeated string files = 3;
+  string idempotency_key = 4;
+}
+
+// 发送消息响应
+message SendMessageResponse {
+  Message message = 1;
+  Error error = 2;
+}
+
+// 获取消息请求
+message GetMessageRequest {
+  int64 id = 1;
+}
+
+// 获取消息响应
+message GetMessageResponse {
+  Message message = 1;
+  Error error = 2;
+}
+
+// 消息列表请求
+message ListMessagesRequest {
+  int64 chat_id = 1;
+  google.protobuf.Timestamp since = 2;
+  google.protobuf.Timestamp until = 3;
+  Pagination pagination = 4;
+}
+
+// 消息列表响应
+message ListMessagesResponse {
+  repeated Message messages = 1;
+  PaginatedResponse pagination = 2;
+  Error error = 3;
+}
+
+// 更新消息请求
+message UpdateMessageRequest {
+  int64 id = 1;
+  string content = 2;
+}
+
+// 更新消息响应
+message UpdateMessageResponse {
+  Message message = 1;
+  Error error = 2;
+}
+
+// 删除消息请求
+message DeleteMessageRequest {
+  int64 id = 1;
+}
+
+// 标记已读请求
+message MarkAsReadRequest {
+  int64 chat_id = 1;
+  int64 message_id = 2;
+  int64 user_id = 3;
+}
+
+// 批量标记已读请求
+message BatchMarkAsReadRequest {
+  int64 chat_id = 1;
+  repeated int64 message_ids = 2;
+  int64 user_id = 3;
+}
+
+// 消息流请求
+message StreamMessagesRequest {
+  int64 chat_id = 1;
+  google.protobuf.Timestamp since = 2;
+}
+
+// 批量发送消息请求
+message BatchSendMessagesRequest {
+  repeated SendMessageRequest messages = 1;
+}
+
+// 批量发送消息响应
+message BatchSendMessagesResponse {
+  repeated SendMessageResponse results = 1;
+  int32 success_count = 2;
+  int32 failure_count = 3;
+} 

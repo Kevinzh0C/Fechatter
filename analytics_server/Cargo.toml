@@ -1,0 +1,47 @@
+[package]
+name = "analytics_server"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "analytics_server"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+async-nats = "0.38.0"
+async-trait = { workspace = true }
+axum = { workspace = true }
+fechatter_core = { workspace = true }
+fechatter_protos = { workspace = true }
+chrono = { workspace = true }
+clickhouse = "0.13.0"
+dashmap = { workspace = true }
+futures = { workspace = true }
+prost = "0.13.3"
+prost-types = "0.13.3"
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+sqlx = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+utoipa = { workspace = true }
+utoipa-rapidoc = { workspace = true }
+utoipa-redoc = { workspace = true }
+utoipa-swagger-ui = { workspace = true }
+uuid = { workspace = true }
+# Metrics
+metrics = "0.24.0"
+metrics-exporter-prometheus = "0.17.0"
+
+[build-dependencies]
+prost-build = "0.13.3"
+
+[dev-dependencies]
+reqwest = { workspace = true }

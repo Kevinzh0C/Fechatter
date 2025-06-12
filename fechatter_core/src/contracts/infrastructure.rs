@@ -115,6 +115,9 @@ pub trait SearchService: Send + Sync {
 
   /// Update document
   async fn update_document(&self, index: &str, id: &str, doc: Document) -> Result<(), CoreError>;
+
+  /// Get a reference to Any type for downcasting
+  fn as_any(&self) -> &dyn std::any::Any;
 }
 
 /// AI Service Interface - Pluggable Component

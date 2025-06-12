@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 use tracing::{error, info};
@@ -129,12 +129,93 @@ impl HealthChecker for NatsChecker {
 
 /// Search service health checker
 pub struct SearchChecker {
-  enabled: bool,
+  state: AppState,
 }
 
 impl SearchChecker {
-  pub fn new(enabled: bool) -> Self {
-    Self { enabled }
+  pub fn new(state: AppState) -> Self {
+    Self { state }
+  }
+}
+
+/// 新增：Redis缓存健康检查器
+pub struct CacheChecker {
+  state: AppState,
+}
+
+impl CacheChecker {
+  pub fn new(state: AppState) -> Self {
+    Self { state }
+  }
+}
+
+#[async_trait]
+impl HealthChecker for CacheChecker {
+  async fn check_health(&self) -> ServiceHealth {
+    let start = Instant::now();
+    let latency = start.elapsed().as_millis() as u64;
+
+    match self.state.cache_service() {
+      Some(cache_service) => {
+        // Test actual Redis connectivity with a simple SET/GET operation
+        let test_key = "health_check_test";
+        let test_value = "ok";
+        
+        match cache_service.set(test_key, &test_value, 10).await {
+          Ok(_) => {
+            match cache_service.get::<String>(test_key).await {
+              Ok(Some(value)) if value == test_value => {
+                // Clean up test key
+                let _ = cache_service.del(test_key).await;
+                ServiceHealth {
+                  name: self.service_name().to_string(),
+                  status: HealthStatus::Healthy,
+                  latency_ms: Some(latency),
+                  error: None,
+                }
+              }
+              Ok(_) => ServiceHealth {
+                name: self.service_name().to_string(),
+                status: HealthStatus::Degraded,
+                latency_ms: Some(latency),
+                error: Some("Redis read/write test failed: value mismatch".to_string()),
+              },
+              Err(e) => ServiceHealth {
+                name: self.service_name().to_string(),
+                status: HealthStatus::Degraded,
+                latency_ms: Some(latency),
+                error: Some(format!("Redis read test failed: {}", e)),
+              },
+            }
+          }
+          Err(e) => ServiceHealth {
+            name: self.service_name().to_string(),
+            status: HealthStatus::Unhealthy,
+            latency_ms: Some(latency),
+            error: Some(format!("Redis write test failed: {}", e)),
+          },
+        }
+      }
+      None => {
+        let config_enabled = self.state.inner.config.features.cache.enabled;
+        let error_msg = if config_enabled {
+          "Cache service failed to initialize despite being enabled in configuration"
+        } else {
+          "Cache service disabled in configuration"
+        };
+
+        ServiceHealth {
+          name: self.service_name().to_string(),
+          status: HealthStatus::Degraded,
+          latency_ms: Some(latency),
+          error: Some(error_msg.to_string()),
+        }
+      }
+    }
+  }
+
+  fn service_name(&self) -> &'static str {
+    "cache"
   }
 }
 
@@ -144,19 +225,73 @@ impl HealthChecker for SearchChecker {
     let start = Instant::now();
     let latency = start.elapsed().as_millis() as u64;
 
-    if self.enabled {
-      ServiceHealth {
-        name: self.service_name().to_string(),
-        status: HealthStatus::Healthy,
-        latency_ms: Some(latency),
-        error: None,
+    // Check if search service exists
+    match self.state.search_service() {
+      Some(search_service) => {
+        if search_service.is_enabled() {
+          // Get Meilisearch URL from configuration instead of hardcoded localhost
+          let meilisearch_url = &self.state.inner.config.features.search.meilisearch_url;
+          let health_url = format!("{}/health", meilisearch_url);
+          
+          // Create client with proper authorization header
+          let api_key = &self.state.inner.config.features.search.meilisearch_api_key;
+          let client = reqwest::Client::new();
+          let mut request_builder = client.get(&health_url);
+          
+          // Add authorization header if API key is configured
+          if !api_key.is_empty() {
+            request_builder = request_builder.header("Authorization", format!("Bearer {}", api_key));
+          }
+          
+          // Test actual Meilisearch connectivity using configured URL
+          match request_builder.send().await {
+            Ok(response) if response.status().is_success() => ServiceHealth {
+              name: self.service_name().to_string(),
+              status: HealthStatus::Healthy,
+              latency_ms: Some(latency),
+              error: None,
+            },
+            Ok(response) => ServiceHealth {
+              name: self.service_name().to_string(),
+              status: HealthStatus::Degraded,
+              latency_ms: Some(latency),
+              error: Some(format!(
+                "Meilisearch health check failed with status: {} (URL: {})",
+                response.status(),
+                health_url
+              )),
+            },
+            Err(e) => ServiceHealth {
+              name: self.service_name().to_string(),
+              status: HealthStatus::Degraded,
+              latency_ms: Some(latency),
+              error: Some(format!("Meilisearch connection failed: {} (URL: {})", e, health_url)),
+            },
+          }
+        } else {
+          ServiceHealth {
+            name: self.service_name().to_string(),
+            status: HealthStatus::Degraded,
+            latency_ms: Some(latency),
+            error: Some("Search service exists but is disabled in configuration".to_string()),
+          }
+        }
       }
-    } else {
-      ServiceHealth {
-        name: self.service_name().to_string(),
-        status: HealthStatus::Degraded,
-        latency_ms: Some(latency),
-        error: Some("Search service disabled".to_string()),
+      None => {
+        // Search service was not initialized - check configuration
+        let config_enabled = self.state.inner.config.features.search.enabled;
+        let error_msg = if config_enabled {
+          "Search service failed to initialize despite being enabled in configuration"
+        } else {
+          "Search service disabled in configuration"
+        };
+
+        ServiceHealth {
+          name: self.service_name().to_string(),
+          status: HealthStatus::Degraded,
+          latency_ms: Some(latency),
+          error: Some(error_msg.to_string()),
+        }
       }
     }
   }
@@ -208,9 +343,10 @@ pub async fn health_check(State(state): State<AppState>) -> Result<impl IntoResp
 
   // Create health checkers
   let checkers: Vec<Box<dyn HealthChecker>> = vec![
-    Box::new(DatabaseChecker::new(state.pool().clone())),
-    Box::new(NatsChecker::new(state.nats_client().cloned())),
-    Box::new(SearchChecker::new(state.is_search_enabled())),
+    Box::new(DatabaseChecker::new(state.pool().as_ref().clone())),
+    Box::new(NatsChecker::new(state.nats_client())),
+    Box::new(SearchChecker::new(state.clone())),
+    Box::new(CacheChecker::new(state.clone())),
   ];
 
   // Run all health checks concurrently
@@ -245,7 +381,7 @@ pub async fn health_check(State(state): State<AppState>) -> Result<impl IntoResp
     tag = "health"
 )]
 pub async fn simple_health_check(State(state): State<AppState>) -> impl IntoResponse {
-  match sqlx::query("SELECT 1").fetch_one(state.pool()).await {
+  match sqlx::query("SELECT 1").fetch_one(&*state.pool()).await {
     Ok(_) => StatusCode::OK,
     Err(_) => StatusCode::SERVICE_UNAVAILABLE,
   }

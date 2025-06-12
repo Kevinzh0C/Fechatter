@@ -7,7 +7,6 @@ use reqwest::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::borrow::Cow;
 use tokio_stream::StreamExt as TokioStreamExt;
 
 use crate::error::AppError;
@@ -15,7 +14,6 @@ use fechatter_core::{
   error::{CoreError, VectorDbError},
   models::time_management::TimeManager,
   models::vector_db::{MetadataFilter, VectorDatabase, VectorSearchResult},
-  models::{ChatId, MessageId, UserId},
 };
 
 /// Default namespace for all Pinecone operations
@@ -171,7 +169,7 @@ impl PineconeClient {
 impl From<AppError> for VectorDbError {
   fn from(err: AppError) -> Self {
     match err {
-      AppError::ExternalService(msg) => VectorDbError::Transient(msg),
+      AppError::ExternalServiceError(msg) => VectorDbError::Transient(msg),
       AppError::NotFound(msg) => VectorDbError::NotFound(msg.join(", ")),
       AppError::InvalidInput(msg) => VectorDbError::Validation(msg),
       AppError::ServerError(msg) => VectorDbError::Permanent(msg),

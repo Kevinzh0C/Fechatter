@@ -1,5 +1,6 @@
 // TODO: CreateChatRequest module temporarily unavailable
 // use crate::dtos::requests::chat::CreateChatRequest;
+use crate::dtos::models::responses::chat::ChatDetailDto;
 use fechatter_core::{Chat, CreateChat};
 
 /// Chat mapper - handles DTO conversions for chats
@@ -21,9 +22,23 @@ impl ChatMapper {
     )
   }
 
-  /// Convert domain Chat model to simple response structure
-  /// (Note: Original ChatResponse doesn't exist, returning core Chat model here)
-  pub fn domain_to_response(chat: &Chat) -> Chat {
-    chat.clone()
+  /// Convert domain Chat model to response DTO
+  pub fn domain_to_response(chat: &Chat) -> ChatDetailDto {
+    ChatDetailDto {
+      id: chat.id.into(),
+      name: chat.name.clone(),
+      chat_type: chat.chat_type,
+      description: Some(chat.description.clone()),
+      created_by: chat.created_by.into(),
+      workspace_id: Some(chat.workspace_id.into()),
+      member_count: chat.chat_members.len() as i32,
+      created_at: chat.created_at,
+      updated_at: Some(chat.updated_at),
+      is_archived: false, // Default value
+      is_public: match chat.chat_type {
+        fechatter_core::ChatType::PublicChannel => true,
+        _ => false,
+      },
+    }
   }
 }

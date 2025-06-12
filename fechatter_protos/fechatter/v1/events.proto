@@ -1,0 +1,294 @@
+syntax = "proto3";
+
+package fechatter.v1;
+
+import "fechatter/v1/core.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
+
+// =============================================================================
+// EVENT ENVELOPE - Unified event wrapper with metadata
+// =============================================================================
+
+/// Unified event envelope for all NATS messages
+/// Provides versioning, metadata, and security features
+message EventEnvelope {
+  // Event metadata
+  EventMetadata metadata = 1;
+  
+  // Event payload (one of the specific event types)
+  oneof payload {
+    // Message events
+    MessageCreatedEvent message_created = 10;
+    MessageEditedEvent message_edited = 11;
+    MessageDeletedEvent message_deleted = 12;
+    
+    // Chat events  
+    ChatCreatedEvent chat_created = 20;
+    ChatUpdatedEvent chat_updated = 21;
+    ChatMemberJoinedEvent chat_member_joined = 22;
+    ChatMemberLeftEvent chat_member_left = 23;
+    
+    // Realtime events
+    TypingStatusEvent typing_status = 30;
+    UserPresenceEvent user_presence = 31;
+    MessageReadReceiptEvent message_read_receipt = 32;
+    
+    // System events
+    DuplicateMessageEvent duplicate_message = 40;
+    SystemMaintenanceEvent system_maintenance = 41;
+    
+    // Generic extensible event
+    GenericEvent generic = 50;
+  }
+}
+
+/// Event metadata - common to all events
+message EventMetadata {
+  // Event identification
+  string event_id = 1;                    // UUID for deduplication
+  EventVersion version = 2;               // Schema version
+  google.protobuf.Timestamp occurred_at = 3;
+  google.protobuf.Timestamp server_ts = 4;
+  
+  // Source information
+  string source_service = 5;              // "fechatter_server", "notify_server"
+  string source_instance = 6;             // Instance ID for debugging
+  
+  // Routing metadata
+  repeated int64 target_users = 7;        // Who should receive this event
+  repeated int64 target_chats = 8;        // Which chats are affected
+  int64 workspace_id = 9;                 // Workspace context
+  
+  // Security and reliability
+  string signature = 10;                  // HMAC signature for verification
+  int32 retry_count = 11;                 // For retry logic
+  map<string, string> trace_context = 12; // Distributed tracing
+}
+
+/// Event version for backward compatibility
+enum EventVersion {
+  EVENT_VERSION_UNSPECIFIED = 0;
+  EVENT_VERSION_V1 = 1;
+  EVENT_VERSION_V2 = 2;
+}
+
+// =============================================================================
+// MESSAGE EVENTS - Core messaging functionality
+// =============================================================================
+
+/// Message created event - sent when a new message is posted
+message MessageCreatedEvent {
+  // Core message data
+  int64 message_id = 1;
+  int64 chat_id = 2;
+  int64 sender_id = 3;
+  string content = 4;
+  repeated string files = 5;
+  google.protobuf.Timestamp created_at = 6;
+  string idempotency_key = 7;
+  
+  // Additional context for notifications
+  string sender_name = 8;
+  string chat_name = 9;
+  MessageType message_type = 10;
+  repeated int64 mentioned_users = 11;
+  
+  // Message metadata
+  int64 sequence_number = 12;
+  bool has_attachments = 13;
+  int32 content_length = 14;
+}
+
+/// Message edited event
+message MessageEditedEvent {
+  int64 message_id = 1;
+  int64 chat_id = 2;
+  int64 editor_id = 3;
+  string old_content = 4;
+  string new_content = 5;
+  google.protobuf.Timestamp edited_at = 6;
+  string edit_reason = 7;
+}
+
+/// Message deleted event
+message MessageDeletedEvent {
+  int64 message_id = 1;
+  int64 chat_id = 2;
+  int64 deleted_by = 3;
+  google.protobuf.Timestamp deleted_at = 4;
+  string deletion_reason = 5;
+  bool soft_delete = 6;
+}
+
+/// Message type classification
+enum MessageType {
+  MESSAGE_TYPE_UNSPECIFIED = 0;
+  MESSAGE_TYPE_TEXT = 1;
+  MESSAGE_TYPE_FILE = 2;
+  MESSAGE_TYPE_IMAGE = 3;
+  MESSAGE_TYPE_VIDEO = 4;
+  MESSAGE_TYPE_AUDIO = 5;
+  MESSAGE_TYPE_SYSTEM = 6;
+}
+
+// =============================================================================
+// CHAT EVENTS - Chat lifecycle management
+// =============================================================================
+
+/// Chat created event
+message ChatCreatedEvent {
+  int64 chat_id = 1;
+  string chat_name = 2;
+  ChatType chat_type = 3;
+  int64 workspace_id = 4;
+  int64 creator_id = 5;
+  repeated int64 initial_members = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+/// Chat updated event
+message ChatUpdatedEvent {
+  int64 chat_id = 1;
+  string old_name = 2;
+  string new_name = 3;
+  int64 updated_by = 4;
+  google.protobuf.Timestamp updated_at = 5;
+  map<string, string> updated_fields = 6;
+}
+
+/// Chat member joined event
+message ChatMemberJoinedEvent {
+  int64 chat_id = 1;
+  int64 user_id = 2;
+  int64 added_by = 3;
+  google.protobuf.Timestamp joined_at = 4;
+  string join_method = 5; // "invited", "link", "admin_added"
+}
+
+/// Chat member left event  
+message ChatMemberLeftEvent {
+  int64 chat_id = 1;
+  int64 user_id = 2;
+  int64 removed_by = 3;
+  google.protobuf.Timestamp left_at = 4;
+  string leave_reason = 5; // "voluntary", "kicked", "banned"
+}
+
+// =============================================================================
+// REALTIME EVENTS - High-frequency, low-latency events
+// =============================================================================
+
+/// Typing status event
+message TypingStatusEvent {
+  int64 chat_id = 1;
+  int64 user_id = 2;
+  string user_name = 3;
+  bool is_typing = 4;
+  google.protobuf.Timestamp timestamp = 5;
+}
+
+/// User presence event
+message UserPresenceEvent {
+  int64 user_id = 1;
+  UserStatus status = 2;  // Using UserStatus from core.proto
+  google.protobuf.Timestamp last_seen = 3;
+  string activity = 4; // "active", "idle", "dnd"
+}
+
+/// Message read receipt event
+message MessageReadReceiptEvent {
+  int64 chat_id = 1;
+  int64 user_id = 2;
+  repeated int64 message_ids = 3;
+  google.protobuf.Timestamp read_at = 4;
+  int64 last_read_message_id = 5;
+}
+
+// =============================================================================
+// SYSTEM EVENTS - Administrative and error events
+// =============================================================================
+
+/// Duplicate message attempt event
+message DuplicateMessageEvent {
+  string idempotency_key = 1;
+  int64 chat_id = 2;
+  int64 sender_id = 3;
+  google.protobuf.Timestamp attempted_at = 4;
+  int64 original_message_id = 5;
+}
+
+/// System maintenance event
+message SystemMaintenanceEvent {
+  string maintenance_id = 1;
+  MaintenanceType maintenance_type = 2;
+  google.protobuf.Timestamp scheduled_start = 3;
+  google.protobuf.Timestamp scheduled_end = 4;
+  string message = 5;
+  bool affects_messaging = 6;
+}
+
+/// Maintenance type
+enum MaintenanceType {
+  MAINTENANCE_TYPE_UNSPECIFIED = 0;
+  MAINTENANCE_TYPE_PLANNED = 1;
+  MAINTENANCE_TYPE_EMERGENCY = 2;
+  MAINTENANCE_TYPE_UPGRADE = 3;
+}
+
+/// Generic event for extensibility
+message GenericEvent {
+  string event_type = 1;
+  google.protobuf.Any payload = 2;
+  map<string, string> attributes = 3;
+}
+
+// =============================================================================
+// BATCH EVENTS - For high-throughput scenarios
+// =============================================================================
+
+/// Batch event envelope for bulk processing
+message BatchEventEnvelope {
+  string batch_id = 1;
+  google.protobuf.Timestamp batch_created_at = 2;
+  repeated EventEnvelope events = 3;
+  int32 total_events = 4;
+  string compression = 5; // "none", "gzip", "lz4"
+}
+
+// =============================================================================
+// EVENT SUBJECTS/TOPICS - Standardized naming
+// =============================================================================
+
+/// Subject naming constants for NATS
+/// Pattern: fechatter.{domain}.{entity}.{action}.{version}
+/// Examples:
+/// - fechatter.messages.message.created.v1
+/// - fechatter.chats.member.joined.v1  
+/// - fechatter.realtime.typing.started.v1
+/// - fechatter.system.maintenance.scheduled.v1
+
+// Message domain subjects
+// fechatter.messages.message.created.v1
+// fechatter.messages.message.edited.v1
+// fechatter.messages.message.deleted.v1
+
+// Chat domain subjects  
+// fechatter.chats.chat.created.v1
+// fechatter.chats.chat.updated.v1
+// fechatter.chats.member.joined.v1
+// fechatter.chats.member.left.v1
+
+// Realtime domain subjects
+// fechatter.realtime.typing.status.v1
+// fechatter.realtime.presence.changed.v1
+// fechatter.realtime.message.read.v1
+
+// System domain subjects
+// fechatter.system.duplicate.detected.v1
+// fechatter.system.maintenance.scheduled.v1
+
+// Broadcast subjects (for notify_server)
+// fechatter.broadcast.workspace.{workspace_id}
+// fechatter.broadcast.chat.{chat_id}
+// fechatter.broadcast.user.{user_id} 

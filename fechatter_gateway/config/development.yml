@@ -1,0 +1,379 @@
+# Fechatter Gateway - Development Configuration
+# 开发环境：Gateway作为统一入口，路由到本地后端服务
+
+server:
+  listen_addr: "0.0.0.0:8080"
+  worker_threads: 1
+  max_connections: 1000
+  keepalive_timeout: 60
+  request_timeout: 30
+
+# 上游服务配置 - 本地开发环境
+upstreams:
+  fechatter-server:
+    servers:
+    - "127.0.0.1:6688"
+    health_check:
+      interval: 30
+      timeout: 5
+      path: "/health"
+      expected_status: [ 200 ]
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+    load_balancing: RoundRobin
+
+  notify-server:
+    servers:
+    - "127.0.0.1:6687"
+    health_check:
+      interval: 30
+      timeout: 5
+      path: "/sse/health"
+      expected_status: [ 200 ]
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+    load_balancing: RoundRobin
+
+  analytics-server:
+    servers:
+    - "127.0.0.1:6690"
+    health_check:
+      interval: 30
+      timeout: 5
+      path: "/health"
+      expected_status: [ 200 ]
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+    load_balancing: RoundRobin
+
+  search-service:
+    servers:
+    - "127.0.0.1:7700"
+    health_check:
+      interval: 30
+      timeout: 5
+      path: "/health"
+      expected_status: [ 200 ]
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+    load_balancing: RoundRobin
+
+  # Bot服务（按照实际端口配置）
+  bot-server:
+    servers:
+    - "127.0.0.1:6686"
+    health_check:
+      interval: 30
+      timeout: 5
+      path: "/health"
+      expected_status: [ 200 ]
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+    load_balancing: RoundRobin
+
+  # ClickHouse 直接访问服务（仅开发环境）
+  clickhouse-service:
+    servers:
+    - "127.0.0.1:8123"
+    health_check:
+      interval: 60
+      timeout: 5
+      path: "/ping"
+      expected_status: [ 200 ]
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+    load_balancing: RoundRobin
+
+# 路由配置 - 将前端请求路由到正确的后端服务
+routes:
+# 健康检查路由
+- path: "/health"
+  methods: [ "GET" ]
+  upstream: "fechatter-server"
+  cors_enabled: false
+
+# 根路径路由
+- path: "/"
+  methods: [ "GET" ]
+  upstream: "fechatter-server"
+  cors_enabled: false
+
+# 认证相关路由
+- path: "/api/signin"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/signup"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/refresh"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/logout"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/logout-all"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# 所有其他API路由 - 通配符路由到fechatter-server
+- path: "/api/"
+  methods: [ "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# 文件服务路由（按照实际的API路径）
+- path: "/api/upload"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/files/single"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/files/"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/workspaces/"
+  methods: [ "GET", "POST", "PATCH", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# 通知服务路由
+- path: "/events"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "notify-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/online-users"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "notify-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/sse/health"
+  methods: [ "GET" ]
+  upstream: "notify-server"
+  cors_enabled: false
+
+# Analytics服务路由 - 修正API路径
+- path: "/api/event"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "analytics-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/batch"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "analytics-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# Analytics健康检查和监控端点
+- path: "/analytics/health"
+  methods: [ "GET" ]
+  upstream: "analytics-server"
+  cors_enabled: false
+
+- path: "/analytics/metrics"
+  methods: [ "GET" ]
+  upstream: "analytics-server"
+  cors_enabled: false
+
+- path: "/analytics/ready"
+  methods: [ "GET" ]
+  upstream: "analytics-server"
+  cors_enabled: false
+
+- path: "/analytics/live"
+  methods: [ "GET" ]
+  upstream: "analytics-server"
+  cors_enabled: false
+
+# Analytics OpenAPI 文档
+- path: "/analytics/openapi.json"
+  methods: [ "GET" ]
+  upstream: "analytics-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/analytics/swagger-ui/"
+  methods: [ "GET" ]
+  upstream: "analytics-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# Search服务路由（当前已注释掉，但保留路由配置）
+# 注意：搜索功能在后端已实现但暂时禁用
+- path: "/api/search/messages"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/search/suggestions"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# 聊天内搜索路由
+- path: "/api/chat/"
+  methods: [ "GET", "POST", "PATCH", "DELETE", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# 管理员重建索引
+- path: "/api/admin/"
+  methods: [ "GET", "POST", "PATCH", "DELETE", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# 如果需要直接访问Meilisearch（仅开发环境）
+- path: "/meilisearch/"
+  methods: [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ]
+  upstream: "search-service"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# ClickHouse 管理路由（仅开发环境）
+# 注意：生产环境不应直接暴露 ClickHouse 接口
+- path: "/api/clickhouse/"
+  methods: [ "GET", "POST", "OPTIONS" ]
+  upstream: "clickhouse-service"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# ClickHouse 健康检查（开发环境）
+- path: "/clickhouse/ping"
+  methods: [ "GET" ]
+  upstream: "clickhouse-service"
+  cors_enabled: false
+
+# ClickHouse 监控接口（开发环境）
+- path: "/clickhouse/"
+  methods: [ "GET", "POST" ]
+  upstream: "clickhouse-service"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# Bot服务路由
+- path: "/api/bot/"
+  methods: [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ]
+  upstream: "bot-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# Bot健康检查
+- path: "/bot/health"
+  methods: [ "GET" ]
+  upstream: "bot-server"
+  cors_enabled: false
+
+# 缓存相关路由（fechatter-server实际提供）
+- path: "/api/cache/stats"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/cache/config"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# 实时功能路由（handlers存在但未路由，保留配置）
+- path: "/api/realtime/"
+  methods: [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# 用户管理路由（handlers存在但未路由，保留配置）
+- path: "/api/users/"
+  methods: [ "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"

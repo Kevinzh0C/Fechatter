@@ -14,11 +14,6 @@ pub mod application;
 pub mod infrastructure;
 
 // =============================================================================
-// SERVICE PROVIDER
-// =============================================================================
-pub mod service_provider;
-
-// =============================================================================
 // AI SERVICES
 // =============================================================================
 pub mod ai;
@@ -28,13 +23,10 @@ pub mod ai;
 // =============================================================================
 
 // Re-export core services
-pub use service_provider::{ServerTokenService, ServiceProvider};
+pub use application::builders::ServiceProvider;
 
 // Re-export application services
 pub use application::*;
 
 // Re-export infrastructure services - focused by responsibility
 pub use infrastructure::{EventPublisher, LocalStorage, RedisCacheService, SearchService};
-
-// Re-export auth service (from application layer) 
-pub use application::auth_app_service::AuthService;

@@ -1,0 +1,75 @@
+# Staging环境资源配置
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fechatter-server
+spec:
+  replicas: 1  # Staging只需要1个副本
+  template:
+    spec:
+      containers:
+      - name: fechatter-server
+        resources:
+          requests:
+            cpu: 100m      # 减少资源需求
+            memory: 256Mi
+          limits:
+            cpu: 300m
+            memory: 512Mi
+        env:
+        - name: ENVIRONMENT
+          value: "staging"
+        - name: MAX_CONNECTIONS
+          value: "20"      # 减少连接数
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+spec:
+  replicas: 1  # Staging只需要1个副本
+  template:
+    spec:
+      containers:
+      - name: gateway
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notify-server
+spec:
+  replicas: 1  # Staging只需要1个副本
+  template:
+    spec:
+      containers:
+      - name: notify-server
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+---
+# Staging环境HPA配置（更保守）
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: fechatter-server-hpa
+spec:
+  minReplicas: 1
+  maxReplicas: 3  # 最多3个副本
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 80  # 更高的阈值

@@ -1,0 +1,185 @@
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
+import { useAuthStore } from '../stores/auth';
+import NProgress from 'nprogress';
+import 'nprogress/nprogress.css';
+
+// Configure NProgress
+NProgress.configure({
+  showSpinner: false,
+  minimum: 0.1,
+  easing: 'ease',
+  speed: 500,
+});
+
+// Route definitions with lazy loading
+const routes: RouteRecordRaw[] = [
+  {
+    path: '/',
+    redirect: '/login'
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/Login.vue'),
+    meta: { 
+      title: 'Sign In',
+      requiresGuest: true
+    }
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: () => import('../views/Register.vue'),
+    meta: { 
+      title: 'Sign Up',
+      requiresGuest: true
+    }
+  },
+  {
+    path: '/home',
+    name: 'Home',
+    component: () => import('../views/Home.vue'),
+    meta: { 
+      title: 'Home',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/chat/:id',
+    name: 'Chat',
+    component: () => import('../views/Chat.vue'),
+    meta: { 
+      title: 'Chat',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/demo',
+    name: 'Demo',
+    component: () => import('../views/Demo.vue'),
+    meta: { 
+      title: 'Feature Demo'
+    }
+  },
+  {
+    path: '/test',
+    name: 'Test',
+    component: () => import('../views/Test.vue'),
+    meta: { 
+      title: 'Test Page'
+    }
+  },
+  {
+    path: '/error/:code',
+    name: 'Error',
+    component: () => import('../views/Error.vue'),
+    props: true,
+    meta: { 
+      title: 'Error'
+    }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    redirect: '/error/404'
+  }
+];
+
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition;
+    }
+    if (to.hash) {
+      return { el: to.hash };
+    }
+    return { top: 0 };
+  },
+});
+
+// Auth initialization promise to prevent multiple initializations
+let authInitPromise: Promise<void> | null = null;
+
+router.beforeEach(async (to, from, next) => {
+  // Start progress bar
+  NProgress.start();
+
+  // Set page title
+  const title = to.meta?.title;
+  if (title) {
+    document.title = `${title} - Fechatter`;
+  } else {
+    document.title = 'Fechatter';
+  }
+
+  // Debug logging
+  if (import.meta.env.VITE_DEBUG === 'true') {
+    console.log('🚀 Route Navigation:', {
+      from: from.fullPath,
+      to: to.fullPath,
+      meta: to.meta
+    });
+  }
+
+  const authStore = useAuthStore();
+
+  // Initialize auth only once
+  if (!authInitPromise) {
+    authInitPromise = authStore.initializeAuth().catch(error => {
+      console.error('Auth initialization failed:', error);
+    });
+  }
+
+  await authInitPromise;
+
+  const isAuthenticated = authStore.isLoggedIn;
+  const requiresAuth = to.meta?.requiresAuth;
+  const requiresGuest = to.meta?.requiresGuest;
+
+  // Redirect logic
+  if (requiresAuth && !isAuthenticated) {
+    sessionStorage.setItem('redirectPath', to.fullPath);
+    return next('/login');
+  }
+
+  if (requiresGuest && isAuthenticated) {
+    return next('/home');
+  }
+
+  next();
+});
+
+router.afterEach((to, from, failure) => {
+  // Complete progress bar
+  NProgress.done();
+
+  // Debug logging
+  if (import.meta.env.VITE_DEBUG === 'true') {
+    console.log('✅ Navigation completed to:', to.fullPath);
+  }
+
+  if (failure) {
+    console.error('Navigation failed:', failure);
+  }
+});
+
+router.onError((error) => {
+  console.error('Router error:', error);
+  NProgress.done();
+  router.push('/error/500');
+});
+
+export default router;
+
+// Export test router factory
+export function createTestRouter(initialRoute: string = '/') {
+  const testRouter = createRouter({
+    history: createWebHistory(),
+    routes,
+  });
+  
+  testRouter.push(initialRoute);
+  return testRouter;
+}

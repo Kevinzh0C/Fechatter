@@ -1,7 +1,7 @@
 use crate::{
   error::CoreError,
   models::{
-    User, UserId, Workspace, WorkspaceId, user::UserRepository, workspace::WorkspaceRepository,
+    user::UserRepository, workspace::WorkspaceRepository, User, UserId, Workspace, WorkspaceId,
   },
 };
 use serde::{Deserialize, Serialize};

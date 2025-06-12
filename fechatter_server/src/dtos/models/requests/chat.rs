@@ -167,3 +167,14 @@ pub struct JoinChatByInviteRequest {
   #[schema(example = "invite_token_here")]
   pub invite_token: String,
 }
+
+/// 转移聊天所有权请求
+#[derive(Debug, Serialize, Deserialize, Validate, ToSchema)]
+pub struct TransferChatOwnershipRequest {
+  #[validate(range(min = 1, message = "Target user ID must be positive"))]
+  #[schema(example = 5)]
+  pub target_user_id: i64,
+
+  #[schema(example = "Transferring ownership to the new project lead")]
+  pub reason: Option<String>,
+}

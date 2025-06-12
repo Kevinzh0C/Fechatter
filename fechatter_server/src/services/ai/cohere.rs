@@ -99,11 +99,11 @@ impl CohereClient {
       .json(&request)
       .send()
       .await
-      .map_err(|e| AppError::ExternalService(format!("Cohere API error: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("Cohere API error: {}", e)))?;
 
     if !response.status().is_success() {
       let error_text = response.text().await.unwrap_or_default();
-      return Err(AppError::ExternalService(format!(
+      return Err(AppError::ExternalServiceError(format!(
         "Cohere API error: {}",
         error_text
       )));
@@ -112,7 +112,7 @@ impl CohereClient {
     let embed_response: EmbedResponse = response
       .json()
       .await
-      .map_err(|e| AppError::ExternalService(format!("Failed to parse response: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("Failed to parse response: {}", e)))?;
 
     Ok(embed_response.embeddings)
   }
@@ -139,11 +139,11 @@ impl CohereClient {
       .json(&request)
       .send()
       .await
-      .map_err(|e| AppError::ExternalService(format!("Cohere API error: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("Cohere API error: {}", e)))?;
 
     if !response.status().is_success() {
       let error_text = response.text().await.unwrap_or_default();
-      return Err(AppError::ExternalService(format!(
+      return Err(AppError::ExternalServiceError(format!(
         "Cohere API error: {}",
         error_text
       )));
@@ -152,7 +152,7 @@ impl CohereClient {
     let rerank_response: RerankResponse = response
       .json()
       .await
-      .map_err(|e| AppError::ExternalService(format!("Failed to parse response: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("Failed to parse response: {}", e)))?;
 
     Ok(
       rerank_response
@@ -185,11 +185,11 @@ impl CohereClient {
       .json(&request)
       .send()
       .await
-      .map_err(|e| AppError::ExternalService(format!("Cohere API error: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("Cohere API error: {}", e)))?;
 
     if !response.status().is_success() {
       let error_text = response.text().await.unwrap_or_default();
-      return Err(AppError::ExternalService(format!(
+      return Err(AppError::ExternalServiceError(format!(
         "Cohere API error: {}",
         error_text
       )));
@@ -198,7 +198,7 @@ impl CohereClient {
     let classify_response: ClassifyResponse = response
       .json()
       .await
-      .map_err(|e| AppError::ExternalService(format!("Failed to parse response: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("Failed to parse response: {}", e)))?;
 
     Ok(
       classify_response

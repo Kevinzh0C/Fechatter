@@ -16,7 +16,7 @@ use crate::{AppError, AppState};
 use anyhow;
 use axum::{
   body::Body,
-  extract::{Multipart, Path, State},
+  extract::{Extension, Multipart, Path},
   http::StatusCode,
   response::{Json, Response},
 };
@@ -56,22 +56,62 @@ async fn get_storage_service(state: &AppState) -> Result<LocalStorage, AppError>
 // HANDLERS - HTTP Coordination Layer (Using Modern Architecture)
 // =============================================================================
 
-/// File Upload Handler
+/// File Upload Handler (Multiple files support)
 ///
 /// **Modern Architecture**: Handler → Application Service → Infrastructure Service
+/// **Frontend Compatibility**: Returns array of file URLs as expected by frontend
 #[utoipa::path(
     post,
     path = "/api/upload",
     request_body(content = String, description = "File data", content_type = "multipart/form-data"),
     responses(
-        (status = 200, description = "File uploaded successfully", body = UploadResponse),
+        (status = 200, description = "Files uploaded successfully", body = Vec<String>),
         (status = 400, description = "Invalid file data"),
         (status = 500, description = "Upload failed")
     ),
     tag = "files"
 )]
 pub async fn upload_handler(
-  State(state): State<AppState>,
+  Extension(state): Extension<AppState>,
+  mut multipart: Multipart,
+) -> Result<Json<Vec<String>>, AppError> {
+  let storage = get_storage_service(&state).await?;
+  let mut uploaded_files = Vec::new();
+
+  while let Some(field) = multipart
+    .next_field()
+    .await
+    .map_err(|e| AppError::AnyError(anyhow::anyhow!("Multipart error: {}", e)))?
+  {
+    // Support both 'file' and 'files' field names
+    if field.name() == Some("file") || field.name() == Some("files") {
+      let filename = field.file_name().unwrap_or("unknown").to_string();
+      let data = field
+        .bytes()
+        .await
+        .map_err(|e| AppError::AnyError(anyhow::anyhow!("Failed to read file data: {}", e)))?
+        .to_vec();
+
+      let file_url = storage.upload(filename, data).await?;
+      uploaded_files.push(file_url);
+    }
+  }
+
+  if uploaded_files.is_empty() {
+    return Err(AppError::InvalidInput(
+      "No files found in request".to_string(),
+    ));
+  }
+
+  // Return array of file URLs as expected by frontend
+  Ok(Json(uploaded_files))
+}
+
+/// Single file upload handler (backward compatibility)
+///
+/// **Legacy Support**: For clients that expect single file response
+pub async fn upload_single_file_handler(
+  Extension(state): Extension<AppState>,
   mut multipart: Multipart,
 ) -> Result<Json<UploadResponse>, AppError> {
   let storage = get_storage_service(&state).await?;
@@ -126,7 +166,7 @@ pub async fn upload_handler(
     tag = "files"
 )]
 pub async fn file_handler(
-  State(state): State<AppState>,
+  Extension(state): Extension<AppState>,
   Path((_workspace_id, file_id)): Path<(i64, String)>,
 ) -> Result<Response<Body>, AppError> {
   // 1. Get storage service
@@ -167,7 +207,7 @@ pub async fn file_handler(
     tag = "files"
 )]
 pub async fn fix_file_storage_handler(
-  State(state): State<AppState>,
+  Extension(state): Extension<AppState>,
   Path(workspace_id): Path<i64>,
 ) -> Result<Json<FileStorageStatus>, AppError> {
   // 1. Get Storage Service (correct architecture)

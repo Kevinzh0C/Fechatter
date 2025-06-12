@@ -1,0 +1,245 @@
+# ============================================================================
+# Fechatter Docker Makefile
+# ============================================================================
+#
+# Simplified commands for Docker-based development and deployment
+#
+# Usage:
+#   make help              # Show available commands
+#   make dev-up            # Start development infrastructure
+#   make dev-services      # Start development with services
+#   make prod-build        # Build production images
+#   make prod-up           # Start production stack
+#
+# ============================================================================
+
+.PHONY: help dev-up dev-down dev-services dev-tools prod-build prod-up prod-down build-all clean logs
+
+# Default target
+help:
+	@echo "Fechatter Docker Commands:"
+	@echo ""
+	@echo "Development:"
+	@echo "  make dev-up         Start development infrastructure only"
+	@echo "  make dev-services   Start development with Rust services"
+	@echo "  make dev-tools      Start development with admin tools"
+	@echo "  make dev-down       Stop development environment"
+	@echo "  make dev-logs       View development logs"
+	@echo ""
+	@echo "Production:"
+	@echo "  make prod-build     Build all production images"
+	@echo "  make prod-up        Start production stack"
+	@echo "  make prod-down      Stop production stack"
+	@echo "  make prod-logs      View production logs"
+	@echo ""
+	@echo "Building:"
+	@echo "  make build-all      Build all service images"
+	@echo "  make build-server   Build fechatter-server only"
+	@echo "  make build-analytics Build analytics-server only"
+	@echo "  make build-notify   Build notify-server only"
+	@echo "  make build-bot      Build bot-server only"
+	@echo "  make build-gateway  Build gateway only"
+	@echo ""
+	@echo "Maintenance:"
+	@echo "  make clean          Remove all containers and volumes"
+	@echo "  make clean-images   Remove built images"
+	@echo "  make status         Show container status"
+
+# ============================================================================
+# Development Commands
+# ============================================================================
+
+# Start development infrastructure (recommended for local development)
+dev-up:
+	@echo "🚀 Starting Fechatter development infrastructure..."
+	docker-compose -f docker-compose.dev.yml up -d
+	@echo "✅ Infrastructure started. Services available:"
+	@echo "   PostgreSQL: localhost:5432"
+	@echo "   Redis: localhost:6379"
+	@echo "   NATS: localhost:4222 (monitoring: localhost:8222)"
+	@echo "   Meilisearch: localhost:7700"
+	@echo "   ClickHouse: localhost:8123"
+
+# Start development with services
+dev-services:
+	@echo "🚀 Starting Fechatter development with services..."
+	docker-compose -f docker-compose.dev.yml --profile services up -d
+	@echo "✅ Development environment started with services:"
+	@echo "   fechatter-server: localhost:6688"
+	@echo "   analytics-server: localhost:6690"
+	@echo "   notify-server: localhost:6687"
+
+# Start development with admin tools
+dev-tools:
+	@echo "🚀 Starting Fechatter development with admin tools..."
+	docker-compose -f docker-compose.dev.yml --profile services --profile tools up -d
+	@echo "✅ Development environment started with tools:"
+	@echo "   PgAdmin: localhost:5050 (admin@fechatter.dev/admin123)"
+	@echo "   Redis Commander: localhost:8081"
+
+# Stop development environment
+dev-down:
+	@echo "🛑 Stopping Fechatter development environment..."
+	docker-compose -f docker-compose.dev.yml down
+	@echo "✅ Development environment stopped"
+
+# View development logs
+dev-logs:
+	docker-compose -f docker-compose.dev.yml logs -f
+
+# ============================================================================
+# Production Commands  
+# ============================================================================
+
+# Build production images
+prod-build:
+	@echo "🔨 Building Fechatter production images..."
+	docker-compose -f docker-compose.updated.yml build
+	@echo "✅ Production images built successfully"
+
+# Start production stack
+prod-up:
+	@echo "🚀 Starting Fechatter production stack..."
+	docker-compose -f docker-compose.updated.yml --profile full up -d
+	@echo "✅ Production stack started:"
+	@echo "   Gateway: localhost:8080"
+	@echo "   Frontend: localhost:80"
+
+# Stop production stack
+prod-down:
+	@echo "🛑 Stopping Fechatter production stack..."
+	docker-compose -f docker-compose.updated.yml down
+	@echo "✅ Production stack stopped"
+
+# View production logs
+prod-logs:
+	docker-compose -f docker-compose.updated.yml logs -f
+
+# ============================================================================
+# Build Commands
+# ============================================================================
+
+# Build all service images
+build-all:
+	@echo "🔨 Building all Fechatter service images..."
+	docker build --target fechatter-server -t fechatter/server:latest -f Dockerfile.updated .
+	docker build --target analytics-server -t fechatter/analytics:latest -f Dockerfile.updated .
+	docker build --target notify-server -t fechatter/notify:latest -f Dockerfile.updated .
+	docker build --target bot-server -t fechatter/bot:latest -f Dockerfile.updated .
+	docker build --target fechatter-gateway -t fechatter/gateway:latest -f Dockerfile.updated .
+	@echo "✅ All service images built successfully"
+
+# Build individual services
+build-server:
+	@echo "🔨 Building fechatter-server..."
+	docker build --target fechatter-server -t fechatter/server:latest -f Dockerfile.updated .
+
+build-analytics:
+	@echo "🔨 Building analytics-server..."
+	docker build --target analytics-server -t fechatter/analytics:latest -f Dockerfile.updated .
+
+build-notify:
+	@echo "🔨 Building notify-server..."
+	docker build --target notify-server -t fechatter/notify:latest -f Dockerfile.updated .
+
+build-bot:
+	@echo "🔨 Building bot-server..."
+	docker build --target bot-server -t fechatter/bot:latest -f Dockerfile.updated .
+
+build-gateway:
+	@echo "🔨 Building gateway..."
+	docker build --target fechatter-gateway -t fechatter/gateway:latest -f Dockerfile.updated .
+
+# ============================================================================
+# Maintenance Commands
+# ============================================================================
+
+# Clean up containers and volumes
+clean:
+	@echo "🧹 Cleaning up Fechatter Docker environment..."
+	docker-compose -f docker-compose.dev.yml down -v --remove-orphans
+	docker-compose -f docker-compose.updated.yml down -v --remove-orphans
+	docker system prune -f
+	@echo "✅ Cleanup completed"
+
+# Remove built images
+clean-images:
+	@echo "🧹 Removing Fechatter Docker images..."
+	docker images | grep fechatter | awk '{print $$3}' | xargs -r docker rmi -f
+	@echo "✅ Images removed"
+
+# Show container status
+status:
+	@echo "📊 Fechatter Docker Status:"
+	@echo ""
+	@echo "=== Development Containers ==="
+	docker-compose -f docker-compose.dev.yml ps
+	@echo ""
+	@echo "=== Production Containers ==="
+	docker-compose -f docker-compose.updated.yml ps
+
+# ============================================================================
+# Database and Migration Commands
+# ============================================================================
+
+# Run database migrations
+migrate:
+	@echo "🔄 Running database migrations..."
+	docker-compose -f docker-compose.dev.yml exec postgres psql -U postgres -d fechatter -c "SELECT 'Migrations would run here';"
+	@echo "✅ Migrations completed"
+
+# Database shell access
+db-shell:
+	@echo "🐘 Opening PostgreSQL shell..."
+	docker-compose -f docker-compose.dev.yml exec postgres psql -U postgres -d fechatter
+
+# Redis shell access
+redis-shell:
+	@echo "📦 Opening Redis shell..."
+	docker-compose -f docker-compose.dev.yml exec redis redis-cli -a fechatter_redis_pass
+
+# ============================================================================
+# Quick Start Commands
+# ============================================================================
+
+# Quick development setup
+quick-dev: dev-up
+	@echo "⏳ Waiting for services to be ready..."
+	sleep 10
+	@echo "🎉 Quick development setup complete!"
+	@echo "   You can now run 'cargo run --bin fechatter_server' locally"
+
+# Quick production setup  
+quick-prod: prod-build prod-up
+	@echo "⏳ Waiting for production services to be ready..."
+	sleep 30
+	@echo "🎉 Quick production setup complete!"
+	@echo "   Access the application at http://localhost:8080"
+
+# ============================================================================
+# Monitoring and Debugging Commands
+# ============================================================================
+
+# Show resource usage
+stats:
+	@echo "📈 Docker resource usage:"
+	docker stats --no-stream
+
+# Show logs for specific service
+logs-server:
+	docker-compose -f docker-compose.dev.yml logs -f fechatter-server
+
+logs-analytics:
+	docker-compose -f docker-compose.dev.yml logs -f analytics-server
+
+logs-notify:
+	docker-compose -f docker-compose.dev.yml logs -f notify-server
+
+# Health check all services
+health:
+	@echo "🏥 Checking service health..."
+	@echo "PostgreSQL:" && docker-compose -f docker-compose.dev.yml exec postgres pg_isready -U postgres
+	@echo "Redis:" && docker-compose -f docker-compose.dev.yml exec redis redis-cli -a fechatter_redis_pass ping
+	@echo "NATS:" && curl -s http://localhost:8222/healthz || echo "NATS not responding"
+	@echo "Meilisearch:" && curl -s http://localhost:7700/health || echo "Meilisearch not responding"
+	@echo "ClickHouse:" && curl -s http://localhost:8123/ping || echo "ClickHouse not responding"

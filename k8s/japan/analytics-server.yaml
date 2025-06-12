@@ -1,0 +1,145 @@
+# Analytics Server - 日本地区优化配置
+# 分析服务，轻量级配置
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-server
+  namespace: fechatter
+  labels:
+    app: analytics-server
+    version: v1
+    region: japan
+spec:
+  replicas: 1  # 分析服务1个副本即可
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: analytics-server
+  template:
+    metadata:
+      labels:
+        app: analytics-server
+        version: v1
+    spec:
+      containers:
+      - name: analytics-server
+        image: ghcr.io/your-org/fechatter/analytics_server:latest
+        ports:
+        - containerPort: 6690
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: REGION
+          value: "japan"
+        - name: TZ
+          valueFrom:
+            configMapKeyRef:
+              name: timezone-config
+              key: TZ
+        - name: DATABASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: database-config
+              key: DATABASE_URL
+        - name: CLICKHOUSE_URL
+          value: "http://clickhouse:8123"
+        - name: NATS_URL
+          value: "nats://nats:4222"
+        - name: RUST_LOG
+          value: "info,analytics_server=debug"
+        # 分析服务特定配置
+        - name: BATCH_SIZE
+          value: "1000"      # 批处理大小
+        - name: FLUSH_INTERVAL
+          value: "60s"       # 60秒刷新间隔
+        - name: MAX_MEMORY_USAGE
+          value: "200MB"     # 最大内存使用
+        - name: WORKER_THREADS
+          value: "2"
+        - name: RETENTION_DAYS
+          value: "90"        # 数据保留90天
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 300m        # 分析服务CPU需求较低
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 6690
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 6690
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-server
+  namespace: fechatter
+  labels:
+    app: analytics-server
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6690
+    targetPort: 6690
+    protocol: TCP
+    name: http
+  selector:
+    app: analytics-server
+---
+# Analytics 服务通常不需要HPA，因为负载相对稳定
+# 如果需要可以添加简单的HPA配置
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: analytics-server-hpa
+  namespace: fechatter
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: analytics-server
+  minReplicas: 1   # 最低1个副本
+  maxReplicas: 3   # 最高3个副本
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 80  # 80% CPU触发扩容
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 85
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 300  # 分析服务扩容更保守
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 300
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 600

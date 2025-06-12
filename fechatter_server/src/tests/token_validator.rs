@@ -9,7 +9,7 @@ mod tests {
   use crate::{
     AppError, AppState,
     config::AppConfig,
-    domains::auth::RefreshTokenAdaptor,
+    domains::auth::RefreshTokenRepositoryImpl,
     models::{User, UserClaims, UserStatus, jwt::TokenManager},
     services::{EventPublisher, service_provider::ServiceProvider},
     verify_token,
@@ -21,7 +21,7 @@ mod tests {
     let config = AppConfig::load()?;
     // Create a mock repository
     let pool = sqlx::PgPool::connect_lazy(&config.server.db_url).unwrap();
-    let refresh_token_repo = Arc::new(RefreshTokenAdaptor::new(Arc::new(pool)));
+    let refresh_token_repo = Arc::new(RefreshTokenRepositoryImpl::new(Arc::new(pool)));
     let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo)?;
 
     let user = User {
@@ -62,7 +62,7 @@ mod tests {
     let config = AppConfig::load()?;
     // Create a mock repository
     let pool = sqlx::PgPool::connect_lazy(&config.server.db_url).unwrap();
-    let refresh_token_repo = Arc::new(RefreshTokenAdaptor::new(Arc::new(pool)));
+    let refresh_token_repo = Arc::new(RefreshTokenRepositoryImpl::new(Arc::new(pool)));
     let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo)?;
 
     let user = User {

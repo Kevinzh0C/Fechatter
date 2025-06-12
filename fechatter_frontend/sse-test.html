@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SSE Gateway Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .info {
+      background-color: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .log {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      padding: 10px;
+      margin: 10px 0;
+      height: 300px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    button:disabled {
+      background-color: #6c757d;
+      cursor: not-allowed;
+    }
+
+    input {
+      padding: 8px;
+      margin: 5px;
+      width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔌 Fechatter SSE Gateway Test</h1>
+
+    <div class="status info">
+      <strong>Gateway URL:</strong> http://127.0.0.1:8080<br>
+      <strong>SSE Endpoint:</strong> /events<br>
+      <strong>Frontend:</strong> http://localhost:1420
+    </div>
+
+    <div>
+      <h3>Step 1: Authentication</h3>
+      <input type="email" id="email" placeholder="Email" value="test@example.com">
+      <input type="password" id="password" placeholder="Password" value="password123">
+      <button onclick="login()">Login</button>
+      <div id="auth-status"></div>
+    </div>
+
+    <div>
+      <h3>Step 2: SSE Connection</h3>
+      <button onclick="connectSSE()" id="connect-btn">Connect SSE</button>
+      <button onclick="disconnectSSE()" id="disconnect-btn" disabled>Disconnect SSE</button>
+      <div id="connection-status"></div>
+    </div>
+
+    <div>
+      <h3>Live Event Log</h3>
+      <div id="event-log" class="log"></div>
+      <button onclick="clearLog()">Clear Log</button>
+    </div>
+  </div>
+
+  <script>
+    let accessToken = null;
+    let eventSource = null;
+    let heartbeatCount = 0;
+    let messageCount = 0;
+
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const logDiv = document.getElementById('event-log');
+      const logEntry = document.createElement('div');
+      logEntry.style.color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'black';
+      logEntry.textContent = `[${timestamp}] ${message}`;
+      logDiv.appendChild(logEntry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function updateStatus(elementId, message, isSuccess = true) {
+      const element = document.getElementById(elementId);
+      element.className = `status ${isSuccess ? 'success' : 'error'}`;
+      element.innerHTML = message;
+    }
+
+    async function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        log('Attempting login...');
+        const response = await fetch('http://127.0.0.1:8080/api/signin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          accessToken = data.data.access_token;
+          updateStatus('auth-status', `✅ Login successful! Token: ${accessToken.substring(0, 20)}...`);
+          log('Login successful!', 'success');
+          document.getElementById('connect-btn').disabled = false;
+        } else {
+          updateStatus('auth-status', `❌ Login failed: ${data.message || 'Unknown error'}`, false);
+          log('Login failed: ' + (data.message || 'Unknown error'), 'error');
+        }
+      } catch (error) {
+        updateStatus('auth-status', `❌ Login error: ${error.message}`, false);
+        log('Login error: ' + error.message, 'error');
+      }
+    }
+
+    function connectSSE() {
+      if (!accessToken) {
+        alert('Please login first!');
+        return;
+      }
+
+      if (eventSource) {
+        eventSource.close();
+      }
+
+      log('Connecting to SSE...');
+      const sseUrl = `http://127.0.0.1:8080/events?access_token=${encodeURIComponent(accessToken)}`;
+
+      eventSource = new EventSource(sseUrl);
+
+      eventSource.onopen = function (event) {
+        log('✅ SSE connection opened!', 'success');
+        updateStatus('connection-status', '✅ Connected to SSE stream');
+        document.getElementById('connect-btn').disabled = true;
+        document.getElementById('disconnect-btn').disabled = false;
+      };
+
+      eventSource.onmessage = function (event) {
+        messageCount++;
+        if (event.data === 'keep-alive') {
+          heartbeatCount++;
+          log(`💓 Heartbeat #${heartbeatCount}: ${event.data}`, 'success');
+        } else {
+          log(`📨 Message #${messageCount}: ${event.data}`);
+        }
+      };
+
+      eventSource.onerror = function (event) {
+        log('❌ SSE connection error', 'error');
+        updateStatus('connection-status', '❌ SSE connection failed', false);
+        document.getElementById('connect-btn').disabled = false;
+        document.getElementById('disconnect-btn').disabled = true;
+      };
+
+      // Listen for specific event types
+      eventSource.addEventListener('NewMessage', function (event) {
+        log(`🆕 NewMessage: ${event.data}`, 'success');
+      });
+
+      eventSource.addEventListener('UserPresence', function (event) {
+        log(`👤 UserPresence: ${event.data}`, 'success');
+      });
+
+      eventSource.addEventListener('TypingStatus', function (event) {
+        log(`⌨️ TypingStatus: ${event.data}`, 'success');
+      });
+    }
+
+    function disconnectSSE() {
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+        log('SSE connection closed');
+        updateStatus('connection-status', '🔴 Disconnected from SSE');
+        document.getElementById('connect-btn').disabled = false;
+        document.getElementById('disconnect-btn').disabled = true;
+      }
+    }
+
+    function clearLog() {
+      document.getElementById('event-log').innerHTML = '';
+      heartbeatCount = 0;
+      messageCount = 0;
+    }
+
+    // Initial log
+    log('SSE Gateway Test Page loaded');
+    log('Ready to test SSE connection through Gateway');
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,327 @@
+# Variables
+# Container tool - use podman by default, can override with: make DOCKER=docker <target>
+DOCKER ?= podman
+DOCKER_COMPOSE ?= podman-compose
+PWD := $(shell pwd)
+RUST_LOG ?= info
+DATABASE_URL ?= postgres://postgres:postgres@localhost:5432/fechatter
+
+# Service names and ports
+SERVICES := fechatter_server notify_server bot_server analytics_server fechatter_gateway
+FECHATTER_PORT := 6688
+NOTIFY_PORT := 6687
+BOT_PORT := 6686
+ANALYTICS_PORT := 6690
+GATEWAY_PORT := 8080
+
+# Docker image names
+IMAGE_PREFIX := fechatter
+TAG ?= latest
+
+# Build target
+BUILD_TARGET := aarch64-unknown-linux-musl
+
+# Colors for output
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+RED := \033[0;31m
+NC := \033[0m # No Color
+
+.PHONY: help
+help: ## Show this help message
+	@echo '${GREEN}Fechatter Project Makefile${NC}'
+	@echo ''
+	@echo 'Usage:'
+	@echo '  ${YELLOW}make${NC} ${GREEN}<target>${NC}'
+	@echo ''
+	@echo 'Targets:'
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  ${YELLOW}%-20s${NC} %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+# Quick build and run commands
+.PHONY: build-all
+build-all: ## Build all services (one command to rule them all)
+	@echo "${GREEN}🚀 Building all Fechatter services...${NC}"
+	@echo "${YELLOW}Using: $(shell which $(DOCKER))${NC}"
+	@$(DOCKER_COMPOSE) build --parallel
+	@echo "${GREEN}✅ All services built successfully!${NC}"
+	@echo ""
+	@echo "${YELLOW}Image sizes:${NC}"
+	@$(DOCKER) images | grep fechatter | sort || true
+
+.PHONY: quick-start
+quick-start: build-all up verify ## Build and start all services (fastest way to get running)
+	@echo "${GREEN}🎉 Fechatter is now running!${NC}"
+	@echo ""
+	@echo "${YELLOW}Services:${NC}"
+	@echo "  Gateway:    http://localhost:8080"
+	@echo "  Fechatter:  http://localhost:6688"
+	@echo "  Notify:     http://localhost:6687"
+	@echo "  Bot:        http://localhost:6686"
+	@echo "  Analytics:  http://localhost:6690"
+	@echo ""
+	@echo "Use '${YELLOW}make logs${NC}' to view logs"
+	@echo "Use '${YELLOW}make down${NC}' to stop services"
+
+.PHONY: rebuild
+rebuild: down build-all up ## Clean rebuild and restart
+
+# Development commands
+.PHONY: dev
+dev: ## Run all services locally (without Docker)
+	@echo "${GREEN}Starting development services...${NC}"
+	@tmux new-session -d -s fechatter "RUST_LOG=$(RUST_LOG) cargo run --bin fechatter_server"
+	@tmux new-window -t fechatter -n notify "RUST_LOG=$(RUST_LOG) cargo run --bin notify_server"
+	@tmux new-window -t fechatter -n bot "RUST_LOG=$(RUST_LOG) OPENAI_API_KEY=$(OPENAI_API_KEY) cargo run --bin bot_server"
+	@tmux new-window -t fechatter -n analytics "RUST_LOG=$(RUST_LOG) cargo run --bin analytics_server"
+	@tmux new-window -t fechatter -n gateway "RUST_LOG=$(RUST_LOG) cargo run --bin fechatter_gateway"
+	@echo "${GREEN}Services started in tmux session 'fechatter'${NC}"
+	@echo "Use 'tmux attach -t fechatter' to view logs"
+
+.PHONY: dev-stop
+dev-stop: ## Stop development services
+	@tmux kill-session -t fechatter 2>/dev/null || echo "${YELLOW}No active session found${NC}"
+
+# Database commands
+.PHONY: db-setup
+db-setup: ## Setup database and run migrations
+	@echo "${GREEN}Setting up database...${NC}"
+	@sqlx database create --database-url $(DATABASE_URL) || true
+	@sqlx migrate run --database-url $(DATABASE_URL)
+
+.PHONY: db-reset
+db-reset: ## Reset database (drop, create, migrate)
+	@echo "${RED}Resetting database...${NC}"
+	@sqlx database drop --database-url $(DATABASE_URL) -y || true
+	@sqlx database create --database-url $(DATABASE_URL)
+	@sqlx migrate run --database-url $(DATABASE_URL)
+
+# Docker build commands
+.PHONY: build-docker
+build-docker: ## Build all Docker images
+	@echo "${GREEN}Building Docker images for $(BUILD_TARGET)...${NC}"
+	@$(DOCKER) build -t $(IMAGE_PREFIX)/gateway:$(TAG) \
+		--build-arg APP_NAME=fechatter_gateway \
+		--build-arg APP_PORT=$(GATEWAY_PORT) .
+	@$(DOCKER) build -t $(IMAGE_PREFIX)/fechatter-server:$(TAG) \
+		--build-arg APP_NAME=fechatter_server \
+		--build-arg APP_PORT=$(FECHATTER_PORT) .
+	@$(DOCKER) build -t $(IMAGE_PREFIX)/notify-server:$(TAG) \
+		--build-arg APP_NAME=notify_server \
+		--build-arg APP_PORT=$(NOTIFY_PORT) .
+	@$(DOCKER) build -t $(IMAGE_PREFIX)/bot-server:$(TAG) \
+		--build-arg APP_NAME=bot_server \
+		--build-arg APP_PORT=$(BOT_PORT) .
+	@$(DOCKER) build -t $(IMAGE_PREFIX)/analytics-server:$(TAG) \
+		--build-arg APP_NAME=analytics_server \
+		--build-arg APP_PORT=$(ANALYTICS_PORT) .
+
+.PHONY: build-docker-%
+build-docker-%: ## Build specific Docker image (e.g., make build-docker-gateway)
+	@echo "${GREEN}Building $* Docker image for $(BUILD_TARGET)...${NC}"
+	@$(DOCKER) build -t $(IMAGE_PREFIX)/$*:$(TAG) \
+		--build-arg APP_NAME=$(subst -,_,$*) \
+		--build-arg APP_PORT=$($(shell echo $* | tr '[:lower:]' '[:upper:]' | tr '-' '_')_PORT) .
+
+# Docker run commands
+.PHONY: run-docker
+run-docker: kill-docker ## Run all services in Docker
+	@echo "${GREEN}Starting Docker containers...${NC}"
+	@$(DOCKER) network create fechatter-net 2>/dev/null || true
+	
+	# Run PostgreSQL
+	@$(DOCKER) run -d --name postgres \
+		--network fechatter-net \
+		-e POSTGRES_PASSWORD=postgres \
+		-e POSTGRES_DB=fechatter \
+		-p 5432:5432 \
+		docker.io/postgres:17
+	
+	# Run Redis
+	@$(DOCKER) run -d --name redis \
+		--network fechatter-net \
+		-p 6379:6379 \
+		docker.io/redis:7-alpine redis-server --appendonly yes --requirepass fechatter_redis_pass
+	
+	# Run NATS
+	@$(DOCKER) run -d --name nats \
+		--network fechatter-net \
+		-p 4222:4222 -p 8222:8222 -p 6222:6222 \
+		-v $(PWD)/nats-jetstream.conf:/etc/nats/nats.conf:ro,Z \
+		docker.io/nats:2.10-alpine -c /etc/nats/nats.conf
+	
+	# Run Meilisearch
+	@$(DOCKER) run -d --name meilisearch \
+		--network fechatter-net \
+		-p 7700:7700 \
+		-e MEILI_MASTER_KEY=fechatter_meili_master_key \
+		-e MEILI_ENV=development \
+		docker.io/getmeili/meilisearch:v1.6
+	
+	# Run ClickHouse
+	@$(DOCKER) run -d --name clickhouse \
+		--network fechatter-net \
+		-p 8123:8123 -p 9000:9000 \
+		-e CLICKHOUSE_DB=fechatter_analytics \
+		docker.io/clickhouse/clickhouse-server:latest
+	
+	# Wait for services
+	@echo "${YELLOW}Waiting for infrastructure services...${NC}"
+	@sleep 10
+	
+	# Run application services
+	@$(DOCKER) run -d --name fechatter \
+		--network fechatter-net \
+		-p $(FECHATTER_PORT):$(FECHATTER_PORT) \
+		-v $(PWD)/fixtures/fechatter.yml:/app/config.yml:ro,Z \
+		-e RUST_LOG=$(RUST_LOG) \
+		-e DATABASE_URL=postgres://postgres:postgres@postgres:5432/fechatter \
+		-e REDIS_URL=redis://:fechatter_redis_pass@redis:6379 \
+		-e NATS_URL=nats://nats:4222 \
+		-e MEILISEARCH_URL=http://meilisearch:7700 \
+		-e MEILI_MASTER_KEY=fechatter_meili_master_key \
+		$(IMAGE_PREFIX)/fechatter-server:$(TAG)
+	
+	@$(DOCKER) run -d --name notify \
+		--network fechatter-net \
+		-p $(NOTIFY_PORT):$(NOTIFY_PORT) \
+		-v $(PWD)/fixtures/notify.yml:/app/config.yml:ro,Z \
+		-e RUST_LOG=$(RUST_LOG) \
+		-e DATABASE_URL=postgres://postgres:postgres@postgres:5432/fechatter \
+		-e REDIS_URL=redis://:fechatter_redis_pass@redis:6379 \
+		-e NATS_URL=nats://nats:4222 \
+		$(IMAGE_PREFIX)/notify-server:$(TAG)
+	
+	@$(DOCKER) run -d --name bot \
+		--network fechatter-net \
+		-p $(BOT_PORT):$(BOT_PORT) \
+		-v $(PWD)/fixtures/bot.yml:/app/config.yml:ro,Z \
+		-e OPENAI_API_KEY=$(OPENAI_API_KEY) \
+		-e RUST_LOG=$(RUST_LOG) \
+		-e DATABASE_URL=postgres://postgres:postgres@postgres:5432/fechatter \
+		-e REDIS_URL=redis://:fechatter_redis_pass@redis:6379 \
+		-e MEILISEARCH_URL=http://meilisearch:7700 \
+		-e MEILI_MASTER_KEY=fechatter_meili_master_key \
+		$(IMAGE_PREFIX)/bot-server:$(TAG)
+	
+	@$(DOCKER) run -d --name analytics \
+		--network fechatter-net \
+		-p $(ANALYTICS_PORT):$(ANALYTICS_PORT) \
+		-v $(PWD)/fixtures/analytics.yml:/app/config.yml:ro,Z \
+		-e RUST_LOG=$(RUST_LOG) \
+		-e DATABASE_URL=postgres://postgres:postgres@postgres:5432/fechatter \
+		-e CLICKHOUSE_URL=clickhouse://clickhouse:9000/fechatter_analytics \
+		-e REDIS_URL=redis://:fechatter_redis_pass@redis:6379 \
+		-e NATS_URL=nats://nats:4222 \
+		$(IMAGE_PREFIX)/analytics-server:$(TAG)
+	
+	@$(DOCKER) run -d --name gateway \
+		--network fechatter-net \
+		-p $(GATEWAY_PORT):$(GATEWAY_PORT) \
+		-v $(PWD)/fixtures/gateway.yml:/app/config.yml:ro,Z \
+		-e RUST_LOG=$(RUST_LOG) \
+		-e JWT_SECRET=your-secret-key-here \
+		-e REDIS_URL=redis://:fechatter_redis_pass@redis:6379 \
+		$(IMAGE_PREFIX)/gateway:$(TAG)
+	
+	@echo "${GREEN}All containers started!${NC}"
+
+.PHONY: kill-docker
+kill-docker: ## Stop and remove all Docker containers
+	@echo "${RED}Stopping Docker containers...${NC}"
+	@$(DOCKER) stop $$($(DOCKER) ps -aq) 2>/dev/null || true
+	@$(DOCKER) rm $$($(DOCKER) ps -aq) 2>/dev/null || true
+	@$(DOCKER) network rm fechatter-net 2>/dev/null || true
+
+# Docker Compose commands
+.PHONY: up
+up: ## Start services with docker-compose
+	@$(DOCKER_COMPOSE) up -d
+
+.PHONY: down
+down: ## Stop services with docker-compose
+	@$(DOCKER_COMPOSE) down
+
+.PHONY: logs
+logs: ## Show logs from all services
+	@$(DOCKER_COMPOSE) logs -f
+
+.PHONY: logs-%
+logs-%: ## Show logs from specific service (e.g., make logs-fechatter)
+	@$(DOCKER) logs -f $* || $(DOCKER_COMPOSE) logs -f $*
+
+# Frontend commands
+.PHONY: frontend-dev
+frontend-dev: ## Start frontend development server
+	@echo "${GREEN}Starting frontend development server...${NC}"
+	@cd fechatter_frontend && yarn dev
+
+.PHONY: frontend-build
+frontend-build: ## Build frontend for production
+	@echo "${GREEN}Building frontend...${NC}"
+	@cd fechatter_frontend && yarn build
+
+# Testing commands
+.PHONY: test
+test: ## Run all tests
+	@echo "${GREEN}Running tests...${NC}"
+	@cargo test --workspace
+
+.PHONY: test-integration
+test-integration: ## Run integration tests
+	@echo "${GREEN}Running integration tests...${NC}"
+	@cargo test --workspace --test '*' -- --test-threads=1
+
+# Utility commands
+.PHONY: fmt
+fmt: ## Format code
+	@cargo fmt --all
+
+.PHONY: lint
+lint: ## Run clippy
+	@cargo clippy --all-targets --all-features -- -D warnings
+
+.PHONY: check
+check: fmt lint test ## Run all checks (format, lint, test)
+
+.PHONY: clean
+clean: ## Clean build artifacts
+	@cargo clean
+	@cd fechatter_frontend && rm -rf node_modules dist
+
+.PHONY: ps
+ps: ## Show running containers
+	@$(DOCKER) ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+.PHONY: stats
+stats: ## Show container resource usage
+	@$(DOCKER) stats --no-stream
+
+.PHONY: verify
+verify: ## Verify system health after startup
+	@echo "${GREEN}Verifying system health...${NC}"
+	@sleep 10  # Wait for services to fully start
+	@./scripts/verify-system.sh
+
+.PHONY: init-db
+init-db: ## Initialize database and run migrations
+	@echo "${GREEN}Initializing database...${NC}"
+	@./scripts/init-db.sh
+
+# Cross compilation
+.PHONY: build-musl
+build-musl: ## Build all binaries for musl target
+	@echo "${GREEN}Building for $(BUILD_TARGET)...${NC}"
+	@cargo build --release --target $(BUILD_TARGET) --workspace
+
+# Alias for backward compatibility
+.PHONY: build-podman
+build-podman: build-docker ## Alias for build-docker (backward compatibility)
+
+.PHONY: run-podman
+run-podman: run-docker ## Alias for run-docker (backward compatibility)
+
+.PHONY: kill-podman
+kill-podman: kill-docker ## Alias for kill-docker (backward compatibility)
+
+# Default target
+.DEFAULT_GOAL := help

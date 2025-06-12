@@ -1,0 +1,50 @@
+# Notify Server Configuration Example
+# This configuration must align with fechatter_server's event publisher settings
+
+server:
+  port: 8081
+  base_dir: "/tmp/notify_server"
+
+messaging:
+  nats:
+    url: "nats://localhost:4222"
+
+    # Subscription subjects must match event_publisher.rs subjects exactly
+    subscription_subjects:
+    - "fechatter.message.created" # For new messages
+    - "fechatter.chat.joined" # For users joining chats
+    - "fechatter.chat.left" # For users leaving chats
+    - "fechatter.message.duplicate" # For duplicate message attempts
+
+    jetstream:
+      stream: "FECHATTER_EVENTS"
+      storage: "file"
+      max_bytes: 1073741824 # 1GB
+      max_age: 24 # hours
+
+      consumers:
+        notification_processor:
+          name: "notify-processor"
+          filter_subjects:
+          - "fechatter.message.created"
+          - "fechatter.chat.joined"
+          - "fechatter.chat.left"
+          - "fechatter.message.duplicate"
+          max_deliver: 3
+          ack_wait: "30s"
+
+# Optional: HMAC signature verification
+security:
+  # Must match the secret used in fechatter_server's event_publisher
+  hmac_secret: "your-shared-secret-key-here"
+  verify_signatures: true
+
+# WebSocket configuration for client connections
+websocket:
+  heartbeat_interval: 30 # seconds
+  max_message_size: 65536 # 64KB
+
+# Logging configuration
+logging:
+  level: "info"
+  format: "json"

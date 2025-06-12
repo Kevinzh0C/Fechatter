@@ -1,0 +1,147 @@
+# Bot Server - 日本地区优化配置
+# AI服务，轻量级配置
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot-server
+  namespace: fechatter
+  labels:
+    app: bot-server
+    version: v1
+    region: japan
+spec:
+  replicas: 1  # AI服务起始1个副本即可
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: bot-server
+  template:
+    metadata:
+      labels:
+        app: bot-server
+        version: v1
+    spec:
+      containers:
+      - name: bot-server
+        image: ghcr.io/your-org/fechatter/bot_server:latest
+        ports:
+        - containerPort: 6686
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: REGION
+          value: "japan"
+        - name: TZ
+          valueFrom:
+            configMapKeyRef:
+              name: timezone-config
+              key: TZ
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: redis-config
+              key: REDIS_URL
+        - name: NATS_URL
+          value: "nats://nats:4222"
+        - name: RUST_LOG
+          value: "info,bot_server=debug"
+        # AI服务特定配置
+        - name: MAX_CONCURRENT_REQUESTS
+          value: "10"        # 最大并发AI请求
+        - name: REQUEST_TIMEOUT
+          value: "30s"       # AI请求超时
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: fechatter-secrets
+              key: openai-api-key
+              optional: true
+        - name: MODEL_NAME
+          value: "gpt-3.5-turbo"  # 使用成本较低的模型
+        - name: MAX_TOKENS
+          value: "500"       # 限制token使用
+        - name: WORKER_THREADS
+          value: "2"
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 600m        # AI服务需要更多CPU
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 6686
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 6686
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bot-server
+  namespace: fechatter
+  labels:
+    app: bot-server
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6686
+    targetPort: 6686
+    protocol: TCP
+    name: http
+  selector:
+    app: bot-server
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: bot-server-hpa
+  namespace: fechatter
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: bot-server
+  minReplicas: 1   # 最低1个副本
+  maxReplicas: 4   # 最高4个副本，AI服务不需要太多
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 75  # 75% CPU触发扩容
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 120  # AI服务扩容较慢
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 120
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 300

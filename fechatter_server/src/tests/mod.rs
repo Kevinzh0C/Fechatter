@@ -2,6 +2,8 @@
 mod auth_service_test;
 #[cfg(test)]
 mod auth_tests;
+#[cfg(test)]
+mod change_password_test;
 // #[cfg(test)]
 // mod chat_member_tests;
 // #[cfg(test)]
