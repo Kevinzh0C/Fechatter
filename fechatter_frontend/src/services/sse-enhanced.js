@@ -295,9 +295,9 @@ class EnhancedRealtimeCommunicationService {
     // 检查是否已永久失败
     if (this.retryControl.permanentFailure) {
       console.error('🔌 SSE Enhanced: Connection permanently failed, refusing to connect');
-      this.emit('permanently_failed', { 
+      this.emit('permanently_failed', {
         totalAttempts: this.retryControl.totalAttempts,
-        consecutiveFailures: this.retryControl.consecutiveFailures 
+        consecutiveFailures: this.retryControl.consecutiveFailures
       });
       return;
     }
@@ -622,21 +622,21 @@ class EnhancedRealtimeCommunicationService {
     this.retryControl.errorTypeHistory.push(errorType);
 
     console.error(`🔌 SSE Enhanced: Connection error (Attempt ${this.retryControl.totalAttempts}/${this.retryControl.maxTotalAttempts}, ` +
-                  `Consecutive failures: ${this.retryControl.consecutiveFailures}/${this.retryControl.maxConsecutiveFailures})`, 
-                  { type: errorType, error });
+      `Consecutive failures: ${this.retryControl.consecutiveFailures}/${this.retryControl.maxConsecutiveFailures})`,
+      { type: errorType, error });
 
     // 先检查是否达到永久失败条件
-    if (this.retryControl.totalAttempts >= this.retryControl.maxTotalAttempts || 
-        this.retryControl.consecutiveFailures >= this.retryControl.maxConsecutiveFailures) {
+    if (this.retryControl.totalAttempts >= this.retryControl.maxTotalAttempts ||
+      this.retryControl.consecutiveFailures >= this.retryControl.maxConsecutiveFailures) {
       this.retryControl.permanentFailure = true;
       console.error('🔌 SSE Enhanced: Maximum retry attempts reached, connection permanently failed');
-      
+
       // 立即关闭EventSource以防止自动重连
       if (this.eventSource) {
         this.eventSource.close();
         this.eventSource = null;
       }
-      
+
       // 使用增强的错误处理器处理永久失败（需要导入）
       try {
         const { errorHandler: importedErrorHandler } = await import('@/utils/errorHandler');
@@ -651,14 +651,14 @@ class EnhancedRealtimeCommunicationService {
       } catch (importError) {
         console.warn('Failed to import enhanced error handler for permanent failure');
       }
-      
+
       this.isConnected = false;
       this.connectionState = 'permanently_failed';
       this.stopHeartbeat();
-      this.emit('permanently_failed', { 
+      this.emit('permanently_failed', {
         totalAttempts: this.retryControl.totalAttempts,
         consecutiveFailures: this.retryControl.consecutiveFailures,
-        errorTypeHistory: this.retryControl.errorTypeHistory 
+        errorTypeHistory: this.retryControl.errorTypeHistory
       });
       return; // 立即返回，不再尝试重连
     }
@@ -1064,13 +1064,18 @@ class EnhancedRealtimeCommunicationService {
    * 处理页面可见性变化
    */
   handleVisibilityChange() {
-    if (document.hidden) {
-      // 页面隐藏 - 设置为away状态
-      this.sendPresenceUpdate('away');
-    } else {
-      // 页面可见 - 设置为online状态
-      this.sendPresenceUpdate('online');
+    // Occam's Razor: Don't change presence based on tab visibility
+    // Modern chat apps don't mark users as away just for switching tabs
 
+    // Old logic that was too aggressive:
+    // if (document.hidden) {
+    //   this.sendPresenceUpdate('away');
+    // } else {
+    //   this.sendPresenceUpdate('online');
+    // }
+
+    // Only check connection when page becomes visible
+    if (!document.hidden) {
       // 页面重新可见时，检查连接状态
       if (!this.isConnected && this.networkStatus.isOnline) {
         console.log('👁️ [SSE] Page visible again, checking connection...');
@@ -1084,6 +1089,7 @@ class EnhancedRealtimeCommunicationService {
    * 处理窗口获得焦点
    */
   handleWindowFocus() {
+    // Keep user online when window gains focus
     this.sendPresenceUpdate('online');
   }
 
@@ -1091,12 +1097,15 @@ class EnhancedRealtimeCommunicationService {
    * 处理窗口失去焦点
    */
   handleWindowBlur() {
-    // 短暂延迟后设置为away，避免快速切换
-    setTimeout(() => {
-      if (!document.hasFocus()) {
-        this.sendPresenceUpdate('away');
-      }
-    }, 2000); // 增加延迟到2秒
+    // Occam's Razor: Don't set away when user switches windows
+    // They might be multitasking or referencing other documents
+
+    // Disabled aggressive away detection:
+    // setTimeout(() => {
+    //   if (!document.hasFocus()) {
+    //     this.sendPresenceUpdate('away');
+    //   }
+    // }, 2000);
   }
 
   /**

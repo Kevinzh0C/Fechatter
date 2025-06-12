@@ -1,0 +1,26 @@
+server:
+  port: 6687
+  host: "0.0.0.0"
+
+database:
+  postgres_url: ${DATABASE_URL}
+
+redis:
+  url: ${REDIS_URL}
+  pool_size: 10
+
+messaging:
+  enabled: ${MESSAGING_ENABLED:-false}
+  provider: "nats"
+  nats_url: ${NATS_URL:-}
+
+sse:
+  enabled: true
+  heartbeat_interval_seconds: 30
+  max_connections_per_user: 5
+
+observability:
+  log_level: ${RUST_LOG:-info}
+  log_format: "json"
+  metrics_enabled: true
+  metrics_port: 9093

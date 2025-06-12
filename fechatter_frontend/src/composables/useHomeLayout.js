@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useChatStore } from '@/stores/chat';
 import { useWorkspaceStore } from '@/stores/workspace';
-import realtimeCommunicationService from '@/services/sse';
+import realtimeCommunicationService from '@/services/sse-minimal';
 import channelPreloaderService from '@/services/channel-preloader';
 import api from '@/services/api';
 
@@ -187,38 +187,27 @@ export function useHomeLayout() {
 
   // 🔌 SSE连接管理
   const connectSSE = async () => {
-    const authStore = useAuthStore();
-    const token = authStore.token;
+    // Import authStateManager for single source of truth
+    const { default: authStateManager } = await import('@/utils/authStateManager');
+    const authState = authStateManager.getAuthState();
 
-    if (!token) {
+    if (!authState.token) {
       console.warn('🔌 [HOME] No authentication token available for SSE connection');
       return false;
     }
 
     // 检查是否已经连接
-    const currentState = realtimeCommunicationService.getConnectionState();
-    if (currentState.isConnected || currentState.connectionState === 'connecting') {
-      console.log('🔌 [HOME] SSE already connected or connecting, skipping');
+    const currentState = realtimeCommunicationService.getStatus();
+    if (currentState.connected) {
+      console.log('🔌 [HOME] SSE already connected, skipping');
       return true;
     }
 
     try {
-      console.log('🔌 [HOME] Initializing configuration for SSE...');
-      // Import configuration system
-      const { getConfig, initializeConfig } = await import('@/utils/configLoader');
-
-      // Ensure configuration is loaded
-      let config = getConfig();
-      if (!config) {
-        console.log('🔌 [HOME] Initializing configuration for SSE...');
-        await initializeConfig();
-        config = getConfig();
-      }
-
       console.log('🔌 [HOME] Connecting to real-time communication service...');
-      await realtimeCommunicationService.connect(authStore.token);
+      realtimeCommunicationService.connect(authState.token);
 
-      console.log('✅ [HOME] Real-time communication connected successfully');
+      console.log('✅ [HOME] Real-time communication connected');
       return true;
     } catch (error) {
       console.error('❌ [HOME] Real-time communication failed:', error);
@@ -331,10 +320,12 @@ export function useHomeLayout() {
 
   // 🔌 获取SSE连接状态
   const getSSEStatus = () => {
-    const connectionState = realtimeCommunicationService.getConnectionState();
+    const connectionState = realtimeCommunicationService.getStatus();
     sseConnectionState.value = {
-      ...sseConnectionState.value,
-      ...connectionState
+      isConnected: connectionState.connected,
+      latency: null,
+      reconnectAttempts: connectionState.retries,
+      connectionType: 'SSE'
     };
     return sseConnectionState.value;
   };
@@ -511,36 +502,114 @@ export function useHomeLayout() {
     }
   };
 
-  // Lifecycle - optimized initialization
-  onMounted(() => {
-    // Check authentication using a more lenient approach
-    // Only check for token existence, not user data
-    if (!authStore.token || authStore.isTokenExpired) {
-      console.warn('🏠 [HOME] No valid token found, redirecting to login');
-      console.warn('🔍 [HOME] Debug info:', {
-        hasToken: !!authStore.token,
-        isTokenExpired: authStore.isTokenExpired,
-        isAuthenticated: authStore.isAuthenticated,
-        hasUser: !!authStore.user,
-        tokenValue: authStore.token ? authStore.token.substring(0, 20) + '...' : 'null'
-      });
+  // Lifecycle - optimized initialization with async auth repair
+  onMounted(async () => {
+    console.log('🏠 [HOME] Starting home layout initialization...');
+
+    // Enhanced authentication check with async repair capability
+    const authCheck = await performEnhancedAuthCheck();
+
+    if (!authCheck.isValid) {
+      console.warn('🏠 [HOME] Authentication check failed:', authCheck.reason);
+      console.warn('🔍 [HOME] Debug info:', authCheck.debugInfo);
 
       router.push('/login');
       return;
     }
 
-    // If we have a token but no user data yet, that's OK
-    // The auth store initialization will handle loading user data
-    if (!authStore.user && authStore.token) {
-      // Continue with loading - user data will be available soon
-    }
+    console.log('✅ [HOME] Authentication check passed');
 
     // Start loading immediately with optimized strategy
     transition({ type: 'LOAD' });
 
-    // 设置SSE事件监听器
+    // Setup SSE event listeners
     setupSSEListeners();
   });
+
+  // Enhanced authentication check with async repair
+  const performEnhancedAuthCheck = async () => {
+    try {
+      // Import authStateManager for single source of truth
+      const { default: authStateManager } = await import('@/utils/authStateManager');
+
+      // Get current auth state from single source of truth
+      const authState = authStateManager.getAuthState();
+
+      console.log('🔍 [HOME] Auth state check:', {
+        hasUser: authState.hasUser,
+        isAuthenticated: authState.isAuthenticated,
+        hasToken: authState.hasToken,
+        userEmail: authState.user?.email
+      });
+
+      // Simple rule: No token = Not authenticated
+      if (!authState.isAuthenticated) {
+        return {
+          isValid: false,
+          reason: 'User not authenticated',
+          debugInfo: authState
+        };
+      }
+
+      // Ensure auth store is initialized
+      if (!authStore.isInitialized) {
+        console.log('🔧 [HOME] Auth store not initialized, initializing...');
+        const initResult = await authStore.initialize();
+
+        if (!initResult) {
+          return {
+            isValid: false,
+            reason: 'Failed to initialize auth store',
+            debugInfo: authState
+          };
+        }
+      }
+
+      // Final check - everything should be in sync now
+      const finalState = authStateManager.getAuthState();
+      if (finalState.isAuthenticated) {
+        console.log('✅ [HOME] Authentication verified');
+        return { isValid: true };
+      }
+
+      return {
+        isValid: false,
+        reason: 'Authentication state invalid after initialization',
+        debugInfo: finalState
+      };
+
+    } catch (error) {
+      console.error('❌ [HOME] Error during enhanced auth check:', error);
+      return {
+        isValid: false,
+        reason: 'Error during enhanced authentication check',
+        debugInfo: { error: error.message }
+      };
+    }
+  };
+
+  // Simplified authentication check function - for non-token issues
+  const performSimpleAuthCheck = async () => {
+    try {
+      // Import authStateManager for single source of truth
+      const { default: authStateManager } = await import('@/utils/authStateManager');
+      const authState = authStateManager.getAuthState();
+
+      // Simple check based on single source of truth
+      return {
+        isValid: authState.isAuthenticated,
+        reason: authState.isAuthenticated ? 'Authenticated' : 'Not authenticated',
+        debugInfo: authState
+      };
+    } catch (error) {
+      console.error('❌ [HOME] Error during simple auth check:', error);
+      return {
+        isValid: false,
+        reason: 'Error during authentication check',
+        debugInfo: { error: error.message }
+      };
+    }
+  };
 
   onUnmounted(() => {
     // 清理SSE事件监听器

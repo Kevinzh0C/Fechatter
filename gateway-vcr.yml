@@ -1,0 +1,494 @@
+# Gateway Configuration for Fechatter VCR Deployment - Complete API Coverage with CORS
+# Production-ready gateway with full upstream API mapping and cross-origin support
+
+server:
+  listen_addr: "0.0.0.0:8080"
+  worker_threads: 4
+  max_connections: 10000
+  keepalive_timeout: 60
+  request_timeout: 30
+
+upstreams:
+  fechatter-server:
+    servers:
+    - "fechatter-server-vcr:6688"
+    health_check:
+      interval: 30
+      timeout: 5
+      path: "/health"
+      expected_status: [ 200 ]
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+    load_balancing: "RoundRobin"
+
+  notify-server:
+    servers:
+    - "notify-server-vcr:6687"
+    health_check:
+      interval: 30
+      timeout: 5
+      path: "/health"
+      expected_status: [ 200 ]
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+    load_balancing: "RoundRobin"
+
+  analytics-server:
+    servers:
+    - "analytics-server-vcr:6690"
+    health_check:
+      interval: 30
+      timeout: 5
+      path: "/health"
+      expected_status: [ 200 ]
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+    load_balancing: "RoundRobin"
+
+  bot-server:
+    servers:
+    - "bot-server-vcr:6686"
+    health_check:
+      interval: 30
+      timeout: 5
+      path: "/health"
+      expected_status: [ 200 ]
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+    load_balancing: "RoundRobin"
+
+routes:
+# ============================================================================
+# HEALTH CHECK ENDPOINTS
+# ============================================================================
+
+# Gateway's own health check (internal)
+- path: "/gateway/health"
+  methods: [ "GET" ]
+  upstream: "fechatter-server"
+  cors_enabled: false
+
+# Main health checks with CORS support for development
+- path: "/health"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/health/readiness"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# ============================================================================
+# AUTHENTICATION & USER MANAGEMENT - Production-grade CORS support
+# ============================================================================
+
+# Public authentication endpoints (no auth required)
+- path: "/api/signup"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://localhost:3000"
+  - "http://localhost:5173"
+  - "http://127.0.0.1:1420"
+  - "http://127.0.0.1:3000"
+
+- path: "/api/signin"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://localhost:3000"
+  - "http://localhost:5173"
+  - "http://127.0.0.1:1420"
+  - "http://127.0.0.1:3000"
+
+- path: "/api/refresh"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# Authenticated logout endpoints
+- path: "/api/logout"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/logout-all"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# User profile management
+- path: "/api/users/profile"
+  methods: [ "GET", "PUT", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/users/change-password"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# User profile by ID (admin access)
+- path: "/api/users/{user_id}/profile"
+  methods: [ "GET", "PUT", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# User presence status
+- path: "/api/presence/status"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# ============================================================================
+# FILE MANAGEMENT - Complete CORS support
+# ============================================================================
+
+# File upload endpoints
+- path: "/api/upload"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/files/single"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# File access and management
+- path: "/api/files/"
+  methods: [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# Workspace file management
+- path: "/api/workspaces/"
+  methods: [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# ============================================================================
+# SEARCH FUNCTIONALITY - Production-ready search with CORS
+# ============================================================================
+
+# Global search endpoints
+- path: "/api/search/messages"
+  methods: [ "GET", "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/search/suggestions"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# Chat-specific search
+- path: "/api/chat/{id}/messages/search"
+  methods: [ "GET", "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# Admin search operations
+- path: "/api/admin/chat/{id}/reindex"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# ============================================================================
+# WORKSPACE MANAGEMENT - Enterprise-grade workspace features
+# ============================================================================
+
+# Workspace chats
+- path: "/api/workspace/chats"
+  methods: [ "GET", "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# ============================================================================
+# CHAT MANAGEMENT - Real-time chat with full CORS support
+# ============================================================================
+
+# Individual chat operations
+- path: "/api/chat/{id}"
+  methods: [ "GET", "PATCH", "DELETE", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# Chat member management
+- path: "/api/chat/{id}/members"
+  methods: [ "GET", "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# Chat message operations
+- path: "/api/chat/{id}/messages"
+  methods: [ "GET", "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# Message receipts and status
+- path: "/api/messages/{message_id}/receipts"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/chat/{id}/messages/{message_id}/read"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# ============================================================================
+# REALTIME FEATURES - WebSocket and SSE with CORS support
+# ============================================================================
+
+# User presence
+- path: "/api/realtime/presence"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# Typing indicators
+- path: "/api/chat/{id}/typing/start"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/chat/{id}/typing/stop"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/chat/{id}/typing/users"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# ============================================================================
+# CACHE MANAGEMENT - Performance optimization with CORS
+# ============================================================================
+
+- path: "/api/cache/stats"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/cache/config"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# ============================================================================
+# ANALYTICS SERVER ROUTES - Data collection and analysis
+# ============================================================================
+
+# Event collection endpoints
+- path: "/api/event"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "analytics-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/api/batch"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "analytics-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# Analytics monitoring (no auth required)
+- path: "/metrics"
+  methods: [ "GET" ]
+  upstream: "analytics-server"
+  cors_enabled: false
+
+- path: "/ready"
+  methods: [ "GET" ]
+  upstream: "analytics-server"
+  cors_enabled: false
+
+- path: "/live"
+  methods: [ "GET" ]
+  upstream: "analytics-server"
+  cors_enabled: false
+
+# Analytics endpoints with /analytics prefix for external access
+- path: "/analytics/health"
+  methods: [ "GET" ]
+  upstream: "analytics-server"
+  cors_enabled: false
+
+# ============================================================================
+# NOTIFICATION SERVER ROUTES - Real-time notifications and SSE
+# ============================================================================
+
+# Authenticated notification endpoints
+- path: "/online-users"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "notify-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+- path: "/sse/health"
+  methods: [ "GET" ]
+  upstream: "notify-server"
+  cors_enabled: false
+
+# Server-Sent Events (SSE) endpoints - Critical for real-time features
+- path: "/events"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "notify-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://localhost:3000"
+  - "http://localhost:5173"
+  - "http://127.0.0.1:1420"
+  - "http://127.0.0.1:3000"
+
+# Notification server monitoring
+- path: "/notify/ready"
+  methods: [ "GET" ]
+  upstream: "notify-server"
+  cors_enabled: false
+
+- path: "/notify/live"
+  methods: [ "GET" ]
+  upstream: "notify-server"
+  cors_enabled: false
+
+# ============================================================================
+# BOT SERVER ROUTES - AI-powered chat assistance
+# ============================================================================
+
+- path: "/api/bot/"
+  methods: [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ]
+  upstream: "bot-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# ============================================================================
+# WEBSOCKET ENDPOINTS - Real-time bidirectional communication
+# ============================================================================
+
+- path: "/ws"
+  methods: [ "GET" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# ============================================================================
+# FALLBACK ROUTES (Must be last!)
+# ============================================================================
+
+# Catch-all API routes for fechatter-server
+- path: "/api/"
+  methods: [ "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+
+# Note: Root path "/" is handled directly by Gateway code
+# CORS configuration provides production-grade cross-origin support for development 

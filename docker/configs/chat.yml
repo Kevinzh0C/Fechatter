@@ -4,7 +4,7 @@
 # Server configuration
 server:
   port: 6688
-  db_url: "postgresql://fechatter_user:fechatter_pass@postgres:5432/fechatter_db"
+  db_url: "postgresql://fechatter:fechatter_password@postgres:5432/fechatter"
   base_dir: "/app/data"
   max_upload_size: 10485760 # 10MB
   request_timeout_ms: 30000

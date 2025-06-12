@@ -1,0 +1,94 @@
+FROM alpine:3.20 AS runtime-base
+
+RUN apk add --no-cache \
+    ca-certificates \
+    openssl \
+    libgcc \
+    curl \
+    tini \
+    tzdata \
+    && rm -rf /var/cache/apk/*
+
+RUN adduser -D -s /bin/sh -u 1001 appuser && \
+    mkdir -p /app/uploads /app/logs /app/config /app/data && \
+    chown -R appuser:appuser /app && \
+    chmod 755 /app && \
+    chmod 750 /app/config
+
+ENTRYPOINT ["/sbin/tini", "--"]
+
+FROM runtime-base AS fechatter-server
+COPY fechatter_server /usr/local/bin/fechatter_server
+COPY migrations /app/migrations
+
+RUN chmod +x /usr/local/bin/fechatter_server && \
+    chown appuser:appuser /usr/local/bin/fechatter_server
+
+USER appuser
+WORKDIR /app
+EXPOSE 6688
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:6688/health || exit 1
+
+CMD ["/usr/local/bin/fechatter_server"]
+
+FROM runtime-base AS analytics-server
+COPY analytics_server /usr/local/bin/analytics_server
+
+RUN chmod +x /usr/local/bin/analytics_server && \
+    chown appuser:appuser /usr/local/bin/analytics_server
+
+USER appuser
+WORKDIR /app
+EXPOSE 6690
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:6690/health || exit 1
+
+CMD ["/usr/local/bin/analytics_server"]
+
+FROM runtime-base AS notify-server
+COPY notify_server /usr/local/bin/notify_server
+
+RUN chmod +x /usr/local/bin/notify_server && \
+    chown appuser:appuser /usr/local/bin/notify_server
+
+USER appuser
+WORKDIR /app
+EXPOSE 6687
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:6687/health || exit 1
+
+CMD ["/usr/local/bin/notify_server"]
+
+FROM runtime-base AS bot-server
+COPY bot /usr/local/bin/bot_server
+
+RUN chmod +x /usr/local/bin/bot_server && \
+    chown appuser:appuser /usr/local/bin/bot_server
+
+USER appuser
+WORKDIR /app
+EXPOSE 6686
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:6686/health || exit 1
+
+CMD ["/usr/local/bin/bot_server"]
+
+FROM runtime-base AS fechatter-gateway
+COPY fechatter_gateway /usr/local/bin/fechatter_gateway
+
+RUN chmod +x /usr/local/bin/fechatter_gateway && \
+    chown appuser:appuser /usr/local/bin/fechatter_gateway
+
+USER appuser
+WORKDIR /app
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+CMD ["/usr/local/bin/fechatter_gateway"] 

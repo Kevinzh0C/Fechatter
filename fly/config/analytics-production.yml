@@ -1,0 +1,36 @@
+server:
+  port: 6690
+  host: "0.0.0.0"
+
+database:
+  postgres_url: ${DATABASE_URL}
+
+clickhouse:
+  enabled: ${CLICKHOUSE_ENABLED:-false}
+  host: ${CLICKHOUSE_HOST:-}
+  port: ${CLICKHOUSE_PORT:-8123}
+  database: ${CLICKHOUSE_DATABASE:-fechatter_analytics}
+  user: ${CLICKHOUSE_USER:-default}
+  password: ${CLICKHOUSE_PASSWORD:-}
+  url: ${CLICKHOUSE_URL:-}
+
+messaging:
+  enabled: ${MESSAGING_ENABLED:-false}
+  provider: "nats"
+  nats_url: ${NATS_URL:-}
+
+observability:
+  log_level: ${RUST_LOG:-info}
+  log_format: "json"
+  metrics_enabled: true
+  metrics_port: 9092
+
+features:
+  batch_processing:
+    enabled: true
+    batch_size: 1000
+    flush_interval_seconds: 30
+
+  storage:
+    fallback_to_postgres: true
+    postgres_table: "analytics_events"

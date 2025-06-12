@@ -217,7 +217,8 @@ impl SyncCacheAdapter {
 
     // 1. First try in-memory cache (no async/sync boundary)
     if let Some(entry) = self.memory_cache.get(&cache_key) {
-      let (cached_json, timestamp) = entry.value();
+      let value = entry.value();
+      let (cached_json, timestamp) = (&value.0, &value.1);
       if timestamp.elapsed().as_secs() < 300 {
         // 5-minute TTL
         match serde_json::from_value::<Vec<ChatSidebar>>(cached_json.clone()) {
