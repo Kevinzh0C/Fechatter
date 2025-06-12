@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { resolve } from "path";
 import viteShikiPlugin from "./vite-plugin-shiki.js";
+import { fileURLToPath } from 'url'
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -13,13 +14,13 @@ export default defineConfig(async () => ({
       theme: 'dark',
       lineNumbers: true,
       cache: true
-    })
+    }),
   ],
 
   // Path aliases
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
+      '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
 
@@ -29,28 +30,39 @@ export default defineConfig(async () => ({
   clearScreen: false,
   // 2. tauri expects a fixed port, fail if that port is not available
   server: {
-    port: 1420,
+    port: 5173,
     strictPort: true,
     host: host || false,
+    open: true,
+    cors: true,
 
-    // 关键：添加代理来解决CORS问题 - 统一通过Gateway
+    // Complete proxy configuration to solve CORS issues - unified through remote Gateway
     proxy: {
-      // API代理到Gateway (统一入口)
+      // API代理到远程Gateway (统一入口)
       '/api': {
-        target: 'http://localhost:8080', // Gateway地址
+        target: 'http://45.77.178.85:8080',
         changeOrigin: true,
+        secure: false,
         // 不需要rewrite，保持/api前缀
       },
-      // 文件服务代理到Gateway  
-      '/files': {
-        target: 'http://localhost:8080', // Gateway地址
+      // Health check proxy
+      '/health': {
+        target: 'http://45.77.178.85:8080',
         changeOrigin: true,
+        secure: false,
+      },
+      // 文件服务代理到远程Gateway  
+      '/files': {
+        target: 'http://45.77.178.85:8080',
+        changeOrigin: true,
+        secure: false,
         // 不需要rewrite，保持/files前缀
       },
-      // SSE事件代理到Gateway
+      // SSE事件代理到远程Gateway
       '/events': {
-        target: 'http://localhost:8080', // Gateway地址 
+        target: 'http://45.77.178.85:8080',
         changeOrigin: true,
+        secure: false,
         // 不需要rewrite，保持/events前缀
         configure: (proxy, options) => {
           proxy.on('error', (err, req, res) => {
@@ -62,20 +74,26 @@ export default defineConfig(async () => ({
           });
         }
       },
-      // 保留旧的sse-proxy以兼容（但现在也指向Gateway）
-      '/sse-proxy': {
-        target: 'http://localhost:8080', // Gateway地址，不再直接连接notify_server
+      // 通知服务代理到远程Gateway
+      '/notify': {
+        target: 'http://45.77.178.85:8080',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/sse-proxy/, ''), // 移除代理前缀
-        configure: (proxy, options) => {
-          proxy.on('error', (err, req, res) => {
-            console.error('Proxy error:', err);
-            res.writeHead(500, {
-              'Content-Type': 'text/plain',
-            });
-            res.end('Something went wrong with the proxy.');
-          });
-        }
+        secure: false,
+        // 不需要rewrite，保持/notify前缀
+      },
+      // 在线用户代理到远程Gateway  
+      '/online-users': {
+        target: 'http://45.77.178.85:8080',
+        changeOrigin: true,
+        secure: false,
+        // 不需要rewrite，保持/online-users前缀
+      },
+      // 通用代理 - 处理其他可能的端点
+      '/ws': {
+        target: 'http://45.77.178.85:8080',
+        changeOrigin: true,
+        secure: false,
+        ws: true, // Enable WebSocket proxying
       }
     },
 
@@ -91,4 +109,17 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
+
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-vue': ['vue', 'vue-router', 'pinia'],
+          'vendor-utils': ['axios', 'date-fns']
+        }
+      }
+    }
+  }
 }));

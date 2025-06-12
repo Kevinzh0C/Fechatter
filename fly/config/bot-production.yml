@@ -1,0 +1,30 @@
+server:
+  port: 6686
+  host: "0.0.0.0"
+
+database:
+  postgres_url: ${DATABASE_URL}
+
+redis:
+  url: ${REDIS_URL}
+
+messaging:
+  enabled: ${MESSAGING_ENABLED:-false}
+  provider: "nats"
+  nats_url: ${NATS_URL:-}
+
+search:
+  enabled: ${SEARCH_ENABLED:-false}
+  provider: "meilisearch"
+  meilisearch_url: ${MEILISEARCH_URL:-}
+  meilisearch_api_key: ${MEILISEARCH_KEY:-}
+
+ai:
+  openai_api_key: ${OPENAI_API_KEY:-}
+  rag_enabled: ${RAG_ENABLED:-false}
+
+observability:
+  log_level: ${RUST_LOG:-info}
+  log_format: "json"
+  metrics_enabled: true
+  metrics_port: 9094

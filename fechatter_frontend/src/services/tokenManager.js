@@ -76,7 +76,7 @@ class TokenManager {
   /**
    * Set tokens (called by auth store)
    */
-  setTokens(tokenData) {
+  async setTokens(tokenData) {
     const now = Date.now();
 
     this.tokens = {
@@ -86,6 +86,17 @@ class TokenManager {
       issuedAt: tokenData.issuedAt || now,
       absoluteExpiry: tokenData.absoluteExpiry || (now + (30 * 24 * 60 * 60 * 1000)), // 30 days
     };
+
+    // Sync with authStateManager
+    try {
+      const { default: authStateManager } = await import('@/utils/authStateManager');
+      const currentState = authStateManager.getAuthState();
+
+      // Update token in authStateManager while preserving user
+      authStateManager.setAuthState(tokenData.accessToken, currentState.user);
+    } catch (error) {
+      console.error('Failed to sync with authStateManager:', error);
+    }
 
     // Reset refresh state
     this.state.refreshFailureCount = 0;
@@ -247,6 +258,18 @@ class TokenManager {
       this.tokens.absoluteExpiry = result.absoluteExpiry || (now + (30 * 24 * 60 * 60 * 1000));
     }
 
+    // Sync refreshed token with authStateManager
+    try {
+      const { default: authStateManager } = await import('@/utils/authStateManager');
+      const currentState = authStateManager.getAuthState();
+
+      // Update token in authStateManager while preserving user
+      authStateManager.setAuthState(result.accessToken, currentState.user);
+      console.log('✅ Token refreshed and synced with authStateManager');
+    } catch (error) {
+      console.error('Failed to sync refreshed token with authStateManager:', error);
+    }
+
     this.state.lastRefreshTime = now;
 
     // Schedule next refresh
@@ -381,7 +404,7 @@ class TokenManager {
   /**
    * Clear tokens
    */
-  clearTokens() {
+  async clearTokens() {
     this.tokens = {
       accessToken: null,
       refreshToken: null,
@@ -389,6 +412,14 @@ class TokenManager {
       issuedAt: null,
       absoluteExpiry: null,
     };
+
+    // Sync with authStateManager
+    try {
+      const { default: authStateManager } = await import('@/utils/authStateManager');
+      authStateManager.clearAuthState();
+    } catch (error) {
+      console.error('Failed to sync clear with authStateManager:', error);
+    }
 
     // Clear timers
     if (this.state.refreshTimer) {

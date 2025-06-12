@@ -1,0 +1,47 @@
+[Unit]
+Description=Fechatter Gateway - High Performance API Gateway
+Documentation=https://github.com/yourusername/fechatter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=fechatter
+Group=fechatter
+WorkingDirectory=/opt/fechatter/gateway
+
+# Environment configuration
+Environment="RUST_LOG=info,fechatter_gateway=debug,pingora=info"
+Environment="GATEWAY_ENV=production"
+EnvironmentFile=-/etc/fechatter/gateway.env
+
+# Use the supervisor script for automatic restart
+ExecStart=/opt/fechatter/gateway/scripts/gateway-supervisor.sh
+
+# Restart policy
+Restart=always
+RestartSec=10
+StartLimitInterval=600
+StartLimitBurst=5
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/fechatter
+ReadWritePaths=/var/cache/fechatter
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+MemoryMax=2G
+CPUQuota=200%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=fechatter-gateway
+
+[Install]
+WantedBy=multi-user.target

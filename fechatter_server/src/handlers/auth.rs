@@ -49,8 +49,11 @@ fn set_refresh_token_cookie(
 ) -> Result<(), AppError> {
   let mut cookie = Cookie::new("refresh_token", token_str.to_string());
   cookie.set_http_only(true);
+  
+  // Fix for development environment - use Lax instead of None to avoid browser security warnings
+  // In development (HTTP), SameSite=None requires Secure=true which we can't set
   cookie.set_secure(false);
-  cookie.set_same_site(Some(SameSite::None));
+  cookie.set_same_site(Some(SameSite::Lax)); // Changed from None to Lax for HTTP environments
   cookie.set_path("/");
 
   let now = Utc::now();
@@ -86,8 +89,10 @@ fn set_refresh_token_cookie(
 fn clear_refresh_token_cookie(headers: &mut HeaderMap) -> Result<(), AppError> {
   let mut cookie = Cookie::new("refresh_token", "");
   cookie.set_http_only(true);
+  
+  // Fix for development environment - use Lax instead of None to avoid browser security warnings
   cookie.set_secure(false);
-  cookie.set_same_site(Some(SameSite::None));
+  cookie.set_same_site(Some(SameSite::Lax)); // Changed from None to Lax for HTTP environments
   cookie.set_path("/");
 
   let cookie_str = format!(

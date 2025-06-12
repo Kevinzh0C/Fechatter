@@ -1,0 +1,16 @@
+{
+  "data": {
+    "chat_type": "Single",
+    "created_at": "2025-06-14T15:36:31.503166Z",
+    "created_by": 2,
+    "description": "Private chat between Super and Admin",
+    "id": 1,
+    "last_activity": "2025-06-14T15:36:31.503166Z",
+    "member_count": 2,
+    "name": "Super-Admin Chat",
+    "updated_at": "2025-06-14T15:36:31.503166Z",
+    "workspace_id": 2
+  },
+  "message": "Chat created successfully",
+  "success": true
+}

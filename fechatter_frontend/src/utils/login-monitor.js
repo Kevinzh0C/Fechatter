@@ -6,7 +6,7 @@ export class LoginFlowMonitor {
     this.eventId = 0;
     this.interceptors = new Map();
     this.storeWatchers = new Map();
-    
+
     // 监控配置
     this.config = {
       logToConsole: true,
@@ -17,7 +17,7 @@ export class LoginFlowMonitor {
       monitorNetwork: true,
       monitorDOM: true
     };
-    
+
     // 事件类型样式
     this.eventStyles = {
       USER_ACTION: 'background: #4fc3f7; color: #000; padding: 2px 5px; border-radius: 3px;',
@@ -29,29 +29,29 @@ export class LoginFlowMonitor {
       VALIDATION: 'background: #ffc107; color: #000; padding: 2px 5px; border-radius: 3px;'
     };
   }
-  
+
   // 开始监控
   start() {
     this.startTime = Date.now();
     this.events = [];
     this.eventId = 0;
-    
+
     console.log('%c🔍 Login Flow Monitor Started', 'font-weight: bold; font-size: 14px;');
     this.logEvent('MONITOR_START', { timestamp: new Date().toISOString() });
-    
+
     // 设置拦截器
     if (this.config.monitorNetwork) {
       this.setupNetworkInterceptors();
     }
-    
+
     // 监听DOM事件
     if (this.config.monitorDOM) {
       this.setupDOMListeners();
     }
-    
+
     return this;
   }
-  
+
   // 记录事件
   logEvent(type, data = {}, status = 'info') {
     const event = {
@@ -63,9 +63,9 @@ export class LoginFlowMonitor {
       elapsed: this.startTime ? Date.now() - this.startTime : 0,
       stackTrace: this.config.captureStackTrace ? this.getStackTrace() : null
     };
-    
+
     this.events.push(event);
-    
+
     // 输出到控制台
     if (this.config.logToConsole) {
       const style = this.eventStyles[type] || 'background: #666; color: #fff; padding: 2px 5px;';
@@ -75,29 +75,29 @@ export class LoginFlowMonitor {
         'color: #666; font-size: 11px;',
         data
       );
-      
+
       if (status === 'error') {
         console.error('Error details:', data);
       }
     }
-    
+
     // 发送到服务器
     if (this.config.logToServer) {
       this.sendToServer(event);
     }
-    
+
     // 触发自定义事件
     window.dispatchEvent(new CustomEvent('login-monitor-event', { detail: event }));
-    
+
     return event;
   }
-  
+
   // 监控Pinia Store
   monitorStore(store, storeName) {
     if (!this.config.monitorStore) return;
-    
+
     console.log(`%c🏪 Monitoring ${storeName} store`, 'color: #9c27b0;');
-    
+
     // 监控actions
     const originalActions = {};
     Object.keys(store).forEach(key => {
@@ -109,10 +109,10 @@ export class LoginFlowMonitor {
             action: key,
             args: args.map(arg => this.sanitizeData(arg))
           });
-          
+
           try {
             const result = originalActions[key].apply(store, args);
-            
+
             // 如果是Promise，监控其结果
             if (result && typeof result.then === 'function') {
               return result
@@ -133,7 +133,7 @@ export class LoginFlowMonitor {
                   throw err;
                 });
             }
-            
+
             return result;
           } catch (error) {
             this.logEvent('STORE_ACTION_ERROR', {
@@ -146,7 +146,7 @@ export class LoginFlowMonitor {
         };
       }
     });
-    
+
     // 监控state变化
     store.$subscribe((mutation, state) => {
       this.logEvent('STORE_UPDATE', {
@@ -156,16 +156,16 @@ export class LoginFlowMonitor {
         stateAfter: this.sanitizeData(state)
       });
     });
-    
+
     this.storeWatchers.set(storeName, store);
   }
-  
+
   // 监控Vue Router
   monitorRouter(router) {
     if (!this.config.monitorRouter) return;
-    
+
     console.log('%c🛣️ Monitoring Router', 'color: #2196f3;');
-    
+
     // 监控路由守卫
     router.beforeEach((to, from, next) => {
       this.logEvent('ROUTE_BEFORE_EACH', {
@@ -174,7 +174,7 @@ export class LoginFlowMonitor {
         params: to.params,
         query: to.query
       });
-      
+
       // 包装next函数以监控其调用
       const wrappedNext = (arg) => {
         if (arg === false) {
@@ -184,16 +184,16 @@ export class LoginFlowMonitor {
         }
         next(arg);
       };
-      
+
       // 返回原始守卫的结果
       const guardResult = next;
       if (guardResult && typeof guardResult.then === 'function') {
         return guardResult.then(wrappedNext);
       }
-      
+
       return wrappedNext;
     });
-    
+
     router.afterEach((to, from) => {
       this.logEvent('ROUTE_CHANGE', {
         from: from.path,
@@ -201,7 +201,7 @@ export class LoginFlowMonitor {
         duration: Date.now() - this.startTime
       });
     });
-    
+
     router.onError(error => {
       this.logEvent('ROUTE_ERROR', {
         error: error.message,
@@ -209,7 +209,7 @@ export class LoginFlowMonitor {
       }, 'error');
     });
   }
-  
+
   // 设置网络拦截器
   setupNetworkInterceptors() {
     // Axios拦截器
@@ -220,7 +220,7 @@ export class LoginFlowMonitor {
           const requestId = Date.now();
           config._requestId = requestId;
           config._requestTime = Date.now();
-          
+
           this.logEvent('API_REQUEST', {
             id: requestId,
             method: config.method.toUpperCase(),
@@ -229,7 +229,7 @@ export class LoginFlowMonitor {
             data: this.sanitizeData(config.data),
             headers: this.sanitizeHeaders(config.headers)
           });
-          
+
           return config;
         },
         error => {
@@ -239,12 +239,12 @@ export class LoginFlowMonitor {
           return Promise.reject(error);
         }
       );
-      
+
       // 响应拦截器
       window.axios.interceptors.response.use(
         response => {
           const duration = Date.now() - (response.config._requestTime || 0);
-          
+
           this.logEvent('API_RESPONSE', {
             id: response.config._requestId,
             status: response.status,
@@ -253,12 +253,12 @@ export class LoginFlowMonitor {
             data: this.sanitizeData(response.data),
             headers: response.headers
           });
-          
+
           return response;
         },
         error => {
           const duration = Date.now() - (error.config?._requestTime || 0);
-          
+
           this.logEvent('API_RESPONSE_ERROR', {
             id: error.config?._requestId,
             status: error.response?.status,
@@ -267,19 +267,19 @@ export class LoginFlowMonitor {
             error: error.message,
             data: error.response?.data
           }, 'error');
-          
+
           return Promise.reject(error);
         }
       );
     }
-    
+
     // Fetch拦截器
     const originalFetch = window.fetch;
     window.fetch = async (...args) => {
       const [url, config = {}] = args;
       const requestId = Date.now();
       const startTime = Date.now();
-      
+
       this.logEvent('API_REQUEST', {
         id: requestId,
         method: (config.method || 'GET').toUpperCase(),
@@ -287,11 +287,11 @@ export class LoginFlowMonitor {
         headers: this.sanitizeHeaders(config.headers),
         body: config.body ? this.sanitizeData(JSON.parse(config.body)) : undefined
       });
-      
+
       try {
         const response = await originalFetch(...args);
         const duration = Date.now() - startTime;
-        
+
         // 克隆响应以读取body
         const clonedResponse = response.clone();
         let responseData;
@@ -300,7 +300,7 @@ export class LoginFlowMonitor {
         } catch {
           responseData = await clonedResponse.text();
         }
-        
+
         this.logEvent('API_RESPONSE', {
           id: requestId,
           status: response.status,
@@ -309,22 +309,22 @@ export class LoginFlowMonitor {
           data: this.sanitizeData(responseData),
           headers: Object.fromEntries(response.headers.entries())
         }, response.ok ? 'info' : 'error');
-        
+
         return response;
       } catch (error) {
         const duration = Date.now() - startTime;
-        
+
         this.logEvent('API_RESPONSE_ERROR', {
           id: requestId,
           duration,
           error: error.message
         }, 'error');
-        
+
         throw error;
       }
     };
   }
-  
+
   // 设置DOM监听器
   setupDOMListeners() {
     // 监听表单提交
@@ -335,7 +335,7 @@ export class LoginFlowMonitor {
       formData.forEach((value, key) => {
         data[key] = key.toLowerCase().includes('password') ? '***' : value;
       });
-      
+
       this.logEvent('FORM_SUBMIT', {
         formId: form.id,
         formName: form.name,
@@ -344,7 +344,7 @@ export class LoginFlowMonitor {
         data
       });
     }, true);
-    
+
     // 监听按钮点击
     document.addEventListener('click', (e) => {
       const target = e.target;
@@ -357,7 +357,7 @@ export class LoginFlowMonitor {
         });
       }
     }, true);
-    
+
     // 监听输入焦点
     document.addEventListener('focus', (e) => {
       const target = e.target;
@@ -370,7 +370,7 @@ export class LoginFlowMonitor {
         });
       }
     }, true);
-    
+
     // 监听输入变化
     let inputTimeout;
     document.addEventListener('input', (e) => {
@@ -389,16 +389,16 @@ export class LoginFlowMonitor {
       }
     }, true);
   }
-  
+
   // 清理敏感数据
   sanitizeData(data) {
     if (!data) return data;
-    
+
     const sensitiveKeys = ['password', 'token', 'secret', 'key', 'auth'];
-    
+
     if (typeof data === 'object') {
       const sanitized = Array.isArray(data) ? [] : {};
-      
+
       for (const key in data) {
         if (data.hasOwnProperty(key)) {
           const lowerKey = key.toLowerCase();
@@ -411,34 +411,34 @@ export class LoginFlowMonitor {
           }
         }
       }
-      
+
       return sanitized;
     }
-    
+
     return data;
   }
-  
+
   // 清理请求头
   sanitizeHeaders(headers) {
     if (!headers) return headers;
-    
+
     const sanitized = { ...headers };
     const sensitiveHeaders = ['authorization', 'cookie', 'x-auth-token'];
-    
+
     Object.keys(sanitized).forEach(key => {
       if (sensitiveHeaders.includes(key.toLowerCase())) {
         sanitized[key] = '***REDACTED***';
       }
     });
-    
+
     return sanitized;
   }
-  
+
   // 获取调用栈
   getStackTrace() {
     const stack = new Error().stack;
     if (!stack) return null;
-    
+
     const lines = stack.split('\n');
     // 过滤掉monitor相关的调用栈
     return lines
@@ -446,11 +446,14 @@ export class LoginFlowMonitor {
       .slice(0, 5)
       .join('\n');
   }
-  
+
   // 发送到服务器
   async sendToServer(event) {
     try {
-      const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8080/api';
+      // Get API config
+      const { getApiConfig } = await import('@/utils/configLoader');
+      const apiConfig = getApiConfig();
+      const baseURL = import.meta.env.VITE_API_BASE_URL || apiConfig.base_url || '/api';
       await fetch(`${baseURL}/monitor/events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -460,7 +463,7 @@ export class LoginFlowMonitor {
       console.error('Failed to send event to server:', error);
     }
   }
-  
+
   // 生成报告
   generateReport() {
     const report = {
@@ -476,27 +479,27 @@ export class LoginFlowMonitor {
       apiCalls: [],
       storeUpdates: []
     };
-    
+
     // 统计事件类型
     this.events.forEach(event => {
       report.eventCounts[event.type] = (report.eventCounts[event.type] || 0) + 1;
-      
+
       if (event.status === 'error') {
         report.errors.push(event);
       }
-      
+
       if (event.type.startsWith('API_')) {
         report.apiCalls.push(event);
       }
-      
+
       if (event.type.startsWith('STORE_')) {
         report.storeUpdates.push(event);
       }
     });
-    
+
     return report;
   }
-  
+
   // 下载报告
   downloadReport() {
     const report = this.generateReport();
@@ -508,22 +511,22 @@ export class LoginFlowMonitor {
     a.click();
     URL.revokeObjectURL(url);
   }
-  
+
   // 在控制台显示摘要
   showSummary() {
     const report = this.generateReport();
-    
+
     console.group('%c📊 Login Flow Summary', 'font-size: 16px; font-weight: bold;');
     console.log(`Duration: ${report.summary.duration}ms`);
     console.log(`Total Events: ${report.summary.totalEvents}`);
     console.log(`Errors: ${report.errors.length}`);
-    
+
     console.group('Event Counts:');
     Object.entries(report.eventCounts).forEach(([type, count]) => {
       console.log(`${type}: ${count}`);
     });
     console.groupEnd();
-    
+
     if (report.errors.length > 0) {
       console.group('%c❌ Errors:', 'color: red;');
       report.errors.forEach(error => {
@@ -531,10 +534,10 @@ export class LoginFlowMonitor {
       });
       console.groupEnd();
     }
-    
+
     console.groupEnd();
   }
-  
+
   // 清除事件
   clear() {
     this.events = [];

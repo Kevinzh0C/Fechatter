@@ -1,0 +1,156 @@
+server:
+  port: 6688
+  db_url: "ENV_DATABASE_URL_PLACEHOLDER"
+  base_dir: "/data/uploads"
+  max_upload_size: 10485760
+  request_timeout_ms: 30000
+  analytics:
+    enabled: true # Enabled - with ClickHouse support
+    endpoint: "http://fechatter-clickhouse.flycast:8123"
+    batch_size: 100
+    flush_interval_seconds: 30
+    timeout_seconds: 10
+    use_grpc: false
+
+  # Production CORS configuration
+  cors:
+    enabled: true
+    allow_origins:
+    - "https://*.fly.dev"
+    - "https://localhost:*"
+    - "https://fechatter.vercel.app"
+    allow_methods: [ "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS" ]
+    allow_headers: [ "Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin" ]
+    allow_credentials: true
+    max_age: 3600
+
+auth:
+  sk: |
+    -----BEGIN PRIVATE KEY-----
+    MC4CAQAwBQYDK2VwBCIEIP/S+etN7RQJctehWKkdjgnrtQ0AUDIMkCnYS4Zk8RFR
+    -----END PRIVATE KEY-----
+  pk: |
+    -----BEGIN PUBLIC KEY-----
+    MCowBQYDK2VwAyEAMnnmEdL53E3O5UTdVW/VEs9qT6To/48iU7jWpKuVb2c=
+    -----END PUBLIC KEY-----
+  token_expiration: 86400
+  refresh_token_expiration: 2592000
+
+# Production feature configurations - OPTIMIZED FOR SINGLE SERVICE
+features:
+  # Cache settings - ENABLED with Fly Redis
+  cache:
+    enabled: true
+    redis_url: "redis://fechatter-redis.flycast:6379"
+    key_prefix: "fechatter"
+    default_ttl: 3600
+    pool_size: 10
+    connection_timeout_ms: 5000
+
+  # Search functionality - ENABLED with MeiliSearch
+  search:
+    enabled: true
+    provider: "meilisearch"
+    meilisearch_url: "http://fechatter-meilisearch.flycast:7700"
+    meilisearch_api_key: "fechatter_search_master_key_production_2024"
+    async_indexing: true
+    batch_size: 100
+
+  # Messaging/Events - ENABLED with NATS
+  messaging:
+    enabled: true
+    provider: "nats"
+    nats_url: "nats://fechatter-nats.flycast:4222"
+    jetstream_enabled: true
+
+  # Message Service Configuration - SIMPLIFIED
+  message_service:
+    max_concurrent_sends_per_chat: 10
+    send_timeout_seconds: 30
+    cache_timeout_ms: 500
+    event_publish_timeout_seconds: 5
+    stream_publish_timeout_seconds: 5
+    enable_detailed_tracing: false
+    max_retry_attempts: 3
+    retry_backoff_base_ms: 100
+
+  # Notifications - ENABLED with realtime support
+  notifications:
+    in_app_enabled: true
+    realtime_enabled: true # Enabled - with NATS support
+    max_per_user: 100
+    retention_days: 30
+    email_enabled: false
+    smtp_host: ""
+    smtp_port: 587
+    smtp_username: ""
+    smtp_password: ""
+    from_email: "noreply@fechatter.fly.dev"
+    from_name: "Fechatter"
+    use_tls: false
+
+  # Production observability
+  observability:
+    log_level: "info"
+    log_format: "json"
+    log_to_file: true
+    log_file_path: "/data/logs/fechatter.log"
+    metrics_enabled: true
+    metrics_bind_address: "0.0.0.0:9091"
+    tracing_enabled: true
+    service_name: "fechatter-server"
+    service_version: "0.1.0"
+    environment: "production"
+
+  # Rate limiting for production
+  rate_limiting:
+    enabled: true
+    window_seconds: 60
+    max_requests: 1000
+    sliding_window: true
+    strategy: "UserBased"
+
+# ENABLED messaging - full service mode
+messaging:
+  enabled: true
+  provider: "nats"
+  nats:
+    url: "nats://fechatter-nats.flycast:4222"
+    auth:
+      enabled: false
+    subjects:
+      message_created: "fechatter.messages.created"
+      message_updated: "fechatter.messages.updated"
+      message_deleted: "fechatter.messages.deleted"
+      chat_created: "fechatter.chats.created"
+      chat_updated: "fechatter.chats.updated"
+      chat_deleted: "fechatter.chats.deleted"
+      user_joined_chat: "fechatter.chats.member.joined"
+      user_left_chat: "fechatter.chats.member.left"
+
+# ENABLED search - full service mode
+search:
+  enabled: true
+  provider: "meilisearch"
+  async_indexing:
+    enabled: true
+    batch_size: 10
+    batch_timeout_ms: 1000
+  meilisearch:
+    url: "http://fechatter-meilisearch.flycast:7700"
+    api_key: "fechatter_search_master_key_production_2024"
+    connection_timeout_ms: 2000
+    request_timeout_ms: 3000
+
+# ENABLED analytics - full service mode
+analytics:
+  enabled: true
+  clickhouse:
+    url: "http://fechatter-clickhouse.flycast:8123"
+    database: "fechatter_analytics"
+    username: "default"
+    password: ""
+    connection_timeout_ms: 5000
+    request_timeout_ms: 10000
+  batch_size: 100
+  flush_interval_seconds: 30

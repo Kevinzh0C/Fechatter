@@ -290,6 +290,7 @@ import DiscordAvatar from './DiscordAvatar.vue';
 import DiscordMarkdown from './DiscordMarkdown.vue';
 import ImageViewer from '@/components/common/ImageViewer.vue';
 import { useChatStore } from '@/stores/chat';
+import { getUserColor } from '@/utils/userAvatarHelper';
 
 const props = defineProps({
   message: {
@@ -395,18 +396,6 @@ const formattedTime = computed(() => {
     });
   }
 });
-
-// Discord风格的用户颜色
-const discordColors = [
-  '#f23f43', '#f0b232', '#23a55a', '#5865f2', '#eb459e',
-  '#3ba55c', '#faa61a', '#ed4245', '#9146ff', '#00d4aa'
-];
-
-const getUserColor = (sender) => {
-  if (!sender || !sender.id) return '#5865f2';
-  const index = sender.id % discordColors.length;
-  return discordColors[index];
-};
 
 const getUserStatus = (userId) => {
   // 这里可以从在线用户状态获取

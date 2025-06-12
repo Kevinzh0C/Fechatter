@@ -88,7 +88,7 @@ function getErrorType(error) {
   }
 
   const status = error.response?.status;
-  
+
   // 根据HTTP状态码判断
   switch (status) {
     case 401:
@@ -114,9 +114,9 @@ function getErrorType(error) {
  */
 function getErrorMessage(error, type) {
   // 优先使用后端返回的错误消息
-  const backendMessage = error.response?.data?.message || 
-                        error.response?.data?.error?.message ||
-                        error.response?.data?.error;
+  const backendMessage = error.response?.data?.message ||
+    error.response?.data?.error?.message ||
+    error.response?.data?.error;
 
   if (backendMessage && typeof backendMessage === 'string') {
     return backendMessage;
@@ -142,7 +142,7 @@ export class ErrorHandler {
   initialize() {
     // 延迟获取 notifications，避免循环依赖
     this.notifications = useNotifications();
-    
+
     // 设置全局错误处理
     if (typeof window !== 'undefined') {
       window.addEventListener('unhandledrejection', this.handleUnhandledRejection.bind(this));
@@ -150,65 +150,74 @@ export class ErrorHandler {
   }
 
   /**
-   * 处理SSE重试相关错误
-   * @param {Error} error - 错误对象
-   * @param {Object} retryInfo - 重试信息
+   * Show notification to user
+   * @param {string} message - Notification message
+   * @param {string} type - Notification type ('success', 'info', 'warning', 'error')
+   * @param {Object} options - Additional notification options
    */
-  handleSSERetryError(error, retryInfo = {}) {
-    const {
-      totalAttempts = 0,
-      maxTotalAttempts = 0,
-      consecutiveFailures = 0,
-      maxConsecutiveFailures = 0,
-      errorTypeHistory = [],
-      context = 'SSE Connection'
-    } = retryInfo;
-
-    const errorType = getErrorType(error);
-    const isRetryLimitReached = totalAttempts >= maxTotalAttempts || 
-                               consecutiveFailures >= maxConsecutiveFailures;
-
-    // 详细日志记录
-    console.group(`🔌 [${context}] Retry Error Analysis`);
-    console.error('Error Details:', {
-      type: errorType,
-      message: error.message,
-      totalAttempts,
-      maxTotalAttempts,
-      consecutiveFailures,
-      maxConsecutiveFailures,
-      retryLimitReached: isRetryLimitReached,
-      errorTypeHistory: errorTypeHistory.slice(-5) // 最近5次错误类型
-    });
-    
-    if (errorTypeHistory.length > 0) {
-      const errorTypeCounts = errorTypeHistory.reduce((acc, type) => {
-        acc[type] = (acc[type] || 0) + 1;
-        return acc;
-      }, {});
-      console.log('Error Type Distribution:', errorTypeCounts);
+  showNotification(message, type = 'info', options = {}) {
+    // Ensure notifications are initialized
+    if (!this.notifications) {
+      this.notifications = useNotifications();
     }
-    
-    console.groupEnd();
 
-    // 根据重试状态调整处理方式
-    const options = {
-      context,
-      silent: totalAttempts > 2 && !isRetryLimitReached, // 前2次显示，达到限制时总是显示
-      log: true
+    // If still not available, fallback to console
+    if (!this.notifications) {
+      console.log(`[NOTIFICATION ${type.toUpperCase()}] ${message}`);
+      return;
+    }
+
+    // Map notification types to appropriate methods
+    const notificationMethods = {
+      success: this.notifications.notifySuccess,
+      info: this.notifications.notifyInfo,
+      warning: this.notifications.notifyWarning,
+      error: this.notifications.notifyError
     };
 
-    if (isRetryLimitReached) {
-      // 创建特殊的重试限制错误
-      const retryLimitError = new Error(`SSE连接已达到最大重试次数(${totalAttempts}次)，请刷新页面重试`);
-      return this.handle(retryLimitError, {
-        ...options,
-        silent: false, // 重试限制错误总是显示
-        onRetry: () => window.location.reload()
-      });
-    }
+    // Default title mapping
+    const defaultTitles = {
+      success: 'Success',
+      info: 'Information',
+      warning: 'Warning',
+      error: 'Error'
+    };
 
-    return this.handle(error, options);
+    const notifyMethod = notificationMethods[type] || notificationMethods.info;
+    const title = options.title || defaultTitles[type] || defaultTitles.info;
+
+    // Call the appropriate notification method
+    if (notifyMethod) {
+      notifyMethod(message, {
+        title,
+        duration: options.duration,
+        actions: options.actions,
+        ...options
+      });
+    } else {
+      // Fallback to console if method not found
+      console.log(`[NOTIFICATION ${type.toUpperCase()}] ${title}: ${message}`);
+    }
+  }
+
+  /**
+   * 处理SSE重试相关错误 - 简化版本
+   * Following Occam's Razor: Less logging, more user focus
+   */
+  handleSSERetryError(error, retryInfo = {}) {
+    // Progressive Disclosure: Only show what matters to users
+    const userMessage = "实时消息连接暂时中断";
+
+    // One Screen Rule: Simple, unobtrusive notification
+    this.showNotification('info', userMessage, {
+      duration: 3000,
+      closable: true
+    });
+
+    // YAGNI: Remove complex logging in production
+    if (import.meta.env.DEV) {
+      console.log('SSE retry limit reached');
+    }
   }
 
   /**
@@ -251,7 +260,7 @@ export class ErrorHandler {
     // 显示用户提示
     if (!silent && this.notifications) {
       const { notifyError } = this.notifications;
-      
+
       notifyError(message, errorInfo.title, {
         duration: errorType === ErrorTypes.SSE_RETRY_LIMIT ? 10000 : 5000, // 重试限制错误显示更久
         actions: onRetry ? [{
@@ -300,7 +309,7 @@ export class ErrorHandler {
   handleAuthError() {
     // 避免重复跳转
     if (window.location.pathname === '/login') return;
-    
+
     // 清理认证状态
     const keysToRemove = ['auth_token', 'refresh_token', 'user'];
     keysToRemove.forEach(key => {
@@ -319,7 +328,7 @@ export class ErrorHandler {
    */
   handleUnhandledRejection(event) {
     console.error('Unhandled promise rejection:', event.reason);
-    
+
     // 在开发环境显示错误
     if (process.env.NODE_ENV !== 'production') {
       this.handle(event.reason, {
@@ -345,12 +354,12 @@ export class ErrorHandler {
       errorCaptured(error, instance, info) {
         this.hasError = true;
         this.error = error;
-        
+
         errorHandler.handle(error, {
           context: `Component: ${component.name}`,
           silent: false
         });
-        
+
         // 阻止错误继续传播
         return false;
       },
@@ -367,7 +376,7 @@ export class ErrorHandler {
             }, 'Retry')
           ]);
         }
-        
+
         return h(WrappedComponent, this.$attrs);
       }
     };
@@ -379,26 +388,26 @@ export class ErrorHandler {
   withRetry(fn, maxRetries = 3, delay = 1000) {
     return async (...args) => {
       let lastError;
-      
+
       for (let i = 0; i < maxRetries; i++) {
         try {
           return await fn(...args);
         } catch (error) {
           lastError = error;
-          
+
           // 不重试认证错误和权限错误
           const errorType = getErrorType(error);
           if ([ErrorTypes.AUTH, ErrorTypes.PERMISSION, ErrorTypes.VALIDATION].includes(errorType)) {
             throw error;
           }
-          
+
           // 最后一次尝试不等待
           if (i < maxRetries - 1) {
             await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
           }
         }
       }
-      
+
       throw lastError;
     };
   }

@@ -2,10 +2,10 @@ import axios from 'axios';
 import { getApiConfig, isDebugEnabled } from '@/utils/configLoader';
 import tokenManager from '@/services/tokenManager';
 
-// 默认配置 - 在配置加载之前使用
+// 默认配置 - 通过vite代理访问，避免CORS
 const defaultConfig = {
-  baseURL: 'http://127.0.0.1:8080/api',      // 通过Gateway
-  sseURL: 'http://127.0.0.1:6687/events',      // 临时直连notify-server绕过Gateway路由问题
+  baseURL: '/api',           // 通过vite代理
+  sseURL: '/events',         // 通过vite代理
   timeout: 30000,
   enableDebug: true,
   maxRetries: 3,
@@ -123,11 +123,13 @@ api.interceptors.request.use(
       return config;
     }
 
-    // 添加认证令牌 - 使用 Token Manager
+    // 添加认证令牌 - 使用 authStateManager 作为真相源
     if (!config.headers.Authorization) {
-      const token = tokenManager.getAccessToken();
+      // Import authStateManager as single source of truth
+      const { default: authStateManager } = await import('@/utils/authStateManager');
+      const authState = authStateManager.getAuthState();
 
-      if (token) {
+      if (authState.token) {
         // Check if token needs refresh before making request
         if (tokenManager.shouldRefreshToken() && !tokenManager.state.isRefreshing) {
           try {
@@ -137,10 +139,10 @@ api.interceptors.request.use(
           }
         }
 
-        // Get potentially updated token
-        const currentToken = tokenManager.getAccessToken();
-        if (currentToken) {
-          config.headers.Authorization = `Bearer ${currentToken}`;
+        // Get potentially updated token from authStateManager
+        const updatedAuthState = authStateManager.getAuthState();
+        if (updatedAuthState.token) {
+          config.headers.Authorization = `Bearer ${updatedAuthState.token}`;
           if (getConfig().enableDebug) {
             console.log('🔑 Added auth token to request', {
               url: config.url,
@@ -233,6 +235,15 @@ async function handleAuthFailure(error) {
     return Promise.reject(error);
   }
 
+  // Check if already on login/register page to prevent redirect loops
+  const currentPath = window.location.pathname;
+  if (currentPath === '/login' || currentPath === '/register') {
+    console.log('🔐 [AUTH] Already on auth page, skipping logout redirect');
+    // Clear tokens but don't redirect
+    tokenManager.clearTokens();
+    return Promise.reject(error);
+  }
+
   // Clear auth and redirect
   try {
     const { useAuthStore } = await import('@/stores/auth');
@@ -242,9 +253,7 @@ async function handleAuthFailure(error) {
     console.error('Failed to logout:', logoutError);
     // Fallback: clear tokens and redirect
     tokenManager.clearTokens();
-    if (window.location.pathname !== '/login') {
-      window.location.href = '/login';
-    }
+    window.location.href = '/login';
   }
 
   return Promise.reject(error);
@@ -385,10 +394,8 @@ export const networkStatus = {
 // 健康检查函数
 export const healthCheck = async () => {
   try {
-    const config = getConfig();
-    const healthUrl = `${config.baseURL.replace('/api', '')}/health`; // 通过Gateway访问健康检查
-
-    const response = await axios.get(healthUrl, {
+    // 通过vite代理访问健康检查端点
+    const response = await axios.get('/health', {
       timeout: 5000,
       headers: {
         'Content-Type': 'application/json',

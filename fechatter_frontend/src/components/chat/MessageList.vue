@@ -33,25 +33,15 @@
       <!-- 🔒 消息列表：绝对稳定的布局 -->
       <div v-else class="messages-stable" ref="messagesContainer">
         <!-- 🔒 超稳定消息项：固定尺寸，防止偏移 -->
-        <div
-          v-for="message in displayedMessages" 
-          :key="`msg-${message.id || message.temp_id}`"
-          :data-message-id="message.id || message.temp_id"
-          class="message-wrapper-stable"
-          :class="{ 
+        <div v-for="message in displayedMessages" :key="getMessageKey(message)"
+          :data-message-id="message.id || message.temp_id" class="message-wrapper-stable" :class="{
             'new-message': isNewMessage(message),
             'optimistic': message.isOptimistic,
             'failed': message.status === 'failed',
             'confirmed': message.status === 'confirmed'
-          }"
-        >
-          <MessageItem 
-            :message="message"
-            :current-user-id="currentUserId"
-            :chat-id="chatId"
-            @user-profile-opened="handleUserProfileOpened"
-            @dm-created="handleDMCreated"
-          />
+          }">
+          <MessageItem :message="message" :current-user-id="currentUserId" :chat-id="chatId"
+            @user-profile-opened="handleUserProfileOpened" @dm-created="handleDMCreated" />
         </div>
       </div>
     </div>
@@ -62,6 +52,7 @@
 import { ref, nextTick, watch, onMounted, onUnmounted, computed } from 'vue';
 import MessageItem from './MessageItem.vue';
 import { useChatStore } from '@/stores/chat';
+import { useMessageKeys } from '@/utils/messageKeyManager';
 
 const props = defineProps({
   messages: {
@@ -86,6 +77,7 @@ const props = defineProps({
 const emit = defineEmits(['reply-message', 'user-profile-opened', 'dm-created', 'load-more-messages']);
 
 const chatStore = useChatStore();
+const { getKey: getMessageKey, clearKeys } = useMessageKeys();
 
 // 组件引用
 const scrollContainer = ref(null);
@@ -119,8 +111,10 @@ const displayedMessages = computed(() => {
     newMessageIds.value.clear();
     currentChatId.value = props.chatId;
     lastMessageCount.value = props.messages.length;
+    // Clear message keys for new chat
+    clearKeys(props.chatId);
   }
-  
+
   // 🔒 稳定的新消息标记：避免频繁DOM操作
   if (props.messages.length > lastMessageCount.value) {
     const newMessages = props.messages.slice(lastMessageCount.value);
@@ -136,7 +130,7 @@ const displayedMessages = computed(() => {
     });
     lastMessageCount.value = props.messages.length;
   }
-  
+
   return props.messages;
 });
 
@@ -149,11 +143,11 @@ const handleChatSwitch = () => {
   isUserScrolling.value = false;
   newMessageIds.value.clear();
   lastScrollTop.value = 0;
-  
+
   // 🔒 无动画切换：直接设置，避免任何中间状态
   container.style.opacity = '1';
   container.style.transform = 'none';
-  
+
   // 🔒 立即滚动：无过渡，无动画
   nextTick(() => {
     scrollToBottomStable(false, true);
@@ -177,16 +171,16 @@ const isNewMessage = (message) => {
 const handleScrollStable = () => {
   const container = scrollContainer.value;
   if (!container) return;
-  
+
   const scrollTop = container.scrollTop;
   const scrollHeight = container.scrollHeight;
   const clientHeight = container.clientHeight;
-  
+
   // 🔒 防抖处理：减少计算频率
   if (scrollDebounceTimeout) {
     clearTimeout(scrollDebounceTimeout);
   }
-  
+
   scrollDebounceTimeout = setTimeout(() => {
     // 🔒 稳定的滚动检测：避免微小变化
     const scrollDelta = Math.abs(scrollTop - lastScrollTop.value);
@@ -194,12 +188,12 @@ const handleScrollStable = () => {
       isUserScrolling.value = true;
     }
     lastScrollTop.value = scrollTop;
-    
+
     // 🔒 稳定的底部检测
     if (scrollTop + clientHeight >= scrollHeight - 30) { // 减小阈值，提高精度
       isUserScrolling.value = false;
     }
-    
+
     // 🔒 稳定的历史加载：增大阈值
     if (scrollTop <= 50 && !loadingHistory.value && chatStore.hasMoreMessages) {
       loadHistoryMessagesStable();
@@ -220,38 +214,38 @@ const anchorState = ref({
 const saveVisualAnchor = () => {
   const container = scrollContainer.value;
   if (!container || !messagesContainer.value) return null;
-  
+
   const containerRect = container.getBoundingClientRect();
   const messages = messagesContainer.value.querySelectorAll('[data-message-id]');
-  
+
   // 找到视口中最接近顶部的消息作为锚点
   let anchorElement = null;
   let minDistance = Infinity;
-  
+
   messages.forEach(msgEl => {
     const rect = msgEl.getBoundingClientRect();
     const distance = Math.abs(rect.top - containerRect.top);
-    
+
     if (rect.top >= containerRect.top && rect.top < containerRect.bottom && distance < minDistance) {
       minDistance = distance;
       anchorElement = msgEl;
     }
   });
-  
+
   if (anchorElement) {
     const messageId = anchorElement.getAttribute('data-message-id');
     const offsetFromTop = anchorElement.getBoundingClientRect().top - containerRect.top;
-    
+
     anchorState.value = {
       element: anchorElement,
       id: messageId,
       offsetFromTop,
       savedAt: performance.now()
     };
-    
+
     return anchorState.value;
   }
-  
+
   return null;
 };
 
@@ -259,15 +253,15 @@ const saveVisualAnchor = () => {
 const restoreVisualAnchor = () => {
   const container = scrollContainer.value;
   if (!container || !anchorState.value.id) return;
-  
+
   const anchorElement = container.querySelector(`[data-message-id="${anchorState.value.id}"]`);
   if (!anchorElement) return;
-  
+
   const containerRect = container.getBoundingClientRect();
   const anchorRect = anchorElement.getBoundingClientRect();
   const currentOffsetFromTop = anchorRect.top - containerRect.top;
   const scrollAdjustment = currentOffsetFromTop - anchorState.value.offsetFromTop;
-  
+
   if (Math.abs(scrollAdjustment) > 1) {
     container.scrollTop += scrollAdjustment;
   }
@@ -276,35 +270,35 @@ const restoreVisualAnchor = () => {
 // 🔒 超稳定历史消息加载：防止任何偏移
 const loadHistoryMessagesStable = async () => {
   if (loadingHistory.value || !chatStore.hasMoreMessages) return;
-  
+
   try {
     loadingHistory.value = true;
     const container = scrollContainer.value;
     if (!container) return;
-    
+
     // M2: 保存视觉锚点
     const anchor = saveVisualAnchor();
-    
+
     // 🔒 记录精确的布局状态
     const rect = container.getBoundingClientRect();
     const previousScrollHeight = container.scrollHeight;
     const previousScrollTop = container.scrollTop;
-    
+
     // 🔒 禁用所有过渡和动画
     const originalTransition = container.style.transition;
     const originalScrollBehavior = container.style.scrollBehavior;
     container.style.transition = 'none';
     container.style.scrollBehavior = 'auto';
-    
+
     // 加载数据
     emit('load-more-messages');
     await chatStore.fetchMoreMessages(props.chatId);
-    
+
     // 🔒 多重DOM稳定确认
     await new Promise(resolve => requestAnimationFrame(resolve));
     await nextTick();
     await new Promise(resolve => requestAnimationFrame(resolve));
-    
+
     // M2: 使用锚点恢复，如果失败则使用高度差补偿
     if (anchor) {
       restoreVisualAnchor();
@@ -312,11 +306,11 @@ const loadHistoryMessagesStable = async () => {
       // 🔒 精确的滚动位置恢复
       const newScrollHeight = container.scrollHeight;
       const heightDifference = newScrollHeight - previousScrollHeight;
-      
+
       if (heightDifference > 0) {
         const targetScrollTop = previousScrollTop + heightDifference;
         container.scrollTop = targetScrollTop;
-        
+
         // 🔒 验证位置是否正确
         const actualScrollTop = container.scrollTop;
         if (Math.abs(actualScrollTop - targetScrollTop) > 1) {
@@ -325,11 +319,11 @@ const loadHistoryMessagesStable = async () => {
         }
       }
     }
-    
+
     // 恢复样式
     container.style.transition = originalTransition;
     container.style.scrollBehavior = originalScrollBehavior;
-    
+
   } catch (error) {
     console.error('🔒 [MessageList] History load error:', error);
   } finally {
@@ -342,13 +336,13 @@ const loadHistoryMessagesStable = async () => {
 const scrollToBottomStable = (smooth = false, force = false) => {
   const container = scrollContainer.value;
   if (!container) return;
-  
+
   // 🔒 强制无动画滚动
   if (isUserScrolling.value && !force) return;
-  
+
   const scrollHeight = container.scrollHeight;
   const clientHeight = container.clientHeight;
-  
+
   if (scrollHeight > clientHeight) {
     // 🔒 直接设置，无过渡
     container.scrollTop = scrollHeight - clientHeight;
@@ -369,15 +363,15 @@ watch(() => props.messages.length, (newLength, oldLength) => {
 const monitorLayoutStability = () => {
   const container = scrollContainer.value;
   if (!container) return;
-  
+
   const rect = container.getBoundingClientRect();
   const currentWidth = rect.width;
   const currentHeight = rect.height;
-  
+
   if (layoutMetrics.value.lastWidth > 0) {
     const widthDiff = Math.abs(currentWidth - layoutMetrics.value.lastWidth);
     const heightDiff = Math.abs(currentHeight - layoutMetrics.value.lastHeight);
-    
+
     if (widthDiff > 1 || heightDiff > 1) {
       console.warn('🔒 [MessageList] Layout shift detected:', {
         widthDiff,
@@ -389,7 +383,7 @@ const monitorLayoutStability = () => {
       layoutMetrics.value.stable = true;
     }
   }
-  
+
   layoutMetrics.value.lastWidth = currentWidth;
   layoutMetrics.value.lastHeight = currentHeight;
 };
@@ -401,12 +395,12 @@ onMounted(() => {
     // 🔒 被动滚动监听，减少性能影响
     container.addEventListener('scroll', handleScrollStable, { passive: true });
   }
-  
+
   // 🔒 初始化：无动画滚动
   nextTick(() => {
     scrollToBottomStable(false, true);
   });
-  
+
   // 🔒 定期检查布局稳定性
   layoutStabilityTimeout = setInterval(monitorLayoutStability, 1000);
 });
@@ -416,7 +410,7 @@ onUnmounted(() => {
   if (container) {
     container.removeEventListener('scroll', handleScrollStable);
   }
-  
+
   // 🔒 清理所有定时器
   [scrollTimeout, historyLoadTimeout, scrollDebounceTimeout, layoutStabilityTimeout].forEach(timer => {
     if (timer) clearTimeout(timer);
@@ -427,20 +421,20 @@ onUnmounted(() => {
 const scrollToMessage = async (messageId) => {
   const container = scrollContainer.value;
   if (!container || !messageId) return;
-  
+
   // 查找消息元素
   const messageElement = container.querySelector(`[data-message-id="${messageId}"]`);
   if (!messageElement) {
     console.warn('🔍 [MessageList] Message element not found:', messageId);
     return;
   }
-  
+
   // 保存锚点状态
   const anchor = saveVisualAnchor();
-  
+
   // 滚动到消息
   messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  
+
   // 高亮消息
   messageElement.classList.add('search-highlight');
   setTimeout(() => {
@@ -538,7 +532,8 @@ const handleDMCreated = (dm) => {
   padding: 1rem;
   margin: 0.5rem auto;
   width: calc(100% - 3rem);
-  max-width: 690px; /* 720px - 30px padding */
+  max-width: 690px;
+  /* 720px - 30px padding */
   /* 🔧 固定高度，防止抖动 */
   height: 56px;
   min-height: 56px;
@@ -704,12 +699,18 @@ const handleDMCreated = (dm) => {
 
 /* 🔧 稳定的动画定义 */
 @keyframes shimmerStable {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 /* 🔧 减少动画的响应式适配 */
 @media (prefers-reduced-motion: reduce) {
+
   .skeleton-avatar-stable,
   .message-wrapper-stable {
     animation: none;
@@ -719,6 +720,7 @@ const handleDMCreated = (dm) => {
 
 /* 🔧 移动端稳定性 */
 @media (max-width: 768px) {
+
   .messages-stable,
   .loading-state-stable,
   .empty-state-stable {
@@ -740,7 +742,7 @@ const handleDMCreated = (dm) => {
     break-inside: avoid;
     page-break-inside: avoid;
   }
-  
+
   .loading-history-stable,
   .loading-state-stable {
     display: none;
@@ -761,9 +763,10 @@ const handleDMCreated = (dm) => {
     background: rgba(251, 191, 36, 0.4);
     transform: scale(1.01);
   }
+
   100% {
     background: rgba(254, 243, 199, 0.8);
     transform: scale(1);
   }
 }
-</style> 
+</style>

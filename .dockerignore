@@ -13,6 +13,12 @@ target
 # Exception: Allow pre-built binaries for Docker local compilation strategy
 !target/main/release
 !target/main/release/*
+!target/main/x86_64-unknown-linux-musl/release
+!target/main/x86_64-unknown-linux-musl/release/fechatter_server
+!target/main/x86_64-unknown-linux-musl/release/analytics_server
+!target/main/x86_64-unknown-linux-musl/release/notify_server
+!target/main/x86_64-unknown-linux-musl/release/bot
+!target/main/x86_64-unknown-linux-musl/release/fechatter_gateway
 !target/build
 !target/build/*
 
@@ -178,3 +184,11 @@ superset/**/*.pyc
 # flyctl launch added from swiftide-pgvector/.gitignore
 swiftide-pgvector/**/.fastembed*
 fly.toml
+
+# Only ignore what we explicitly need to ignore
+.git
+.gitignore
+README.md
+# Don't ignore build directory and fechatter_server directory
+!build/
+!fechatter_server/

@@ -43,9 +43,34 @@ async fn main() -> Result<()> {
     .await?;
   let pool = Arc::new(pool);
 
-  // Setup health check state
+  // Create NATS client at main level for both health checks and functionality
+  let nats_client = if config.messaging.enabled {
+    info!("🚀 Connecting to NATS: {}", config.messaging.nats.url);
+    
+    let client = async_nats::ConnectOptions::new()
+      .connection_timeout(std::time::Duration::from_secs(10))
+      .ping_interval(std::time::Duration::from_secs(60))
+      .max_reconnects(Some(5))
+      .reconnect_delay_callback(|attempts: usize| {
+        std::time::Duration::from_secs(std::cmp::min(2u64.pow(attempts as u32), 10))
+      })
+      .connect(&config.messaging.nats.url)
+      .await?;
+
+    info!("✅ Connected to NATS: {}", config.messaging.nats.url);
+    Some(Arc::new(client))
+  } else {
+    info!("⚠️ NATS messaging disabled in configuration");
+    None
+  };
+
+  // Setup health check state with NATS client
   let config_arc = Arc::new(config.clone());
-  let health_state = HealthState::new(pool.clone(), config_arc.clone());
+  let health_state = if let Some(nats_client) = &nats_client {
+    HealthState::new(pool.clone(), config_arc.clone()).with_nats(nats_client.clone())
+  } else {
+    HealthState::new(pool.clone(), config_arc.clone())
+  };
 
   // Start health check server in background
   let health_port = 6686; // Default health check port for bot_server
@@ -61,8 +86,8 @@ async fn main() -> Result<()> {
   info!("   GET http://localhost:{}/ready - Readiness check", health_port);
   info!("   GET http://localhost:{}/live - Liveness check", health_port);
 
-  // Setup NATS subscriber for event processing
-  setup_nats_subscriber(&config).await?;
+  // Setup NATS subscriber for event processing with existing client
+  setup_nats_subscriber(&config, nats_client).await?;
 
   // Keep the process running
   info!("🎯 Bot server is running and listening for NATS events");

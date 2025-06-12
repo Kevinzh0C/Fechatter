@@ -50,27 +50,36 @@ export const useWorkspaceStore = defineStore('workspace', {
         const authStore = useAuthStore();
         const user = authStore.user;
 
-        if (!user || !user.workspace_id) {
-          throw new Error('No workspace information available');
+        // Create workspace object from user data or use defaults
+        if (user) {
+          this.currentWorkspace = {
+            id: user.workspace_id || 1, // Default to workspace ID 1
+            name: user.workspace?.name || 'Fechatter Workspace',
+            description: user.workspace?.description || 'Default workspace',
+            owner_id: user.id || null,
+            member_count: 1, // Will be updated when fetching users
+            created_at: user.created_at || new Date().toISOString()
+          };
+        } else {
+          // No user data available, use complete defaults
+          this.currentWorkspace = {
+            id: 1,
+            name: 'Fechatter Workspace',
+            description: 'Default workspace',
+            owner_id: null,
+            member_count: 1,
+            created_at: new Date().toISOString()
+          };
         }
 
-        // Create workspace object from user data
-        this.currentWorkspace = {
-          id: user.workspace_id,
-          name: 'Fechatter Workspace',
-          description: 'Default workspace',
-          owner_id: user.id,
-          member_count: 1, // Will be updated when fetching users
-          created_at: new Date().toISOString()
-        };
-
+        console.log('📍 [WORKSPACE] Current workspace:', this.currentWorkspace);
         return this.currentWorkspace;
       } catch (error) {
-        // If API fails, use default workspace
+        // If any error occurs, use default workspace
         console.warn('Failed to fetch workspace, using default:', error);
         this.currentWorkspace = {
-          id: 'default',
-          name: 'Fechatter',
+          id: 1,
+          name: 'Fechatter Workspace',
           description: 'Default workspace',
           owner_id: null,
           member_count: 1,
@@ -110,13 +119,17 @@ export const useWorkspaceStore = defineStore('workspace', {
         this.error = null;
 
         const response = await api.get('/workspace/chats');
-        this.workspaceChats = response.data;
+        // Fix: Handle wrapped response data structure
+        const chats = response.data?.data || response.data || [];
+        this.workspaceChats = Array.isArray(chats) ? chats : [];
 
-        return response.data;
+        return this.workspaceChats;
       } catch (error) {
         this.error = error.response?.data?.message || 'Failed to fetch workspace chats';
         console.error('Failed to fetch workspace chats:', error);
-        throw error;
+        // Don't throw, return empty array for graceful degradation
+        this.workspaceChats = [];
+        return [];
       } finally {
         this.loading = false;
       }
@@ -223,7 +236,7 @@ export const useWorkspaceStore = defineStore('workspace', {
       try {
         // Fetch workspace data (will use user data as fallback)
         await this.fetchCurrentWorkspace();
-        
+
         // Fetch users and chats in parallel
         await Promise.all([
           this.fetchWorkspaceUsers().catch(err => {

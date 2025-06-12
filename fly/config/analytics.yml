@@ -1,0 +1,104 @@
+# Analytics Server Configuration for Fly.io
+server:
+  port: 6690
+  host: 0.0.0.0
+
+  # ClickHouse configuration - Use managed service or local
+  clickhouse:
+    host: ${CLICKHOUSE_HOST}
+    port: ${CLICKHOUSE_PORT}
+    database: fechatter_analytics
+    user: ${CLICKHOUSE_USER}
+    password: ${CLICKHOUSE_PASSWORD}
+    http_url: http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}
+    native_url: clickhouse://${CLICKHOUSE_HOST}:9000/fechatter_analytics
+
+  # Application directories
+  base_dir: /data/analytics
+
+  # Request handling
+  request_timeout_ms: 30000
+  max_concurrent_requests: 100
+
+# Features
+features:
+  # Analytics data processing
+  analytics:
+    enabled: true
+    batch_size: 100
+    flush_interval_seconds: 30
+    max_retry_attempts: 3
+
+  # Real-time streaming
+  streaming:
+    enabled: true
+    buffer_size: 1000
+
+  # Data aggregation
+  aggregation:
+    enabled: true
+    interval_seconds: 300
+
+# External services
+integrations:
+  # NATS messaging
+  messaging:
+    enabled: true
+    nats_url: ${NATS_URL}
+    jetstream_enabled: true
+
+    # JetStream configuration
+    jetstream:
+      stream_name: "ANALYTICS"
+      max_bytes: 1073741824 # 1GB
+      max_messages: 10000000
+      max_age_hours: 720
+      storage_type: "file"
+      num_replicas: 1
+
+    subjects:
+      analytics_events: "fechatter.analytics.events"
+      analytics_batch: "fechatter.analytics.batch"
+
+  # Redis cache
+  cache:
+    enabled: true
+    redis_url: ${REDIS_URL}
+    key_prefix: "fechatter:analytics"
+    default_ttl: 3600
+
+# Observability
+observability:
+  log_level: info
+  log_format: json
+
+  metrics:
+    enabled: true
+    port: 9091
+    path: "/metrics"
+
+  health_check:
+    enabled: true
+    path: "/health"
+
+  performance:
+    track_query_performance: true
+    slow_query_threshold_ms: 1000
+
+# Security
+security:
+  # API authentication
+  auth:
+    enabled: false
+    jwt_secret: ${JWT_SECRET}
+
+  # CORS
+  cors:
+    enabled: true
+    allow_origins: [ "*" ]
+
+  # Rate limiting
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 1000
+    burst_size: 100

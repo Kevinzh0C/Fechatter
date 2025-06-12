@@ -29,30 +29,28 @@ struct MessageCreatedEvent {
 }
 
 /// Setup NATS subscriber for bot event processing
-pub async fn setup_nats_subscriber(config: &AppConfig) -> anyhow::Result<()> {
+pub async fn setup_nats_subscriber(
+  config: &AppConfig, 
+  nats_client: Option<Arc<async_nats::Client>>
+) -> anyhow::Result<()> {
   if !config.messaging.enabled {
     warn!("⚠️ NATS messaging is disabled - bot_server will not process events");
     return Ok(());
   }
 
+  let nats_client = match nats_client {
+    Some(client) => client,
+    None => {
+      warn!("⚠️ NATS client not provided - bot_server will not process events");
+      return Ok(());
+    }
+  };
+
   info!("🚀 Setting up NATS subscriber for bot event processing...");
-
-  // Connect to NATS
-  let nats_client = async_nats::ConnectOptions::new()
-    .connection_timeout(std::time::Duration::from_secs(10))
-    .ping_interval(std::time::Duration::from_secs(60))
-    .max_reconnects(Some(5))
-    .reconnect_delay_callback(|attempts: usize| {
-      std::time::Duration::from_secs(std::cmp::min(2u64.pow(attempts as u32), 10))
-    })
-    .connect(&config.messaging.nats.url)
-    .await?;
-
-  info!("✅ Connected to NATS: {}", config.messaging.nats.url);
 
   // Setup unified NATS + Protobuf analytics publisher
   let analytics_publisher = if config.analytics.enabled {
-    Some(Arc::new(UnifiedBotAnalyticsPublisher::new(nats_client.clone())))
+    Some(Arc::new(UnifiedBotAnalyticsPublisher::new(Arc::clone(&nats_client).as_ref().clone())))
   } else {
     info!("📊 Analytics disabled in configuration");
     None

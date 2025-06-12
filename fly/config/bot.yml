@@ -1,0 +1,92 @@
+# Bot Server Configuration for Fly.io
+server:
+  port: 6686
+  host: 0.0.0.0
+
+  # Database configuration
+  database:
+    url: ${DATABASE_URL}
+    max_connections: 10
+
+  # Redis configuration
+  redis:
+    url: ${REDIS_URL}
+    pool_size: 10
+
+# AI Configuration
+ai:
+  # OpenAI settings
+  openai:
+    api_key: ${OPENAI_API_KEY}
+    model: gpt-4-turbo-preview
+    max_tokens: 2000
+    temperature: 0.7
+
+  # RAG (Retrieval Augmented Generation)
+  rag:
+    enabled: true
+    chunk_size: 500
+    overlap: 50
+
+# Features
+features:
+  # Chat bot functionality
+  chatbot:
+    enabled: true
+    max_context_messages: 10
+    response_timeout: 30
+
+  # Document processing
+  documents:
+    enabled: true
+    supported_formats: [ txt, pdf, md, docx ]
+    max_file_size: 10485760 # 10MB
+
+  # Knowledge base
+  knowledge_base:
+    enabled: true
+    auto_index: true
+
+# External services
+integrations:
+  # Vector database for RAG
+  vector_db:
+    enabled: true
+    meilisearch_url: ${MEILISEARCH_URL}
+    meilisearch_key: ${MEILISEARCH_KEY}
+
+  # NATS messaging
+  messaging:
+    enabled: true
+    nats_url: ${NATS_URL}
+
+    # Subscriptions
+    subscriptions:
+    - "fechatter.bot.requests"
+    - "fechatter.bot.commands"
+
+# Observability
+observability:
+  log_level: info
+  log_format: json
+
+  metrics:
+    enabled: true
+    port: 9091
+
+  health_check:
+    enabled: true
+    path: /health
+
+# Security
+security:
+  # Authentication
+  auth:
+    enabled: true
+    jwt_secret: ${JWT_SECRET}
+
+  # Rate limiting
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 30
+    burst_size: 5

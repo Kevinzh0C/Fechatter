@@ -1,13 +1,13 @@
 # ============================================================================
-# Local Development Dockerfile - Using Pre-compiled x86_64 Binaries
+# Local Development Dockerfile - Using Pre-compiled x86_64-musl Binaries
 # ============================================================================
 #
-# 🎯 PURPOSE: Package pre-compiled x86_64 binaries with flexible configuration
+# 🎯 PURPOSE: Package pre-compiled x86_64-musl binaries for Alpine containers
 # 🔧 STRATEGY: Use environment variables and volume mounts for config
 # 🚀 WORKFLOW:
-# 1. Manual compilation: see scripts/build-x86-complete.sh
-# 2. docker compose -f docker-compose.local.yml build  (Fast packaging)
-# 3. docker compose -f docker-compose.local.yml up     (Quick startup)
+# 1. Manual compilation: cargo build --release --target x86_64-unknown-linux-musl
+# 2. docker build -f Dockerfile.local -t service_name .  (Fast packaging)
+# 3. Deploy to remote or VCR
 #
 # ============================================================================
 
@@ -38,15 +38,15 @@ RUN adduser -D -s /bin/sh -u 1001 appuser && \
 ENTRYPOINT ["/sbin/tini", "--"]
 
 # ============================================================================
-# Stage 2: Individual Service Images (using pre-compiled x86_64 binaries)
+# Stage 2: Individual Service Images (using pre-compiled x86_64-musl binaries)
 # ============================================================================
 
 # Fechatter Server - Uses configuration files from volume mount
 FROM runtime-base AS fechatter-server
-COPY --chown=appuser:appuser target/main/release/fechatter_server /usr/local/bin/fechatter_server
+COPY --chown=appuser:appuser target/main/x86_64-unknown-linux-musl/release/fechatter_server /usr/local/bin/fechatter_server
 COPY --chown=appuser:appuser migrations /app/migrations
 
-# Set permissions (binaries are pre-verified as x86_64)
+# Set permissions (binaries are pre-verified as x86_64-musl)
 RUN chmod +x /usr/local/bin/fechatter_server && \
     chown appuser:appuser /usr/local/bin/fechatter_server
 
@@ -61,9 +61,9 @@ CMD ["/usr/local/bin/fechatter_server"]
 
 # Analytics Server - Uses configuration files from volume mount  
 FROM runtime-base AS analytics-server
-COPY --chown=appuser:appuser target/main/release/analytics_server /usr/local/bin/analytics_server
+COPY --chown=appuser:appuser target/main/x86_64-unknown-linux-musl/release/analytics_server /usr/local/bin/analytics_server
 
-# Set permissions (binaries are pre-verified as x86_64)
+# Set permissions (binaries are pre-verified as x86_64-musl)
 RUN chmod +x /usr/local/bin/analytics_server && \
     chown appuser:appuser /usr/local/bin/analytics_server
 
@@ -78,9 +78,9 @@ CMD ["/usr/local/bin/analytics_server"]
 
 # Notify Server - Uses configuration files from volume mount
 FROM runtime-base AS notify-server
-COPY --chown=appuser:appuser target/main/release/notify_server /usr/local/bin/notify_server
+COPY --chown=appuser:appuser target/main/x86_64-unknown-linux-musl/release/notify_server /usr/local/bin/notify_server
 
-# Set permissions (binaries are pre-verified as x86_64)
+# Set permissions (binaries are pre-verified as x86_64-musl)
 RUN chmod +x /usr/local/bin/notify_server && \
     chown appuser:appuser /usr/local/bin/notify_server
 
@@ -93,11 +93,11 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 
 CMD ["/usr/local/bin/notify_server"]
 
-# Bot Server - Uses configuration files from volume mount
+# Bot Server - Uses configuration files from volume mount (binary name is 'bot')
 FROM runtime-base AS bot-server
-COPY --chown=appuser:appuser target/main/release/bot_server /usr/local/bin/bot_server
+COPY --chown=appuser:appuser target/main/x86_64-unknown-linux-musl/release/bot /usr/local/bin/bot_server
 
-# Set permissions (binaries are pre-verified as x86_64)
+# Set permissions (binaries are pre-verified as x86_64-musl)
 RUN chmod +x /usr/local/bin/bot_server && \
     chown appuser:appuser /usr/local/bin/bot_server
 
@@ -112,9 +112,9 @@ CMD ["/usr/local/bin/bot_server"]
 
 # Gateway - Uses configuration files from volume mount
 FROM runtime-base AS fechatter-gateway
-COPY --chown=appuser:appuser target/main/release/fechatter_gateway /usr/local/bin/fechatter_gateway
+COPY --chown=appuser:appuser target/main/x86_64-unknown-linux-musl/release/fechatter_gateway /usr/local/bin/fechatter_gateway
 
-# Set permissions (binaries are pre-verified as x86_64)
+# Set permissions (binaries are pre-verified as x86_64-musl)
 RUN chmod +x /usr/local/bin/fechatter_gateway && \
     chown appuser:appuser /usr/local/bin/fechatter_gateway
 
@@ -133,12 +133,12 @@ CMD ["/usr/local/bin/fechatter_gateway"]
 
 FROM runtime-base AS all-in-one
 
-# Copy all pre-compiled binaries
-COPY --chown=appuser:appuser target/main/release/fechatter_server /usr/local/bin/fechatter_server
-COPY --chown=appuser:appuser target/main/release/analytics_server /usr/local/bin/analytics_server
-COPY --chown=appuser:appuser target/main/release/notify_server /usr/local/bin/notify_server
-COPY --chown=appuser:appuser target/main/release/bot_server /usr/local/bin/bot_server
-COPY --chown=appuser:appuser target/main/release/fechatter_gateway /usr/local/bin/fechatter_gateway
+# Copy all pre-compiled binaries (note: bot binary -> bot_server)
+COPY --chown=appuser:appuser target/main/x86_64-unknown-linux-musl/release/fechatter_server /usr/local/bin/fechatter_server
+COPY --chown=appuser:appuser target/main/x86_64-unknown-linux-musl/release/analytics_server /usr/local/bin/analytics_server
+COPY --chown=appuser:appuser target/main/x86_64-unknown-linux-musl/release/notify_server /usr/local/bin/notify_server
+COPY --chown=appuser:appuser target/main/x86_64-unknown-linux-musl/release/bot /usr/local/bin/bot_server
+COPY --chown=appuser:appuser target/main/x86_64-unknown-linux-musl/release/fechatter_gateway /usr/local/bin/fechatter_gateway
 
 # Copy database migrations
 COPY --chown=appuser:appuser migrations /app/migrations
@@ -197,6 +197,7 @@ CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
 #    - Falls back to other paths as defined in code
 #
 # This approach:
+# ✅ Uses x86_64-unknown-linux-musl binaries for Alpine compatibility
 # ✅ Matches actual service configuration discovery logic
 # ✅ No conflicting file names or paths
 # ✅ Flexible for different environments via volume mounts

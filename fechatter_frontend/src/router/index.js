@@ -3,7 +3,7 @@ import { useAuthStore } from '../stores/auth';
 import { analytics } from '../lib/analytics-protobuf';
 import { setupGlobalRouterErrorHandling } from '@/composables/useRouterGuard';
 
-// Lazy loaded components - 只导入实际存在的组件
+// Lazy loaded components - Only import components that actually exist
 const Home = () => import('@/views/Home.vue');
 const Login = () => import('@/views/Login.vue');
 const Register = () => import('@/views/Register.vue');
@@ -13,7 +13,6 @@ const Test = () => import('@/views/Test.vue');
 const Error = () => import('@/views/Error.vue');
 const Debug = () => import('@/views/Debug.vue');
 const SimpleLogin = () => import('@/views/SimpleLogin.vue');
-const SSEPerformanceTest = () => import('@/views/SSEPerformanceTest.vue');
 
 const routes = [
   // 根路径重定向
@@ -130,16 +129,6 @@ const routes = [
     props: true
   },
 
-  {
-    path: '/sse-performance-test',
-    name: 'SSEPerformanceTest',
-    component: SSEPerformanceTest,
-    meta: {
-      requiresAuth: false,  // Allow access without authentication for testing
-      title: 'SSE Performance Test'
-    }
-  },
-
   // 404 处理
   {
     path: '/:pathMatch(.*)*',
@@ -197,6 +186,9 @@ router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
 
   if (requiresAuth) {
+    // Ensure auth state consistency before checking
+    await authStore.ensureAuthStateConsistency();
+    
     // Check authentication for protected routes
     if (!authStore.isLoggedIn || authStore.isTokenExpired) {
       console.warn('🔍 [ROUTER] Access denied - redirecting to login');

@@ -1,0 +1,80 @@
+FROM alpine:3.20 AS fechatter-server
+
+RUN apk add --no-cache ca-certificates openssl libgcc curl tini && \
+    adduser -D -s /bin/sh -u 1001 appuser && \
+    mkdir -p /app && chown -R appuser:appuser /app
+
+COPY fechatter_server /usr/local/bin/fechatter_server
+COPY migrations /app/migrations
+
+RUN chmod +x /usr/local/bin/fechatter_server && \
+    chown appuser:appuser /usr/local/bin/fechatter_server
+
+USER appuser
+WORKDIR /app
+EXPOSE 6688
+CMD ["/usr/local/bin/fechatter_server"]
+
+FROM alpine:3.20 AS analytics-server
+
+RUN apk add --no-cache ca-certificates openssl libgcc curl tini && \
+    adduser -D -s /bin/sh -u 1001 appuser && \
+    mkdir -p /app && chown -R appuser:appuser /app
+
+COPY analytics_server /usr/local/bin/analytics_server
+
+RUN chmod +x /usr/local/bin/analytics_server && \
+    chown appuser:appuser /usr/local/bin/analytics_server
+
+USER appuser
+WORKDIR /app
+EXPOSE 6690
+CMD ["/usr/local/bin/analytics_server"]
+
+FROM alpine:3.20 AS notify-server
+
+RUN apk add --no-cache ca-certificates openssl libgcc curl tini && \
+    adduser -D -s /bin/sh -u 1001 appuser && \
+    mkdir -p /app && chown -R appuser:appuser /app
+
+COPY notify_server /usr/local/bin/notify_server
+
+RUN chmod +x /usr/local/bin/notify_server && \
+    chown appuser:appuser /usr/local/bin/notify_server
+
+USER appuser
+WORKDIR /app
+EXPOSE 6687
+CMD ["/usr/local/bin/notify_server"]
+
+FROM alpine:3.20 AS bot-server
+
+RUN apk add --no-cache ca-certificates openssl libgcc curl tini && \
+    adduser -D -s /bin/sh -u 1001 appuser && \
+    mkdir -p /app && chown -R appuser:appuser /app
+
+COPY bot /usr/local/bin/bot_server
+
+RUN chmod +x /usr/local/bin/bot_server && \
+    chown appuser:appuser /usr/local/bin/bot_server
+
+USER appuser
+WORKDIR /app
+EXPOSE 6686
+CMD ["/usr/local/bin/bot_server"]
+
+FROM alpine:3.20 AS fechatter-gateway
+
+RUN apk add --no-cache ca-certificates openssl libgcc curl tini && \
+    adduser -D -s /bin/sh -u 1001 appuser && \
+    mkdir -p /app && chown -R appuser:appuser /app
+
+COPY fechatter_gateway_bin /usr/local/bin/fechatter_gateway
+
+RUN chmod +x /usr/local/bin/fechatter_gateway && \
+    chown appuser:appuser /usr/local/bin/fechatter_gateway
+
+USER appuser
+WORKDIR /app
+EXPOSE 8080
+CMD ["/usr/local/bin/fechatter_gateway"] 

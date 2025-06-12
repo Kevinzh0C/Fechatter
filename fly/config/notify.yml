@@ -1,0 +1,77 @@
+# Notify Server Configuration for Fly.io
+server:
+  port: 6687
+  host: 0.0.0.0
+
+  # Database configuration
+  database:
+    url: ${DATABASE_URL}
+    max_connections: 10
+
+  # Redis configuration
+  redis:
+    url: ${REDIS_URL}
+    pool_size: 10
+
+# Features
+features:
+  # Server-Sent Events
+  sse:
+    enabled: true
+    keepalive_interval: 30
+    max_connections: 1000
+
+  # WebSocket support
+  websocket:
+    enabled: true
+    heartbeat_interval: 30
+    max_frame_size: 65536
+
+  # Push notifications
+  push:
+    enabled: false # Configure based on needs
+
+# External services
+integrations:
+  # NATS messaging
+  messaging:
+    enabled: true
+    nats_url: ${NATS_URL}
+    jetstream_enabled: true
+
+    # Subscriptions
+    subscriptions:
+    - "fechatter.notifications.*"
+    - "fechatter.chat.messages"
+    - "fechatter.user.status"
+
+# Observability
+observability:
+  log_level: info
+  log_format: json
+
+  metrics:
+    enabled: true
+    port: 9091
+
+  health_check:
+    enabled: true
+    path: /health
+
+# Security
+security:
+  # Authentication
+  auth:
+    enabled: true
+    jwt_secret: ${JWT_SECRET}
+
+  # CORS
+  cors:
+    enabled: true
+    allow_origins: [ "*" ]
+
+  # Rate limiting
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 120
+    burst_size: 20

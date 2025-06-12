@@ -11,6 +11,7 @@ class HealthCheckSystem {
     this.results = new Map();
     this.isRunning = false;
     this.autoCheckInterval = null;
+    this.lastRunResult = null;
 
     // 注册核心检查项
     this.registerCoreChecks();
@@ -23,13 +24,8 @@ class HealthCheckSystem {
       critical: false, // 在开发环境中不设为关键
       async check() {
         try {
-          // 使用配置系统获取Gateway URL
-          const { getApiConfig } = await import('./configLoader.js');
-          const apiConfig = getApiConfig();
-
-          // 通过Gateway访问健康检查端点
-          const gatewayUrl = apiConfig.gateway_url || 'http://127.0.0.1:8080';
-          const healthURL = `${gatewayUrl}/health`;
+          // 使用相对路径通过vite代理访问health端点，避免CORS问题
+          const healthURL = '/health';
 
           // 开发环境：增加超时时间和重试机制
           const isDev = import.meta.env.DEV;
@@ -58,7 +54,7 @@ class HealthCheckSystem {
                 status: response.status,
                 endpoint: healthURL,
                 data: healthData,
-                message: 'Gateway health check passed'
+                message: 'Gateway health check passed (via proxy)'
               }
             };
           } else {
@@ -378,7 +374,7 @@ class HealthCheckSystem {
               details: {
                 isConnected: false,
                 connectionState,
-                url: connectionState.url || 'http://127.0.0.1:8080/events',
+                url: connectionState.url || `${apiConfig.sse_url || '/events'}`,
                 message: 'SSE not connected in development mode',
                 isDevelopment: true
               },
@@ -405,7 +401,7 @@ class HealthCheckSystem {
             details: {
               isConnected,
               connectionState,
-              url: connectionState.url || 'http://127.0.0.1:8080/events',
+              url: connectionState.url || `${apiConfig.sse_url || '/events'}`,
               lastConnected: connectionState.lastConnected,
               reconnectAttempts: connectionState.reconnectAttempts || 0,
               networkStatus: connectionState.networkStatus,
@@ -586,26 +582,51 @@ class HealthCheckSystem {
 
   async runAllChecks() {
     if (this.isRunning) {
-      console.warn('Health checks already running');
-      return;
+      console.debug('🔧 [HEALTH] Health checks already running, skipping duplicate request');
+      return this.lastRunResult || {
+        results: [],
+        summary: {
+          total: 0,
+          passed: 0,
+          failed: 0,
+          criticalFailed: 0,
+          healthScore: 0,
+          isHealthy: false,
+          lastCheck: new Date().toISOString(),
+          skippedReason: 'Already running'
+        },
+        timestamp: new Date().toISOString()
+      };
     }
 
     this.isRunning = true;
     const results = [];
 
-    for (const [checkId] of this.checks) {
-      const result = await this.runCheck(checkId);
-      results.push(result);
+    try {
+      for (const [checkId] of this.checks) {
+        const result = await this.runCheck(checkId);
+        results.push(result);
+      }
+
+      const summary = this.getSummary();
+      const fullResult = {
+        results,
+        summary,
+        timestamp: new Date().toISOString()
+      };
+
+      // Cache the result for duplicate requests
+      this.lastRunResult = fullResult;
+
+      return fullResult;
+
+    } finally {
+      this.isRunning = false;
+      // Clear cached result after a short delay
+      setTimeout(() => {
+        this.lastRunResult = null;
+      }, 5000);
     }
-
-    this.isRunning = false;
-
-    const summary = this.getSummary();
-    return {
-      results,
-      summary,
-      timestamp: new Date().toISOString()
-    };
   }
 
   getSummary() {

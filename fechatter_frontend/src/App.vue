@@ -5,6 +5,8 @@
     <ToastContainer />
     <!-- Debug Panel - 只在开发环境显示 -->
     <DebugPanel v-if="isDev" />
+    <!-- Performance Monitor - 只在开发环境显示 -->
+    <PerformanceMonitor v-if="isDev" />
     <!-- Keyboard Shortcuts Modal -->
     <KeyboardShortcutsModal v-model="showShortcutsModal" :shortcuts="keyboardShortcuts.shortcuts" />
   </div>
@@ -15,6 +17,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import DebugPanel from './views/DebugPanel.vue';
 import KeyboardShortcutsModal from './components/modals/KeyboardShortcutsModal.vue';
 import ToastContainer from './components/ui/ToastContainer.vue';
+import PerformanceMonitor from './components/PerformanceMonitor.vue';
 import { useKeyboardShortcuts } from './composables/useKeyboardShortcuts';
 import healthCheck from './utils/healthCheck';
 
@@ -72,7 +75,7 @@ const initializeTheme = () => {
 };
 
 // 确保在应用完全挂载后再运行第一次健康检查
-onMounted(() => {
+onMounted(async () => {
   // 首先初始化主题
   initializeTheme();
 
@@ -81,21 +84,49 @@ onMounted(() => {
   window.addEventListener('fechatter:open-settings', handleGlobalEvents);
   window.addEventListener('fechatter:toggle-debug-panel', handleGlobalEvents);
 
+  // Initialize authentication state validation
+  await initializeAuthState();
+
+  // 移除重复的健康检查 - main.js中已经有自动健康监控
+  // 在开发环境中通过 window.healthHelper 手动访问健康检查
   if (isDev.value) {
-    // 等待应用完全加载
-    setTimeout(() => {
-      healthCheck.runAllChecksSafely().then(result => {
-        if (result && result.summary && !result.summary.isHealthy) {
-          console.error('⚠️ Initial health check failed! Run `healthCheck.getDetailedReport()` for details.');
-        } else if (result && result.summary && result.summary.isHealthy) {
-        } else {
-        }
-      }).catch(error => {
-        console.error('❌ Health check system error:', error);
-      });
-    }, 2000); // 等待2秒确保应用完全初始化
+    console.log('🔧 [APP] Health monitoring managed by main.js - use window.healthHelper for manual checks');
   }
 });
+
+// Initialize and validate authentication state on app startup
+const initializeAuthState = async () => {
+  try {
+    console.log('🔐 [APP] Initializing authentication state...');
+
+    // Dynamic import to avoid circular dependencies
+    const { useAuthStore } = await import('./stores/auth');
+
+    const authStore = useAuthStore();
+
+    // Initialize auth store - let it handle all token validation and refresh logic
+    const isInitialized = await authStore.initialize();
+
+    if (isInitialized) {
+      console.log('✅ [APP] Authentication initialized successfully');
+    } else {
+      console.log('ℹ️ [APP] No valid authentication found - user will need to login');
+    }
+
+  } catch (error) {
+    console.error('❌ [APP] Error during auth initialization:', error);
+
+    // Clear any potentially corrupted auth state as fallback
+    try {
+      const { useAuthStore } = await import('./stores/auth');
+      const authStore = useAuthStore();
+      authStore.clearAuth();
+      console.log('🧹 [APP] Cleared corrupted auth state');
+    } catch (clearError) {
+      console.error('❌ [APP] Failed to clear auth state:', clearError);
+    }
+  }
+};
 
 onUnmounted(() => {
   // Cleanup global event listeners

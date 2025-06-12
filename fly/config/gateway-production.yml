@@ -1,0 +1,51 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+services:
+  fechatter_server:
+    url: "http://localhost:6688"
+    health_check: "/health"
+    timeout_seconds: 30
+
+  analytics_server:
+    url: "http://localhost:6690"
+    health_check: "/health"
+    timeout_seconds: 30
+
+  notify_server:
+    url: "http://localhost:6687"
+    health_check: "/health"
+    timeout_seconds: 30
+
+  bot_server:
+    url: "http://localhost:6686"
+    health_check: "/health"
+    timeout_seconds: 30
+
+proxy:
+  # Production CORS for gateway
+  cors:
+    enabled: true
+    allow_origins:
+    - "https://*.fly.dev"
+    - ${FRONTEND_URL:-https://fechatter.fly.dev}
+    allow_methods: [ "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS" ]
+    allow_headers: [ "Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin" ]
+    allow_credentials: true
+    max_age: 3600
+
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 1000
+    burst_size: 100
+
+  timeout:
+    read_timeout_seconds: 30
+    write_timeout_seconds: 30
+
+observability:
+  log_level: ${RUST_LOG:-info}
+  log_format: "json"
+  metrics_enabled: true
+  metrics_port: 9095

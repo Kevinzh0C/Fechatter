@@ -162,14 +162,14 @@ function getDefaultConfig(env) {
       host: "localhost"
     },
     api: {
-      gateway_url: isDev ? "http://127.0.0.1:8080" : "https://fechatter-gateway.fly.dev",
-      base_url: isDev ? "http://127.0.0.1:8080/api" : "https://fechatter-gateway.fly.dev/api",
-      file_url: isDev ? "http://127.0.0.1:8080/files" : "https://fechatter-gateway.fly.dev/files",
+      gateway_url: "http://45.77.178.85:8080",
+      base_url: "http://45.77.178.85:8080/api",
+      file_url: "http://45.77.178.85:8080/files",
       // 使用SSE而不是WebSocket进行实时通信
-      sse_url: isDev ? "http://127.0.0.1:8080/events" : "https://fechatter-gateway.fly.dev/events",
-      notify_url: isDev ? "http://127.0.0.1:8080" : "https://fechatter-gateway.fly.dev",
-      // 🔧 临时禁用SSE，避免端口冲突导致的心跳丢失问题
-      disable_sse: isDev, // ✅ 开发模式下暂时禁用SSE
+      sse_url: "http://45.77.178.85:8080/events",
+      notify_url: "http://45.77.178.85:8080",
+      // 禁用SSE可以根据需要调整
+      disable_sse: false,
       timeout: isDev ? 15000 : 30000,
       max_retries: isDev ? 3 : 5,
       retry_delay: isDev ? 1000 : 2000

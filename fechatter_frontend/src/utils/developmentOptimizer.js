@@ -13,6 +13,9 @@ class DevelopmentOptimizer {
     if (this.isDevelopment) {
       this.initializeDevelopmentMode();
     }
+
+    // Setup console overrides early to reduce noise
+    this.setupConsoleOverrides();
   }
 
   /**
@@ -53,6 +56,15 @@ class DevelopmentOptimizer {
         retryNetworkErrors: true,
         gracefulDegradation: true,
         mockUnavailableServices: false
+      },
+
+      // Presence configuration (Occam's Razor: Keep it simple)
+      presence: {
+        autoAwayEnabled: false,          // Disabled by default
+        autoAwayDelayMinutes: 10,        // If enabled, wait 10 minutes
+        detectTabSwitch: false,          // Don't mark away on tab switch
+        detectWindowBlur: false,         // Don't mark away on window blur
+        keepAliveOnFocus: true          // Always mark online when focused
       }
     };
   }
@@ -63,10 +75,10 @@ class DevelopmentOptimizer {
   initializeDevelopmentMode() {
     console.log('🔧 [DEV_OPTIMIZER] Development mode optimizations enabled');
 
-    // Setup global error filtering
-    this.setupGlobalErrorFiltering();
+    // Register with unified error handler instead of direct interception
+    this.registerWithUnifiedHandler();
 
-    // Setup console enhancement
+    // Setup console enhancement (not error related)
     this.enhanceConsoleLogging();
 
     // Setup development shortcuts
@@ -77,29 +89,35 @@ class DevelopmentOptimizer {
   }
 
   /**
-   * Setup intelligent error filtering for development
+   * Register with unified error handler
    */
-  setupGlobalErrorFiltering() {
-    const originalConsoleError = console.error;
-    const originalConsoleWarn = console.warn;
+  registerWithUnifiedHandler() {
+    if (window.unifiedErrorHandler) {
+      // Register development error filter
+      window.unifiedErrorHandler.registerHandler(
+        'developmentOptimizer',
+        ({ args, errorString }) => {
+          if (this.shouldSuppressError(args)) {
+            console.debug('🔇 [DEV] Suppressed error:', ...args);
+            return 'suppress';
+          }
+          return 'pass';
+        },
+        50 // Medium priority
+      );
 
-    // Filter console errors
-    console.error = (...args) => {
-      if (this.shouldSuppressError(args)) {
-        console.debug('🔇 [DEV] Suppressed error:', ...args);
-        return;
-      }
-      originalConsoleError.apply(console, args);
-    };
+      // Register development warning filter
+      const originalWarn = console.warn;
+      console.warn = (...args) => {
+        if (this.shouldSuppressWarning(args)) {
+          console.debug('🔇 [DEV] Suppressed warning:', ...args);
+          return;
+        }
+        originalWarn.apply(console, args);
+      };
 
-    // Filter console warnings
-    console.warn = (...args) => {
-      if (this.shouldSuppressWarning(args)) {
-        console.debug('🔇 [DEV] Suppressed warning:', ...args);
-        return;
-      }
-      originalConsoleWarn.apply(console, args);
-    };
+      console.log('[DEV_OPTIMIZER] Registered with unified error handler');
+    }
   }
 
   /**
@@ -131,7 +149,10 @@ class DevelopmentOptimizer {
       /backend.*not.*started/i,
       /services.*not.*available/i,
       /health.*monitoring/i,
-      /connection.*failed/i
+      /connection.*failed/i,
+      /shiki.*instances.*created/i,  // Suppress Shiki warnings - already fixed with singleton
+      /duplicate.*keys.*found/i,      // Suppress duplicate key warnings - already fixed with key manager
+      /highlighter.*dispose/i         // Suppress highlighter dispose warnings
     ];
 
     return suppressPatterns.some(pattern => pattern.test(warningStr));
@@ -145,6 +166,7 @@ class DevelopmentOptimizer {
     const originalLog = console.log;
     console.log = (...args) => {
       const timestamp = new Date().toLocaleTimeString();
+      // Add space after timestamp to avoid content concatenation
       originalLog.apply(console, [`[${timestamp}]`, ...args]);
     };
 
@@ -223,7 +245,10 @@ class DevelopmentOptimizer {
 
     const checkBackendServices = async () => {
       try {
-        const response = await fetch('http://127.0.0.1:8080/health', {
+        // 使用相对路径通过vite代理访问，避免CORS问题
+        const healthUrl = '/health';
+
+        const response = await fetch(healthUrl, {
           method: 'GET',
           signal: AbortSignal.timeout(5000)
         });
@@ -274,6 +299,48 @@ class DevelopmentOptimizer {
    */
   getTimeout(defaultTimeout = 5000) {
     return this.isDevelopment ? Math.max(defaultTimeout, 10000) : defaultTimeout;
+  }
+
+  /**
+   * Override console methods to reduce noise in development
+   * Following Occam's Razor: Simple filtering, no complex tracking
+   */
+  setupConsoleOverrides() {
+    if (!this.isDevelopment) return;
+
+    // Register additional filters with unified handler
+    if (window.unifiedErrorHandler) {
+      window.unifiedErrorHandler.registerHandler(
+        'developmentOptimizerSimple',
+        ({ args, errorString }) => {
+          const message = args[0]?.toString() || '';
+
+          // Skip known noisy errors
+          if (message.includes('SSE') ||
+            message.includes('Failed to fetch') ||
+            message.includes('content script')) {
+            return 'suppress'; // Silent skip
+          }
+
+          return 'pass';
+        },
+        60 // Lower priority than main filter
+      );
+    }
+
+    // Only handle warnings here
+    const originalWarn = console.warn;
+    console.warn = (...args) => {
+      const message = args[0]?.toString() || '';
+
+      // Skip development warnings
+      if (message.includes('development') ||
+        message.includes('HMR')) {
+        return; // Silent skip
+      }
+
+      originalWarn.apply(console, args);
+    };
   }
 }
 
