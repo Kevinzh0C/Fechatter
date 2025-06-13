@@ -7,7 +7,7 @@ use tracing::{error, info, warn};
 
 use super::ChatType;
 use crate::{AppError, AppState};
-use fechatter_core::{Chat, ChatMember};
+use fechatter_core::ChatMember;
 
 pub fn chat_member_from_row(row: &PgRow) -> Result<ChatMember, AppError> {
   Ok(ChatMember {
@@ -168,7 +168,7 @@ impl AppState {
 
     if !added_members.is_empty() {
       for member in &added_members {
-        self.chat_list_cache.remove(&member.user_id);
+        self.chat_list_cache.remove(&member.user_id.into());
         info!(
           "Invalidated chat list cache for added user {}",
           member.user_id
@@ -301,7 +301,7 @@ impl AppState {
     if rows_affected > 0 {
       for &removed_user_id in &deleted_ids {
         // Iterate only over actually deleted IDs
-        self.chat_list_cache.remove(&removed_user_id);
+        self.chat_list_cache.remove(&removed_user_id.into());
         info!(
           "Invalidated chat list cache for removed user {}",
           removed_user_id
@@ -557,7 +557,7 @@ impl AppState {
     // --- Cache Invalidation ---
     // Invalidate cache for all members of the chat, as ownership change might affect visibility/sorting
     for &member_id in &chat_members {
-      self.chat_list_cache.remove(&member_id);
+      self.chat_list_cache.remove(&member_id.into());
       info!(
         "Invalidated chat list cache for user {} due to ownership transfer of chat {}",
         member_id, chat_id
@@ -619,38 +619,45 @@ mod tests {
     let user2 = &users[1];
     let user3 = &users[2];
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Test Chat {}", timestamp);
+
     // Create a group chat with user1 as creator and user2, user3 as members
     let chat = state
       .create_new_chat(
-        user1.id,
-        "Test Chat",
+        user1.id.into(),
+        &unique_chat_name,
         ChatType::Group,
-        Some(vec![user2.id, user3.id]),
+        Some(vec![user2.id.into(), user3.id.into()]),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
     // Verify initial creator
     let initial_is_creator = state
       .is_creator_in_chat(&CreateChatMember {
-        chat_id: chat.id,
-        user_id: user1.id,
+        chat_id: chat.id.into(),
+        user_id: user1.id.into(),
       })
       .await?;
     assert!(initial_is_creator, "User1 should be the initial creator");
 
     // Transfer ownership from user1 to user2
     let transfer_result = state
-      .transfer_chat_ownership(chat.id, user1.id, user2.id)
+      .transfer_chat_ownership(chat.id.into(), user1.id.into(), user2.id.into())
       .await;
     assert!(transfer_result.is_ok(), "Ownership transfer should succeed");
 
     // Verify that user2 is now the creator
     let new_is_creator = state
       .is_creator_in_chat(&CreateChatMember {
-        chat_id: chat.id,
-        user_id: user2.id,
+        chat_id: chat.id.into(),
+        user_id: user2.id.into(),
       })
       .await?;
     assert!(new_is_creator, "User2 should now be the creator");
@@ -658,8 +665,8 @@ mod tests {
     // Verify that user1 is no longer the creator
     let old_is_creator = state
       .is_creator_in_chat(&CreateChatMember {
-        chat_id: chat.id,
-        user_id: user1.id,
+        chat_id: chat.id.into(),
+        user_id: user1.id.into(),
       })
       .await?;
     assert!(!old_is_creator, "User1 should no longer be the creator");
@@ -674,23 +681,30 @@ mod tests {
     let user2 = &users[1];
     let user3 = &users[2];
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Test Chat {}", timestamp);
+
     // Create a chat with the user as creator
     let chat = state
       .create_new_chat(
-        user1.id,
-        "Test Chat",
+        user1.id.into(),
+        &unique_chat_name,
         ChatType::Group,
-        Some(vec![user2.id, user3.id]),
+        Some(vec![user2.id.into(), user3.id.into()]),
         Some("Test Description"),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
     // Check if the user is the creator
     let is_creator = state
       .is_creator_in_chat(&CreateChatMember {
-        chat_id: chat.id,
-        user_id: user1.id,
+        chat_id: chat.id.into(),
+        user_id: user1.id.into(),
       })
       .await?;
     assert!(is_creator);
@@ -699,7 +713,7 @@ mod tests {
     let non_existent_user_id = 9999;
     let not_creator = state
       .is_creator_in_chat(&CreateChatMember {
-        chat_id: chat.id,
+        chat_id: chat.id.into(),
         user_id: non_existent_user_id,
       })
       .await?;
@@ -715,35 +729,42 @@ mod tests {
     let user2 = &users[1];
     let user3 = &users[2];
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Test Chat {}", timestamp);
+
     // Create a chat with user1 as creator and user2, user3 as members
     let chat = state
       .create_new_chat(
-        user1.id,
-        "Test Chat",
+        user1.id.into(),
+        &unique_chat_name,
         ChatType::Group,
-        Some(vec![user2.id, user3.id]),
+        Some(vec![user2.id.into(), user3.id.into()]),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
     // Check if all users are members
     let is_member1 = state
       .member_exists_in_chat(&CreateChatMember {
-        chat_id: chat.id,
-        user_id: user1.id,
+        chat_id: chat.id.into(),
+        user_id: user1.id.into(),
       })
       .await?;
     let is_member2 = state
       .member_exists_in_chat(&CreateChatMember {
-        chat_id: chat.id,
-        user_id: user2.id,
+        chat_id: chat.id.into(),
+        user_id: user2.id.into(),
       })
       .await?;
     let is_member3 = state
       .member_exists_in_chat(&CreateChatMember {
-        chat_id: chat.id,
-        user_id: user3.id,
+        chat_id: chat.id.into(),
+        user_id: user3.id.into(),
       })
       .await?;
 
@@ -755,7 +776,7 @@ mod tests {
     let non_existent_user_id = 9999;
     let not_member = state
       .member_exists_in_chat(&CreateChatMember {
-        chat_id: chat.id,
+        chat_id: chat.id.into(),
         user_id: non_existent_user_id,
       })
       .await?;
@@ -773,22 +794,29 @@ mod tests {
     let user4 = &users[3];
     let user5 = &users[4];
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Test Chat {}", timestamp);
+
     // Create a chat with user1 as creator and initial members
     let chat = state
       .create_new_chat(
-        user1.id,
-        "Test Chat",
+        user1.id.into(),
+        &unique_chat_name,
         ChatType::Group,
-        Some(vec![user2.id, user3.id]),
+        Some(vec![user2.id.into(), user3.id.into()]),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
     // Test batch addition of members
-    let members_to_add = vec![user4.id, user5.id];
+    let members_to_add = vec![user4.id.into(), user5.id.into()];
     let added_members = state
-      .add_chat_members(chat.id, user1.id, members_to_add)
+      .add_chat_members(chat.id.into(), user1.id.into(), members_to_add)
       .await?;
 
     // Verify the number of added members
@@ -798,20 +826,24 @@ mod tests {
     for user_id in &[user1.id, user2.id, user3.id, user4.id, user5.id] {
       let exists = state
         .member_exists_in_chat(&CreateChatMember {
-          chat_id: chat.id,
-          user_id: *user_id,
+          chat_id: chat.id.into(),
+          user_id: (*user_id).into(),
         })
         .await?;
       assert!(exists, "User {} should be a member of the chat", user_id);
     }
 
     // Count total members (should be 5: creator + initial 2 + added 2)
-    let count = state.count_members(chat.id).await?;
+    let count = state.count_members(chat.id.into()).await?;
     assert_eq!(count, 5, "Chat should have 5 members total");
 
     // Test duplicate addition (should be idempotent)
     let duplicate_members = state
-      .add_chat_members(chat.id, user1.id, vec![user4.id, user5.id])
+      .add_chat_members(
+        chat.id.into(),
+        user1.id.into(),
+        vec![user4.id.into(), user5.id.into()],
+      )
       .await?;
     assert_eq!(
       duplicate_members.len(),
@@ -820,7 +852,7 @@ mod tests {
     );
 
     // Count members again (should still be 5)
-    let count_after_duplicates = state.count_members(chat.id).await?;
+    let count_after_duplicates = state.count_members(chat.id.into()).await?;
     assert_eq!(
       count_after_duplicates, 5,
       "Count should remain 5 after duplicate additions"
@@ -828,14 +860,14 @@ mod tests {
 
     // Test removing a member
     state
-      .remove_group_chat_members(chat.id, user1.id, vec![user4.id])
+      .remove_group_chat_members(chat.id.into(), user1.id.into(), vec![user4.id.into()])
       .await?;
 
     // Verify user4 is no longer a member
     let is_still_member = state
       .member_exists_in_chat(&CreateChatMember {
-        chat_id: chat.id,
-        user_id: user4.id,
+        chat_id: chat.id.into(),
+        user_id: user4.id.into(),
       })
       .await?;
     assert!(
@@ -844,7 +876,7 @@ mod tests {
     );
 
     // Count members one more time (should be 4)
-    let final_count = state.count_members(chat.id).await?;
+    let final_count = state.count_members(chat.id.into()).await?;
     assert_eq!(final_count, 4);
 
     Ok(())
@@ -857,29 +889,36 @@ mod tests {
     let user2 = &users[1];
     let user3 = &users[2];
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Test Chat {}", timestamp);
+
     // Create a chat with user1 as creator and user2, user3 as members
     let chat = state
       .create_new_chat(
-        user1.id,
-        "Test Chat",
+        user1.id.into(),
+        &unique_chat_name,
         ChatType::Group,
-        Some(vec![user2.id, user3.id]),
+        Some(vec![user2.id.into(), user3.id.into()]),
         None,
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
     // List members
-    let members = state.list_chat_members(chat.id).await?;
+    let members = state.list_chat_members(chat.id.into()).await?;
 
     // Check count
     assert_eq!(members.len(), 3);
 
     // Check if all users are in the members list
-    let member_ids: Vec<i64> = members.iter().map(|m| m.user_id).collect();
-    assert!(member_ids.contains(&user1.id));
-    assert!(member_ids.contains(&user2.id));
-    assert!(member_ids.contains(&user3.id));
+    let member_ids: Vec<i64> = members.iter().map(|m| m.user_id.into()).collect();
+    assert!(member_ids.contains(&i64::from(user1.id)));
+    assert!(member_ids.contains(&i64::from(user2.id)));
+    assert!(member_ids.contains(&i64::from(user3.id)));
 
     Ok(())
   }

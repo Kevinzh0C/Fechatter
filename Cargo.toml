@@ -56,6 +56,7 @@ utoipa-redoc = { version = "6.0.0", features = ["axum"] }
 utoipa-swagger-ui = { version = "9.0.1", features = ["axum"] }
 utoipa-scalar = { version = "0.3.0", features = ["axum"] }
 
+
 fechatter_core = { path = "./fechatter_core" }
 fechatter_server = { path = "./fechatter_server" }
 notify_server = { path = "./notify_server" }

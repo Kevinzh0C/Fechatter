@@ -1,39 +1,60 @@
 [package]
 name = "fechatter_tests"
 version = "0.1.0"
-edition = "2024"
-
-
-[dev-dependencies]
-anyhow = { workspace = true }
-axum = { workspace = true }
-axum-extra = { workspace = true }
-fechatter_core = { workspace = true }
-fechatter_server = { workspace = true, features = ["test-util"] }
-notify_server = { workspace = true }
-reqwest = { version = "0.12.4", default-features = false, features = [
-  "rustls-tls",
-  "json",
-  "multipart",
-  "stream",
-] }
-sqlx = { workspace = true }
-tower = { workspace = true }
-tower-http = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-uuid = { workspace = true }
-chrono = { workspace = true }
-reqwest-eventsource = "0.6.0"
-serde = { workspace = true }
-serde_json = "1.0.116"
-tokio = { workspace = true }
-tokio-stream = { workspace = true }
-tokio-util = { workspace = true }
-sqlx-db-tester = "0.6.0"
+edition = "2021"
 
 [dependencies]
+# Core dependencies
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+anyhow = "1.0"
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.11", features = ["v4", "v7", "serde"] }
+tower = { version = "0.5", features = ["util", "timeout", "limit"] }
 
-hyper = "1.6.0"
-futures = "0.3.30"
-bytes = "1.10.1"
+# HTTP and API testing
+reqwest = { version = "0.12", features = ["json", "stream", "multipart"] }
+axum = { version = "0.8.4", features = ["macros"] }
+axum-extra = { version = "0.10.1", features = ["cookie", "typed-header"] }
+futures = "0.3"
+reqwest-eventsource = "0.6"
+
+# Database testing
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "time", "json", "migrate", "macros", "chrono"] }
+sqlx-db-tester = "0.6.0"
+
+# NATS testing
+async-nats = { version = "0.41.0" }
+tokio-stream = { workspace = true }
+async-stream = "0.3"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Test utilities
+tempfile = "3.10"
+md5 = "0.7"
+base64 = "0.22"
+
+# Local project dependencies
+fechatter_core = { workspace = true }
+fechatter_server = { path = "../fechatter_server", features = ["test-util"] }
+notify_server = { workspace = true }
+
+# Additional dependencies
+log = "0.4"
+async-trait = "0.1"
+cookie = "0.17"
+http-body-util = "0.1"
+jwt-simple = "0.12.8"
+nanoid = "0.4"
+once_cell = "1.19"
+redis = { version = "0.23", features = ["tokio-comp"] }
+sha2 = "0.10"
+thiserror = "1.0"
+time = "0.3"
+tower-http = { version = "0.6", features = ["full"] }
+hyper = "1.0"
+urlencoding = "2.1"

@@ -1,14 +1,14 @@
 use crate::AppError;
 use async_trait::async_trait;
 use chrono::{DateTime, Duration, Utc};
+use std::sync::Arc;
 
 use fechatter_core::error::CoreError;
 use fechatter_core::jwt::{
   RefreshToken as CoreRefreshToken, RefreshTokenRepository, ReplaceTokenPayload, StoreTokenPayload,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Row, postgres::PgRow};
-use std::sync::Arc;
+use sqlx::{PgPool, Row};
 
 pub const REFRESH_TOKEN_EXPIRATION: usize = 14 * 24 * 60 * 60; // 14 days
 pub const REFRESH_TOKEN_MAX_LIFETIME: usize = 30 * 24 * 60 * 60; // 30 days
@@ -52,7 +52,7 @@ impl RefreshTokenEntity {
   pub fn to_dto(&self) -> CoreRefreshToken {
     CoreRefreshToken {
       id: self.id,
-      user_id: self.user_id,
+      user_id: fechatter_core::UserId(self.user_id.into()),
       token_hash: self.token_hash.clone(),
       expires_at: self.expires_at,
       issued_at: self.issued_at,
@@ -309,9 +309,9 @@ impl RefreshTokenRepository for RefreshTokenAdaptor {
       .map_err(|e| CoreError::Internal(e.to_string()))
   }
 
-  async fn revoke_all_for_user(&self, user_id: i64) -> Result<(), CoreError> {
+  async fn revoke_all_for_user(&self, user_id: fechatter_core::UserId) -> Result<(), CoreError> {
     let pool = self.pool.clone();
-    RefreshTokenStorage::revoke_all_for_user(user_id, &pool)
+    RefreshTokenStorage::revoke_all_for_user(user_id.into(), &pool)
       .await
       .map_err(|e| CoreError::Internal(e.to_string()))
   }
@@ -319,7 +319,7 @@ impl RefreshTokenRepository for RefreshTokenAdaptor {
   async fn create(&self, payload: StoreTokenPayload) -> Result<CoreRefreshToken, CoreError> {
     let pool = self.pool.clone();
     let result = RefreshTokenStorage::create(
-      payload.user_id,
+      i64::from(payload.user_id),
       &payload.raw_token,
       payload.user_agent.clone(),
       payload.ip_address.clone(),
@@ -403,7 +403,7 @@ mod tests {
       Ok(())
     }
 
-    async fn revoke_all_for_user(&self, _user_id: i64) -> Result<(), CoreError> {
+    async fn revoke_all_for_user(&self, _user_id: fechatter_core::UserId) -> Result<(), CoreError> {
       Ok(())
     }
 
@@ -411,8 +411,8 @@ mod tests {
       // 返回一个假的RefreshToken用于测试
       let now = Utc::now();
       Ok(CoreRefreshToken {
-        id: 1,
-        user_id: _payload.user_id,
+        id: fechatter_core::UserId(1).into(),
+        user_id: fechatter_core::UserId(_payload.user_id.into()),
         token_hash: "fake_hash".to_string(),
         expires_at: _payload.expires_at,
         issued_at: now,
@@ -431,16 +431,16 @@ mod tests {
     let token_manager = TokenManager::from_config(&config.auth, Arc::new(MockRefreshTokenRepo))?;
 
     let user = User {
-      id: 1,
+      id: fechatter_core::UserId(1).into(),
       fullname: "John Doe".to_string(),
       email: "john.doe@example.com".to_string(),
       password_hash: Default::default(),
       status: UserStatus::Active,
       created_at: chrono::Utc::now(),
-      workspace_id: 1,
+      workspace_id: fechatter_core::WorkspaceId(1),
     };
     let user_claims = UserClaims {
-      id: user.id,
+      id: user.id.into(),
       workspace_id: user.workspace_id,
       fullname: user.fullname.clone(),
       email: user.email.clone(),
@@ -470,7 +470,7 @@ mod tests {
 
     // 使用RefreshTokenStorage创建token
     let _token = RefreshTokenStorage::create(
-      user.id,
+      user.id.into(),
       &token_str,
       Some("test-agent".to_string()),
       Some("127.0.0.1".to_string()),
@@ -482,7 +482,7 @@ mod tests {
 
     assert!(found_token.is_some());
     let found_token = found_token.unwrap();
-    assert_eq!(found_token.user_id, user.id);
+    assert_eq!(found_token.user_id, i64::from(user.id));
     assert_eq!(found_token.user_agent, Some("test-agent".to_string()));
     assert_eq!(found_token.ip_address, Some("127.0.0.1".to_string()));
 
@@ -496,7 +496,8 @@ mod tests {
 
     let token_str = generate_refresh_token();
 
-    let token = RefreshTokenStorage::create(user.id, &token_str, None, None, state.pool()).await?;
+    let token =
+      RefreshTokenStorage::create(user.id.into(), &token_str, None, None, state.pool()).await?;
 
     RefreshTokenStorage::revoke(token.id, state.pool()).await?;
 
@@ -514,7 +515,8 @@ mod tests {
 
     let token_str = generate_refresh_token();
 
-    let token = RefreshTokenStorage::create(user.id, &token_str, None, None, state.pool()).await?;
+    let token =
+      RefreshTokenStorage::create(user.id.into(), &token_str, None, None, state.pool()).await?;
 
     let new_token_str = generate_refresh_token();
     let _new_token = RefreshTokenStorage::replace(
@@ -545,11 +547,11 @@ mod tests {
     let token_str1 = generate_refresh_token();
     let token_str2 = generate_refresh_token();
 
-    RefreshTokenStorage::create(user.id, &token_str1, None, None, state.pool()).await?;
+    RefreshTokenStorage::create(user.id.into(), &token_str1, None, None, state.pool()).await?;
 
-    RefreshTokenStorage::create(user.id, &token_str2, None, None, state.pool()).await?;
+    RefreshTokenStorage::create(user.id.into(), &token_str2, None, None, state.pool()).await?;
 
-    RefreshTokenStorage::revoke_all_for_user(user.id, state.pool()).await?;
+    RefreshTokenStorage::revoke_all_for_user(user.id.into(), state.pool()).await?;
 
     let found_token1 = RefreshTokenStorage::find_by_token(&token_str1, state.pool()).await?;
     let found_token2 = RefreshTokenStorage::find_by_token(&token_str2, state.pool()).await?;
@@ -575,7 +577,7 @@ mod tests {
 
     // 使用适配器创建token
     let payload = StoreTokenPayload {
-      user_id: user.id,
+      user_id: user.id.into(),
       raw_token: token_str.clone(),
       expires_at,
       absolute_expires_at,

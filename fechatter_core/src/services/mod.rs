@@ -2,7 +2,7 @@ pub mod auth_service;
 pub mod mock;
 pub mod service_provider;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct AuthContext {
   pub user_agent: Option<String>,
   pub ip_address: Option<String>,
@@ -12,6 +12,7 @@ use crate::{
   AuthUser, CreateUser, SigninUser,
   error::CoreError,
   jwt::{AuthTokens, UserClaims},
+  models::UserId,
 };
 
 pub trait AuthService: Send + Sync {
@@ -40,7 +41,7 @@ pub trait AuthService: Send + Sync {
 
   fn logout_all(
     &self,
-    user_id: i64,
+    user_id: UserId,
   ) -> impl std::future::Future<Output = Result<(), CoreError>> + Send;
 
   fn verify_token(&self, token: &str) -> Result<UserClaims, CoreError>;

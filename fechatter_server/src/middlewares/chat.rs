@@ -113,7 +113,10 @@ pub async fn verify_chat_membership_middleware(
     }
   };
 
-  match state.ensure_user_is_chat_member(chat_id, user.id).await {
+  match state
+    .ensure_user_is_chat_member(chat_id, user.id.into())
+    .await
+  {
     Ok(true) => {
       let req = Request::from_parts(parts, body);
       next.run(req).await

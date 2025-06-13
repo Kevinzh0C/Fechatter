@@ -77,16 +77,20 @@ mod macros {
       // 创建测试令牌
       let user_claims = UserClaims {
         id: user.id,
-        workspace_id: user.workspace_id,
+        workspace_id: user.workspace_id.into(),
         fullname: user.fullname.clone(),
         email: user.email.clone(),
         status: user.status,
         created_at: user.created_at,
       };
 
-      let tokens = state
-        .token_manager()
-        .generate_auth_tokens(&user_claims, None, None)
+      let tokens =
+        <fechatter_core::models::jwt::TokenManager as TokenService>::generate_auth_tokens(
+          state.token_manager(),
+          &user_claims,
+          None,
+          None,
+        )
         .await?;
 
       // 使用宏验证token

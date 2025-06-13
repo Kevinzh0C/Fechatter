@@ -2,9 +2,7 @@ use anyhow::Result;
 use fechatter_server::{AppConfig, AppState, get_router};
 use tokio::net::TcpListener;
 use tracing::{debug, info};
-use tracing_subscriber::{
-  EnvFilter, Layer as _, fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt,
-};
+use tracing_subscriber::{EnvFilter, fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() -> Result<()> {

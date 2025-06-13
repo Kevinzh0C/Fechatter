@@ -33,6 +33,8 @@ utoipa-scalar = { workspace = true }
 base64 = { version = "0.22.1", features = ["default"] }
 fechatter_macro = { path = "../fechatter_macro" }
 serde_json = { workspace = true }
+validator = { version = "0.20.0", features = ["derive"] }
 
 [dev-dependencies]
 mockall = "0.13.1"
+futures = { workspace = true }

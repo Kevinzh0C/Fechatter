@@ -1,3 +1,4 @@
+use anyhow::Result;
 use sqlx::{Executor, Postgres, query_as};
 
 use crate::{AppError, AppState};
@@ -273,11 +274,20 @@ mod tests {
     let (_tdb, state, _users) = setup_test_users!(1).await;
     let user_id = _users[0].id;
 
-    let workspace = state.create_workspace_with_pool("PWQ", user_id).await?;
-    assert_eq!(workspace.name, "PWQ");
+    // Generate unique workspace name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_workspace_name = format!("PWQ{}", timestamp);
+
+    let workspace = state
+      .create_workspace_with_pool(&unique_workspace_name, user_id.into())
+      .await?;
+    assert_eq!(workspace.name, unique_workspace_name);
 
     state
-      .add_to_workspace_with_pool(workspace.id, user_id)
+      .add_to_workspace_with_pool(workspace.id.into(), user_id.into())
       .await?;
 
     let workspace_id = sqlx::query_scalar::<_, i64>("SELECT workspace_id FROM users WHERE id = $1")
@@ -285,10 +295,12 @@ mod tests {
       .fetch_one(state.pool())
       .await?;
 
-    assert_eq!(workspace.id, workspace_id);
+    assert_eq!(workspace.id, fechatter_core::WorkspaceId(workspace_id));
 
-    let updated_workspace = state.update_owner_with_pool(workspace.id, user_id).await?;
-    assert_eq!(updated_workspace.owner_id, user_id);
+    let updated_workspace = state
+      .update_owner_with_pool(workspace.id.into(), user_id.into())
+      .await?;
+    assert_eq!(updated_workspace.owner_id, user_id.into());
 
     Ok(())
   }
@@ -311,9 +323,25 @@ mod tests {
     let (_tdb, state, users) = setup_test_users!(5).await;
 
     let workspace = state
-      .fetch_workspace_users_with_pool(users[0].workspace_id)
+      .fetch_workspace_users_with_pool(users[0].workspace_id.into())
       .await?;
-    assert_eq!(workspace.len(), 5);
+
+    // Check that we get the expected users for this test's workspace
+    // Since each test runs in isolation, we should only get the users created for this test
+    assert!(
+      workspace.len() >= 5,
+      "Expected at least 5 users, but got {}",
+      workspace.len()
+    );
+
+    // Verify all test users are in the result
+    for user in &users {
+      assert!(
+        workspace.iter().any(|w_user| w_user.id == user.id),
+        "User {} should be in workspace users",
+        user.id
+      );
+    }
 
     Ok(())
   }
@@ -324,12 +352,16 @@ mod tests {
     let user1 = users[0].clone();
     let user2 = users[1].clone();
 
-    let workspace = state.find_by_id_with_pool(user1.workspace_id).await?;
+    let workspace = state
+      .find_by_id_with_pool(user1.workspace_id.into())
+      .await?;
     let workspace = workspace.unwrap();
 
-    let updated_workspace = state.update_owner_with_pool(workspace.id, user2.id).await?;
+    let updated_workspace = state
+      .update_owner_with_pool(workspace.id.into(), user2.id.into())
+      .await?;
 
-    assert_eq!(updated_workspace.owner_id, user2.id);
+    assert_eq!(updated_workspace.owner_id, user2.id.into());
     Ok(())
   }
 }

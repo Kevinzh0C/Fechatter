@@ -2,6 +2,9 @@ server:
   port: 6688
   db_url: "postgres://postgres:postgres@localhost:5432/fechatter"
   base_dir: "/tmp/fechatter/"
+  max_upload_size: 10485760
+  request_timeout_ms: 30000
+
 auth:
   sk: |
     -----BEGIN PRIVATE KEY-----
@@ -11,3 +14,54 @@ auth:
     -----BEGIN PUBLIC KEY-----
     MCowBQYDK2VwAyEAMnnmEdL53E3O5UTdVW/VEs9qT6To/48iU7jWpKuVb2c=
     -----END PUBLIC KEY-----
+  token_expiration: 86400
+  refresh_token_expiration: 2592000
+
+messaging:
+  enabled: true
+  provider: "nats"
+  nats:
+    url: "nats://localhost:4222"
+    auth:
+      enabled: false
+
+    subjects:
+      message_created: "fechatter.messages.created"
+      message_updated: "fechatter.messages.updated"
+      message_deleted: "fechatter.messages.deleted"
+      chat_created: "fechatter.chats.created"
+      chat_updated: "fechatter.chats.updated"
+      chat_deleted: "fechatter.chats.deleted"
+      user_joined_chat: "fechatter.chats.member.joined"
+      user_left_chat: "fechatter.chats.member.left"
+      duplicate_message_attempted: "fechatter.messages.duplicate"
+    jetstream:
+      enabled: true
+      stream: "fechatter_events"
+      storage: "file"
+      max_bytes: 1073741824 # 1GB
+      max_msg_size: 1048576 # 1MB
+      max_age: 24 # 1 day retention
+
+search:
+  enabled: true
+  provider: "meilisearch"
+  async_indexing:
+    enabled: true
+    batch_size: 10
+    batch_timeout_ms: 1000
+  meilisearch:
+    url: "http://localhost:7700"
+    api_key: ""
+    connection_timeout_ms: 2000
+    request_timeout_ms: 3000
+    indexes:
+      messages:
+        name: "fechatter_messages"
+        primary_key: "id"
+        searchable_fields: [ "content", "sender_name" ]
+        displayed_fields: [ "id", "chat_id", "sender_id", "content", "created_at", "sender_name", "files", "relevance_score" ]
+        filterable_fields: [ "chat_id", "workspace_id" ]
+        sortable_fields: [ "created_at" ]
+    settings:
+      pagination_limit: 20

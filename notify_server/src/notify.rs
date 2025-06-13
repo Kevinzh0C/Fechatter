@@ -63,9 +63,9 @@ struct MessagePayload {
 impl From<MessagePayload> for Message {
   fn from(payload: MessagePayload) -> Self {
     Message {
-      id: payload.id,
-      chat_id: payload.chat_id,
-      sender_id: payload.sender_id,
+      id: fechatter_core::MessageId(payload.id),
+      chat_id: fechatter_core::ChatId(payload.chat_id),
+      sender_id: fechatter_core::UserId(payload.sender_id),
       content: payload.content,
       files: Some(payload.files),
       created_at: chrono::DateTime::parse_from_str(
@@ -84,9 +84,9 @@ impl From<MessagePayload> for Message {
 // Payload for duplicate_message_attempted event
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DuplicateMessagePayload {
-  idempotency_key: Uuid,
-  chat_id: i64,
-  sender_id: i64,
+  pub idempotency_key: Uuid,
+  pub chat_id: i64,
+  pub sender_id: i64,
 }
 
 pub async fn set_up_pg_listener(state: AppState) -> Result<()> {
@@ -194,22 +194,5 @@ impl Notification {
       }
       _ => Err(anyhow::anyhow!("Invalid notification type: {}", r#type)),
     }
-  }
-}
-
-fn get_affected_chat_user_ids(old: Option<&Chat>, new: Option<&Chat>) -> HashSet<i64> {
-  match (old, new) {
-    (Some(old), Some(new)) => {
-      let old_user_ids: HashSet<_> = old.chat_members.iter().cloned().collect();
-      let new_user_ids: HashSet<_> = new.chat_members.iter().cloned().collect();
-      if old_user_ids == new_user_ids {
-        HashSet::new()
-      } else {
-        old_user_ids.union(&new_user_ids).copied().collect()
-      }
-    }
-    (Some(old), None) => old.chat_members.iter().cloned().collect(),
-    (None, Some(new)) => new.chat_members.iter().cloned().collect(),
-    (None, None) => HashSet::new(),
   }
 }

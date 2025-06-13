@@ -9,27 +9,27 @@ use argon2::{
 
 use crate::{
   error::CoreError,
-  models::{User, UserStatus},
+  models::{User, UserId, UserStatus, WorkspaceId},
 };
 
 use super::{CreateUser, SigninUser};
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AuthUser {
-  pub id: i64,
+  pub id: UserId,
   pub fullname: String,
   pub email: String,
   pub status: UserStatus,
   pub created_at: chrono::DateTime<chrono::Utc>,
-  pub workspace_id: i64,
+  pub workspace_id: WorkspaceId,
 }
 
 #[async_trait]
 pub trait UserRepository: Send + Sync {
   async fn create(&self, input: &CreateUser) -> Result<User, CoreError>;
-  async fn find_by_id(&self, id: i64) -> Result<Option<User>, CoreError>;
+  async fn find_by_id(&self, id: UserId) -> Result<Option<User>, CoreError>;
   async fn email_user_exists(&self, email: &str) -> Result<Option<User>, CoreError>;
-  async fn validate_users_exists_by_ids(&self, ids: &[i64]) -> Result<(), CoreError>;
+  async fn validate_users_exists_by_ids(&self, ids: &[UserId]) -> Result<(), CoreError>;
   async fn authenticate(&self, input: &SigninUser) -> Result<Option<User>, CoreError>;
 }
 

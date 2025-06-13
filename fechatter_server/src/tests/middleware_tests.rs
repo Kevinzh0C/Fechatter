@@ -3,7 +3,6 @@ mod token_refresh_tests {
   use crate::{call_service, create_auth_service, setup_test_users, verify_token};
   use anyhow::Result;
   use fechatter_core::{RefreshTokenService, TokenService};
-  use sqlx::Row;
 
   #[tokio::test]
   async fn test_refresh_token_cookie_mechanism() -> Result<()> {
@@ -16,7 +15,7 @@ mod token_refresh_tests {
     // Generate tokens using TokenService directly
     let user_claims = fechatter_core::UserClaims {
       id: user.id,
-      workspace_id: user.workspace_id,
+      workspace_id: user.workspace_id.into(),
       fullname: user.fullname.clone(),
       email: user.email.clone(),
       status: user.status,
@@ -60,7 +59,7 @@ mod token_refresh_tests {
     // Generate tokens using TokenService directly
     let user_claims = fechatter_core::UserClaims {
       id: user.id,
-      workspace_id: user.workspace_id,
+      workspace_id: user.workspace_id.into(),
       fullname: user.fullname.clone(),
       email: user.email.clone(),
       status: user.status,
@@ -89,7 +88,10 @@ mod list_messages_auth_tests {
     models::{AuthUser, ChatType, ListMessages},
   };
   use anyhow::Result;
-  use axum::extract::{Extension, Path, Query, State};
+  use axum::{
+    Extension,
+    extract::{Path, Query, State},
+  };
   use sqlx::Row;
 
   #[tokio::test]
@@ -100,14 +102,21 @@ mod list_messages_auth_tests {
     let user3 = &users[2]; // This user will NOT be a member
     let user4 = &users[3];
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Test Chat {}", timestamp);
+
     let chat = state
       .create_new_chat(
-        user1.id,
-        "Test Chat",
+        user1.id.into(),
+        &unique_chat_name,
         ChatType::Group,
-        Some(vec![user1.id, user2.id, user4.id]), // Only user1, user2, and user4 are members
+        Some(vec![user1.id.into(), user2.id.into(), user4.id.into()]), // Only user1, user2, and user4 are members
         Some("Test chat for messages"),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
@@ -127,9 +136,9 @@ mod list_messages_auth_tests {
     assert!(!is_member.unwrap_or(true), "User3应该不是聊天成员");
 
     let non_member_auth = Extension(AuthUser {
-      id: user3.id,
+      id: user3.id.into(),
       email: user3.email.clone(),
-      workspace_id: user3.workspace_id,
+      workspace_id: user3.workspace_id.into(),
       fullname: user3.fullname.clone(),
       status: user3.status,
       created_at: user3.created_at,
@@ -143,7 +152,7 @@ mod list_messages_auth_tests {
     let result = list_messages_handler(
       State(state.clone()),
       non_member_auth,
-      Path(chat.id),
+      Path(chat.id.into()),
       Query(query),
     )
     .await;
@@ -184,21 +193,28 @@ mod list_messages_auth_tests {
     let user2 = &users[1];
     let user3 = &users[2];
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Test Chat {}", timestamp);
+
     let chat = state
       .create_new_chat(
-        user1.id,
-        "Test Chat",
+        user1.id.into(),
+        &unique_chat_name,
         ChatType::Group,
-        Some(vec![user1.id, user2.id, user3.id]), // All users are members
+        Some(vec![user1.id.into(), user2.id.into(), user3.id.into()]), // All users are members
         Some("Test chat for messages"),
-        user1.workspace_id,
+        user1.workspace_id.into(),
       )
       .await?;
 
     let member_auth = Extension(AuthUser {
-      id: user2.id,
+      id: user2.id.into(),
       email: user2.email.clone(),
-      workspace_id: user2.workspace_id,
+      workspace_id: user2.workspace_id.into(),
       fullname: user2.fullname.clone(),
       status: user2.status,
       created_at: user2.created_at,
@@ -212,7 +228,7 @@ mod list_messages_auth_tests {
     let result = list_messages_handler(
       State(state.clone()),
       member_auth,
-      Path(chat.id),
+      Path(chat.id.into()),
       Query(query),
     )
     .await;

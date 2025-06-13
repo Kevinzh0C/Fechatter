@@ -28,7 +28,7 @@ pub(crate) async fn list_chats_handler(
   Extension(user): Extension<AuthUser>,
 ) -> Result<impl IntoResponse, AppError> {
   info!("User {} listing chats", user.id);
-  let chats_arc = state.list_chats_of_user(user.id).await?;
+  let chats_arc = state.list_chats_of_user(user.id.into()).await?;
   Ok((StatusCode::OK, Json(chats_arc)))
 }
 
@@ -54,12 +54,15 @@ pub(crate) async fn create_chat_handler(
 ) -> Result<impl IntoResponse, AppError> {
   let chat = state
     .create_new_chat(
-      user.id,
+      user.id.into(),
       &payload.name,
       payload.chat_type,
-      payload.members,
-      Some(payload.description.as_deref().unwrap_or("")),
-      user.workspace_id,
+      payload
+        .members
+        .as_ref()
+        .map(|members| members.iter().map(|id| (*id).into()).collect()),
+      payload.description.as_deref(),
+      user.workspace_id.into(),
     )
     .await?;
 
@@ -94,7 +97,7 @@ pub(crate) async fn update_chat_handler(
 ) -> Result<impl IntoResponse, AppError> {
   info!("User {} updating chat: {}", user.id, chat_id);
 
-  let updated_chat = state.update_chat(chat_id, user.id, payload).await?;
+  let updated_chat = state.update_chat(chat_id, user.id.into(), payload).await?;
 
   Ok((StatusCode::OK, Json(updated_chat)))
 }
@@ -124,7 +127,7 @@ pub(crate) async fn delete_chat_handler(
 ) -> Result<impl IntoResponse, AppError> {
   info!("User {} deleting chat: {}", user.id, chat_id);
 
-  let deleted = state.delete_chat(chat_id, user.id).await?;
+  let deleted = state.delete_chat(chat_id, user.id.into()).await?;
 
   if deleted {
     Ok(StatusCode::NO_CONTENT.into_response())
@@ -154,8 +157,15 @@ mod tests {
     let user3 = &users[2];
     let auth_user = auth_user!(user1);
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Test Group Chat {}", timestamp);
+
     let payload = CreateChat {
-      name: "Test Group Chat".to_string(),
+      name: unique_chat_name.clone(),
       chat_type: ChatType::Group,
       members: Some(vec![user2.id, user3.id]),
       description: Some("A test group".to_string()),
@@ -168,7 +178,7 @@ mod tests {
     );
 
     // Additional assertions on the deserialized chat object
-    assert_eq!(created_chat.name, "Test Group Chat");
+    assert_eq!(created_chat.name, unique_chat_name);
     assert_eq!(created_chat.chat_type, ChatType::Group);
     assert_eq!(created_chat.chat_members.len(), 3);
     assert!(created_chat.chat_members.contains(&user1.id));
@@ -180,14 +190,21 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_create_chat_handler_single() -> Result<()> {
+  async fn create_chat_handler_should_work_for_single() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(2).await;
     let user1 = &users[0];
     let user2 = &users[1];
     let auth_user = auth_user!(user1);
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Test Single Chat {}", timestamp);
+
     let payload = CreateChat {
-      name: "Test Single Chat".to_string(),
+      name: unique_chat_name,
       chat_type: ChatType::Single,
       members: Some(vec![user2.id]),
       description: Some("".to_string()),
@@ -209,28 +226,41 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_list_chats_handler() -> Result<()> {
+  async fn list_chats_handler_should_work() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(3).await;
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];
     let auth_user = auth_user!(user1);
 
+    // Generate unique chat names to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+
     create_new_test_chat!(
       state,
       user1,
       ChatType::Group,
       [user2, user3],
-      "Group Chat 1"
+      &format!("Group Chat 1 {}", timestamp)
     )
     .await;
-    create_new_test_chat!(state, user1, ChatType::Single, [user2], "Single Chat 1").await;
+    create_new_test_chat!(
+      state,
+      user1,
+      ChatType::Single,
+      [user2],
+      &format!("Single Chat 1 {}", timestamp)
+    )
+    .await;
     create_new_test_chat!(
       state,
       user2,
       ChatType::Group,
       [user1, user3],
-      "Group Chat 2"
+      &format!("Group Chat 2 {}", timestamp)
     )
     .await;
 
@@ -240,25 +270,33 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_update_chat_handler_success() -> Result<()> {
+  async fn update_chat_handler_should_work() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(3).await;
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];
     let auth_user = auth_user!(user1);
 
+    // Generate unique chat names to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let original_name = format!("Chat to Update {}", timestamp);
+    let updated_name = format!("Updated Chat Name {}", timestamp);
+
     let chat = create_new_test_chat!(
       state,
       user1,
       ChatType::Group,
       [user2, user3],
-      "Chat to Update",
+      &original_name,
       "Original Desc"
     )
     .await;
 
     let payload = UpdateChat {
-      name: Some("Updated Chat Name".to_string()),
+      name: Some(updated_name.clone()),
       description: Some("Updated Desc".to_string()),
     };
 
@@ -266,14 +304,14 @@ mod tests {
       update_chat_handler(
         State(state),
         Extension(auth_user),
-        Path(chat.id),
+        Path(chat.id.into()),
         Json(payload)
       ),
       StatusCode::OK,
       Chat
     );
 
-    assert_eq!(updated_chat.name, "Updated Chat Name");
+    assert_eq!(updated_chat.name, updated_name);
     assert_eq!(updated_chat.description, "Updated Desc");
     assert_eq!(updated_chat.id, chat.id);
 
@@ -281,19 +319,26 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_update_chat_handler_permission_denied() -> Result<()> {
+  async fn update_chat_handler_should_deny_non_creator() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(3).await;
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];
     let non_creator_auth = auth_user!(user2);
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Permission Test Chat {}", timestamp);
+
     let chat = create_new_test_chat!(
       state,
       user1,
       ChatType::Group,
       [user2, user3],
-      "Permission Test Chat"
+      &unique_chat_name
     )
     .await;
 
@@ -306,7 +351,7 @@ mod tests {
       update_chat_handler(
         State(state),
         Extension(non_creator_auth),
-        Path(chat.id),
+        Path(chat.id.into()),
         Json(payload)
       ),
       AppError::ChatPermissionError(_)
@@ -316,19 +361,26 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_delete_chat_handler_success() -> Result<()> {
+  async fn delete_chat_handler_should_work() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(3).await;
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];
     let auth_user = auth_user!(user1);
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Chat to Delete {}", timestamp);
+
     let chat = create_new_test_chat!(
       state,
       user1,
       ChatType::Group,
       [user2, user3],
-      "Chat to Delete"
+      &unique_chat_name
     )
     .await;
 
@@ -336,7 +388,7 @@ mod tests {
       delete_chat_handler(
         State(state.clone()),
         Extension(auth_user.clone()),
-        Path(chat.id)
+        Path(chat.id.into())
       ),
       StatusCode::NO_CONTENT
     );
@@ -347,24 +399,35 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_delete_chat_handler_permission_denied() -> Result<()> {
+  async fn delete_chat_handler_should_deny_non_creator() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(3).await;
     let user1 = &users[0];
     let user2 = &users[1];
     let user3 = &users[2];
     let non_creator_auth = auth_user!(user2);
 
+    // Generate unique chat name to avoid conflicts
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let unique_chat_name = format!("Delete Permission Test {}", timestamp);
+
     let chat = create_new_test_chat!(
       state,
       user1,
       ChatType::Group,
       [user2, user3],
-      "Delete Permission Test"
+      &unique_chat_name
     )
     .await;
 
     assert_handler_error!(
-      delete_chat_handler(State(state), Extension(non_creator_auth), Path(chat.id)),
+      delete_chat_handler(
+        State(state),
+        Extension(non_creator_auth),
+        Path(chat.id.into())
+      ),
       AppError::ChatPermissionError(_)
     );
 
@@ -372,7 +435,7 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_delete_chat_handler_not_found() -> Result<()> {
+  async fn delete_chat_handler_should_return_not_found() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user1 = &users[0];
     let auth_user = auth_user!(user1);
@@ -380,7 +443,7 @@ mod tests {
 
     assert_handler_error!(
       delete_chat_handler(State(state),
-      Extension(auth_user), Path(non_existent_chat_id)),
+      Extension(auth_user), Path(non_existent_chat_id.into())),
       AppError::NotFound(ids) if ids.len() == 1 && ids[0] == non_existent_chat_id.to_string()
     );
 

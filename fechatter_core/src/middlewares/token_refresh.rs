@@ -206,6 +206,7 @@ fn create_refresh_cookie(token_data: &RefreshTokenData) -> String {
 }
 
 /// Get cookie value by name from headers
+#[allow(dead_code)]
 fn get_cookie_value(headers: &HeaderMap, name: &str) -> Option<String> {
   let cookie_header = headers.get("cookie")?;
   let cookie_str = cookie_header.to_str().ok()?;

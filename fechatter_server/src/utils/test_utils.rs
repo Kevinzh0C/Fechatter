@@ -23,14 +23,25 @@ macro_rules! setup_test_users {
         "Tracy", "Ursula", "Victor", "Wendy", "Xavier", "Yvonne", "Zoe",
       ];
 
+      // Generate unique identifier combining timestamp, process ID, and thread ID
+      let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+      let process_id = std::process::id();
+      let thread_id = std::thread::current().id();
+      // Create a simple hash of thread ID to make it numeric
+      let thread_hash = format!("{:?}", thread_id).len() as u64;
+      let unique_id = format!("{}{}{}", timestamp, process_id, thread_hash);
+
       for i in 0..($num_users as usize) {
         let fullname = names
           .get(i)
           .map(|&n| n.to_string())
           .unwrap_or_else(|| format!("User {}", i + 1));
         let email_name_part = fullname.to_lowercase().replace(' ', "");
-        // Use index for uniqueness within the test run
-        let email = format!("{}{}@acme.test", email_name_part, i + 1);
+        // Use unique_id and index for uniqueness across test runs
+        let email = format!("{}{}{}@acme.test", email_name_part, i + 1, unique_id);
         let password = "password";
         let workspace = "Acme";
         let user_payload = $crate::models::CreateUser::new(&fullname, &email, &workspace, password);
@@ -53,7 +64,7 @@ macro_rules! create_new_test_chat {
             use fechatter_core::ChatType;
 
             // Convert members Vec<&User> or Vec<User> to Vec<i64>
-            let member_ids_vec: Vec<i64> = $members.iter().map(|u| u.id).collect();
+            let member_ids_vec: Vec<i64> = $members.iter().map(|u| u.id.into()).collect();
             // Handle optional description
             let description_str = match Option::<String>::None $(.or(Some($desc.to_string())))? {
                 Some(s) => s,
@@ -62,13 +73,13 @@ macro_rules! create_new_test_chat {
 
             // Actually create the chat in the database
             let chat = $state.create_new_chat(
-                $creator.id,
+                $creator.id.into(),
                 $name,
                 $chat_type,
                 Some(member_ids_vec),
                 Some(&description_str),
-                $creator.workspace_id,
-            )
+                $creator.workspace_id.into(),
+    )
             .await
             .expect(&format!("Failed to create test chat '{}'", $name));
 

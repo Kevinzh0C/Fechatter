@@ -39,7 +39,7 @@ mod service_validation_tests {
     // 创建用户Claims
     let user_claims = UserClaims {
       id: user.id,
-      workspace_id: user.workspace_id,
+      workspace_id: user.workspace_id.into(),
       fullname: user.fullname.clone(),
       email: user.email.clone(),
       status: user.status,
@@ -133,7 +133,7 @@ mod service_validation_tests {
     // 生成测试令牌
     let user_claims = UserClaims {
       id: user.id,
-      workspace_id: user.workspace_id,
+      workspace_id: user.workspace_id.into(),
       fullname: user.fullname.clone(),
       email: user.email.clone(),
       status: user.status,
@@ -175,7 +175,7 @@ mod service_validation_tests {
     // 创建用户Claims
     let user_claims = UserClaims {
       id: user.id,
-      workspace_id: user.workspace_id,
+      workspace_id: user.workspace_id.into(),
       fullname: user.fullname.clone(),
       email: user.email.clone(),
       status: user.status,

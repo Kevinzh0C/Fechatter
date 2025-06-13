@@ -1,10 +1,12 @@
-use crate::{AppState, error::ErrorOutput, handlers::*};
+use crate::{AppState, error::ErrorOutput};
 
 use axum::Router;
 use fechatter_core::{
   AuthUser, Chat, ChatType, ChatUser, CreateChat, CreateMessage, CreateUser, ListMessages, Message,
   SigninUser, User, Workspace,
+  SearchMessages, SearchResult, SearchableMessage,
 };
+
 use utoipa::{
   Modify, OpenApi,
   openapi::security::{ApiKey, ApiKeyValue, HttpAuthScheme, HttpBuilder, SecurityScheme},
@@ -21,50 +23,72 @@ pub(crate) trait OpenApiRouter {
 #[derive(OpenApi)]
 #[openapi(
         paths(
+            // Health endpoints
+            crate::handlers::health_check,
+            crate::handlers::simple_health_check,
+            
             // Auth endpoints
-            auth::signup_handler,
-            auth::signin_handler,
-            auth::refresh_token_handler,
-            auth::logout_handler,
-            auth::logout_all_handler,
+            crate::handlers::signup_handler,
+            crate::handlers::signin_handler,
+            crate::handlers::refresh_token_handler,
+            crate::handlers::logout_handler,
+            crate::handlers::logout_all_handler,
             
             // Chat endpoints
-            chat::list_chats_handler,
-            chat::create_chat_handler, 
-            chat::update_chat_handler,
-            chat::delete_chat_handler,
+            crate::handlers::list_chats_handler,
+            crate::handlers::create_chat_handler, 
+            crate::handlers::update_chat_handler,
+            crate::handlers::delete_chat_handler,
             
             // Chat members endpoints
-            chat_member::list_chat_members_handler,
-            chat_member::add_chat_members_batch_handler,
-            chat_member::remove_chat_member_handler,
-            chat_member::transfer_chat_ownership_handler,
+            crate::handlers::list_chat_members_handler,
+            crate::handlers::add_chat_members_batch_handler,
+            crate::handlers::remove_chat_member_handler,
+            crate::handlers::transfer_chat_ownership_handler,
             
             // Messages endpoints
-            messages::send_message_handler,
-            messages::list_messages_handler,
+            crate::handlers::send_message_handler,
+            crate::handlers::list_messages_handler,
+            crate::handlers::search_messages,
+            
+            // File endpoints
+            crate::handlers::file_handler,
+            crate::handlers::upload_handler,
+            crate::handlers::fix_file_storage_handler,
             
             // Workspace endpoints
-            workspace::list_all_workspace_users_handler,
-            workspace::get_workspace_by_id
+            crate::handlers::list_all_workspace_users_handler,
+            crate::handlers::get_workspace_by_id
         ),
         components(
             schemas(
-                AuthUser, 
-                Chat, 
-                ChatType, 
-                ChatUser, 
-                CreateChat, 
-                CreateMessage, 
-                CreateUser, 
-                ErrorOutput, 
-                ListMessages, 
-                Message, 
-                SigninUser, 
-                User, 
+                // Error schemas
+                ErrorOutput,
+                
+                // Auth schemas
+                SigninUser,
+                AuthUser,
+                User,
+                CreateUser,
+                
+                // Core chat schemas
+                Chat,
+                CreateChat,
+                ChatUser,
+                ChatType,
+                
+                // Message schemas
+                Message,
+                CreateMessage,
+                ListMessages,
+                
+                // Workspace schema
                 Workspace,
                 
-                auth::AuthResponse
+                // Search schemas - 精简后只保留核心的3个
+                SearchMessages,
+                SearchResult,
+                SearchableMessage,
             )
         ),
         modifiers(&SecurityAddon),
@@ -73,6 +97,8 @@ pub(crate) trait OpenApiRouter {
             (name = "chats", description = "Chat management operations"),
             (name = "chat members", description = "Chat member management operations"),
             (name = "messages", description = "Message operations"),
+            (name = "files", description = "File operations"),
+            (name = "search", description = "Search operations"),
             (name = "workspace", description = "Workspace operations")
         )
     )]
