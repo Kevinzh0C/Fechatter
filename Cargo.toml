@@ -45,7 +45,7 @@ tower-http = { version = "0.6.6", features = [
   "trace",
 ] }
 hyper = { version = "1.6.0", features = ["full"] }
-reqwest = { version = "0.12.19", features = [
+reqwest = { version = "0.12.20", features = [
   "json",
   "rustls-tls",
 ], default-features = false }
@@ -58,10 +58,10 @@ serde_json = "1.0.140"
 serde_yaml = "0.9.34"
 
 # Protocol Buffers - exact versions from Cargo.lock
-prost = "0.13.5"
-prost-types = "0.13.5"
-prost-build = "0.13.5"
-tonic = "0.12.3"
+prost = "0.14.0"
+prost-types = "0.14.0"
+prost-build = "0.14.0"
+tonic = "0.13.1"
 tonic-build = "0.12.3"
 
 # Database - exact versions from Cargo.lock
@@ -91,7 +91,7 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json"] }
 sha1 = "0.10.6"
 sha2 = "0.10.9"
 hex = "0.4.3"
-rand = "0.8.5"
+rand = "0.9.1"
 argon2 = { version = "0.5.3", features = ["std"] }
 hmac = "0.12.1"
 jsonwebtoken = "9.3.1"
