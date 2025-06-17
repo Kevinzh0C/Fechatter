@@ -14,11 +14,11 @@ path = "src/main.rs"
 
 [dependencies]
 # Core Pingora dependencies - use stable 0.4.x to fix 0.5.0 panic issues  
-pingora = "0.4"
-pingora-core = "0.4"
-pingora-proxy = "0.4"
-pingora-http = "0.4"
-pingora-load-balancing = "0.4"
+pingora = "0.5"
+pingora-core = "0.5"
+pingora-proxy = "0.5"
+pingora-http = "0.5"
+pingora-load-balancing = "0.5"
 
 # Async runtime and utilities - use workspace versions
 tokio = { workspace = true }
@@ -59,7 +59,7 @@ fechatter_core = { workspace = true }
 
 # Hyper HTTP library for production proxy
 hyper = { version = "0.14", features = ["full"] }
-rand = "0.8"
+rand = "0.9"
 
 [dev-dependencies]
 tokio-test = "0.4"
