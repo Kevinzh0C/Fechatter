@@ -9,6 +9,7 @@
     "dev:with-bot": "chmod +x scripts/start-with-bot-mock.sh && scripts/start-with-bot-mock.sh",
     "dev:bot-only": "cd server && npm install && node bot-mock.js",
     "build": "node scripts/copy-configs.js && vue-tsc && vite build",
+    "build:dev": "node scripts/copy-configs.js && vue-tsc && vite build --mode development",
     "preview": "vite preview",
     "tauri": "tauri",
     "copy-configs": "node scripts/copy-configs.js",
