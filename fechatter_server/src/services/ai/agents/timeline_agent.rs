@@ -53,16 +53,68 @@ impl TimelineIndexAgent {
   pub async fn build_timeline_index(
     &self,
     chat_id: i64,
-    _daily_summaries: Vec<ChatPeriodSummary>,
-    _topic_clusters: Vec<TopicCluster>,
-    _messages: Vec<(i64, i64, String, DateTime<Utc>)>,
+    daily_summaries: Vec<ChatPeriodSummary>,
+    topic_clusters: Vec<TopicCluster>,
+    messages: Vec<(i64, i64, String, DateTime<Utc>)>,
   ) -> Result<TimelineIndex, AppError> {
-    // TODO: Implementation placeholder
+    let mut entries = Vec::new();
+    let mut topic_map = HashMap::new();
+    let mut participant_map = HashMap::new();
+    
+    // 1. Create entries from daily summaries
+    for summary in daily_summaries {
+      let entry = TimelineEntry {
+        id: format!("summary-{}", summary.start_time.timestamp()),
+        chat_id,
+        start_time: summary.start_time,
+        end_time: summary.end_time,
+        entry_type: TimelineEntryType::TopicDiscussion(summary.key_topics.join(", ")),
+        title: format!("Daily Summary - {}", summary.start_time.format("%Y-%m-%d")),
+        summary: summary.summary,
+        participants: summary.participants,
+        message_range: (0, 0), // Will be filled by LLM if needed
+        tags: summary.key_topics,
+        importance_score: 0.8,
+      };
+      entries.push(entry);
+    }
+    
+    // 2. Create entries from topic clusters  
+    for topic in topic_clusters {
+      topic_map.insert(topic.topic.clone(), topic.message_ids.clone());
+      
+      if !topic.message_ids.is_empty() {
+        let entry = TimelineEntry {
+          id: format!("topic-{}", topic.topic.replace(" ", "-")),
+          chat_id,
+          start_time: Utc::now(), // Simple fallback, LLM can enhance
+          end_time: Utc::now(),
+          entry_type: TimelineEntryType::TopicDiscussion(topic.topic.clone()),
+          title: format!("Topic: {}", topic.topic),
+          summary: format!("Discussion about {} with {} messages", topic.topic, topic.message_ids.len()),
+          participants: vec![], // LLM can fill this
+          message_range: (*topic.message_ids.first().unwrap_or(&0), *topic.message_ids.last().unwrap_or(&0)),
+          tags: topic.keywords,
+          importance_score: topic.relevance_score,
+        };
+        entries.push(entry);
+      }
+    }
+    
+    // 3. Detect high activity periods (simple version)
+    let high_activity_entries = self.detect_high_activity_periods(&messages, chat_id)?;
+    entries.extend(high_activity_entries);
+    
+    // 4. Build participant map (simple user ID -> name mapping)
+    for (_, user_id, _, _) in &messages {
+      participant_map.insert(*user_id, format!("User-{}", user_id));
+    }
+    
     Ok(TimelineIndex {
       chat_id,
-      entries: Vec::new(),
-      topic_map: HashMap::new(),
-      participant_map: HashMap::new(),
+      entries,
+      topic_map,
+      participant_map,
       generated_at: Utc::now(),
     })
   }

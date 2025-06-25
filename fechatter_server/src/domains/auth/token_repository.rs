@@ -3,36 +3,14 @@ use async_trait::async_trait;
 use chrono::{DateTime, Duration, Utc};
 use std::sync::Arc;
 
-use fechatter_core::error::CoreError;
-use fechatter_core::jwt::{
-  RefreshToken as CoreRefreshToken, RefreshTokenRepository, ReplaceTokenPayload, StoreTokenPayload,
-};
+use fechatter_core::{UserId, error::CoreError};
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 
 pub const REFRESH_TOKEN_EXPIRATION: usize = 14 * 24 * 60 * 60; // 14 days
 pub const REFRESH_TOKEN_MAX_LIFETIME: usize = 30 * 24 * 60 * 60; // 30 days
 
-#[allow(unused)]
-pub fn generate_refresh_token() -> String {
-  use rand::{Rng, rng};
-
-  let mut rng_instance = rng();
-  let random_bytes: [u8; 32] = rng_instance.random::<[u8; 32]>();
-  hex::encode(random_bytes)
-}
-
-pub fn sha256_hash(token: &str) -> String {
-  use sha2::{Digest, Sha256};
-
-  let mut hasher = Sha256::new();
-  hasher.update(token.as_bytes());
-  let result = hasher.finalize();
-  let hash = hex::encode(result);
-  hash
-}
-
-// 数据库实体，专门用于与数据库交互
+// Domain-specific refresh token entity (not dependent on fechatter_core)
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct RefreshTokenEntity {
   pub id: i64,
@@ -47,29 +25,64 @@ pub struct RefreshTokenEntity {
   pub absolute_expires_at: DateTime<Utc>,
 }
 
-// 只负责转换的扩展trait
-impl RefreshTokenEntity {
-  pub fn to_dto(&self) -> CoreRefreshToken {
-    CoreRefreshToken {
-      id: self.id,
-      user_id: fechatter_core::UserId(self.user_id.into()),
-      token_hash: self.token_hash.clone(),
-      expires_at: self.expires_at,
-      issued_at: self.issued_at,
-      revoked: self.revoked,
-      replaced_by: self.replaced_by.clone(),
-      user_agent: self.user_agent.clone(),
-      ip_address: self.ip_address.clone(),
-      absolute_expires_at: self.absolute_expires_at,
-    }
-  }
+// Domain-specific payloads
+#[derive(Debug)]
+pub struct ReplaceTokenPayload {
+  pub old_token_id: i64,
+  pub new_raw_token: String,
+  pub new_expires_at: DateTime<Utc>,
+  pub new_absolute_expires_at: DateTime<Utc>,
+  pub user_agent: Option<String>,
+  pub ip_address: Option<String>,
 }
 
-// 数据库操作，与实体分离
+#[derive(Debug)]
+pub struct StoreTokenPayload {
+  pub user_id: UserId,
+  pub raw_token: String,
+  pub expires_at: DateTime<Utc>,
+  pub absolute_expires_at: DateTime<Utc>,
+  pub user_agent: Option<String>,
+  pub ip_address: Option<String>,
+}
+
+// Domain-specific repository trait
+#[async_trait]
+pub trait RefreshTokenRepository: Send + Sync {
+  async fn find_by_token(&self, raw_token: &str) -> Result<Option<RefreshTokenEntity>, CoreError>;
+  async fn replace(&self, payload: ReplaceTokenPayload) -> Result<RefreshTokenEntity, CoreError>;
+  async fn revoke(&self, token_id: i64) -> Result<(), CoreError>;
+  async fn revoke_all_for_user(&self, user_id: UserId) -> Result<(), CoreError>;
+  async fn create(&self, payload: StoreTokenPayload) -> Result<RefreshTokenEntity, CoreError>;
+}
+
+#[allow(unused)]
+pub fn generate_refresh_token() -> String {
+  use rand::{Rng, thread_rng};
+
+  let mut rng_instance = thread_rng();
+  let random_bytes: [u8; 32] = rng_instance.r#gen::<[u8; 32]>();
+  hex::encode(random_bytes)
+}
+
+pub fn sha256_hash(token: &str) -> String {
+  use sha2::{Digest, Sha256};
+
+  let mut hasher = Sha256::new();
+  hasher.update(token.as_bytes());
+  let result = hasher.finalize();
+  let hash = hex::encode(result);
+  hash
+}
+
+// Database entity, specifically for database interactions
+// This was already defined above, so removing the duplicate
+
+// Database operations, separated from the entity
 pub struct RefreshTokenStorage;
 
 impl RefreshTokenStorage {
-  // 数据库操作
+  // Database operations
   pub async fn create(
     user_id: i64,
     token: &str,
@@ -170,11 +183,11 @@ impl RefreshTokenStorage {
     let new_expires_at = now + Duration::seconds(REFRESH_TOKEN_EXPIRATION as i64);
     let new_token_hash = sha256_hash(new_token);
 
-    // 使用事务和行级锁确保并发安全
+    // Use transaction and row-level locking to ensure concurrency safety
     let mut tx = pool.begin().await?;
 
-    // 首先检查令牌是否已经被撤销或替换
-    // 使用 FOR UPDATE 获取行锁，确保在事务期间其他会话无法修改该行
+    // First check if the token has already been revoked or replaced
+    // Use FOR UPDATE to acquire a row lock, ensuring no other session can modify this row during the transaction
     let query = r#"
       SELECT revoked, replaced_by 
       FROM refresh_tokens 
@@ -187,7 +200,7 @@ impl RefreshTokenStorage {
       .fetch_optional(&mut *tx)
       .await?;
 
-    // 如果令牌不存在或已经被撤销/替换，返回错误
+    // If the token doesn't exist or has already been revoked/replaced, return an error
     match token_status {
       None => {
         tx.rollback().await?;
@@ -213,7 +226,7 @@ impl RefreshTokenStorage {
       }
     }
 
-    // 使用新令牌替换旧令牌
+    // Replace the old token with the new one
     let query = r#"
       UPDATE refresh_tokens
       SET revoked = TRUE, replaced_by = $1
@@ -226,7 +239,7 @@ impl RefreshTokenStorage {
       .execute(&mut *tx)
       .await?;
 
-    // 创建新的刷新令牌
+    // Create new refresh token
     let refresh_token = sqlx::query_as::<_, RefreshTokenEntity>(
       r#"
       INSERT INTO refresh_tokens (user_id, token_hash, expires_at, user_agent, ip_address, absolute_expires_at)
@@ -243,50 +256,176 @@ impl RefreshTokenStorage {
     .fetch_one(&mut *tx)
     .await?;
 
-    // 提交事务
+    // Commit the transaction
     tx.commit().await?;
 
     Ok(refresh_token)
   }
+
+  /// Update user password hash - Domain layer responsibility
+  pub async fn update_user_password(
+    user_id: i64,
+    new_password_hash: &str,
+    pool: &PgPool,
+  ) -> Result<(), AppError> {
+    sqlx::query("UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2")
+      .bind(new_password_hash)
+      .bind(user_id)
+      .execute(pool)
+      .await?;
+
+    Ok(())
+  }
 }
 
-// 适配器实现 - 将RefreshTokenStorage适配到RefreshTokenRepository trait
-pub struct RefreshTokenAdaptor {
+// Implementation of the domain repository using database storage
+pub struct RefreshTokenRepositoryImpl {
   pool: Arc<PgPool>,
 }
 
-impl RefreshTokenAdaptor {
+impl RefreshTokenRepositoryImpl {
   pub fn new(pool: Arc<PgPool>) -> Self {
     Self { pool }
   }
 }
 
+// Compatibility adapter for fechatter_core traits
+pub struct CoreRefreshTokenRepositoryAdapter {
+  inner: RefreshTokenRepositoryImpl,
+}
+
+impl CoreRefreshTokenRepositoryAdapter {
+  pub fn new(pool: Arc<PgPool>) -> Self {
+    Self {
+      inner: RefreshTokenRepositoryImpl::new(pool),
+    }
+  }
+}
+
+// Implement fechatter_core's RefreshTokenRepository trait
 #[async_trait]
-impl RefreshTokenRepository for RefreshTokenAdaptor {
-  async fn find_by_token(&self, raw_token: &str) -> Result<Option<CoreRefreshToken>, CoreError> {
+impl fechatter_core::models::jwt::RefreshTokenRepository for CoreRefreshTokenRepositoryAdapter {
+  async fn find_by_token(
+    &self,
+    raw_token: &str,
+  ) -> Result<Option<fechatter_core::models::jwt::RefreshToken>, CoreError> {
+    let domain_token = self.inner.find_by_token(raw_token).await?;
+
+    match domain_token {
+      Some(token) => {
+        let core_token = fechatter_core::models::jwt::RefreshToken {
+          id: token.id,
+          user_id: fechatter_core::UserId(token.user_id),
+          token_hash: token.token_hash,
+          expires_at: token.expires_at,
+          issued_at: token.issued_at,
+          revoked: token.revoked,
+          replaced_by: token.replaced_by,
+          user_agent: token.user_agent,
+          ip_address: token.ip_address,
+          absolute_expires_at: token.absolute_expires_at,
+        };
+        Ok(Some(core_token))
+      }
+      None => Ok(None),
+    }
+  }
+
+  async fn replace(
+    &self,
+    payload: fechatter_core::models::jwt::ReplaceTokenPayload,
+  ) -> Result<fechatter_core::models::jwt::RefreshToken, CoreError> {
+    let domain_payload = ReplaceTokenPayload {
+      old_token_id: payload.old_token_id,
+      new_raw_token: payload.new_raw_token,
+      new_expires_at: payload.new_expires_at,
+      new_absolute_expires_at: payload.new_absolute_expires_at,
+      user_agent: payload.user_agent,
+      ip_address: payload.ip_address,
+    };
+
+    let domain_token = self.inner.replace(domain_payload).await?;
+
+    let core_token = fechatter_core::models::jwt::RefreshToken {
+      id: domain_token.id,
+      user_id: fechatter_core::UserId(domain_token.user_id),
+      token_hash: domain_token.token_hash,
+      expires_at: domain_token.expires_at,
+      issued_at: domain_token.issued_at,
+      revoked: domain_token.revoked,
+      replaced_by: domain_token.replaced_by,
+      user_agent: domain_token.user_agent,
+      ip_address: domain_token.ip_address,
+      absolute_expires_at: domain_token.absolute_expires_at,
+    };
+    Ok(core_token)
+  }
+
+  async fn revoke(&self, token_id: i64) -> Result<(), CoreError> {
+    self.inner.revoke(token_id).await
+  }
+
+  async fn revoke_all_for_user(&self, user_id: fechatter_core::UserId) -> Result<(), CoreError> {
+    self.inner.revoke_all_for_user(user_id).await
+  }
+
+  async fn create(
+    &self,
+    payload: fechatter_core::models::jwt::StoreTokenPayload,
+  ) -> Result<fechatter_core::models::jwt::RefreshToken, CoreError> {
+    let domain_payload = StoreTokenPayload {
+      user_id: payload.user_id,
+      raw_token: payload.raw_token,
+      expires_at: payload.expires_at,
+      absolute_expires_at: payload.absolute_expires_at,
+      user_agent: payload.user_agent,
+      ip_address: payload.ip_address,
+    };
+
+    let domain_token = self.inner.create(domain_payload).await?;
+
+    let core_token = fechatter_core::models::jwt::RefreshToken {
+      id: domain_token.id,
+      user_id: fechatter_core::UserId(domain_token.user_id),
+      token_hash: domain_token.token_hash,
+      expires_at: domain_token.expires_at,
+      issued_at: domain_token.issued_at,
+      revoked: domain_token.revoked,
+      replaced_by: domain_token.replaced_by,
+      user_agent: domain_token.user_agent,
+      ip_address: domain_token.ip_address,
+      absolute_expires_at: domain_token.absolute_expires_at,
+    };
+    Ok(core_token)
+  }
+}
+
+#[async_trait]
+impl RefreshTokenRepository for RefreshTokenRepositoryImpl {
+  async fn find_by_token(&self, raw_token: &str) -> Result<Option<RefreshTokenEntity>, CoreError> {
     let pool = self.pool.clone();
     let token = raw_token.to_string();
     let result = RefreshTokenStorage::find_by_token(&token, &pool)
       .await
       .map_err(|e| CoreError::Internal(e.to_string()))?;
 
-    Ok(result.map(|token| token.to_dto()))
+    Ok(result)
   }
 
-  async fn replace(&self, payload: ReplaceTokenPayload) -> Result<CoreRefreshToken, CoreError> {
+  async fn replace(&self, payload: ReplaceTokenPayload) -> Result<RefreshTokenEntity, CoreError> {
     let pool = self.pool.clone();
 
-    // 从payload中找出related_token记录获取user_id
+    // Get user_id from old_token record in payload
     let old_token_id = payload.old_token_id;
 
-    // 首先从旧token ID查询用户ID
+    // First query the user ID from the old token ID
     let user_id = sqlx::query_scalar::<_, i64>("SELECT user_id FROM refresh_tokens WHERE id = $1")
       .bind(old_token_id)
       .fetch_one(&*pool)
       .await
       .map_err(|e| CoreError::Internal(e.to_string()))?;
 
-    // 调用RefreshTokenStorage::replace来执行token替换
+    // Call RefreshTokenStorage::replace to perform token replacement
     let result = RefreshTokenStorage::replace(
       old_token_id,
       user_id,
@@ -299,7 +438,7 @@ impl RefreshTokenRepository for RefreshTokenAdaptor {
     .await
     .map_err(|e| CoreError::Internal(e.to_string()))?;
 
-    Ok(result.to_dto())
+    Ok(result)
   }
 
   async fn revoke(&self, token_id: i64) -> Result<(), CoreError> {
@@ -316,7 +455,7 @@ impl RefreshTokenRepository for RefreshTokenAdaptor {
       .map_err(|e| CoreError::Internal(e.to_string()))
   }
 
-  async fn create(&self, payload: StoreTokenPayload) -> Result<CoreRefreshToken, CoreError> {
+  async fn create(&self, payload: StoreTokenPayload) -> Result<RefreshTokenEntity, CoreError> {
     let pool = self.pool.clone();
     let result = RefreshTokenStorage::create(
       i64::from(payload.user_id),
@@ -328,7 +467,7 @@ impl RefreshTokenRepository for RefreshTokenAdaptor {
     .await
     .map_err(|e| CoreError::Internal(e.to_string()))?;
 
-    Ok(result.to_dto())
+    Ok(result)
   }
 }
 
@@ -391,11 +530,17 @@ mod tests {
 
   #[async_trait::async_trait]
   impl RefreshTokenRepository for MockRefreshTokenRepo {
-    async fn find_by_token(&self, _raw_token: &str) -> Result<Option<CoreRefreshToken>, CoreError> {
+    async fn find_by_token(
+      &self,
+      _raw_token: &str,
+    ) -> Result<Option<RefreshTokenEntity>, CoreError> {
       Ok(None)
     }
 
-    async fn replace(&self, _payload: ReplaceTokenPayload) -> Result<CoreRefreshToken, CoreError> {
+    async fn replace(
+      &self,
+      _payload: ReplaceTokenPayload,
+    ) -> Result<RefreshTokenEntity, CoreError> {
       Err(CoreError::Internal("Not implemented".to_string()))
     }
 
@@ -407,12 +552,12 @@ mod tests {
       Ok(())
     }
 
-    async fn create(&self, _payload: StoreTokenPayload) -> Result<CoreRefreshToken, CoreError> {
-      // 返回一个假的RefreshToken用于测试
+    async fn create(&self, _payload: StoreTokenPayload) -> Result<RefreshTokenEntity, CoreError> {
+      // Return a fake RefreshToken for testing
       let now = Utc::now();
-      Ok(CoreRefreshToken {
-        id: fechatter_core::UserId(1).into(),
-        user_id: fechatter_core::UserId(_payload.user_id.into()),
+      Ok(RefreshTokenEntity {
+        id: 1,
+        user_id: i64::from(_payload.user_id),
         token_hash: "fake_hash".to_string(),
         expires_at: _payload.expires_at,
         issued_at: now,
@@ -468,7 +613,7 @@ mod tests {
 
     let token_str = generate_refresh_token();
 
-    // 使用RefreshTokenStorage创建token
+    // Create token using RefreshTokenStorage
     let _token = RefreshTokenStorage::create(
       user.id.into(),
       &token_str,
@@ -562,20 +707,20 @@ mod tests {
     Ok(())
   }
 
-  // 添加一个适配器Repository的测试
+  // Add a test for the Repository adapter
   #[tokio::test]
   async fn refresh_token_repository_adapter_works() -> Result<()> {
     let (_tdb, state, users) = setup_test_users!(1).await;
     let user = &users[0];
     let pool_arc = Arc::new(state.pool().clone());
-    let repo = RefreshTokenAdaptor::new(pool_arc);
+    let repo = RefreshTokenRepositoryImpl::new(pool_arc);
 
     let token_str = generate_refresh_token();
     let now = Utc::now();
     let expires_at = now + Duration::seconds(REFRESH_TOKEN_EXPIRATION as i64);
     let absolute_expires_at = now + Duration::seconds(REFRESH_TOKEN_MAX_LIFETIME as i64);
 
-    // 使用适配器创建token
+    // Create token using the adapter
     let payload = StoreTokenPayload {
       user_id: user.id.into(),
       raw_token: token_str.clone(),
@@ -586,16 +731,16 @@ mod tests {
     };
 
     let token = repo.create(payload).await?;
-    assert_eq!(token.user_id, user.id);
+    assert_eq!(token.user_id, i64::from(user.id));
 
-    // 使用适配器查找token
+    // Find token using the adapter
     let found = repo.find_by_token(&token_str).await?;
     assert!(found.is_some());
 
-    // 使用适配器撤销token
+    // Revoke token using the adapter
     repo.revoke(token.id).await?;
 
-    // 确认token已撤销
+    // Confirm token is revoked
     let found_after_revoke = repo.find_by_token(&token_str).await?;
     assert!(found_after_revoke.is_none());
 

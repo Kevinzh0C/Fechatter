@@ -68,6 +68,7 @@ pub struct ChatSidebar {
   pub chat_type: ChatType,
   pub last_message: Option<ChatLastMessage>,
   pub is_creator: bool,
+  pub chat_members: Vec<UserId>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
@@ -150,6 +151,16 @@ pub fn process_chat_members(
       }
       Ok(result)
     }
-    ChatType::PublicChannel => Ok(vec![creator_id]),
+    ChatType::PublicChannel => {
+      let mut result = vec![creator_id];
+      if let Some(members) = target_members {
+        for &id in members {
+          if id != creator_id && !result.contains(&id) {
+            result.push(id);
+          }
+        }
+      }
+      Ok(result)
+    }
   }
 }

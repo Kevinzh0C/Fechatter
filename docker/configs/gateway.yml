@@ -1,0 +1,157 @@
+# Gateway Configuration for Fechatter - Docker Environment
+# Production-ready gateway with CORS support and health checks
+
+server:
+  listen_addr: "0.0.0.0:8080"
+  worker_threads: 4
+  max_connections: 10000
+  keepalive_timeout: 60
+  request_timeout: 30
+
+upstreams:
+  fechatter-server:
+    servers:
+    - "fechatter-server:6688"
+    health_check:
+      interval: 30
+      timeout: 5
+      path: "/health"
+      expected_status: [ 200 ]
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+    load_balancing: "RoundRobin"
+
+  notify-server:
+    servers:
+    - "notify-server:7788"
+    health_check:
+      interval: 30
+      timeout: 5
+      path: "/sse/health"
+      expected_status: [ 200 ]
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+    load_balancing: "RoundRobin"
+
+  analytics-server:
+    servers:
+    - "analytics-server:9091"
+    health_check:
+      interval: 30
+      timeout: 5
+      path: "/health"
+      expected_status: [ 200 ]
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+    load_balancing: "RoundRobin"
+
+  bot-server:
+    servers:
+    - "bot-server:9988"
+    health_check:
+      interval: 30
+      timeout: 5
+      path: "/health"
+      expected_status: [ 200 ]
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+    load_balancing: "RoundRobin"
+
+routes:
+# Health check endpoints
+- path: "/health"
+  methods: [ "GET" ]
+  upstream: "fechatter-server"
+  cors_enabled: false
+
+# Root path for fechatter-server (index page)
+- path: "/"
+  methods: [ "GET" ]
+  upstream: "fechatter-server"
+  cors_enabled: false
+
+# Health check variations
+- path: "/health/simple"
+  methods: [ "GET" ]
+  upstream: "fechatter-server"
+  cors_enabled: false
+
+# Authentication routes (fechatter-server)
+- path: "/api/signin"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:3000"
+  - "http://localhost:5173"
+  - "http://127.0.0.1:3000"
+
+- path: "/api/signup"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:3000"
+  - "http://localhost:5173"
+
+- path: "/api/refresh"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+
+- path: "/api/logout"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+
+- path: "/api/logout-all"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+
+# Chat and workspace API routes (fechatter-server)
+- path: "/api/"
+  methods: [ "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:3000"
+  - "http://localhost:5173"
+  - "http://127.0.0.1:3000"
+
+# Analytics API routes
+- path: "/analytics/"
+  methods: [ "GET", "POST", "OPTIONS" ]
+  upstream: "analytics-server"
+  cors_enabled: true
+
+# Notification service routes
+- path: "/events"
+  methods: [ "GET" ]
+  upstream: "notify-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:3000"
+  - "http://localhost:5173"
+
+- path: "/online-users"
+  methods: [ "GET" ]
+  upstream: "notify-server"
+  cors_enabled: true
+
+- path: "/sse/health"
+  methods: [ "GET" ]
+  upstream: "notify-server"
+  cors_enabled: false
+
+# Bot service routes
+- path: "/api/bot/"
+  methods: [ "GET", "POST", "OPTIONS" ]
+  upstream: "bot-server"
+  cors_enabled: true
+
+# WebSocket endpoint (future compatibility)
+- path: "/ws"
+  methods: [ "GET" ]
+  upstream: "fechatter-server"
+  cors_enabled: true

@@ -1,0 +1,51 @@
+# Fechatter Frontend - Development Configuration
+# 开发环境：前端通过Gateway访问所有后端服务
+
+app:
+  name: "Fechatter"
+  version: "1.0.0"
+  environment: "development"
+  debug: true
+
+# 前端服务器配置
+frontend:
+  port: 1420
+  host: "localhost"
+  hmr_port: 1421
+
+# API配置 - 全部通过Gateway
+api:
+  # Gateway地址 - 统一入口
+  gateway_url: "http://127.0.0.1:8080"
+
+  # 所有API端点都通过Gateway
+  base_url: "http://127.0.0.1:8080/api"
+  file_url: "http://127.0.0.1:8080/files"
+  # 使用SSE而不是WebSocket进行实时通信
+  sse_url: "http://127.0.0.1:8080/events"
+  notify_url: "http://127.0.0.1:8080"
+
+  # 请求配置
+  timeout: 15000
+  max_retries: 3
+  retry_delay: 1000
+
+# CORS配置
+cors:
+  enabled: true
+  origins:
+  - "http://localhost:1420"
+  - "http://127.0.0.1:1420"
+  credentials: true
+
+# 开发工具
+dev_tools:
+  enable_devtools: true
+  enable_source_maps: true
+  hot_reload: true
+
+# 日志配置
+logging:
+  level: "debug"
+  enable_network_logs: true
+  enable_api_logs: true

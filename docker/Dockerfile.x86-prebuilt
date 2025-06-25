@@ -1,0 +1,60 @@
+# Dockerfile for precompiled x86_64 binaries
+# This Dockerfile uses the cross-compiled x86_64 binaries directly
+# Significantly faster than building from source
+
+FROM alpine:3.19
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    postgresql-client \
+    sqlite \
+    curl \
+    tzdata \
+    && rm -rf /var/cache/apk/*
+
+# Create app user for security
+RUN addgroup -g 1001 -S fechatter && \
+    adduser -u 1001 -S fechatter -G fechatter
+
+# Set working directory
+WORKDIR /app
+
+# Copy precompiled x86_64 binaries
+# The binaries are expected to be in docker/binaries/x86_64/
+ARG SERVICE_NAME
+COPY binaries/x86_64/${SERVICE_NAME}/${SERVICE_NAME} /usr/local/bin/service
+
+# Alternative: Copy all binaries if building a unified container
+# COPY binaries/x86_64/fechatter_server/fechatter_server /usr/local/bin/
+# COPY binaries/x86_64/analytics_server/analytics_server /usr/local/bin/
+# COPY binaries/x86_64/notify_server/notify_server /usr/local/bin/
+# COPY binaries/x86_64/fechatter_gateway/fechatter_gateway /usr/local/bin/
+# COPY binaries/x86_64/bot_server/bot /usr/local/bin/
+# COPY binaries/x86_64/bot_server/indexer /usr/local/bin/
+
+# Copy configuration files (if needed)
+COPY config/ ./config/
+COPY migrations/ ./migrations/
+
+# Set proper permissions
+RUN chmod +x /usr/local/bin/service && \
+    chown -R fechatter:fechatter /app
+
+# Switch to non-root user
+USER fechatter
+
+# Set environment variables
+ENV RUST_LOG=info
+ENV ENVIRONMENT=production
+
+# Expose port (default 8080, can be overridden)
+ARG SERVICE_PORT=8080
+EXPOSE $SERVICE_PORT
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:$SERVICE_PORT/health || exit 1
+
+# Start the service
+CMD ["/usr/local/bin/service"] 

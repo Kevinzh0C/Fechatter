@@ -1,0 +1,131 @@
+# Fechatter Server Configuration - Docker Environment
+# Production-ready configuration with enhanced features
+
+# Server configuration
+server:
+  port: 6688
+  db_url: "postgresql://fechatter_user:fechatter_pass@postgres:5432/fechatter_db"
+  base_dir: "/app/data"
+  max_upload_size: 10485760 # 10MB
+  request_timeout_ms: 30000
+
+  # Analytics configuration
+  analytics:
+    enabled: true
+    endpoint: "http://analytics-server:9091"
+    batch_size: 100
+    flush_interval_seconds: 30
+    timeout_seconds: 10
+    use_grpc: false # Use HTTP instead of gRPC for Docker networking
+
+  # CORS configuration
+  cors:
+    enabled: true
+    allow_origins:
+    - "http://localhost:3000"
+    - "http://localhost:5173"
+    - "http://127.0.0.1:3000"
+    - "http://fechatter-gateway:8080"
+    allow_methods:
+    - "GET"
+    - "POST"
+    - "PUT"
+    - "PATCH"
+    - "DELETE"
+    - "OPTIONS"
+    allow_headers:
+    - "Content-Type"
+    - "Authorization"
+    - "X-Requested-With"
+    allow_credentials: true
+    max_age: 86400
+
+# JWT Authentication
+auth:
+  pk: |
+    -----BEGIN PUBLIC KEY-----
+    MCowBQYDK2VwAyEAn/6c0O9F6Cq7aG8l6J0k1qM4+hfWrQZqbYnJp8xBYpU=
+    -----END PUBLIC KEY-----
+  sk: |
+    -----BEGIN PRIVATE KEY-----
+    MC4CAQAwBQYDK2VwBCIEIP/S+etN7RQJctehWKkdjgnrtQ0AUDIMkCnYS4Zk8RFR
+    -----END PRIVATE KEY-----
+  token_expiration: 1800 # 30 minutes
+  refresh_token_expiration: 604800 # 7 days
+
+# Features configuration
+features:
+  # Cache configuration
+  cache:
+    enabled: true
+    redis_url: "redis://:fechatter_redis_pass@redis:6379"
+    key_prefix: "fechatter:"
+    default_ttl: 3600
+    pool_size: 20
+    connection_timeout_ms: 5000
+
+  # Search configuration  
+  search:
+    enabled: true
+    provider: "meilisearch"
+    meilisearch_url: "http://meilisearch:7700"
+    meilisearch_api_key: "fechatter_search_key"
+    async_indexing: true
+    batch_size: 100
+    indexer:
+      batch_size: 50
+      batch_timeout_ms: 2000
+
+  # Messaging configuration
+  messaging:
+    enabled: true
+    provider: "nats"
+    nats_url: "nats://nats:4222"
+    jetstream_enabled: true
+
+  # Message service configuration
+  message_service:
+    max_concurrent_sends_per_chat: 10
+    send_timeout_seconds: 30
+    cache_timeout_ms: 2000
+    event_publish_timeout_seconds: 5
+    stream_publish_timeout_seconds: 10
+    enable_detailed_tracing: true
+    max_retry_attempts: 3
+    retry_backoff_base_ms: 1000
+
+  # Notification configuration
+  notifications:
+    in_app_enabled: true
+    realtime_enabled: true
+    max_per_user: 100
+    retention_days: 30
+    email_enabled: false
+    smtp_host: ""
+    smtp_port: 587
+    smtp_username: ""
+    smtp_password: ""
+    from_email: "noreply@fechatter.com"
+    from_name: "Fechatter"
+    use_tls: true
+
+  # Observability configuration
+  observability:
+    log_level: "info"
+    log_format: "json"
+    log_to_file: false
+    log_file_path: "/app/logs/fechatter.log"
+    metrics_enabled: true
+    metrics_bind_address: "0.0.0.0:9090"
+    tracing_enabled: true
+    service_name: "fechatter-server"
+    service_version: "1.0.0"
+    environment: "docker"
+
+  # Rate limiting configuration
+  rate_limiting:
+    enabled: true
+    window_seconds: 60
+    max_requests: 100
+    sliding_window: true
+    strategy: "IpBased"

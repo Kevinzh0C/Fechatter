@@ -1,7 +1,52 @@
-# 为fechatter_server包定义命令别名
+# Fechatter Cargo Configuration
+# Includes both development optimizations and cross-compilation settings
+
+# Package command aliases
 [alias]
-# 当运行cargo test时，自动为fechatter_server启用test-util feature
 "test:server" = "test -p fechatter_server --features test-util"
- 
-# 也可以设置全局测试命令，但这可能会影响其他包
-# "test" = "test --features test-util" 
+"fastcheck" = "check --package fechatter_server --lib"
+
+# Build configuration
+[build]
+# Parallel compilation jobs
+jobs = 6
+# Use separate target directory to reduce lock contention
+target-dir = "target/main"
+# Enable incremental compilation for faster builds
+incremental = true
+rustc-wrapper = ""
+
+# Network settings for handling network issues
+[net]
+retry = 3
+git-fetch-with-cli = true
+
+# Reduce compatibility warnings
+[future-incompat-report]
+frequency = "never"
+
+# Use sparse index for faster crates.io updates
+[registries.crates-io]
+protocol = "sparse"
+
+# Debug build optimizations
+[target.'cfg(debug_assertions)']
+rustflags = ["-C", "debuginfo=0", "-C", "codegen-units=1"]
+
+# Cross-compilation configuration for x86_64 Linux glibc target
+[target.x86_64-unknown-linux-gnu]
+linker = "x86_64-linux-gnu-ld"
+
+# Cross-compilation configuration for x86_64 Linux musl target (easier)
+[target.x86_64-unknown-linux-musl]
+linker = "x86_64-linux-musl-gcc"
+
+# Cross-compilation environment variables
+[env]
+PKG_CONFIG_ALLOW_CROSS = "1"
+CC_x86_64_unknown_linux_musl = "x86_64-linux-musl-gcc"
+CXX_x86_64_unknown_linux_musl = "x86_64-linux-musl-g++"
+AR_x86_64_unknown_linux_musl = "x86_64-linux-musl-ar"
+
+# Unstable features
+[unstable]

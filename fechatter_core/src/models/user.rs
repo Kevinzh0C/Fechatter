@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use argon2::{
+  password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
   Argon2, PasswordHash, PasswordVerifier,
-  password_hash::{PasswordHasher, SaltString, rand_core::OsRng},
 };
 
 use crate::{

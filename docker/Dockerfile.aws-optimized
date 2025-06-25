@@ -1,0 +1,99 @@
+# AWS EKS ARM64 优化版 - 使用 GNU 目标支持 proc-macro
+FROM rust:1.82-bookworm as builder
+
+WORKDIR /app
+
+# 安装 ARM64 交叉编译工具链
+RUN dpkg --add-architecture arm64 && \
+    apt-get update && \
+    apt-get install -y \
+        gcc-aarch64-linux-gnu \
+        g++-aarch64-linux-gnu \
+        pkg-config \
+        libssl-dev:arm64 \
+        protobuf-compiler \
+        && rm -rf /var/lib/apt/lists/*
+
+# 设置 ARM64 交叉编译环境
+ENV CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+ENV CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
+ENV AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+ENV PKG_CONFIG_SYSROOT_DIR=/usr/aarch64-linux-gnu
+ENV PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
+ENV SQLX_OFFLINE=true
+
+# 添加 ARM64 目标
+RUN rustup target add aarch64-unknown-linux-gnu
+
+# 复制工作空间配置
+COPY Cargo.toml Cargo.lock ./
+
+# 复制所有成员项目
+COPY fechatter_core/Cargo.toml ./fechatter_core/
+COPY fechatter_server/Cargo.toml ./fechatter_server/
+COPY notify_server/Cargo.toml ./notify_server/
+COPY analytics_server/Cargo.toml ./analytics_server/
+COPY bot_server/Cargo.toml ./bot_server/
+COPY fechatter_macro/Cargo.toml ./fechatter_macro/
+COPY fechatter_tests/Cargo.toml ./fechatter_tests/
+COPY ai_sdk/Cargo.toml ./ai_sdk/
+COPY swiftide-pgvector/Cargo.toml ./swiftide-pgvector/
+COPY fechatter_gateway/Cargo.toml ./fechatter_gateway/
+
+# 创建虚拟源文件
+RUN mkdir -p fechatter_core/src fechatter_server/src notify_server/src analytics_server/src \
+    bot_server/src fechatter_macro/src fechatter_tests/src ai_sdk/src swiftide-pgvector/src \
+    fechatter_gateway/src && \
+    echo "fn main() {}" > fechatter_server/src/main.rs && \
+    echo "fn main() {}" > notify_server/src/main.rs && \
+    echo "fn main() {}" > analytics_server/src/main.rs && \
+    echo "fn main() {}" > bot_server/src/main.rs && \
+    echo "fn main() {}" > fechatter_gateway/src/main.rs && \
+    echo "pub fn dummy() {}" > fechatter_core/src/lib.rs && \
+    echo "pub fn dummy() {}" > fechatter_macro/src/lib.rs && \
+    echo "#[test] fn test() {}" > fechatter_tests/src/lib.rs && \
+    echo "pub fn dummy() {}" > ai_sdk/src/lib.rs && \
+    echo "pub fn dummy() {}" > swiftide-pgvector/src/lib.rs
+
+# 构建依赖
+RUN cargo build --release --target aarch64-unknown-linux-gnu
+
+# 复制实际源代码
+COPY . .
+
+# 重新触发构建
+RUN find . -name "main.rs" -exec touch {} \;
+
+# 构建指定服务
+ARG APP_NAME=fechatter_server
+RUN cargo build --release --target aarch64-unknown-linux-gnu --bin $APP_NAME
+
+# 运行时阶段 - ARM64 优化的 Debian
+FROM arm64v8/debian:bookworm-slim
+
+WORKDIR /app
+
+# 安装最小运行时依赖
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# 复制二进制文件
+ARG APP_NAME
+COPY --from=builder /app/target/aarch64-unknown-linux-gnu/release/$APP_NAME /app/$APP_NAME
+
+# 设置权限
+RUN chmod +x /app/$APP_NAME
+
+# 暴露端口
+ARG APP_PORT=8080
+EXPOSE $APP_PORT
+
+# 健康检查（使用内置的健康检查端点）
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD /app/$APP_NAME health || exit 1
+
+# 启动
+ENTRYPOINT ["/app/$APP_NAME"]

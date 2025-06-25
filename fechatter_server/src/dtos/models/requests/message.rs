@@ -4,7 +4,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 /// 发送消息请求
-#[derive(Debug, Serialize, Deserialize, Validate, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct SendMessageRequest {
   #[validate(length(max = 4000, message = "Message content cannot exceed 4000 characters"))]
   #[schema(example = "Hello, this is a test message!")]

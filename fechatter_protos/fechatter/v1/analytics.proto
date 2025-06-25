@@ -1,0 +1,269 @@
+syntax = "proto3";
+
+package fechatter.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// 分析服务
+service AnalyticsService {
+  // 记录事件
+  rpc RecordEvent(RecordEventRequest) returns (google.protobuf.Empty);
+  
+  // 批量记录事件
+  rpc BatchRecordEvents(BatchRecordEventsRequest) returns (google.protobuf.Empty);
+  
+  // 获取分析数据
+  rpc GetAnalytics(GetAnalyticsRequest) returns (GetAnalyticsResponse);
+  
+  // 获取用户活跃度
+  rpc GetUserActivity(GetUserActivityRequest) returns (GetUserActivityResponse);
+}
+
+// 分析事件
+message AnalyticsEvent {
+  EventContext context = 1;
+  oneof event_type {
+    AppStartEvent app_start = 10;
+    AppExitEvent app_exit = 11;
+    UserLoginEvent user_login = 12;
+    UserLogoutEvent user_logout = 13;
+    UserRegisterEvent user_register = 14;
+    ChatCreatedEvent chat_created = 15;
+    MessageSentEvent message_sent = 16;
+    ChatJoinedEvent chat_joined = 17;
+    ChatLeftEvent chat_left = 18;
+    NavigationEvent navigation = 19;
+    FileUploadedEvent file_uploaded = 20;
+    FileDownloadedEvent file_downloaded = 21;
+    SearchPerformedEvent search_performed = 22;
+    NotificationReceivedEvent notification_received = 23;
+    ErrorOccurredEvent error_occurred = 24;
+    BotResponseEvent bot_response = 25;
+  }
+}
+
+// 事件上下文
+message EventContext {
+  string client_id = 1;
+  string session_id = 2;
+  string user_id = 3;
+  string app_version = 4;
+  int64 client_ts = 5;
+  int64 server_ts = 6;
+  string user_agent = 7;
+  string ip = 8;
+  SystemInfo system = 9;
+  GeoLocation geo = 10;
+}
+
+// 系统信息
+message SystemInfo {
+  string os = 1;
+  string arch = 2;
+  string locale = 3;
+  string timezone = 4;
+  string browser = 5;
+  string browser_version = 6;
+}
+
+// 地理位置
+message GeoLocation {
+  string country = 1;
+  string region = 2;
+  string city = 3;
+}
+
+// 应用启动事件
+message AppStartEvent {
+}
+
+// 应用退出事件
+message AppExitEvent {
+  enum ExitCode {
+    EXIT_CODE_UNSPECIFIED = 0;
+    EXIT_CODE_SUCCESS = 1;
+    EXIT_CODE_ERROR = 2;
+    EXIT_CODE_CRASH = 3;
+  }
+  ExitCode exit_code = 1;
+}
+
+// 用户登录事件
+message UserLoginEvent {
+  string email = 1;
+  string login_method = 2; // password, oauth, etc.
+}
+
+// 用户登出事件
+message UserLogoutEvent {
+  string email = 1;
+}
+
+// 用户注册事件
+message UserRegisterEvent {
+  string email = 1;
+  string workspace_id = 2;
+  string registration_method = 3; // email, oauth, etc.
+}
+
+// 聊天创建事件
+message ChatCreatedEvent {
+  string workspace_id = 1;
+  string chat_type = 2; // single, group, channel
+  int32 initial_members_count = 3;
+}
+
+// 消息发送事件
+message MessageSentEvent {
+  string chat_id = 1;
+  string type = 2; // text, file, image, etc.
+  int32 size = 3;
+  int32 total_files = 4;
+  bool has_mentions = 5;
+  bool has_links = 6;
+}
+
+// 加入聊天事件
+message ChatJoinedEvent {
+  string chat_id = 1;
+  string join_method = 2; // invited, link, search
+}
+
+// 离开聊天事件
+message ChatLeftEvent {
+  string chat_id = 1;
+  string leave_reason = 2; // voluntary, kicked, deleted
+}
+
+// 导航事件
+message NavigationEvent {
+  string from = 1;
+  string to = 2;
+  int32 duration_ms = 3;
+}
+
+// 文件上传事件
+message FileUploadedEvent {
+  string file_type = 1;
+  int64 file_size = 2;
+  string upload_method = 3; // drag_drop, button, paste
+  int32 upload_duration_ms = 4;
+}
+
+// 文件下载事件
+message FileDownloadedEvent {
+  string file_type = 1;
+  int64 file_size = 2;
+  int32 download_duration_ms = 3;
+}
+
+// 搜索事件
+message SearchPerformedEvent {
+  string search_type = 1; // messages, users, files
+  string query_length = 2;
+  int32 results_count = 3;
+  int32 search_duration_ms = 4;
+  bool has_filters = 5;
+}
+
+// 通知事件
+message NotificationReceivedEvent {
+  string notification_type = 1; // message, mention, system
+  string source = 2; // chat, system, user
+  bool was_clicked = 3;
+}
+
+// 错误事件
+message ErrorOccurredEvent {
+  string error_type = 1;
+  string error_code = 2;
+  string error_message = 3;
+  string stack_trace = 4;
+  string context = 5; // what user was doing
+}
+
+// 机器人响应事件
+message BotResponseEvent {
+  string bot_id = 1;
+  string chat_id = 2;
+  string response_type = 3; // ai_chat, command, auto_reply
+  uint64 response_time_ms = 4;
+  uint32 tokens_used = 5;
+  bool success = 6;
+  string error_message = 7; // if failed
+}
+
+// 记录事件请求
+message RecordEventRequest {
+  EventContext context = 1;
+  oneof event_type {
+    AppStartEvent app_start = 10;
+    AppExitEvent app_exit = 11;
+    UserLoginEvent user_login = 12;
+    UserLogoutEvent user_logout = 13;
+    UserRegisterEvent user_register = 14;
+    ChatCreatedEvent chat_created = 15;
+    MessageSentEvent message_sent = 16;
+    ChatJoinedEvent chat_joined = 17;
+    ChatLeftEvent chat_left = 18;
+    NavigationEvent navigation = 19;
+    FileUploadedEvent file_uploaded = 20;
+    FileDownloadedEvent file_downloaded = 21;
+    SearchPerformedEvent search_performed = 22;
+    NotificationReceivedEvent notification_received = 23;
+    ErrorOccurredEvent error_occurred = 24;
+    BotResponseEvent bot_response = 25;
+  }
+}
+
+// 批量记录事件请求
+message BatchRecordEventsRequest {
+  repeated AnalyticsEvent events = 1;
+}
+
+// 获取分析数据请求
+message GetAnalyticsRequest {
+  string workspace_id = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+  repeated string event_types = 4;
+  string granularity = 5; // hour, day, week, month
+}
+
+// 分析数据点
+message AnalyticsDataPoint {
+  google.protobuf.Timestamp timestamp = 1;
+  string event_type = 2;
+  int64 count = 3;
+  map<string, string> dimensions = 4;
+}
+
+// 获取分析数据响应
+message GetAnalyticsResponse {
+  repeated AnalyticsDataPoint data_points = 1;
+  int64 total_events = 2;
+}
+
+// 获取用户活跃度请求
+message GetUserActivityRequest {
+  string workspace_id = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+}
+
+// 用户活跃度
+message UserActivity {
+  string user_id = 1;
+  int64 total_events = 2;
+  int64 total_messages = 3;
+  int64 total_sessions = 4;
+  int64 total_time_ms = 5;
+  google.protobuf.Timestamp last_active = 6;
+}
+
+// 获取用户活跃度响应
+message GetUserActivityResponse {
+  repeated UserActivity activities = 1;
+  int64 total_active_users = 2;
+} 

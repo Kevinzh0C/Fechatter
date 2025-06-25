@@ -5,7 +5,7 @@ use crate::{
   models::jwt::{
     AuthTokens, RefreshTokenData, RefreshTokenRepository, ReplaceTokenPayload, UserClaims,
   },
-  models::{CreateUser, SigninUser, UserId, user::UserRepository},
+  models::{user::UserRepository, CreateUser, SigninUser, UserId},
 };
 use chrono::Utc;
 

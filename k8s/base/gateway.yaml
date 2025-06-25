@@ -1,0 +1,194 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-config
+  namespace: fechatter
+data:
+  config.yml: |
+    server:
+      listen_addr: "0.0.0.0:8080"
+      worker_threads: 4
+      max_connections: 10000
+    
+    upstreams:
+      fechatter-api:
+        servers:
+        - address: "fechatter-server.fechatter.svc.cluster.local:6688"
+          weight: 1
+        health_check:
+          interval: 10
+          timeout: 5
+          path: "/health"
+      
+      notify-service:
+        servers:
+        - address: "notify-server.fechatter.svc.cluster.local:6687"
+          weight: 1
+        health_check:
+          interval: 10
+          timeout: 5
+          path: "/health"
+      
+      bot-service:
+        servers:
+        - address: "bot-server.fechatter.svc.cluster.local:6686"
+          weight: 1
+      
+      analytics-service:
+        servers:
+        - address: "analytics-server.fechatter.svc.cluster.local:6690"
+          weight: 1
+    
+    routes:
+    - path: "/api/v1/"
+      methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+      upstream: fechatter-api
+      middleware: ["auth", "ratelimit", "cors"]
+    
+    - path: "/sse"
+      methods: ["GET"]
+      upstream: notify-service
+      middleware: ["auth"]
+    
+    - path: "/api/v1/ai/"
+      methods: ["POST"]
+      upstream: bot-service
+      middleware: ["auth", "ratelimit-ai"]
+    
+    - path: "/api/v1/analytics/"
+      methods: ["GET", "POST"]
+      upstream: analytics-service
+      middleware: ["auth", "ratelimit"]
+    
+    - path: "/health"
+      methods: ["GET"]
+      upstream: fechatter-api
+      middleware: []
+    
+    middleware:
+      auth:
+        jwt:
+          secret: "${JWT_SECRET}"
+          skip_paths:
+          - "/health"
+          - "/api/v1/auth/login"
+          - "/api/v1/auth/register"
+      
+      rate_limit:
+        per_ip:
+          requests: 100
+          window_secs: 60
+      
+      cors:
+        allowed_origins: ["*"]
+        allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: fechatter
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      initContainers:
+      - name: wait-for-services
+        image: busybox:1.35
+        command: ['sh', '-c']
+        args:
+        - |
+          echo "Waiting for services..."
+          until nc -z fechatter-server.fechatter.svc.cluster.local 6688; do
+            echo "Waiting for fechatter-server..."
+            sleep 2
+          done
+          until nc -z notify-server.fechatter.svc.cluster.local 6687; do
+            echo "Waiting for notify-server..."
+            sleep 2
+          done
+          echo "Services are ready!"
+      containers:
+      - name: gateway
+        image: fechatter/gateway:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: RUST_LOG
+          value: "info"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: fechatter-secrets
+              key: jwt-secret
+        volumeMounts:
+        - name: config
+          mountPath: /app/config.yml
+          subPath: config.yml
+        livenessProbe:
+          httpGet:
+            path: /gateway/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /gateway/health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: config
+        configMap:
+          name: gateway-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: fechatter
+spec:
+  selector:
+    app: gateway
+  ports:
+  - port: 8080
+    targetPort: 8080
+  type: LoadBalancer
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gateway-ingress
+  namespace: fechatter
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: fechatter.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: gateway
+            port:
+              number: 8080

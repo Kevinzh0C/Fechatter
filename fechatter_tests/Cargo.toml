@@ -15,14 +15,29 @@ uuid = { version = "1.11", features = ["v4", "v7", "serde"] }
 tower = { version = "0.5", features = ["util", "timeout", "limit"] }
 
 # HTTP and API testing
-reqwest = { version = "0.12", features = ["json", "stream", "multipart"] }
+reqwest = { version = "0.12", features = [
+  "json",
+  "stream",
+  "multipart",
+  "rustls-tls",
+], default-features = false }
 axum = { version = "0.8.4", features = ["macros"] }
 axum-extra = { version = "0.10.1", features = ["cookie", "typed-header"] }
 futures = "0.3"
 reqwest-eventsource = "0.6"
 
 # Database testing
-sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "time", "json", "migrate", "macros", "chrono"] }
+sqlx = { version = "0.8", features = [
+  "runtime-tokio",
+  "tls-rustls",
+  "postgres",
+  "uuid",
+  "time",
+  "json",
+  "migrate",
+  "macros",
+  "chrono",
+] }
 sqlx-db-tester = "0.6.0"
 
 # NATS testing
@@ -41,7 +56,7 @@ base64 = "0.22"
 # Local project dependencies
 fechatter_core = { workspace = true }
 fechatter_server = { path = "../fechatter_server", features = ["test-util"] }
-notify_server = { workspace = true }
+notify_server = { path = "../notify_server" }
 
 # Additional dependencies
 log = "0.4"

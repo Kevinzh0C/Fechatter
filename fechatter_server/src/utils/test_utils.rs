@@ -3,16 +3,22 @@
 macro_rules! setup_test_users {
   ($num_users:expr) => {{
     async {
-      let (tdb, state) = $crate::AppState::test_new()
+      let config = $crate::config::AppConfig::minimal_dev_config()
+        .expect("Failed to create minimal dev config");
+
+      let mut test_config = config;
+      test_config.server.db_url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
+        "postgresql://postgres:password@localhost:5432/fechatter_test".to_string()
+      });
+
+      let state = $crate::AppState::new(test_config)
         .await
         .expect("Failed to create test state");
 
-      // Add a longer delay to ensure database is ready
-      tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+      let pool = state.infrastructure().database_pool();
 
-      // Verify database connection
       sqlx::query("SELECT 1")
-        .execute(state.pool())
+        .execute(pool.as_ref())
         .await
         .expect("Failed to verify database connection");
 
@@ -23,14 +29,12 @@ macro_rules! setup_test_users {
         "Tracy", "Ursula", "Victor", "Wendy", "Xavier", "Yvonne", "Zoe",
       ];
 
-      // Generate unique identifier combining timestamp, process ID, and thread ID
       let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
       let process_id = std::process::id();
       let thread_id = std::thread::current().id();
-      // Create a simple hash of thread ID to make it numeric
       let thread_hash = format!("{:?}", thread_id).len() as u64;
       let unique_id = format!("{}{}{}", timestamp, process_id, thread_hash);
 
@@ -40,18 +44,38 @@ macro_rules! setup_test_users {
           .map(|&n| n.to_string())
           .unwrap_or_else(|| format!("User {}", i + 1));
         let email_name_part = fullname.to_lowercase().replace(' ', "");
-        // Use unique_id and index for uniqueness across test runs
         let email = format!("{}{}{}@acme.test", email_name_part, i + 1, unique_id);
         let password = "password";
         let workspace = "Acme";
-        let user_payload = $crate::models::CreateUser::new(&fullname, &email, &workspace, password);
-        let user = state
-          .create_user(&user_payload, None)
+        let user_payload = fechatter_core::CreateUser::new(&fullname, &email, &workspace, password);
+
+        let auth_service = state.services().auth();
+        let auth_tokens = auth_service
+          .register_user(&user_payload)
           .await
           .expect(&format!("Failed to create user {}", fullname));
+
+        let user = fechatter_core::User {
+          id: auth_tokens.user_id,
+          fullname: fullname.clone(),
+          email: email.clone(),
+          password_hash: Some("test_hash".to_string()),
+          status: fechatter_core::UserStatus::Active,
+          created_at: chrono::Utc::now(),
+          workspace_id: auth_tokens.workspace_id,
+          // Profile fields - set defaults for test users
+          phone: None,
+          title: None,
+          department: None,
+          avatar_url: None,
+          bio: None,
+          timezone: None,
+          language: None,
+          last_active_at: Some(chrono::Utc::now()),
+        };
         users.push(user);
       }
-      (tdb, state, users)
+      (state, users)
     }
   }};
 }
@@ -61,31 +85,41 @@ macro_rules! setup_test_users {
 macro_rules! create_new_test_chat {
     ($state:expr, $creator:expr, $chat_type:expr, $members:expr, $name:expr $(, $desc:expr)?) => {{
         async {
-            use fechatter_core::ChatType;
+            // Convert members to Vec<fechatter_core::UserId>
+            let member_ids: Vec<fechatter_core::UserId> = $members.iter().map(|u| u.id).collect();
 
-            // Convert members Vec<&User> or Vec<User> to Vec<i64>
-            let member_ids_vec: Vec<i64> = $members.iter().map(|u| u.id.into()).collect();
             // Handle optional description
-            let description_str = match Option::<String>::None $(.or(Some($desc.to_string())))? {
-                Some(s) => s,
-                None => String::new(),
-            };
+            let description = None $(.or(Some($desc.to_string())))?;
 
-            // Actually create the chat in the database
+            // Use the new create_new_chat method signature
             let chat = $state.create_new_chat(
-                $creator.id.into(),
-                $name,
                 $chat_type,
-                Some(member_ids_vec),
-                Some(&description_str),
-                $creator.workspace_id.into(),
-    )
+                Some($name.to_string()),
+                description,
+                $creator.id,
+                member_ids,
+            )
             .await
             .expect(&format!("Failed to create test chat '{}'", $name));
 
             chat
         }
     }};
+}
+
+#[cfg(test)]
+#[macro_export]
+macro_rules! auth_user {
+  ($user:expr) => {{
+    fechatter_core::AuthUser {
+      id: $user.id,
+      fullname: $user.fullname.clone(),
+      email: $user.email.clone(),
+      status: $user.status.clone(),
+      created_at: $user.created_at,
+      workspace_id: $user.workspace_id,
+    }
+  }};
 }
 
 #[cfg(test)]
@@ -156,7 +190,7 @@ macro_rules! assert_chat_list_count {
         axum::extract::Extension($auth_user.clone())
       ),
       axum::http::StatusCode::OK,
-      Vec<fechatter_core::models::chat::ChatSidebar> // Using CoreChatSidebar
+      Vec<$crate::domains::dtos::ChatSidebar>
     );
     assert_eq!(
       chats.len(),
@@ -180,7 +214,7 @@ macro_rules! assert_chat_member_count {
         axum::extract::Path($chat_id)
       ),
       axum::http::StatusCode::OK,
-      Vec<fechatter_core::ChatMember> // Using core ChatMember
+      Vec<$crate::handlers::chat_members::ChatMemberDto>
     );
     assert_eq!(
       members.len(),
@@ -225,7 +259,7 @@ mod tests {
 
   #[tokio::test]
   async fn zero_users_ok() {
-    let (_, _, users) = setup_test_users!(0).await;
+    let (_, users) = setup_test_users!(0).await;
     assert!(users.is_empty());
   }
 }

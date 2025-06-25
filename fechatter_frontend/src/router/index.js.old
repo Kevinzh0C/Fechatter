@@ -1,0 +1,102 @@
+import { createRouter, createWebHistory } from 'vue-router';
+import { useAuthStore } from '../stores/auth';
+import Home from '../views/Home.vue';
+import Login from '../views/Login.vue';
+import Register from '../views/Register.vue';
+import Chat from '../views/Chat.vue';
+import Demo from '../views/Demo.vue';
+import Test from '../views/Test.vue';
+
+const routes = [
+  {
+    path: '/',
+    redirect: '/login'
+  },
+  {
+    path: '/home',
+    name: 'Home',
+    component: Home,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: Login,
+    meta: { requiresGuest: true }
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: Register,
+    meta: { requiresGuest: true }
+  },
+  {
+    path: '/chat/:id',
+    name: 'Chat',
+    component: Chat,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/demo',
+    name: 'Demo',
+    component: Demo
+  },
+  {
+    path: '/test',
+    name: 'Test',
+    component: Test
+  }
+];
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+});
+
+// Simple auth initialization promise to prevent multiple initializations
+let authInitPromise = null;
+
+router.beforeEach(async (to, from, next) => {
+  const authStore = useAuthStore();
+
+  // Initialize auth only once
+  if (!authInitPromise) {
+    authInitPromise = authStore.initializeAuth().catch(error => {
+      console.error('Auth initialization failed:', error);
+      // Continue even if initialization fails
+    });
+  }
+
+  // Wait for auth initialization
+  await authInitPromise;
+
+  const isAuthenticated = authStore.isLoggedIn;
+  const requiresAuth = to.meta.requiresAuth;
+  const requiresGuest = to.meta.requiresGuest;
+
+  // Debug logging (remove in production)
+  if (import.meta.env.VITE_DEBUG === 'true') {
+    console.log('Route Guard:', {
+      to: to.path,
+      isAuthenticated,
+      requiresAuth,
+      requiresGuest
+    });
+  }
+
+  // Redirect logic
+  if (requiresAuth && !isAuthenticated) {
+    // Save intended destination
+    sessionStorage.setItem('redirectPath', to.fullPath);
+    return next('/login');
+  }
+
+  if (requiresGuest && isAuthenticated) {
+    return next('/home');
+  }
+
+  // Allow navigation
+  next();
+});
+
+export default router; 

@@ -1,0 +1,129 @@
+# Analytics Server Configuration - Docker Environment
+# Production-ready analytics service configuration
+
+# Server configuration
+server:
+  port: 9091
+  base_dir: "/app/data"
+  request_timeout_ms: 30000
+  max_concurrent_requests: 100
+
+  # ClickHouse configuration
+  clickhouse:
+    host: "clickhouse"
+    port: 8123
+    database: "fechatter_analytics"
+    user: "fechatter_analytics_user"
+    password: "fechatter_analytics_pass"
+    http_url: "http://clickhouse:8123"
+    native_url: "tcp://clickhouse:9000"
+
+# Features configuration
+features:
+  # Analytics processing
+  analytics:
+    enabled: true
+    batch_size: 100
+    flush_interval_seconds: 30
+    max_retry_attempts: 3
+    retry_backoff_ms: 1000
+
+  # Real-time streaming
+  streaming:
+    enabled: true
+    buffer_size: 1000
+    flush_threshold: 500
+
+  # Data aggregation
+  aggregation:
+    enabled: true
+    interval_seconds: 300 # 5 minutes
+    batch_size: 1000
+
+# Integrations configuration
+integrations:
+  # NATS messaging
+  messaging:
+    enabled: true
+    nats_url: "nats://nats:4222"
+    jetstream_enabled: true
+    jetstream:
+      stream_name: "ANALYTICS"
+      max_bytes: 1073741824 # 1GB
+      max_messages: 10000000 # 10M messages
+      max_age_hours: 720 # 30 days
+      storage_type: "file"
+      num_replicas: 1
+      retention_policy: "limits"
+    subjects:
+      analytics_events: "fechatter.analytics.events"
+      analytics_batch: "fechatter.analytics.batch"
+      user_events: "fechatter.user.events"
+      chat_events: "fechatter.chat.events"
+      message_events: "fechatter.message.events"
+      bot_events: "fechatter.bot.events"
+      error_events: "fechatter.error.events"
+
+  # Redis cache
+  cache:
+    enabled: true
+    redis_url: "redis://:fechatter_redis_pass@redis:6379"
+    key_prefix: "fechatter:analytics"
+    default_ttl: 3600
+
+  # PostgreSQL (if needed for metadata)
+  postgres:
+    enabled: false
+    database_url: "postgresql://fechatter_user:fechatter_pass@postgres:5432/fechatter_db"
+
+# Observability configuration
+observability:
+  log_level: "info"
+  log_format: "json"
+  log_to_file: false
+
+  # Metrics
+  metrics:
+    enabled: true
+    port: 9092
+    path: "/metrics"
+
+  # Health checks
+  health_check:
+    enabled: true
+    path: "/health"
+    timeout_ms: 5000
+
+  # Performance monitoring
+  performance:
+    track_query_performance: true
+    slow_query_threshold_ms: 1000
+    enable_profiling: false
+
+# Security configuration
+security:
+  # Authentication (optional)
+  auth:
+    enabled: false
+    jwt_secret: ""
+
+  # CORS
+  cors:
+    enabled: true
+    allow_origins:
+    - "http://localhost:3000"
+    - "http://localhost:5173"
+    - "http://fechatter-gateway:8080"
+    allow_methods:
+    - "GET"
+    - "POST"
+    - "OPTIONS"
+    allow_headers:
+    - "Content-Type"
+    - "Authorization"
+
+  # Rate limiting
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 1000
+    burst_size: 100

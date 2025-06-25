@@ -6,7 +6,9 @@ use meilisearch_sdk::search::SearchResult as MeilisearchSearchResult;
 use meilisearch_sdk::task_info::TaskInfo;
 use tracing::info;
 
+use crate::services::infrastructure::search::meilisearch::MeilisearchDocument;
 use crate::{config::SearchConfig, error::AppError};
+use fechatter_core::contracts::Document;
 use fechatter_core::models::{SearchMessages, SearchableMessage};
 
 // ================================================================================================
@@ -112,6 +114,12 @@ pub trait SearchBackend {
   async fn delete_documents(&self, ids: &[String]) -> SearchServiceResult<()>;
 
   async fn ensure_index_exists(&self) -> SearchServiceResult<()>;
+
+  async fn index_document(&self, document: &Document) -> SearchServiceResult<()>;
+
+  async fn update_document(&self, id: &str, document: &Document) -> SearchServiceResult<()>;
+
+  async fn delete_document(&self, id: &str) -> SearchServiceResult<()>;
 }
 
 /// Search filters with type safety
@@ -208,6 +216,16 @@ pub struct SearchService {
   batch_size: BatchSize,
 }
 
+impl Clone for SearchService {
+  fn clone(&self) -> Self {
+    // Since backend can't be cloned, we create a new instance with same config
+    // This is a workaround - in a real application you might want to use Arc<Backend>
+    // or implement a factory pattern instead
+    SearchService::new(self.config.clone(), self.batch_size, TaskTimeout::DEFAULT)
+      .expect("Failed to clone SearchService")
+  }
+}
+
 impl SearchService {
   /// Creates a new search service with Meilisearch backend
   pub fn new(
@@ -222,6 +240,20 @@ impl SearchService {
       config,
       batch_size,
     })
+  }
+
+  /// Creates a new search service from application configuration
+  pub async fn new_from_config(search_config: &SearchConfig) -> SearchServiceResult<Self> {
+    let service = Self::new(
+      search_config.clone(),
+      BatchSize::new(search_config.batch_size),
+      TaskTimeout::DEFAULT,
+    )?;
+
+    // Initialize the service
+    service.initialize().await?;
+
+    Ok(service)
   }
 
   /// Creates a service with custom backend (useful for testing)
@@ -401,13 +433,13 @@ pub struct MeilisearchBackend {
 
 impl MeilisearchBackend {
   pub fn new(config: &SearchConfig, task_timeout: TaskTimeout) -> SearchServiceResult<Self> {
-    let api_key = if config.meilisearch.api_key.is_empty() {
+    let api_key = if config.meilisearch_api_key.is_empty() {
       None
     } else {
-      Some(config.meilisearch.api_key.as_str())
+      Some(config.meilisearch_api_key.as_str())
     };
 
-    let client = MeilisearchClient::new(&config.meilisearch.url, api_key)
+    let client = MeilisearchClient::new(&config.meilisearch_url, api_key)
       .map_err(|e| AppError::SearchError(format!("Failed to create Meilisearch client: {}", e)))?;
 
     Ok(Self {
@@ -425,10 +457,23 @@ impl MeilisearchBackend {
 
     match completed {
       meilisearch_sdk::tasks::Task::Succeeded { .. } => Ok(()),
-      meilisearch_sdk::tasks::Task::Failed { content } => Err(AppError::SearchError(format!(
-        "{} failed: {:?}",
-        operation, content.error
-      ))),
+      meilisearch_sdk::tasks::Task::Failed { content } => {
+        // Special handling for index creation failures
+        if operation == "index creation" {
+          // Check if the failure is due to index already existing
+          let error_message = format!("{:?}", content.error);
+          if error_message.contains("Index") && error_message.contains("already exists") {
+            info!("Index creation task failed because index already exists, treating as success");
+            return Ok(());
+          }
+        }
+
+        // For other failures, return the error
+        Err(AppError::SearchError(format!(
+          "{} failed: {:?}",
+          operation, content.error
+        )))
+      }
       status => Err(AppError::SearchError(format!(
         "{} ended with unexpected status: {:?}",
         operation, status
@@ -440,6 +485,53 @@ impl MeilisearchBackend {
     // v0.28.0 uses ranking_score field
     hit.ranking_score.map(|score| score as f32)
   }
+
+  /// Convert document to Meilisearch format
+  async fn index_document(&self, document: &Document) -> SearchServiceResult<()> {
+    let index = self.client.index("messages"); // 使用固定的索引名
+
+    // Convert document to Meilisearch format
+    let meilisearch_doc = MeilisearchDocument {
+      id: document.id.clone(),
+      fields: document.fields.clone(),
+    };
+
+    index
+      .add_documents(&[meilisearch_doc], Some("id"))
+      .await
+      .map_err(|e| AppError::SearchError(format!("Failed to index document: {}", e)))?;
+
+    Ok(())
+  }
+
+  async fn remove_document(&self, document_id: &str) -> SearchServiceResult<()> {
+    let index = self.client.index("messages"); // 使用固定的索引名
+    let primary_key = "id"; // 使用固定的主键
+
+    index
+      .delete_document(document_id)
+      .await
+      .map_err(|e| AppError::SearchError(format!("Failed to remove document: {}", e)))?;
+
+    Ok(())
+  }
+
+  async fn setup_index(&self) -> SearchServiceResult<()> {
+    let index = self.client.index("messages"); // 使用固定的索引名
+
+    // Configure index settings
+    let searchable_attributes = vec!["title", "content"];
+    let filterable_attributes = vec!["sender_id", "chat_id", "timestamp"];
+    let sortable_attributes = vec!["timestamp"];
+
+    // Apply settings
+    index
+      .set_searchable_attributes(&searchable_attributes)
+      .await
+      .map_err(|e| AppError::SearchError(format!("Failed to set searchable attributes: {}", e)))?;
+
+    Ok(())
+  }
 }
 
 #[async_trait]
@@ -450,9 +542,7 @@ impl SearchBackend for MeilisearchBackend {
     filters: &SearchFilters,
     pagination: Pagination,
   ) -> SearchServiceResult<RawSearchResults> {
-    let index = self
-      .client
-      .index(&self.config.meilisearch.indexes.messages.name);
+    let index = self.client.index("messages"); // 使用固定的索引名
 
     let start = std::time::Instant::now();
     let results = index
@@ -485,10 +575,8 @@ impl SearchBackend for MeilisearchBackend {
   }
 
   async fn index_documents(&self, documents: &[SearchableMessage]) -> SearchServiceResult<()> {
-    let index = self
-      .client
-      .index(&self.config.meilisearch.indexes.messages.name);
-    let primary_key = &self.config.meilisearch.indexes.messages.primary_key;
+    let index = self.client.index("messages"); // 使用固定的索引名
+    let primary_key = "id"; // 使用固定的主键
 
     let task = index
       .add_documents(documents, Some(primary_key))
@@ -499,9 +587,7 @@ impl SearchBackend for MeilisearchBackend {
   }
 
   async fn delete_documents(&self, ids: &[String]) -> SearchServiceResult<()> {
-    let index = self
-      .client
-      .index(&self.config.meilisearch.indexes.messages.name);
+    let index = self.client.index("messages"); // 使用固定的索引名
 
     let task = index
       .delete_documents(ids)
@@ -512,18 +598,46 @@ impl SearchBackend for MeilisearchBackend {
   }
 
   async fn ensure_index_exists(&self) -> SearchServiceResult<()> {
-    let index_config = &self.config.meilisearch.indexes.messages;
+    let index_name = "messages"; // 使用固定的索引名
+    let primary_key = "id"; // 使用固定的主键
 
-    let create_task = self
+    // Try to create index, but don't fail if it already exists
+    match self
       .client
-      .create_index(&index_config.name, Some(&index_config.primary_key))
+      .create_index(index_name, Some(primary_key))
       .await
-      .map_err(|e| AppError::SearchError(format!("Failed to create index: {}", e)))?;
+    {
+      Ok(create_task) => {
+        // Index was created successfully, wait for completion
+        self.wait_for_task(create_task, "index creation").await?;
+        info!("Search index '{}' created successfully", index_name);
+      }
+      Err(meilisearch_sdk::errors::Error::Meilisearch(meilisearch_error)) => {
+        // Check if the error is specifically about index already existing
+        if meilisearch_error.error_code == meilisearch_sdk::errors::ErrorCode::IndexAlreadyExists {
+          info!(
+            "Search index '{}' already exists, skipping creation",
+            index_name
+          );
+        } else {
+          // Other Meilisearch errors should still fail the initialization
+          return Err(AppError::SearchError(format!(
+            "Failed to create index: {}",
+            meilisearch_error
+          )));
+        }
+      }
+      Err(other_error) => {
+        // Non-Meilisearch errors (network, etc.) should also fail
+        return Err(AppError::SearchError(format!(
+          "Failed to create index: {}",
+          other_error
+        )));
+      }
+    }
 
-    self.wait_for_task(create_task, "index creation").await?;
-
-    // Configure index settings
-    let index = self.client.index(&index_config.name);
+    // Configure index settings - this should work whether index was just created or already existed
+    let index = self.client.index(index_name);
 
     // Set searchable attributes
     let searchable_task = index
@@ -555,11 +669,21 @@ impl SearchBackend for MeilisearchBackend {
       .wait_for_task(sortable_task, "sortable attributes setup")
       .await?;
 
-    info!(
-      "Search index '{}' configured successfully",
-      index_config.name
-    );
+    info!("Search index '{}' configured successfully", index_name);
     Ok(())
+  }
+
+  async fn index_document(&self, document: &Document) -> SearchServiceResult<()> {
+    self.index_document(document).await
+  }
+
+  async fn update_document(&self, id: &str, document: &Document) -> SearchServiceResult<()> {
+    self.remove_document(id).await?;
+    self.index_document(document).await
+  }
+
+  async fn delete_document(&self, id: &str) -> SearchServiceResult<()> {
+    self.remove_document(id).await
   }
 }
 
@@ -617,4 +741,120 @@ pub fn create_search_service_with_batch_size(
   SearchServiceBuilder::new(config)
     .with_batch_size(batch_size)
     .build()
+}
+
+// ================================================================================================
+// Core SearchService Trait Implementation
+// ================================================================================================
+
+#[async_trait::async_trait]
+impl fechatter_core::contracts::SearchService for SearchService {
+  async fn index_document(
+    &self,
+    index: &str,
+    doc: fechatter_core::contracts::Document,
+  ) -> Result<(), fechatter_core::error::CoreError> {
+    // Convert to internal document format
+    // For now, we'll just pass through the document since formats are compatible
+    match self.backend.index_document(&doc).await {
+      Ok(()) => Ok(()),
+      Err(e) => Err(fechatter_core::error::CoreError::Internal(format!(
+        "Search indexing error: {}",
+        e
+      ))),
+    }
+  }
+
+  async fn search(
+    &self,
+    index: &str,
+    query: fechatter_core::contracts::SearchQuery,
+  ) -> Result<fechatter_core::contracts::SearchResult, fechatter_core::error::CoreError> {
+    let pagination = Pagination::new(query.offset as i64, query.limit as i64).map_err(|e| {
+      fechatter_core::error::CoreError::ValidationError(format!("Invalid pagination: {}", e))
+    })?;
+
+    let start_time = std::time::Instant::now();
+
+    // Extract filters
+    let filters = if let Some(filters_value) = query.filters {
+      if let Some(chat_id_value) = filters_value.get("chat_id") {
+        if let Some(chat_id) = chat_id_value.as_i64() {
+          SearchFilters::new(chat_id, 0) // Workspace ID is not used directly in this context
+        } else {
+          return Err(fechatter_core::error::CoreError::ValidationError(
+            "Invalid chat_id filter type".into(),
+          ));
+        }
+      } else {
+        return Err(fechatter_core::error::CoreError::ValidationError(
+          "Missing required chat_id filter".into(),
+        ));
+      }
+    } else {
+      return Err(fechatter_core::error::CoreError::ValidationError(
+        "Missing required filters".into(),
+      ));
+    };
+
+    match self
+      .backend
+      .search_messages(&query.query, &filters, pagination)
+      .await
+    {
+      Ok(raw_results) => {
+        let documents = raw_results
+          .hits
+          .into_iter()
+          .map(|hit| fechatter_core::contracts::Document {
+            id: hit.document.id.to_string(),
+            fields: serde_json::to_value(&hit.document).unwrap_or_default(),
+          })
+          .collect();
+
+        Ok(fechatter_core::contracts::SearchResult {
+          hits: documents,
+          total: raw_results.total_hits.unwrap_or(0) as u64,
+          took_ms: start_time.elapsed().as_millis() as u64,
+        })
+      }
+      Err(e) => Err(fechatter_core::error::CoreError::Internal(format!(
+        "Search error: {}",
+        e
+      ))),
+    }
+  }
+
+  async fn delete_document(
+    &self,
+    index: &str,
+    id: &str,
+  ) -> Result<(), fechatter_core::error::CoreError> {
+    match self.backend.delete_document(id).await {
+      Ok(()) => Ok(()),
+      Err(e) => Err(fechatter_core::error::CoreError::Internal(format!(
+        "Document deletion error: {}",
+        e
+      ))),
+    }
+  }
+
+  async fn update_document(
+    &self,
+    index: &str,
+    id: &str,
+    doc: fechatter_core::contracts::Document,
+  ) -> Result<(), fechatter_core::error::CoreError> {
+    match self.backend.update_document(id, &doc).await {
+      Ok(()) => Ok(()),
+      Err(e) => Err(fechatter_core::error::CoreError::Internal(format!(
+        "Document update error: {}",
+        e
+      ))),
+    }
+  }
+
+  fn as_any(&self) -> &dyn std::any::Any {
+    self
+  }
 }

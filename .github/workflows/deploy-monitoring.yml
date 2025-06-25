@@ -1,0 +1,155 @@
+name: Deploy Monitoring to Fly.io
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'monitoring/**'
+      - 'Dockerfile.monitoring'
+      - 'fly.monitoring.toml'
+      - '.github/workflows/deploy-monitoring.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+jobs:
+  deploy-monitoring:
+    name: Deploy Monitoring Infrastructure
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    
+    steps:
+    - name: 🛒 Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: 🏗 Setup Fly.io CLI
+      uses: superfly/flyctl-actions/setup-flyctl@master
+      
+    - name: 🔍 Validate monitoring configuration
+      run: |
+        echo "Validating Prometheus configuration..."
+        
+        # Check if required files exist
+        if [ ! -f "monitoring/prometheus-fly.yml" ]; then
+          echo "❌ prometheus-fly.yml not found"
+          exit 1
+        fi
+        
+        if [ ! -f "Dockerfile.monitoring" ]; then
+          echo "❌ Dockerfile.monitoring not found"
+          exit 1
+        fi
+        
+        if [ ! -f "fly.monitoring.toml" ]; then
+          echo "❌ fly.monitoring.toml not found"
+          exit 1
+        fi
+        
+        echo "✅ All required files found"
+        
+    - name: 🔧 Create Prometheus data volume
+      run: |
+        # Check if volume already exists
+        if ! flyctl volumes list -a fechatter-monitoring | grep -q prometheus_data; then
+          echo "Creating Prometheus data volume..."
+          flyctl volumes create prometheus_data \
+            --region nrt \
+            --size 10 \
+            -a fechatter-monitoring
+          echo "✅ Volume created successfully"
+        else
+          echo "✅ Volume already exists"
+        fi
+      continue-on-error: true
+      
+    - name: 🚀 Deploy monitoring service
+      run: |
+        echo "Deploying Prometheus monitoring service..."
+        flyctl deploy \
+          --config fly.monitoring.toml \
+          --dockerfile Dockerfile.monitoring \
+          --wait-timeout 300
+        echo "✅ Monitoring service deployed successfully"
+        
+    - name: 🔗 Configure Grafana Cloud (if enabled)
+      if: ${{ vars.GRAFANA_PROMETHEUS_URL != '' }}
+      run: |
+        echo "Configuring Grafana Cloud integration..."
+        flyctl secrets set \
+          GRAFANA_PROMETHEUS_URL="${{ vars.GRAFANA_PROMETHEUS_URL }}" \
+          GRAFANA_PROMETHEUS_USER="${{ vars.GRAFANA_PROMETHEUS_USER }}" \
+          GRAFANA_PROMETHEUS_API_KEY="${{ secrets.GRAFANA_PROMETHEUS_API_KEY }}" \
+          -a fechatter-monitoring
+        echo "✅ Grafana Cloud integration configured"
+        
+    - name: 🏥 Health check
+      run: |
+        echo "Performing health check..."
+        sleep 30  # Wait for service to start
+        
+        # Check if Prometheus is responding
+        for i in {1..12}; do
+          if curl -f https://fechatter-monitoring.fly.dev/-/healthy; then
+            echo "✅ Monitoring service is healthy"
+            break
+          else
+            echo "⏳ Waiting for service to be ready... (attempt $i/12)"
+            sleep 10
+          fi
+          
+          if [ $i -eq 12 ]; then
+            echo "❌ Health check failed"
+            exit 1
+          fi
+        done
+        
+    - name: 📊 Import Grafana dashboards
+      if: ${{ vars.GRAFANA_URL != '' && secrets.GRAFANA_API_KEY != '' }}
+      run: |
+        echo "Importing Grafana dashboards..."
+        
+        export GRAFANA_URL="${{ vars.GRAFANA_URL }}"
+        export GRAFANA_API_KEY="${{ secrets.GRAFANA_API_KEY }}"
+        
+        chmod +x scripts/import-grafana-dashboards.sh
+        ./scripts/import-grafana-dashboards.sh
+        
+    - name: 📝 Deployment summary
+      run: |
+        echo "🎉 Monitoring deployment completed!"
+        echo ""
+        echo "📊 Access Information:"
+        echo "  Prometheus: https://fechatter-monitoring.fly.dev"
+        echo ""
+        echo "📈 Metrics will be collected from:"
+        echo "  - fechatter_server (port 9090)"
+        echo "  - notify_server (port 9091)"
+        echo "  - bot_server (port 9092)"
+        echo "  - analytics_server (port 7778)"
+        echo ""
+        
+        if [ -n "${{ vars.GRAFANA_URL }}" ]; then
+          echo "🎛️  Grafana Dashboard: ${{ vars.GRAFANA_URL }}"
+        fi
+        
+  notify-success:
+    name: Notify Deployment Success
+    needs: deploy-monitoring
+    runs-on: ubuntu-latest
+    if: success()
+    
+    steps:
+    - name: 📢 Notify success
+      run: |
+        echo "✅ Monitoring infrastructure deployed successfully"
+        echo "🔗 Access Prometheus at: https://fechatter-monitoring.fly.dev"

@@ -1,8 +1,11 @@
+pub mod auth_domain;
 pub mod token_repository;
 
+pub use auth_domain::{AuthDomainService, TokenService};
 pub use token_repository::{
-  REFRESH_TOKEN_EXPIRATION, REFRESH_TOKEN_MAX_LIFETIME, RefreshTokenAdaptor, RefreshTokenEntity,
-  RefreshTokenStorage, generate_refresh_token, sha256_hash,
+  CoreRefreshTokenRepositoryAdapter, REFRESH_TOKEN_EXPIRATION, REFRESH_TOKEN_MAX_LIFETIME,
+  RefreshTokenEntity, RefreshTokenRepository, RefreshTokenRepositoryImpl, RefreshTokenStorage,
+  ReplaceTokenPayload, StoreTokenPayload, generate_refresh_token, sha256_hash,
 };
 
 // Re-export auth_context_matches with proper visibility

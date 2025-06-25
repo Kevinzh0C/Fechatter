@@ -19,10 +19,10 @@ pub struct MeilisearchClient {
 
 #[cfg_attr(debug_assertions, derive(Debug))] // Only derive Debug in debug builds to avoid log spam
 #[derive(Serialize)]
-struct MeilisearchDocument {
-  id: String,
+pub struct MeilisearchDocument {
+  pub id: String,
   #[serde(flatten)]
-  fields: Value,
+  pub fields: Value,
 }
 
 #[derive(Debug, Deserialize)]
@@ -275,6 +275,10 @@ impl SearchService for MeilisearchClient {
   async fn update_document(&self, index: &str, id: &str, doc: Document) -> Result<(), CoreError> {
     // Meilisearch treats updates as upserts
     self.index_document(index, doc).await
+  }
+
+  fn as_any(&self) -> &dyn std::any::Any {
+    self
   }
 }
 

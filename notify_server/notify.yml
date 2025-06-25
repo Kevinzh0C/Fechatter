@@ -1,6 +1,6 @@
 server:
   port: 6687
-  db_url: "postgres://postgres:postgres@localhost:5432/fechatter"
+  db_url: "postgres://fechatter:fechatter_password@postgres:5432/fechatter"
   request_timeout_ms: 30000
 
 auth:
@@ -14,48 +14,46 @@ auth:
     -----END PUBLIC KEY-----
   token_expiration: 86400
 
-
 messaging:
-  enabled: true 
+  enabled: true
   provider: "nats"
   nats:
-    url: "nats://localhost:4222"
+    url: "nats://nats:4222"
     auth:
       enabled: false
-
     subscription_subjects:
     - "fechatter.messages.created"
-    - "fechatter.messages.updated"
-    - "fechatter.messages.deleted"
-    - "fechatter.chats.created"
-    - "fechatter.chats.updated"
     - "fechatter.chats.member.joined"
     - "fechatter.chats.member.left"
-    - "fechatter.messages.duplicate"
+    - "fechatter.realtime.>"
+    - "fechatter.broadcast"
     jetstream:
       enabled: true
       stream: "fechatter_events"
       storage: "file"
-      max_bytes: 1073741824 # 1GB
-      max_msg_size: 1048576 # 1MB
-      max_age: 24 # 1 day retention
+      max_bytes: 524288000 # 500MB (increased for real-time hot path)
+      max_msg_size: 262144 # 256KB
+      max_age: 12 # 12 hours retention (optimized for real-time notifications)
+      # Unified consumer configuration - single consumer handles all events
       consumers:
         notification_processor:
-          name: "notification_processor"
+          name: "unified_processor"
           filter_subjects:
-          - "fechatter.messages.>"
-          - "fechatter.chats.>"
-          ack_wait: "10s"
+          - "fechatter.messages.created"
+          - "fechatter.chats.member.joined"
+          - "fechatter.chats.member.left"
+          - "fechatter.realtime.>"
+          - "fechatter.broadcast"
+          ack_wait: "30s"
           max_deliver: 3
-          max_batch: 50
-          idle_heartbeat: "5s"
-
+          max_batch: 1
+          idle_heartbeat: "60s"
 
 search:
-  enabled: false 
+  enabled: false
   provider: "meilisearch"
   meilisearch:
-    url: "http://localhost:7700"
+    url: "http://meilisearch:7700"
     api_key: ""
     connection_timeout_ms: 3000
     request_timeout_ms: 5000
@@ -70,7 +68,6 @@ search:
     settings:
       pagination_limit: 50
 
-
 notification:
   delivery:
     web:
@@ -78,3 +75,11 @@ notification:
       sse_enabled: true
       connection_timeout_ms: 30000
       heartbeat_interval_ms: 25000
+
+# Analytics configuration for tracking user behavior
+analytics:
+  enabled: true
+  nats_url: "nats://nats:4222"
+  subject_prefix: "fechatter.analytics.notify"
+  batch_size: 100
+  flush_interval_ms: 5000

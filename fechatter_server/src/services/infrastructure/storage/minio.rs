@@ -1,4 +1,4 @@
-use super::{s3::S3Storage, StorageService};
+use super::{StorageService, s3::S3Storage};
 use crate::error::AppError;
 use async_trait::async_trait;
 

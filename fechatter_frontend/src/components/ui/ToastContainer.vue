@@ -35,7 +35,7 @@
               </p>
             </div>
             <div class="ml-4 flex-shrink-0 flex">
-              <button @click="removeToast(notification.id)"
+              <button @click="removeNotification(notification.id)"
                       class="bg-white dark:bg-gray-800 rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                 <span class="sr-only">Close</span>
                 <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -50,7 +50,7 @@
              class="h-1 bg-gray-200 dark:bg-gray-700">
           <div class="h-full transition-all duration-100 ease-linear"
                :class="getProgressBarClass(notification.type)"
-               :style="{ width: getProgressWidth(notification) + '%' }">
+               :style="{ width: `${getProgressWidth(notification)}%` }">
           </div>
         </div>
       </div>
@@ -59,10 +59,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useNotifications } from '@/composables/useNotifications';
 
-const { notifications, removeToast } = useNotifications();
+const { notifications, removeNotification } = useNotifications();
+const updateTrigger = ref(0);
 
 function getToastClasses(type) {
   const baseClasses = 'border-l-4';
@@ -94,7 +95,10 @@ function getProgressBarClass(type) {
 function getProgressWidth(notification) {
   if (notification.duration <= 0) return 100;
   
-  const elapsed = Date.now() - notification.timestamp.getTime();
+  // Force reactivity by reading updateTrigger
+  updateTrigger.value;
+  
+  const elapsed = Date.now() - notification.timestamp;
   const progress = Math.max(0, 100 - (elapsed / notification.duration) * 100);
   return progress;
 }
@@ -104,8 +108,8 @@ let progressInterval;
 
 onMounted(() => {
   progressInterval = setInterval(() => {
-    // Force reactivity update for progress bars
-    notifications.value = [...notifications.value];
+    // Trigger reactivity update for progress bars
+    updateTrigger.value++;
   }, 100);
 });
 

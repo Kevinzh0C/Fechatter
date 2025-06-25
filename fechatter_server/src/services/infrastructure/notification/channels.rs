@@ -6,41 +6,40 @@ use std::sync::Arc;
 use std::time::Duration;
 
 // Import from domains since we're now in infrastructure
-use crate::config::{EmailConfig, SmtpConfig};
+use crate::config::NotificationConfig;
 use crate::domains::notification::{Notification, NotificationChannel, NotificationChannelTrait};
-use fechatter_core::error::CoreError;
 
 // Email sending dependencies
 use super::email_templates::{EmailTemplateData, EmailTemplateService};
 use lettre::{
   AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
   message::{Mailbox, MultiPart, SinglePart, header::ContentType},
-  transport::smtp::{PoolConfig, authentication::Credentials},
+  transport::smtp::authentication::Credentials,
 };
 
 /// Email notification channel implementation with full SMTP functionality
 pub struct EmailChannelImpl {
   smtp_transport: AsyncSmtpTransport<Tokio1Executor>,
   template_service: EmailTemplateService,
-  config: EmailConfig,
+  config: NotificationConfig,
   from_mailbox: Mailbox,
 }
 
 impl EmailChannelImpl {
   /// Create new email channel with SMTP configuration
   pub fn new(
-    config: EmailConfig,
+    config: NotificationConfig,
     base_url: String,
   ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
     // Build SMTP transport
-    let smtp_transport = Self::build_smtp_transport(&config.smtp)?;
+    let smtp_transport = Self::build_smtp_transport(&config)?;
 
-    // Build template service
-    let template_service = EmailTemplateService::new(config.templates.clone(), base_url)
+    // Build template service (simplified)
+    let template_service = EmailTemplateService::new_simple(base_url)
       .map_err(|e| format!("Failed to initialize email templates: {}", e))?;
 
     // Create from mailbox
-    let from_mailbox = format!("{} <{}>", config.smtp.from_name, config.smtp.from_email)
+    let from_mailbox = format!("{} <{}>", config.from_name, config.from_email)
       .parse()
       .map_err(|e| format!("Invalid from email address: {}", e))?;
 
@@ -54,28 +53,25 @@ impl EmailChannelImpl {
 
   /// Build SMTP transport from configuration
   fn build_smtp_transport(
-    smtp_config: &SmtpConfig,
+    config: &NotificationConfig,
   ) -> Result<AsyncSmtpTransport<Tokio1Executor>, Box<dyn std::error::Error + Send + Sync>> {
-    let mut builder = if smtp_config.use_tls {
-      AsyncSmtpTransport::<Tokio1Executor>::relay(&smtp_config.host)?
+    let mut builder = if config.use_tls {
+      AsyncSmtpTransport::<Tokio1Executor>::relay(&config.smtp_host)?
     } else {
-      AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&smtp_config.host)
+      AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&config.smtp_host)
     };
 
     // Configure authentication if credentials provided
-    if !smtp_config.username.is_empty() && !smtp_config.password.is_empty() {
+    if !config.smtp_username.is_empty() && !config.smtp_password.is_empty() {
       let credentials =
-        Credentials::new(smtp_config.username.clone(), smtp_config.password.clone());
+        Credentials::new(config.smtp_username.clone(), config.smtp_password.clone());
       builder = builder.credentials(credentials);
     }
 
-    // Configure connection pool
-    let pool_config = PoolConfig::new().max_size(10).min_idle(2);
-
+    // Configure transport (pool configuration is automatic in lettre 0.11)
     let transport = builder
-      .port(smtp_config.port)
-      .timeout(Some(Duration::from_secs(smtp_config.timeout_seconds)))
-      .pool_config(pool_config)
+      .port(config.smtp_port)
+      .timeout(Some(Duration::from_secs(30))) // Default timeout
       .build();
 
     Ok(transport)
@@ -84,7 +80,7 @@ impl EmailChannelImpl {
   /// Send email with retry logic and error handling
   async fn send_email_internal(&self, notification: &Notification) -> Result<(), String> {
     // Check if email notifications are enabled
-    if !self.config.enabled {
+    if !self.config.email_enabled {
       tracing::warn!("Email notifications are disabled in configuration");
       return Ok(()); // Return success but don't send
     }
@@ -128,7 +124,7 @@ impl EmailChannelImpl {
       .subject(&template_data.subject);
 
     // Add reply-to header if configured
-    if let Some(reply_to) = &self.config.smtp.from_email.parse::<Mailbox>().ok() {
+    if let Some(reply_to) = &self.config.from_email.parse::<Mailbox>().ok() {
       message_builder = message_builder.reply_to(reply_to.clone());
     }
 
@@ -379,22 +375,11 @@ impl NotificationChannelFactory {
   pub fn create_channel(channel_type: NotificationChannel) -> Arc<dyn NotificationChannelTrait> {
     match channel_type {
       NotificationChannel::Email => {
-        // TODO: Replace with actual configuration injection
-        // For now, create with default settings to maintain compilation
-        use crate::config::{EmailConfig, EmailTemplateConfig, SmtpConfig};
-        let config = EmailConfig::default();
-        let base_url = "https://fechatter.com".to_string();
-
-        match EmailChannelImpl::new(config, base_url) {
-          Ok(email_impl) => Arc::new(email_impl),
-          Err(e) => {
-            tracing::error!(
-              "Failed to create EmailChannelImpl: {}. Using placeholder.",
-              e
-            );
-            Arc::new(PlaceholderEmailChannel)
-          }
-        }
+        // Use placeholder email channel since we don't have configuration here
+        tracing::warn!(
+          "Creating placeholder email channel - configuration required for real implementation"
+        );
+        Arc::new(PlaceholderEmailChannel)
       }
       NotificationChannel::Push => Arc::new(PushChannelImpl),
       NotificationChannel::Database => Arc::new(InAppChannelImpl::new()),
@@ -404,7 +389,7 @@ impl NotificationChannelFactory {
 
   /// Create a channel implementation with configuration
   pub fn create_email_channel(
-    config: EmailConfig,
+    config: NotificationConfig,
     base_url: String,
   ) -> Result<Arc<dyn NotificationChannelTrait>, Box<dyn std::error::Error + Send + Sync>> {
     let email_impl = EmailChannelImpl::new(config, base_url)?;

@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package fechatter.v1;
+
+import "fechatter/v1/core.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// 通知服务
+service NotificationService {
+  // 订阅通知流
+  rpc Subscribe(SubscribeRequest) returns (stream NotificationEvent);
+  
+  // 发送通知
+  rpc SendNotification(SendNotificationRequest) returns (google.protobuf.Empty);
+  
+  // 标记通知为已读
+  rpc MarkAsRead(MarkNotificationAsReadRequest) returns (google.protobuf.Empty);
+  
+  // 获取通知历史
+  rpc GetNotifications(GetNotificationsRequest) returns (GetNotificationsResponse);
+}
+
+// 通知类型
+enum NotificationType {
+  NOTIFICATION_TYPE_UNSPECIFIED = 0;
+  NOTIFICATION_TYPE_MESSAGE = 1;        // 新消息
+  NOTIFICATION_TYPE_MENTION = 2;        // 被提及
+  NOTIFICATION_TYPE_CHAT_INVITE = 3;    // 聊天邀请
+  NOTIFICATION_TYPE_SYSTEM = 4;         // 系统通知
+  NOTIFICATION_TYPE_BOT_REPLY = 5;      // 机器人回复
+}
+
+// 通知事件
+message NotificationEvent {
+  string id = 1;
+  NotificationType type = 2;
+  int64 user_id = 3;
+  string title = 4;
+  string content = 5;
+  map<string, string> data = 6;
+  bool read = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+// 订阅请求
+message SubscribeRequest {
+  int64 user_id = 1;
+  repeated NotificationType types = 2;
+}
+
+// 发送通知请求
+message SendNotificationRequest {
+  NotificationType type = 1;
+  repeated int64 user_ids = 2;
+  string title = 3;
+  string content = 4;
+  map<string, string> data = 5;
+}
+
+// 标记通知已读请求
+message MarkNotificationAsReadRequest {
+  string notification_id = 1;
+  int64 user_id = 2;
+}
+
+// 获取通知请求
+message GetNotificationsRequest {
+  int64 user_id = 1;
+  repeated NotificationType types = 2;
+  bool unread_only = 3;
+  Pagination pagination = 4;
+}
+
+// 获取通知响应
+message GetNotificationsResponse {
+  repeated NotificationEvent notifications = 1;
+  PaginatedResponse pagination = 2;
+  Error error = 3;
+} 

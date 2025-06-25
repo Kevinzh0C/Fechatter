@@ -1,0 +1,296 @@
+# 监控配置 - 日本地区优化
+# Prometheus + Grafana + AlertManager
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+---
+# Prometheus ServiceMonitor for Fechatter services
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: fechatter-services
+  namespace: monitoring
+  labels:
+    app: fechatter
+    region: japan
+spec:
+  selector:
+    matchLabels:
+      monitoring: "true"
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+  namespaceSelector:
+    matchNames:
+    - fechatter
+---
+# PrometheusRule for Fechatter alerts
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: fechatter-rules
+  namespace: monitoring
+  labels:
+    app: fechatter
+    region: japan
+spec:
+  groups:
+  - name: fechatter.rules
+    interval: 30s
+    rules:
+    # 应用级别告警
+    - alert: HighErrorRate
+      expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+      for: 2m
+      labels:
+        severity: warning
+        region: japan
+      annotations:
+        summary: "High error rate detected"
+        description: "Error rate is {{ $value }} errors per second"
+    
+    - alert: HighResponseTime
+      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+      for: 3m
+      labels:
+        severity: warning
+        region: japan
+      annotations:
+        summary: "High response time detected"
+        description: "95th percentile response time is {{ $value }}s"
+    
+    - alert: ServiceDown
+      expr: up{job="fechatter-services"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        region: japan
+      annotations:
+        summary: "Service is down"
+        description: "Service {{ $labels.instance }} is down"
+    
+    # 基础设施告警
+    - alert: HighCPUUsage
+      expr: (1 - rate(cpu_time_user_ns[5m])) < 0.2
+      for: 5m
+      labels:
+        severity: warning
+        region: japan
+      annotations:
+        summary: "High CPU usage"
+        description: "CPU usage is above 80% for {{ $labels.instance }}"
+    
+    - alert: HighMemoryUsage
+      expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) < 0.15
+      for: 5m
+      labels:
+        severity: warning
+        region: japan
+      annotations:
+        summary: "High memory usage"
+        description: "Memory usage is above 85% for {{ $labels.instance }}"
+    
+    - alert: PodCrashLooping
+      expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+      for: 5m
+      labels:
+        severity: warning
+        region: japan
+      annotations:
+        summary: "Pod is crash looping"
+        description: "Pod {{ $labels.pod }} is restarting frequently"
+    
+    # 业务指标告警
+    - alert: HighMessageLatency
+      expr: histogram_quantile(0.95, rate(message_processing_duration_seconds_bucket[5m])) > 5
+      for: 3m
+      labels:
+        severity: warning
+        region: japan
+      annotations:
+        summary: "High message processing latency"
+        description: "Message processing latency is {{ $value }}s"
+    
+    - alert: TooManyActiveConnections
+      expr: sse_active_connections > 250
+      for: 2m
+      labels:
+        severity: warning
+        region: japan
+      annotations:
+        summary: "Too many active SSE connections"
+        description: "Active SSE connections: {{ $value }} (expected ~200 for 200 DAU)"
+    
+    - alert: DatabaseConnectionPoolExhausted
+      expr: database_connections_active / database_connections_max > 0.9
+      for: 2m
+      labels:
+        severity: critical
+        region: japan
+      annotations:
+        summary: "Database connection pool nearly exhausted"
+        description: "Database connection pool usage: {{ $value | humanizePercentage }}"
+---
+# Grafana Dashboard ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fechatter-dashboard
+  namespace: monitoring
+data:
+  dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Fechatter Japan Dashboard",
+        "tags": ["fechatter", "japan"],
+        "timezone": "Asia/Tokyo",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Active Users (DAU)",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "active_users_total",
+                "legendFormat": "Current Active Users"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {"mode": "thresholds"},
+                "thresholds": {
+                  "steps": [
+                    {"color": "green", "value": 0},
+                    {"color": "yellow", "value": 150},
+                    {"color": "red", "value": 250}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 2,
+            "title": "Message Throughput",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(messages_total[5m])",
+                "legendFormat": "Messages/sec"
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "title": "Response Time (95th percentile)",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+                "legendFormat": "Response Time"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "title": "Error Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{status=~\"5..\"}[5m])",
+                "legendFormat": "Error Rate"
+              }
+            ]
+          },
+          {
+            "id": 5,
+            "title": "Resource Usage",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(container_cpu_usage_seconds_total[5m])",
+                "legendFormat": "CPU Usage"
+              },
+              {
+                "expr": "container_memory_usage_bytes / container_spec_memory_limit_bytes",
+                "legendFormat": "Memory Usage"
+              }
+            ]
+          },
+          {
+            "id": 6,
+            "title": "Database Connections",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "database_connections_active",
+                "legendFormat": "Active Connections"
+              },
+              {
+                "expr": "database_connections_idle",
+                "legendFormat": "Idle Connections"
+              }
+            ]
+          }
+        ],
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "refresh": "30s"
+      }
+    }
+---
+# AlertManager configuration for Japan region
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: monitoring
+data:
+  alertmanager.yml: |
+    global:
+      smtp_smarthost: 'localhost:587'
+      smtp_from: 'alerts@fechatter-japan.com'
+    
+    route:
+      group_by: ['alertname', 'region']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 1h
+      receiver: 'web.hook'
+      routes:
+      - match:
+          severity: critical
+        receiver: 'critical-alerts'
+      - match:
+          severity: warning
+        receiver: 'warning-alerts'
+    
+    receivers:
+    - name: 'web.hook'
+      webhook_configs:
+      - url: 'http://webhook-service:5001/'
+    
+    - name: 'critical-alerts'
+      slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#alerts-critical'
+        title: '🚨 Critical Alert - Japan Region'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+    
+    - name: 'warning-alerts'
+      slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#alerts-warning'
+        title: '⚠️  Warning Alert - Japan Region'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+    
+    inhibit_rules:
+    - source_match:
+        severity: 'critical'
+      target_match:
+        severity: 'warning'
+      equal: ['alertname', 'region']

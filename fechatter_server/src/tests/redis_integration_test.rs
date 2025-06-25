@@ -7,7 +7,7 @@ mod tests {
   use std::sync::Arc;
 
   async fn get_cache() -> RedisCacheService {
-    let url = std::env::var("REDIS_URL").unwrap_or("redis://localhost:6379".into());
+    let url = std::env::var("REDIS_URL").unwrap_or("redis://:fechatter_redis_pass@localhost:6379".into());
     RedisCacheService::new(&url, "test")
       .await
       .expect("Redis down?")

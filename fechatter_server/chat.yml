@@ -1,9 +1,32 @@
 server:
   port: 6688
-  db_url: "postgres://postgres:postgres@localhost:5432/fechatter"
+  db_url: "postgres://fechatter:fechatter_password@postgres:5432/fechatter"
   base_dir: "/tmp/fechatter/"
   max_upload_size: 10485760
   request_timeout_ms: 30000
+  # Analytics configuration for event tracking
+  analytics:
+    enabled: true
+    endpoint: "http://analytics-server:6690" # analytics-server endpoint
+    batch_size: 100
+    flush_interval_seconds: 30
+    timeout_seconds: 10
+    use_grpc: false # Use NATS instead of gRPC for analytics
+  # CORS configuration for development
+  cors:
+    enabled: true
+    allow_origins:
+    - "http://localhost:1420"
+    - "http://127.0.0.1:1420"
+    - "http://localhost:3000"
+    - "http://localhost:5173"
+    - "http://localhost:5174"
+    - "http://127.0.0.1:5173"
+    - "http://127.0.0.1:5174"
+    allow_methods: [ "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS" ]
+    allow_headers: [ "Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin" ]
+    allow_credentials: true
+    max_age: 3600
 
 auth:
   sk: |
@@ -17,14 +40,96 @@ auth:
   token_expiration: 86400
   refresh_token_expiration: 2592000
 
+# Feature configurations
+features:
+  # Cache settings (Redis)
+  cache:
+    enabled: true
+    redis_url: "redis://:fechatter_redis_pass@redis:6379"
+    key_prefix: "fechatter"
+    default_ttl: 3600
+    pool_size: 10
+    connection_timeout_ms: 5000
+
+  # Search functionality
+  search:
+    enabled: true
+    provider: "meilisearch"
+    meilisearch_url: "http://meilisearch:7700"
+    meilisearch_api_key: "fechatter_search_key"
+    async_indexing: true
+    batch_size: 100
+
+  # Messaging/Events
+  messaging:
+    enabled: true
+    provider: "nats"
+    nats_url: "nats://nats:4222"
+    jetstream_enabled: true
+
+  # Message Service Configuration
+  message_service:
+    max_concurrent_sends_per_chat: 10
+    send_timeout_seconds: 30
+    cache_timeout_ms: 500
+    event_publish_timeout_seconds: 5
+    stream_publish_timeout_seconds: 5
+    enable_detailed_tracing: false
+    max_retry_attempts: 3
+    retry_backoff_base_ms: 100
+
+  # Notifications
+  notifications:
+    # In-app notifications (primary)
+    in_app_enabled: true
+    realtime_enabled: true
+    max_per_user: 100
+    retention_days: 30
+
+    # Email notifications (optional)  
+    email_enabled: false
+    smtp_host: "smtp.gmail.com"
+    smtp_port: 587
+    smtp_username: ""
+    smtp_password: ""
+    from_email: "noreply@fechatter.com"
+    from_name: "Fechatter"
+    use_tls: true
+
+  # Observability (logs, metrics, tracing)  
+  observability:
+    # Logging
+    log_level: "debug"
+    log_format: "pretty"
+    log_to_file: false
+    log_file_path: "logs/fechatter.log"
+
+    # Metrics
+    metrics_enabled: true
+    metrics_bind_address: "0.0.0.0:9090"
+
+    # Tracing (OpenTelemetry)
+    tracing_enabled: false
+    service_name: "fechatter-server"
+    service_version: "0.1.0"
+    environment: "development"
+
+  # Rate Limiting Configuration
+  rate_limiting:
+    enabled: true
+    window_seconds: 60
+    max_requests: 100
+    sliding_window: true
+    strategy: "UserBased"
+
+# Legacy configuration (for backward compatibility)
 messaging:
   enabled: true
   provider: "nats"
   nats:
-    url: "nats://localhost:4222"
+    url: "nats://nats:4222"
     auth:
       enabled: false
-
     subjects:
       message_created: "fechatter.messages.created"
       message_updated: "fechatter.messages.updated"
@@ -35,6 +140,13 @@ messaging:
       user_joined_chat: "fechatter.chats.member.joined"
       user_left_chat: "fechatter.chats.member.left"
       duplicate_message_attempted: "fechatter.messages.duplicate"
+      search_index_message: "fechatter.search.index.message"
+      search_index_delete: "fechatter.search.index.delete"
+      realtime_message: "fechatter.realtime.chat.>"
+      realtime_read: "fechatter.realtime.chat.*.read"
+      realtime_unread: "fechatter.realtime.chat.*.unread"
+      realtime_typing: "fechatter.realtime.chat.*.typing"
+      realtime_presence: "fechatter.realtime.user.*.presence"
     jetstream:
       enabled: true
       stream: "fechatter_events"
@@ -42,6 +154,19 @@ messaging:
       max_bytes: 1073741824 # 1GB
       max_msg_size: 1048576 # 1MB
       max_age: 24 # 1 day retention
+      search_stream:
+        enabled: true
+        name: "fechatter_search_index"
+        subjects: [ "fechatter.search.index.*" ]
+        storage: "file"
+        max_bytes: 104857600 # 100MB
+        max_age: 24 # 1 day retention
+        consumer:
+          name: "search_indexer"
+          ack_policy: "explicit"
+          max_deliver: 3
+          ack_wait: "30s"
+          max_batch: 50
 
 search:
   enabled: true
@@ -51,8 +176,8 @@ search:
     batch_size: 10
     batch_timeout_ms: 1000
   meilisearch:
-    url: "http://localhost:7700"
-    api_key: ""
+    url: "http://meilisearch:7700"
+    api_key: "fechatter_search_key"
     connection_timeout_ms: 2000
     request_timeout_ms: 3000
     indexes:

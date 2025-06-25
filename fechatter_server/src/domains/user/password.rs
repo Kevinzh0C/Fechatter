@@ -1,6 +1,6 @@
 use argon2::{
-  password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
   Argon2, PasswordHash, PasswordVerifier,
+  password_hash::{PasswordHasher, SaltString, rand_core::OsRng},
 };
 use fechatter_core::error::CoreError;
 

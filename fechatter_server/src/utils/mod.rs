@@ -1,3 +1,4 @@
+pub mod router_diagnostics;
 pub mod test_utils;
 
 #[macro_export]

@@ -1,11 +1,69 @@
-use crate::config::NatsSubjectsConfig;
+//! Event publisher for NATS-based messaging
+
 use crate::error::AppError;
-use crate::services::indexer_sync_service::{ChatInfo, MessageIndexEvent};
 use async_nats::Client as NatsClient;
 use chrono::{DateTime, Utc};
 use fechatter_core::Message;
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
+
+/// NATS subjects configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NatsSubjectsConfig {
+  pub message_created: String,
+  pub message_updated: String,
+  pub message_deleted: String,
+  pub chat_created: String,
+  pub chat_updated: String,
+  pub user_joined_chat: String,
+  pub user_left_chat: String,
+  pub duplicate_message_attempted: String,
+}
+
+impl Default for NatsSubjectsConfig {
+  fn default() -> Self {
+    Self {
+      message_created: "fechatter.messages.created".to_string(),
+      message_updated: "fechatter.messages.updated".to_string(),
+      message_deleted: "fechatter.messages.deleted".to_string(),
+      chat_created: "fechatter.chats.created".to_string(),
+      chat_updated: "fechatter.chats.updated".to_string(),
+      user_joined_chat: "fechatter.chats.member.joined".to_string(),
+      user_left_chat: "fechatter.chats.member.left".to_string(),
+      duplicate_message_attempted: "fechatter.messages.duplicate".to_string(),
+    }
+  }
+}
+
+/// Chat information for indexing
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatInfo {
+  pub chat_id: i64,
+  pub chat_name: String,
+  pub workspace_id: i64,
+}
+
+/// Message index event for search
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MessageIndexEvent {
+  pub message: Message,
+  pub chat_info: ChatInfo,
+}
+
+/// Search index event
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearchIndexEvent {
+  pub message_id: i64,
+  pub chat_id: i64,
+  pub chat_name: String,
+  pub content: String,
+  pub sender_id: i64,
+  pub created_at: DateTime<Utc>,
+  pub files: Vec<String>,
+  pub new_member_id: Option<i64>,
+  pub dedup_key: String,
+  pub event_type: String,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MessageCreatedEvent {
@@ -39,6 +97,11 @@ impl EventPublisher {
       nats_client,
       subjects,
     }
+  }
+
+  /// Create with default subjects
+  pub fn with_default_subjects(nats_client: NatsClient) -> Self {
+    Self::new(nats_client, NatsSubjectsConfig::default())
   }
 
   /// Get the NATS client for health checks
@@ -239,101 +302,7 @@ impl EventPublisher {
     Ok(())
   }
 
-  /// Publish message updated event
-  pub async fn publish_message_updated(
-    &self,
-    message: &Message,
-    chat_members: Vec<i64>,
-  ) -> Result<(), AppError> {
-    let event = MessageCreatedEvent {
-      // Reuse structure
-      message: message.clone(),
-      chat_members,
-    };
-
-    let payload = match serde_json::to_vec(&event) {
-      Ok(payload) => payload,
-      Err(e) => {
-        error!("Failed to serialize message updated event: {}", e);
-        return Err(AppError::EventPublishingError(format!(
-          "Failed to serialize message updated event: {}",
-          e
-        )));
-      }
-    };
-
-    info!(
-      "Publishing message updated event: message_id={}",
-      message.id
-    );
-
-    if let Err(e) = self
-      .nats_client
-      .publish(self.subjects.message_updated.clone(), payload.into())
-      .await
-    {
-      error!("Failed to publish message updated event: {}", e);
-      return Err(AppError::NatsError(format!(
-        "Failed to publish message updated event: {}",
-        e
-      )));
-    }
-
-    info!(
-      "Successfully published message updated event: message_id={}",
-      message.id
-    );
-    Ok(())
-  }
-
-  /// Publish message deleted event
-  pub async fn publish_message_deleted(
-    &self,
-    message: &Message,
-    chat_members: Vec<i64>,
-  ) -> Result<(), AppError> {
-    let event = MessageCreatedEvent {
-      // Reuse structure
-      message: message.clone(),
-      chat_members,
-    };
-
-    let payload = match serde_json::to_vec(&event) {
-      Ok(payload) => payload,
-      Err(e) => {
-        error!("Failed to serialize message deleted event: {}", e);
-        return Err(AppError::EventPublishingError(format!(
-          "Failed to serialize message deleted event: {}",
-          e
-        )));
-      }
-    };
-
-    info!(
-      "Publishing message deleted event: message_id={}",
-      message.id
-    );
-
-    if let Err(e) = self
-      .nats_client
-      .publish(self.subjects.message_deleted.clone(), payload.into())
-      .await
-    {
-      error!("Failed to publish message deleted event: {}", e);
-      return Err(AppError::NatsError(format!(
-        "Failed to publish message deleted event: {}",
-        e
-      )));
-    }
-
-    info!(
-      "Successfully published message deleted event: message_id={}",
-      message.id
-    );
-    Ok(())
-  }
-
-  /// 发布消息索引事件（新增异步索引支持）
+  /// Publish search index event
   pub async fn publish_search_index_event(
     &self,
     message: &Message,
@@ -360,7 +329,6 @@ impl EventPublisher {
       message.id, chat_info.chat_name
     );
 
-    // 发布到专门的搜索索引主题，将消息ID放入payload
     let subject = "fechatter.search.index";
     if let Err(e) = self
       .nats_client
@@ -381,49 +349,14 @@ impl EventPublisher {
     Ok(())
   }
 
-  /// 发布消息删除索引事件
-  pub async fn publish_search_delete_event(&self, message_id: i64) -> Result<(), AppError> {
-    let subject = format!("fechatter.search.delete.message.{}", message_id);
-    let payload = serde_json::to_vec(&serde_json::json!({
-      "message_id": message_id,
-      "action": "delete"
-    }))
-    .map_err(|e| {
-      AppError::EventPublishingError(format!("Failed to serialize delete event: {}", e))
-    })?;
-
-    info!("Publishing search delete event: message_id={}", message_id);
-
-    if let Err(e) = self
-      .nats_client
-      .publish(subject.clone(), payload.into())
-      .await
-    {
-      error!("Failed to publish search delete event: {}", e);
-      return Err(AppError::NatsError(format!(
-        "Failed to publish search delete event: {}",
-        e
-      )));
-    }
-
-    info!(
-      "Successfully published search delete event: message_id={}, subject={}",
-      message_id, subject
-    );
-    Ok(())
-  }
-
-  /// 发布统一的搜索索引事件（支持实时和历史消息）
+  /// Publish unified search index event
   pub async fn publish_unified_search_index_event(
     &self,
     message: &Message,
     chat_name: &str,
-    event_type: &str, // "real_time" 或 "historical"
+    event_type: &str,
     new_member_id: Option<i64>,
   ) -> Result<(), AppError> {
-    use crate::models::chat_member::SearchIndexEvent;
-
-    // 生成去重键
     let dedup_key = match new_member_id {
       Some(member_id) => format!("{}_{}_{}", message.id, member_id, message.created_at),
       None => format!("{}_{}", message.id, message.created_at),
@@ -458,7 +391,6 @@ impl EventPublisher {
       message.id, chat_name, event_type, dedup_key
     );
 
-    // 发布到专门的搜索索引主题，将消息ID放入payload
     let subject = "fechatter.search.index";
     if let Err(e) = self
       .nats_client
@@ -483,7 +415,6 @@ impl EventPublisher {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::config::NatsSubjectsConfig;
   use chrono::Utc;
   use fechatter_core::Message;
   use uuid::Uuid;
@@ -516,9 +447,9 @@ mod tests {
   }
 
   #[test]
-  fn test_event_publisher_new() {
+  fn test_event_publisher_config() {
     // This test verifies that EventPublisher can be created correctly
-    // Since we need a real NATS client, we test the struct itself
+    // Since we need a real NATS client, we test the config itself
     let subjects = create_test_subjects();
 
     // We can't easily mock async_nats::Client, so test config parsing

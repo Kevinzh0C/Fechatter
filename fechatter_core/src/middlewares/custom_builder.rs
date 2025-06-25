@@ -1,9 +1,9 @@
-use axum::Router;
 use axum::body::Body;
 use axum::extract::{Request, State};
 use axum::http::HeaderMap;
 use axum::middleware::Next;
 use axum::response::Response;
+use axum::Router;
 use std::marker::PhantomData;
 
 // Marker types for state
@@ -18,10 +18,10 @@ use crate::middlewares::{
 };
 use crate::models::jwt::TokenManager;
 use crate::{
-  AuthUser,
   contracts::services::AuthContext,
   error::CoreError,
   models::jwt::{AuthTokens, UserClaims},
+  AuthUser,
 };
 
 #[cfg(test)]
@@ -688,7 +688,7 @@ fn create_test_refresh_token_data() -> crate::models::jwt::RefreshTokenData {
 #[cfg(test)]
 fn create_test_access_token() -> String {
   // Create a token similar to JWT format, with header, payload and signature parts
-  use base64::{Engine, engine::general_purpose::STANDARD};
+  use base64::{engine::general_purpose::STANDARD, Engine};
 
   let header = STANDARD.encode(r#"{"alg":"HS256","typ":"JWT"}"#);
   let payload = STANDARD.encode(format!(
@@ -705,15 +705,15 @@ fn create_test_access_token() -> String {
 mod tests {
   use super::*;
   use crate::{
-    AuthUser,
     error::CoreError,
     models::jwt::{AuthTokens, UserClaims},
+    AuthUser,
   };
   use axum::{
-    Extension, Router,
     body::{self, Body},
     http::{Request, StatusCode},
     routing::get,
+    Extension, Router,
   };
   use chrono::Utc;
   use std::{

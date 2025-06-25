@@ -1,24 +1,20 @@
 use axum::{
   body::Body,
   extract::{FromRequestParts, Request, State},
-  http::StatusCode,
+  http::{HeaderMap, StatusCode},
   middleware::Next,
   response::{IntoResponse, Response},
 };
 
-use axum_extra::{
-  TypedHeader,
-  headers::{Authorization, authorization::Bearer},
-};
 use tracing::warn;
 
 use crate::{
-  TokenVerifier,
   error::CoreError,
   models::{
-    AuthUser, UserId, WorkspaceId,
     jwt::{TokenConfigProvider, TokenManager, UserClaims},
+    AuthUser, UserId, WorkspaceId,
   },
+  TokenVerifier,
 };
 
 /// Generic `T` is any application state that implements
@@ -48,15 +44,31 @@ where
   U: From<T::Claims> + Clone + Send + Sync + 'static,
 {
   let (mut parts, body) = req.into_parts();
-  let token =
-    match TypedHeader::<Authorization<Bearer>>::from_request_parts(&mut parts, &state).await {
-      Ok(bearer) => bearer.token().to_string(),
+
+  // Extract Authorization header manually
+  let token = match parts.headers.get("authorization") {
+    Some(header_value) => match header_value.to_str() {
+      Ok(header_str) => {
+        if header_str.starts_with("Bearer ") {
+          header_str.strip_prefix("Bearer ").unwrap_or("").to_string()
+        } else {
+          let msg = "Authorization header must start with 'Bearer '".to_string();
+          warn!("{}", msg);
+          return (StatusCode::UNAUTHORIZED, msg).into_response();
+        }
+      }
       Err(e) => {
-        let msg = format!("parse Bearer token failed: {}", e);
+        let msg = format!("Invalid Authorization header format: {}", e);
         warn!("{}", msg);
         return (StatusCode::UNAUTHORIZED, msg).into_response();
       }
-    };
+    },
+    None => {
+      let msg = "Authorization header missing".to_string();
+      warn!("{}", msg);
+      return (StatusCode::UNAUTHORIZED, msg).into_response();
+    }
+  };
 
   match state.verify_token(&token) {
     Ok(claims) => {
@@ -80,7 +92,7 @@ mod tests {
 
   use anyhow::Result;
   use async_trait::async_trait;
-  use axum::{Router, body::Body, middleware::from_fn_with_state, routing::get};
+  use axum::{body::Body, middleware::from_fn_with_state, routing::get, Router};
 
   use std::sync::Arc;
   use tower::ServiceExt;
@@ -114,11 +126,11 @@ mod tests {
   #[tokio::test]
   async fn verify_token_middleware_should_work() -> Result<()> {
     use crate::error::CoreError;
-    use crate::models::User;
     use crate::models::jwt::{
       RefreshToken, RefreshTokenRepository, ReplaceTokenPayload, StoreTokenPayload,
     };
     use crate::models::jwt::{TokenConfigProvider, TokenManager};
+    use crate::models::User;
     use chrono::Utc;
     use std::sync::Arc;
 

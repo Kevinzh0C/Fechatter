@@ -128,7 +128,7 @@ impl StorageService for S3Storage {
       .content_type(content_type)
       .send()
       .await
-      .map_err(|e| AppError::ExternalService(format!("S3 upload error: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("S3 upload error: {}", e)))?;
 
     // Return public URL if available, otherwise return the key
     if let Some(base) = &self.public_url_base {
@@ -153,13 +153,13 @@ impl StorageService for S3Storage {
       .key(key)
       .send()
       .await
-      .map_err(|e| AppError::ExternalService(format!("S3 download error: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("S3 download error: {}", e)))?;
 
     let data = response
       .body
       .collect()
       .await
-      .map_err(|e| AppError::ExternalService(format!("Failed to read S3 object: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("Failed to read S3 object: {}", e)))?;
 
     Ok(data.into_bytes().to_vec())
   }
@@ -179,7 +179,7 @@ impl StorageService for S3Storage {
       .key(key)
       .send()
       .await
-      .map_err(|e| AppError::ExternalService(format!("S3 delete error: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("S3 delete error: {}", e)))?;
 
     Ok(())
   }
@@ -203,10 +203,10 @@ impl StorageService for S3Storage {
       .key(file_id)
       .presigned(
         aws_sdk_s3::presigning::PresigningConfig::expires_in(std::time::Duration::from_secs(3600))
-          .map_err(|e| AppError::ExternalService(format!("Presigning error: {}", e)))?,
+          .map_err(|e| AppError::ExternalServiceError(format!("Presigning error: {}", e)))?,
       )
       .await
-      .map_err(|e| AppError::ExternalService(format!("Failed to generate presigned URL: {}", e)))?;
+      .map_err(|e| AppError::ExternalServiceError(format!("Failed to generate presigned URL: {}", e)))?;
 
     Ok(presigned_request.uri().to_string())
   }

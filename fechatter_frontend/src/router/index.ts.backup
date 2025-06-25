@@ -1,0 +1,279 @@
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
+import { useAuthStore } from '../stores/auth';
+import NProgress from 'nprogress';
+import 'nprogress/nprogress.css';
+
+// Configure NProgress
+NProgress.configure({
+  showSpinner: false,
+  minimum: 0.1,
+  easing: 'ease',
+  speed: 500,
+});
+
+// Extended route meta interface
+interface RouteMeta {
+  title?: string;
+  requiresAuth?: boolean;
+  requiresGuest?: boolean;
+  layout?: string;
+  keepAlive?: boolean;
+  hideInMenu?: boolean;
+  icon?: string;
+  order?: number;
+}
+
+// Route definitions with proper TypeScript typing
+const routes: RouteRecordRaw[] = [
+  {
+    path: '/',
+    redirect: '/login'
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/Login.vue'),
+    meta: { 
+      title: 'Sign In',
+      requiresGuest: true,
+      layout: 'auth',
+    } as RouteMeta
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: () => import('../views/Register.vue'),
+    meta: { 
+      title: 'Sign Up',
+      requiresGuest: true,
+      layout: 'auth',
+    } as RouteMeta
+  },
+  {
+    path: '/home',
+    name: 'Home',
+    component: () => import('../views/Home.vue'),
+    meta: { 
+      title: 'Home',
+      requiresAuth: true,
+      icon: '🏠',
+      order: 1,
+    } as RouteMeta
+  },
+  {
+    path: '/chat/:id',
+    name: 'Chat',
+    component: () => import('../views/Chat.vue'),
+    meta: { 
+      title: 'Chat',
+      requiresAuth: true,
+      keepAlive: true,
+      hideInMenu: true,
+    } as RouteMeta
+  },
+  {
+    path: '/demo',
+    name: 'Demo',
+    component: () => import('../views/Demo.vue'),
+    meta: { 
+      title: 'Feature Demo',
+      icon: '🎮',
+      order: 90,
+    } as RouteMeta
+  },
+  {
+    path: '/test',
+    name: 'Test',
+    component: () => import('../views/Test.vue'),
+    meta: { 
+      title: 'Test Page',
+      icon: '🧪',
+      order: 99,
+      hideInMenu: import.meta.env.PROD,
+    } as RouteMeta
+  },
+  {
+    path: '/error/:code',
+    name: 'Error',
+    component: () => import('../views/Error.vue'),
+    props: true,
+    meta: { 
+      title: 'Error',
+      hideInMenu: true,
+    } as RouteMeta
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    redirect: '/error/404'
+  }
+];
+
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition;
+    }
+    if (to.hash) {
+      return { el: to.hash };
+    }
+    return { top: 0 };
+  },
+});
+
+// Auth initialization flag to prevent multiple initializations
+let isAuthInitialized = false;
+let authInitPromise: Promise<void> | null = null;
+
+// Production-grade navigation guard with proper error handling
+router.beforeEach(async (to, from, next) => {
+  try {
+    // Start progress bar
+    NProgress.start();
+
+    // Set page title
+    const title = (to.meta as RouteMeta)?.title;
+    if (title) {
+      document.title = `${title} - Fechatter`;
+    } else {
+      document.title = 'Fechatter';
+    }
+
+    // Debug logging (only in development)
+    if (import.meta.env.DEV && import.meta.env.VITE_DEBUG === 'true') {
+      console.log('🚀 Route Navigation:', {
+        from: from.fullPath,
+        to: to.fullPath,
+        meta: to.meta,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Get auth store
+    const authStore = useAuthStore();
+
+    // Initialize auth only once with proper error handling
+    if (!isAuthInitialized && !authInitPromise) {
+      authInitPromise = authStore.initializeAuth()
+        .then(() => {
+          isAuthInitialized = true;
+        })
+        .catch(error => {
+          console.error('Auth initialization failed:', error);
+          isAuthInitialized = true; // Continue even if auth fails
+        });
+    }
+
+    // Wait for auth initialization
+    if (authInitPromise) {
+      await authInitPromise;
+      authInitPromise = null; // Clear promise after completion
+    }
+
+    const isAuthenticated = authStore.isLoggedIn;
+    const requiresAuth = (to.meta as RouteMeta)?.requiresAuth;
+    const requiresGuest = (to.meta as RouteMeta)?.requiresGuest;
+
+    // Authentication redirect logic
+    if (requiresAuth && !isAuthenticated) {
+      // Save intended destination for post-login redirect
+      if (to.fullPath !== '/login') {
+        sessionStorage.setItem('redirectPath', to.fullPath);
+      }
+      return next('/login');
+    }
+
+    if (requiresGuest && isAuthenticated) {
+      return next('/home');
+    }
+
+    // Allow navigation to proceed
+    next();
+
+  } catch (error) {
+    console.error('Router beforeEach error:', error);
+    NProgress.done();
+    
+    // Prevent infinite redirect loops
+    if (to.path !== '/error/500') {
+      next('/error/500');
+    } else {
+      next();
+    }
+  }
+});
+
+// After navigation hooks
+router.afterEach((to, from, failure) => {
+  // Complete progress bar
+  NProgress.done();
+
+  // Debug logging
+  if (import.meta.env.DEV && import.meta.env.VITE_DEBUG === 'true') {
+    if (failure) {
+      console.error('❌ Navigation failed:', failure);
+    } else {
+      console.log('✅ Navigation completed to:', to.fullPath);
+    }
+  }
+
+  // Report navigation failures to monitoring service in production
+  if (failure && import.meta.env.PROD) {
+    // TODO: Add your error reporting service here
+    console.error('Navigation failure in production:', failure);
+  }
+});
+
+// Global error handler
+router.onError((error) => {
+  console.error('Router error:', error);
+  NProgress.done();
+  
+  // Avoid infinite redirect loops
+  if (window.location.pathname !== '/error/500') {
+    router.push('/error/500');
+  }
+});
+
+export default router;
+
+// Production-grade test router factory for automated testing
+export function createTestRouter(initialRoute: string = '/', options: { 
+  skipAuth?: boolean;
+  mockRoutes?: RouteRecordRaw[];
+} = {}): ReturnType<typeof createRouter> {
+  const testRoutes = options.mockRoutes || routes;
+  
+  const testRouter = createRouter({
+    history: createWebHistory(),
+    routes: testRoutes,
+  });
+
+  // Skip authentication for tests if requested
+  if (options.skipAuth) {
+    testRouter.beforeEach((to, from, next) => {
+      next();
+    });
+  }
+  
+  // Set initial route
+  testRouter.push(initialRoute);
+  
+  return testRouter;
+}
+
+// Session recovery utility for post-login redirects
+export async function restoreSession(router: ReturnType<typeof createRouter>): Promise<void> {
+  const redirectPath = sessionStorage.getItem('redirectPath');
+  if (redirectPath && redirectPath !== '/login' && redirectPath !== window.location.pathname) {
+    sessionStorage.removeItem('redirectPath');
+    try {
+      await router.replace(redirectPath);
+    } catch (error) {
+      console.error('Failed to restore session path:', error);
+      await router.replace('/home');
+    }
+  }
+}

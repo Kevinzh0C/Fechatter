@@ -7,7 +7,7 @@ use crate::{
   services::{
     ai::agents::{
       summary_agent::{ChatPeriodSummary, ChatSummaryAgent},
-      timeline_agent::{TimelineEntry, TimelineIndex, TimelineIndexAgent},
+      timeline_agent::{TimelineIndex, TimelineIndexAgent},
     },
     ai::{
       OpenAIClient,
@@ -95,19 +95,34 @@ impl RAGMessageIndexer {
     chat_id: i64,
     messages: Vec<(i64, i64, String, DateTime<Utc>)>,
   ) -> Result<ChatIndex, AppError> {
-    // TODO: Implementation placeholder
+    // Let LLM handle complex logic, we just organize data
+    let summary_agent = ChatSummaryAgent::new(self.openai_client.clone());
+    let timeline_agent = TimelineIndexAgent::new();
+    
+    // 1. Generate summaries (let LLM do the work)
+    // Generate rolling summaries instead of daily summaries
+    let daily_summaries = summary_agent.generate_rolling_summaries(chat_id, messages.clone(), 24, 24).await?;
+    
+    // 2. Extract topics (let LLM do the work)  
+    let _message_data: Vec<(i64, String)> = messages.iter()
+      .map(|(id, _, content, _)| (*id, content.clone()))
+      .collect();
+    let topic_clusters = summary_agent.identify_topic_clusters(chat_id, daily_summaries.clone(), messages.clone()).await?;
+    
+    // 3. Build timeline (let LLM enhance) - clone messages to avoid borrow issues
+    let timeline = timeline_agent.build_timeline_index(
+      chat_id, 
+      daily_summaries.clone(), 
+      topic_clusters, 
+      messages.clone()
+    ).await?;
+    
     Ok(ChatIndex {
       chat_id,
       message_count: messages.len(),
-      hourly_summaries: Vec::new(),
-      daily_summaries: Vec::new(),
-      timeline: TimelineIndex {
-        chat_id,
-        entries: Vec::new(),
-        topic_map: std::collections::HashMap::new(),
-        participant_map: std::collections::HashMap::new(),
-        generated_at: Utc::now(),
-      },
+      hourly_summaries: vec![], // Simple for now
+      daily_summaries,
+      timeline,
       created_at: Utc::now(),
     })
   }
@@ -128,11 +143,19 @@ impl RAGMessageIndexer {
       .await?;
 
     // 2. Build context from search results
-    let context = self.build_context_from_results(&search_results, &chain)?;
+    let _context = self.build_context_from_results(&search_results, &chain)?;
     reasoning_chain.push(format!("Found {} relevant documents", search_results.len()));
 
-    // 3. Generate answer using LLM with context
-    let prompt = self.build_rag_prompt(&chain.query, &context);
+    // 3. Generate answer using LLM with context (let LLM do all the heavy lifting)
+    let context_text = search_results.iter()
+      .map(|r| format!("Message: {}", r.content))
+      .collect::<Vec<_>>()
+      .join("\n");
+    
+    let prompt = format!(
+      "Based on the following chat context, answer this question: {}\n\nContext:\n{}\n\nAnswer:",
+      chain.query, context_text
+    );
     reasoning_chain.push("Generating answer based on context...".to_string());
 
     let answer = self.openai_client.generate_summary(&prompt).await?;
@@ -219,11 +242,11 @@ impl RAGMessageIndexer {
   async fn index_summaries(
     &self,
     hourly: &[ChatPeriodSummary],
-    daily: &[ChatPeriodSummary],
+    _daily: &[ChatPeriodSummary],
   ) -> Result<(), AppError> {
     // Index hourly summaries
     for summary in hourly {
-      let doc_id = format!(
+      let _doc_id = format!(
         "hourly-{}-{}",
         summary.chat_id,
         summary.start_time.timestamp()

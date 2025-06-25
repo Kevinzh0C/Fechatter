@@ -1,0 +1,56 @@
+# Fly.io 专用 Dockerfile - 单体演示版本
+FROM rust:1.75-alpine as builder
+
+WORKDIR /app
+
+# 安装 Fly.io 需要的依赖
+RUN apk add --no-cache musl-dev sqlite-dev
+
+# 设置 Fly.io 环境变量
+ENV SQLX_OFFLINE=true
+ENV RUST_LOG=info
+ENV ENVIRONMENT=demo
+
+# 复制项目文件
+COPY Cargo.toml Cargo.lock ./
+COPY fechatter_core ./fechatter_core
+COPY fechatter_server ./fechatter_server
+COPY fechatter_gateway ./fechatter_gateway
+COPY notify_server ./notify_server
+
+# 创建 Fly.io 专用的单体应用入口
+COPY docker/fly-main.rs ./src/main.rs
+RUN mkdir -p src
+
+# 构建 Fly.io 单体应用
+RUN cargo build --release
+
+# 运行时阶段
+FROM alpine:3.19
+
+WORKDIR /app
+
+# 安装运行时依赖
+RUN apk add --no-cache sqlite ca-certificates curl
+
+# 复制二进制文件
+COPY --from=builder /app/target/release/fechatter /app/fechatter
+
+# 复制前端静态文件
+COPY fechatter_frontend/dist ./static
+
+# 复制演示数据库初始化脚本
+COPY demo-setup.sql ./
+COPY docker/fly-entrypoint.sh ./
+
+# 创建数据目录
+RUN mkdir -p /data
+
+# 设置权限
+RUN chmod +x /app/fechatter /app/fly-entrypoint.sh
+
+# 暴露端口
+EXPOSE 8080
+
+# 使用入口脚本启动
+CMD ["/app/fly-entrypoint.sh"]

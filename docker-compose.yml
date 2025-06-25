@@ -1,0 +1,443 @@
+version: '3.8'
+
+# ============================================================================
+# Fechatter Docker Compose - Production Ready Configuration
+# ============================================================================
+#
+# 🔄 LATEST UPDATES (Based on Current Project Structure):
+# 1. Service Architecture: Separated services with proper dependencies
+# 2. Binary Names: Updated to match actual Cargo.toml configurations  
+# 3. Configuration Files: Updated paths to match current structure
+# 4. Health Checks: Improved health check strategies
+# 5. Analytics Flow: NATS + ClickHouse + Protobuf integration
+# 6. Profile Extensions: Support for user profile features
+#
+# 🚀 DEPLOYMENT MODES:
+# - Infrastructure: `docker-compose up postgres redis nats meilisearch clickhouse`
+# - Core Services: `docker-compose --profile core up`
+# - Full Stack: `docker-compose --profile full up`
+#
+# 🔧 ARCHITECTURE:
+# fechatter_server -> NATS -> analytics_server -> ClickHouse
+# fechatter_server -> NATS -> notify_server -> SSE
+# fechatter_server -> Meilisearch (search)
+# fechatter_server -> Redis (cache)
+# bot_server -> AI services + RAG indexing
+# gateway -> Load balancing and routing
+#
+# ============================================================================
+
+x-common-env: &common-env
+  # Common environment variables for all Rust services
+  RUST_LOG: ${RUST_LOG:-info,sqlx=warn}
+  RUST_BACKTRACE: ${RUST_BACKTRACE:-1}
+
+x-database-env: &database-env
+  DATABASE_URL: postgresql://postgres:postgres@postgres:5432/fechatter
+
+x-redis-env: &redis-env
+  REDIS_URL: redis://:fechatter_redis_pass@redis:6379
+
+x-nats-env: &nats-env
+  NATS_URL: nats://nats:4222
+
+x-search-env: &search-env
+  MEILISEARCH_URL: http://meilisearch:7700
+  MEILISEARCH_KEY: fechatter_meili_master_key
+
+x-clickhouse-env: &clickhouse-env
+  CLICKHOUSE_HOST: clickhouse
+  CLICKHOUSE_PORT: 8123
+  CLICKHOUSE_URL: http://clickhouse:8123
+  CLICKHOUSE_NATIVE_URL: clickhouse://clickhouse:9000/fechatter_analytics
+  CLICKHOUSE_DATABASE: fechatter_analytics
+  CLICKHOUSE_USER: default
+  CLICKHOUSE_PASSWORD: ""
+
+x-health-check: &default-health-check
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 30s
+
+services:
+  # Infrastructure Services
+  postgres:
+    image: docker.io/pgvector/pgvector:pg17
+    container_name: fechatter-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: fechatter
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fechatter-net
+
+  clickhouse:
+    image: docker.io/clickhouse/clickhouse-server:latest
+    container_name: fechatter-clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./fechatter_protos/storage/analytics.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    environment:
+      CLICKHOUSE_DB: fechatter_analytics
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fechatter-net
+
+  redis:
+    image: docker.io/redis:7-alpine
+    container_name: fechatter-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass fechatter_redis_pass
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "fechatter_redis_pass", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - fechatter-net
+
+  meilisearch:
+    image: docker.io/getmeili/meilisearch:v1.6
+    container_name: fechatter-meilisearch
+    ports:
+      - "7700:7700"
+    environment:
+      MEILI_MASTER_KEY: fechatter_meili_master_key
+      MEILI_ENV: development
+      MEILI_DB_PATH: /meili_data
+    volumes:
+      - meilisearch_data:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fechatter-net
+
+  nats:
+    image: docker.io/nats:2.10-alpine
+    container_name: fechatter-nats
+    ports:
+      - "4222:4222"  # Client connections
+      - "8222:8222"  # HTTP monitoring
+      - "6222:6222"  # Cluster routing
+    volumes:
+      - nats_data:/data
+      - ./nats-jetstream.conf:/etc/nats/nats.conf:ro
+    command: ["--config", "/etc/nats/nats.conf", "--jetstream"]
+    environment:
+      NATS_SERVER_NAME: fechatter-nats
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fechatter-net
+
+  # ============================================================================
+  # Core Application Services - Main Fechatter Components
+  # ============================================================================
+
+  fechatter-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: fechatter-server
+    container_name: fechatter-server
+    working_dir: /app
+    environment:
+      <<: [*common-env, *database-env, *redis-env, *nats-env, *search-env]
+      # Service specific configuration
+      SERVER_PORT: 6688
+      BASE_DIR: /app/uploads
+      MAX_UPLOAD_SIZE: 10485760
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
+      # Analytics configuration
+      ANALYTICS_ENABLED: "true"
+      ANALYTICS_BATCH_SIZE: 100
+      ANALYTICS_FLUSH_INTERVAL_SECONDS: 30
+    volumes:
+      - .:/app:ro
+      - uploads_data:/app/uploads
+      - app_logs:/app/logs
+    ports:
+      - "6688:6688"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6688/health"]
+      <<: *default-health-check
+    networks:
+      - fechatter-net
+    profiles:
+      - core
+      - full
+    restart: unless-stopped
+
+  analytics-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: analytics-server
+    container_name: analytics-server
+    working_dir: /app
+    environment:
+      <<: [*common-env, *database-env, *nats-env, *clickhouse-env]
+      # Service specific configuration
+      SERVER_PORT: 6690
+      BASE_DIR: /app/tmp/fechatter_analytics
+      # Analytics processing configuration
+      ANALYTICS_ENABLED: "true"
+      ANALYTICS_BATCH_SIZE: 100
+      ANALYTICS_FLUSH_INTERVAL_SECONDS: 30
+      MAX_RETRY_ATTEMPTS: 3
+    volumes:
+      - .:/app:ro
+      - analytics_data:/app/tmp/fechatter_analytics
+    ports:
+      - "6690:6690"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6690/health"]
+      <<: *default-health-check
+    networks:
+      - fechatter-net
+    profiles:
+      - core
+      - full
+    restart: unless-stopped
+
+  notify-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: notify-server
+    container_name: notify-server
+    working_dir: /app
+    environment:
+      <<: [*common-env, *database-env, *redis-env, *nats-env]
+      # Service specific configuration
+      SERVER_PORT: 6687
+      # SSE configuration
+      SSE_ENABLED: "true"
+      SSE_KEEPALIVE_INTERVAL: 30
+      SSE_MAX_CONNECTIONS: 1000
+    volumes:
+      - .:/app:ro
+    ports:
+      - "6687:6687"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6687/health"]
+      <<: *default-health-check
+    networks:
+      - fechatter-net
+    profiles:
+      - core
+      - full
+    restart: unless-stopped
+
+  bot-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: bot-server
+    container_name: bot-server
+    working_dir: /app
+    environment:
+      <<: [*common-env, *database-env, *redis-env, *nats-env, *search-env]
+      # Service specific configuration
+      SERVER_PORT: 6686
+      # AI/LLM configuration
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      # RAG configuration
+      RAG_ENABLED: "true"
+      RAG_CHUNK_SIZE: 1000
+      RAG_CHUNK_OVERLAP: 200
+    volumes:
+      - .:/app:ro
+      - bot_data:/app/bot_data
+    ports:
+      - "6686:6686"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6686/health"]
+      <<: *default-health-check
+    networks:
+      - fechatter-net
+    profiles:
+      - full
+    restart: unless-stopped
+
+  # ============================================================================
+  # Gateway Service - Load Balancing and Routing (Optional)
+  # ============================================================================
+
+  fechatter-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: fechatter-gateway
+    container_name: fechatter-gateway
+    working_dir: /app
+    environment:
+      <<: [*common-env, *redis-env]
+      # Gateway specific configuration
+      GATEWAY_PORT: 8080
+      # Upstream service URLs
+      FECHATTER_SERVER_URL: http://fechatter-server:6688
+      ANALYTICS_SERVER_URL: http://analytics-server:6690
+      NOTIFY_SERVER_URL: http://notify-server:6687
+      BOT_SERVER_URL: http://bot-server:6686
+      # Load balancing configuration
+      LOAD_BALANCER_STRATEGY: round_robin
+      HEALTH_CHECK_INTERVAL: 10
+    volumes:
+      - .:/app:ro
+    ports:
+      - "8080:8080"
+    depends_on:
+      - fechatter-server
+      - analytics-server
+      - notify-server
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      <<: *default-health-check
+    networks:
+      - fechatter-net
+    profiles:
+      - gateway
+      - full
+    restart: unless-stopped
+
+  # ============================================================================
+  # Frontend Service (Optional) - Static file serving
+  # ============================================================================
+
+  frontend:
+    image: nginx:alpine
+    container_name: fechatter-frontend
+    volumes:
+      - ./fechatter_frontend/dist:/usr/share/nginx/html:ro
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - fechatter-gateway
+    networks:
+      - fechatter-net
+    profiles:
+      - frontend
+      - full
+    restart: unless-stopped
+
+# ============================================================================
+# Volumes - Persistent Data Storage
+# ============================================================================
+
+volumes:
+  postgres_data:
+    driver: local
+  clickhouse_data:
+    driver: local
+  redis_data:
+    driver: local
+  meilisearch_data:
+    driver: local
+  nats_data:
+    driver: local
+  uploads_data:
+    driver: local
+  app_logs:
+    driver: local
+  analytics_data:
+    driver: local
+  bot_data:
+    driver: local
+
+# ============================================================================
+# Networks - Service Communication
+# ============================================================================
+
+networks:
+  fechatter-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# ============================================================================
+# Usage Examples:
+# ============================================================================
+#
+# Start infrastructure only:
+# docker-compose up postgres redis nats meilisearch clickhouse
+#
+# Start core services:
+# docker-compose --profile core up -d
+#
+# Start with gateway:
+# docker-compose --profile core --profile gateway up -d
+#
+# Full stack deployment:
+# docker-compose --profile full up -d
+#
+# Development mode (infrastructure + fechatter-server):
+# docker-compose up postgres redis nats meilisearch fechatter-server
+#
+# ============================================================================ 

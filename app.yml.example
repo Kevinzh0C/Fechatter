@@ -1,6 +1,0 @@
-server:
-  port: 6688
-  db_url: "postgres://username:password@localhost:5432/dbname"
-auth:
-  sk: "your_private_key_here"
-  pk: "your_public_key_here" 

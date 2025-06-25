@@ -1,9 +1,7 @@
-use crate::config::EmailTemplateConfig;
-use crate::domains::notification::{Notification, NotificationContent, NotificationType};
 /// Email template system for Fechatter notification system
 ///
-/// This module provides template management and rendering for email notifications.
-/// Templates are rendered using Handlebars with support for dynamic data injection.
+/// Simplified version without complex configuration dependencies
+use crate::domains::notification::{Notification, NotificationType};
 use handlebars::{Handlebars, HelperResult, JsonRender, Output, RenderContext, RenderError};
 use serde_json::{Value, json};
 use std::collections::HashMap;
@@ -20,27 +18,25 @@ pub struct EmailTemplateData {
   pub metadata: HashMap<String, String>,
 }
 
-/// Email template service
+/// Simplified email template service
 pub struct EmailTemplateService {
   handlebars: Handlebars<'static>,
-  config: EmailTemplateConfig,
   base_url: String,
 }
 
 impl EmailTemplateService {
-  /// Create new email template service
-  pub fn new(config: EmailTemplateConfig, base_url: String) -> Result<Self, RenderError> {
+  /// Create simple email template service
+  pub fn new_simple(base_url: String) -> Result<Self, RenderError> {
     let mut handlebars = Handlebars::new();
 
     // Register built-in templates
-    Self::register_templates(&mut handlebars)?;
+    Self::register_simple_templates(&mut handlebars)?;
 
     // Register custom helpers
     Self::register_helpers(&mut handlebars);
 
     Ok(Self {
       handlebars,
-      config,
       base_url,
     })
   }
@@ -83,10 +79,10 @@ impl EmailTemplateService {
   /// Get template name for notification type
   fn get_template_name(&self, notification_type: &NotificationType) -> &str {
     match notification_type {
-      NotificationType::Mention => &self.config.mention_template,
-      NotificationType::DirectMessage => &self.config.direct_message_template,
-      NotificationType::ChatInvite => &self.config.chat_invite_template,
-      NotificationType::WorkspaceInvite => &self.config.workspace_invite_template,
+      NotificationType::Mention => "mention_notification",
+      NotificationType::DirectMessage => "direct_message_notification",
+      NotificationType::ChatInvite => "chat_invite_notification",
+      NotificationType::WorkspaceInvite => "workspace_invite_notification",
       NotificationType::System => "system_notification",
     }
   }
@@ -144,8 +140,8 @@ impl EmailTemplateService {
     }
   }
 
-  /// Register built-in email templates
-  fn register_templates(handlebars: &mut Handlebars) -> Result<(), RenderError> {
+  /// Register simplified built-in email templates
+  fn register_simple_templates(handlebars: &mut Handlebars) -> Result<(), RenderError> {
     // Mention notification templates
     handlebars.register_template_string(
       "mention_notification_subject",
@@ -154,12 +150,12 @@ impl EmailTemplateService {
 
     handlebars.register_template_string(
       "mention_notification_text",
-      include_str!("templates/mention_notification.txt"),
+      "Hi {{user_name}},\n\nYou were mentioned in a chat: {{notification_message}}\n\nView the conversation: {{chat_url}}\n\nBest regards,\nFechatter Team",
     )?;
 
     handlebars.register_template_string(
       "mention_notification_html",
-      include_str!("templates/mention_notification.html"),
+      r#"<html><body><h2>Hi {{user_name}},</h2><p>You were mentioned in a chat:</p><blockquote>{{notification_message}}</blockquote><p><a href="{{chat_url}}">View the conversation</a></p><p>Best regards,<br>Fechatter Team</p></body></html>"#,
     )?;
 
     // Direct message notification templates
@@ -170,12 +166,12 @@ impl EmailTemplateService {
 
     handlebars.register_template_string(
       "direct_message_notification_text",
-      include_str!("templates/direct_message_notification.txt"),
+      "Hi {{user_name}},\n\nYou have a new direct message: {{notification_message}}\n\nReply: {{chat_url}}\n\nBest regards,\nFechatter Team",
     )?;
 
     handlebars.register_template_string(
       "direct_message_notification_html",
-      include_str!("templates/direct_message_notification.html"),
+      r#"<html><body><h2>Hi {{user_name}},</h2><p>You have a new direct message:</p><blockquote>{{notification_message}}</blockquote><p><a href="{{chat_url}}">Reply</a></p><p>Best regards,<br>Fechatter Team</p></body></html>"#,
     )?;
 
     // Chat invite notification templates
@@ -186,12 +182,12 @@ impl EmailTemplateService {
 
     handlebars.register_template_string(
       "chat_invite_notification_text",
-      include_str!("templates/chat_invite_notification.txt"),
+      "Hi {{user_name}},\n\nYou've been invited to join a chat: {{notification_title}}\n\nJoin now: {{chat_url}}\n\nBest regards,\nFechatter Team",
     )?;
 
     handlebars.register_template_string(
       "chat_invite_notification_html",
-      include_str!("templates/chat_invite_notification.html"),
+      r#"<html><body><h2>Hi {{user_name}},</h2><p>You've been invited to join a chat: <strong>{{notification_title}}</strong></p><p><a href="{{chat_url}}">Join now</a></p><p>Best regards,<br>Fechatter Team</p></body></html>"#,
     )?;
 
     // Workspace invite notification templates
@@ -202,12 +198,12 @@ impl EmailTemplateService {
 
     handlebars.register_template_string(
       "workspace_invite_notification_text",
-      include_str!("templates/workspace_invite_notification.txt"),
+      "Hi {{user_name}},\n\nWelcome to {{notification_title}}!\n\nGet started: {{base_url}}/accept-invite\n\nBest regards,\nFechatter Team",
     )?;
 
     handlebars.register_template_string(
       "workspace_invite_notification_html",
-      include_str!("templates/workspace_invite_notification.html"),
+      r#"<html><body><h2>Hi {{user_name}},</h2><p>Welcome to <strong>{{notification_title}}</strong>!</p><p><a href="{{base_url}}/accept-invite">Get started</a></p><p>Best regards,<br>Fechatter Team</p></body></html>"#,
     )?;
 
     // System notification templates
@@ -218,12 +214,12 @@ impl EmailTemplateService {
 
     handlebars.register_template_string(
       "system_notification_text",
-      include_str!("templates/system_notification.txt"),
+      "Hi {{user_name}},\n\nSystem notification: {{notification_message}}\n\nBest regards,\nFechatter Team",
     )?;
 
     handlebars.register_template_string(
       "system_notification_html",
-      include_str!("templates/system_notification.html"),
+      r#"<html><body><h2>Hi {{user_name}},</h2><p>System notification:</p><p>{{notification_message}}</p><p>Best regards,<br>Fechatter Team</p></body></html>"#,
     )?;
 
     Ok(())
@@ -231,34 +227,6 @@ impl EmailTemplateService {
 
   /// Register custom Handlebars helpers
   fn register_helpers(handlebars: &mut Handlebars) {
-    // Helper for formatting dates
-    handlebars.register_helper(
-      "format_date",
-      Box::new(
-        |h: &handlebars::Helper,
-         _: &Handlebars,
-         _: &handlebars::Context,
-         _: &mut RenderContext,
-         out: &mut dyn Output|
-         -> HelperResult {
-          let param = h
-            .param(0)
-            .ok_or_else(|| RenderError::new("format_date helper requires a parameter"))?;
-
-          let formatted = match param.value().as_str() {
-            Some(date_str) => {
-              // Basic date formatting - can be enhanced with chrono
-              date_str.to_string()
-            }
-            None => "Invalid date".to_string(),
-          };
-
-          out.write(&formatted)?;
-          Ok(())
-        },
-      ),
-    );
-
     // Helper for truncating text
     handlebars.register_helper(
       "truncate",
@@ -300,18 +268,15 @@ mod tests {
 
   #[test]
   fn test_email_template_service_creation() {
-    let config = EmailTemplateConfig::default();
     let base_url = "https://fechatter.com".to_string();
-
-    let service = EmailTemplateService::new(config, base_url);
+    let service = EmailTemplateService::new_simple(base_url);
     assert!(service.is_ok());
   }
 
   #[test]
   fn test_template_context_building() {
-    let config = EmailTemplateConfig::default();
     let base_url = "https://fechatter.com".to_string();
-    let service = EmailTemplateService::new(config, base_url).unwrap();
+    let service = EmailTemplateService::new_simple(base_url).unwrap();
 
     let notification = Notification {
       id: 1,
@@ -340,9 +305,8 @@ mod tests {
 
   #[test]
   fn test_action_url_building() {
-    let config = EmailTemplateConfig::default();
     let base_url = "https://fechatter.com".to_string();
-    let service = EmailTemplateService::new(config, base_url).unwrap();
+    let service = EmailTemplateService::new_simple(base_url).unwrap();
 
     let notification = Notification {
       id: 1,

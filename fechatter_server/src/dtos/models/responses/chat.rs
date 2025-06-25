@@ -1,7 +1,6 @@
 use crate::dtos::core::{BaseDto, ConversionError, ResponseDto};
 use crate::services::application::ChatDetailView;
-use fechatter_core::models::Chat;
-use fechatter_core::{ChatSidebar, ChatType};
+use fechatter_core::{ChatType, models::chat::ChatSidebar};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -58,7 +57,7 @@ impl ResponseDto for ChatSidebarDto {
       name: domain.name.clone(),
       chat_type: domain.chat_type.clone(),
       description: None, // ChatSidebar doesn't have description, can be added if needed
-      last_message: domain.last_message.clone(),
+      last_message: domain.last_message.as_ref().map(|msg| msg.content.clone()),
       last_message_at: None, // Can be added to domain if needed
       unread_count: 0,       // Can be added to domain if needed
       is_creator: domain.is_creator,

@@ -1,8 +1,8 @@
 use crate::{
-  AuthUser,
   error::CoreError,
   models::jwt::{AuthTokens, UserClaims},
   models::{CreateUser, SigninUser, UserId},
+  AuthUser,
 };
 use async_trait::async_trait;
 

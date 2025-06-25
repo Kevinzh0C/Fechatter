@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "vue-i18n": "^11.1.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.8"
+  }
+}

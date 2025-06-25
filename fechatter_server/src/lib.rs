@@ -1,207 +1,180 @@
+// ============================================================================
+// Fechatter Server - Core Library Interface (Clean)
+// ============================================================================
+//
+// **Responsibility**: Core public API - AppState definition, Router configuration
+// **Principles**: Clean external interfaces, separated internal implementation
+
 pub mod config;
 pub mod domains;
+pub mod dtos;
 pub mod error;
 pub mod handlers;
 pub mod middlewares;
 pub mod openapi;
 pub mod services;
+pub mod state;
 pub mod tests;
 pub mod utils;
-use std::{fmt, ops::Deref, sync::Arc};
+
+// ============================================================================
+// Core Imports for Public API
+// ============================================================================
 
 use axum::{
+  extract::{Extension, Request},
+  middleware::Next,
+  response::Response,
+  routing::{get, post},
   Router,
-  routing::{get, patch, post},
 };
+use std::{fmt, ops::Deref, sync::Arc};
+use tracing::{debug, warn};
+
+// Import AuthUser and other necessary types
+use fechatter_core::models::AuthUser;
+
+// ============================================================================
+// Core Type Re-exports - Essential public API
+// ============================================================================
+
 pub use config::AppConfig;
-use dashmap::DashMap;
-use fechatter_core::chat::ChatSidebar;
-use fechatter_core::error::CoreError;
-use fechatter_core::models::jwt::TokenManager;
-use fechatter_core::models::jwt::TokenService;
-use fechatter_core::{
-  contracts::UserRepository,
-  middlewares::{
-    ActualAuthServiceProvider, TokenVerifier as CoreTokenVerifier, WithServiceProvider,
-    WithTokenManager as CoreWithTokenManager,
-  },
-  models::jwt::UserClaims,
-};
-use openapi::OpenApiRouter;
-use sqlx::PgPool;
-use tokio::fs;
-use tokio::time::Instant;
+pub use error::{AppError, ErrorOutput};
+pub use services::application::workers::auth::AuthUserService as AuthService;
 
-use crate::error::{AppError, ErrorOutput};
-use crate::services::EventPublisher;
-use crate::services::application::{ApplicationServiceProvider, auth_app_service};
+// ============================================================================
+// Handler Re-exports - HTTP Handlers
+// ============================================================================
 
-pub use error::{AppError as ErrorAppError, ErrorOutput as ErrorOutputType};
+pub use handlers::*;
 
-use handlers::*;
-use middlewares::RouterExt;
+// ============================================================================
+// Domain Re-exports - Business Logic
+// ============================================================================
 
-use crate::handlers::{
-  // Chat member handlers
-  add_chat_members_batch_handler,
-  // Chat handlers
-  create_chat_handler,
-  delete_chat_handler,
-  // Message handlers
-  file_handler,
-  fix_file_storage_handler,
-  get_search_suggestions,
-  global_search_messages,
-  // Health handlers
-  health_check,
-  // Workspace handlers
-  list_all_workspace_users_handler,
-  list_chat_members_handler,
-  list_chats_handler,
-  list_messages_handler,
-  // Auth handlers
-  logout_all_handler,
-  logout_handler,
-  refresh_token_handler,
-  reindex_chat_messages,
-  // Search handlers
-  search_messages_in_chat,
-  send_message_handler,
-  signin_handler,
-  signup_handler,
-  simple_health_check,
-  transfer_chat_ownership_handler,
-  update_chat_handler,
-  upload_handler,
-};
+pub use domains::*;
 
-use crate::handlers::chat_members::remove_chat_member_handler;
+// ============================================================================
+// Core AppState Definition - Public API
+// ============================================================================
 
-// Define the cache trait locally
-#[allow(unused)]
-trait WithCache<K, V> {
-  fn get_from_cache(&self, key: &K) -> Option<V>;
-  fn insert_into_cache(&self, key: K, value: V, ttl_seconds: u64);
-  fn remove_from_cache(&self, key: &K);
-}
-
-// Define the pool trait locally
-#[allow(unused)]
-trait WithDbPool {
-  fn db_pool(&self) -> &PgPool;
-}
-
-/// AppState - Focused on state management and service coordination only
+/// Application State - Main state container for the application
 #[derive(Debug, Clone)]
 pub struct AppState {
   inner: Arc<AppStateInner>,
 }
 
+/// Internal state structure
 pub struct AppStateInner {
   pub(crate) config: AppConfig,
-  pub(crate) service_provider: crate::services::service_provider::ServiceProvider,
-  pub(crate) application_services: ApplicationServiceProvider,
-  pub(crate) chat_list_cache: DashMap<i64, (Arc<Vec<ChatSidebar>>, Instant)>,
-  pub(crate) event_publisher: Option<EventPublisher>,
-}
-
-impl CoreTokenVerifier for AppState {
-  type Claims = UserClaims;
-  type Error = CoreError;
-
-  fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error> {
-    <TokenManager as fechatter_core::middlewares::TokenVerifier>::verify_token(
-      self.inner.service_provider.token_manager(),
-      token,
-    )
-  }
-}
-
-impl CoreWithTokenManager for AppState {
-  type TokenManagerType = TokenManager;
-
-  fn token_manager(&self) -> &Self::TokenManagerType {
-    self.inner.service_provider.token_manager()
-  }
-}
-
-impl WithServiceProvider for AppState {
-  type ServiceProviderType = crate::services::service_provider::ServiceProvider;
-
-  fn service_provider(&self) -> &Self::ServiceProviderType {
-    &self.inner.service_provider
-  }
-}
-
-impl WithDbPool for AppState {
-  fn db_pool(&self) -> &PgPool {
-    self.inner.service_provider.pool()
-  }
-}
-
-// Implement ActualAuthServiceProvider for AppState
-impl ActualAuthServiceProvider for AppState {
-  type AuthService = auth_app_service::AuthService;
-
-  fn create_service(&self) -> Self::AuthService {
-    // Delegate to the application services
-    self
-      .inner
-      .application_services
-      .auth_service()
-      .as_ref()
-      .clone()
-  }
-}
-
-impl WithCache<i64, (Arc<Vec<ChatSidebar>>, Instant)> for AppState {
-  fn get_from_cache(&self, key: &i64) -> Option<(Arc<Vec<ChatSidebar>>, Instant)> {
-    if let Some(entry) = self.inner.chat_list_cache.get(key) {
-      let (chats, created_at) = &*entry;
-      return Some((Arc::clone(chats), *created_at));
-    }
-    None
-  }
-
-  fn insert_into_cache(
-    &self,
-    key: i64,
-    value: (Arc<Vec<ChatSidebar>>, Instant),
-    _ttl_seconds: u64,
-  ) {
-    self.inner.chat_list_cache.insert(key, value);
-  }
-
-  fn remove_from_cache(&self, key: &i64) {
-    self.inner.chat_list_cache.remove(key);
-  }
+  pub(crate) application_services: crate::services::application::builders::ServiceProvider,
+  // Token manager stored separately for trait implementation
+  pub(crate) token_manager: Arc<fechatter_core::models::jwt::TokenManager>,
+  // Event publisher with production transport
+  pub(crate) event_publisher:
+    Option<Arc<crate::services::infrastructure::event::DynEventPublisher>>,
+  // Unified event publisher for enhanced events (replaces scattered event publishers)
+  pub(crate) unified_event_publisher:
+    Option<Arc<crate::services::infrastructure::event::DynEventPublisher>>,
+  // Enhanced event publisher for notify_server SSE integration
+  pub(crate) enhanced_event_publisher:
+    Option<Arc<crate::services::infrastructure::event::EnhancedEventPublisher>>,
+  pub(crate) cache_service: Option<Arc<crate::services::infrastructure::cache::RedisCacheService>>,
+  pub(crate) sync_cache_adapter: crate::services::infrastructure::cache::SyncCacheAdapter,
+  // Unified analytics publisher using NATS + Protobuf
+  pub(crate) analytics_publisher:
+    Option<Arc<crate::services::infrastructure::event::NatsAnalyticsPublisher>>,
+  // Cached auth service wrapper for middleware performance
+  pub(crate) cached_auth_service:
+    std::sync::RwLock<Option<Arc<crate::state::ProductionAuthServiceWrapper>>>,
 }
 
 // ============================================================================
-// AppState - Clean Interface for State Management and Service Access
+// AppState Core Infrastructure Access - Public API
 // ============================================================================
 
 impl AppState {
-  // ========================================================================
-  // Infrastructure Access Methods
-  // ========================================================================
+  /// Get database pool
+  #[inline]
+  pub fn pool(&self) -> Arc<sqlx::PgPool> {
+    self.inner.application_services.pool()
+  }
 
-  pub fn event_publisher(&self) -> Option<&EventPublisher> {
+  /// Get token manager
+  #[inline]
+  pub fn token_manager(&self) -> Arc<fechatter_core::models::jwt::TokenManager> {
+    self.inner.application_services.token_manager()
+  }
+
+  /// Get Redis cache service
+  #[inline]
+  pub fn cache_service(
+    &self,
+  ) -> Option<&Arc<crate::services::infrastructure::cache::RedisCacheService>> {
+    self.inner.cache_service.as_ref()
+  }
+
+  /// Get application services
+  #[inline]
+  pub fn application_services(&self) -> &crate::services::application::builders::ServiceProvider {
+    &self.inner.application_services
+  }
+
+  /// Get event publisher
+  #[inline]
+  pub fn event_publisher_dyn(
+    &self,
+  ) -> Option<&Arc<crate::services::infrastructure::event::DynEventPublisher>> {
     self.inner.event_publisher.as_ref()
   }
 
-  pub fn nats_client(&self) -> Option<&async_nats::Client> {
-    self
-      .inner
-      .event_publisher
-      .as_ref()
-      .map(|ep| ep.nats_client())
+  /// Get unified event publisher with enhanced functionality
+  #[inline]
+  pub fn unified_event_publisher(
+    &self,
+  ) -> Option<&Arc<crate::services::infrastructure::event::DynEventPublisher>> {
+    self.inner.unified_event_publisher.as_ref()
   }
 
-  pub fn search_service(&self) -> Option<&crate::services::SearchService> {
-    self.inner.service_provider.search_service()
+  /// Get enhanced event publisher for notify_server SSE integration
+  #[inline]
+  pub fn enhanced_event_publisher(
+    &self,
+  ) -> Option<&Arc<crate::services::infrastructure::event::EnhancedEventPublisher>> {
+    self.inner.enhanced_event_publisher.as_ref()
   }
 
+  /// Get unified analytics publisher
+  #[inline]
+  pub fn analytics_publisher(
+    &self,
+  ) -> Option<&Arc<crate::services::infrastructure::event::NatsAnalyticsPublisher>> {
+    self.inner.analytics_publisher.as_ref()
+  }
+
+  /// Get NATS client from event publisher if available
+  #[inline]
+  pub fn nats_client(&self) -> Option<async_nats::Client> {
+    use crate::services::infrastructure::event::NatsTransport;
+
+    self.inner.event_publisher.as_ref().and_then(|publisher| {
+      // Try to downcast the transport to NatsTransport
+      let transport = publisher.transport();
+      transport
+        .as_any()
+        .downcast_ref::<NatsTransport>()
+        .map(|nats_transport| nats_transport.client().clone())
+    })
+  }
+
+  /// Get search service
+  #[inline]
+  pub fn search_service(&self) -> Option<Arc<crate::services::SearchService>> {
+    self.inner.application_services.search_service()
+  }
+
+  /// Check if search is enabled
+  #[inline]
   pub fn is_search_enabled(&self) -> bool {
     self
       .search_service()
@@ -209,208 +182,37 @@ impl AppState {
       .unwrap_or(false)
   }
 
+  /// Get search service with application interface
   #[inline]
-  pub fn pool(&self) -> &PgPool {
-    self.inner.service_provider.pool()
-  }
-
-  #[inline]
-  pub fn token_manager(&self) -> &TokenManager {
-    self.inner.service_provider.token_manager()
+  pub fn search_application_service(
+    &self,
+  ) -> Option<Arc<dyn crate::services::application::workers::search::SearchApplicationServiceTrait>>
+  {
+    self
+      .inner
+      .application_services
+      .search_service()
+      .map(|infra_service| {
+        Arc::new(
+          crate::services::application::workers::search::SearchServiceAdapter::new(infra_service),
+        )
+          as Arc<dyn crate::services::application::workers::search::SearchApplicationServiceTrait>
+      })
   }
 
   // ========================================================================
-  // Application Service Access - Delegate to ApplicationServiceProvider
+  // State Creation - Core Public API
   // ========================================================================
 
-  /// Get application services - All business logic is delegated here
-  pub fn application_services(&self) -> &ApplicationServiceProvider {
-    &self.inner.application_services
+  /// Create AppState for tests
+  #[cfg(test)]
+  pub fn default_for_tests() -> Self {
+    crate::state::create_test_state()
   }
 
-  // ========================================================================
-  // High-level Business Operations - Simple Delegation
-  // ========================================================================
-
-  /// Create user - Delegate to application services
-  pub async fn create_user(
-    &self,
-    payload: &fechatter_core::CreateUser,
-    auth_context: Option<fechatter_core::contracts::AuthContext>,
-  ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
-    self
-      .application_services()
-      .create_user(payload, auth_context)
-      .await
-  }
-
-  /// Sign up user - Delegate to application services (alias for create_user)
-  pub async fn signup(
-    &self,
-    payload: &fechatter_core::CreateUser,
-    auth_context: Option<fechatter_core::contracts::AuthContext>,
-  ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
-    self
-      .application_services()
-      .create_user(payload, auth_context)
-      .await
-  }
-
-  /// Sign in user - Delegate to application services
-  pub async fn signin(
-    &self,
-    payload: &fechatter_core::SigninUser,
-    auth_context: Option<fechatter_core::contracts::AuthContext>,
-  ) -> Result<Option<fechatter_core::AuthTokens>, fechatter_core::error::CoreError> {
-    self
-      .application_services()
-      .signin_user(payload, auth_context)
-      .await
-  }
-
-  /// Refresh token - Delegate to application services
-  pub async fn refresh_token(
-    &self,
-    refresh_token: &str,
-    auth_context: Option<fechatter_core::contracts::AuthContext>,
-  ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
-    self
-      .application_services()
-      .refresh_token(refresh_token, auth_context)
-      .await
-  }
-
-  /// Logout user - Delegate to application services
-  pub async fn logout(&self, refresh_token: &str) -> Result<(), fechatter_core::error::CoreError> {
-    self.application_services().logout_user(refresh_token).await
-  }
-
-  /// Logout all sessions - Delegate to application services
-  pub async fn logout_all(
-    &self,
-    user_id: fechatter_core::UserId,
-  ) -> Result<(), fechatter_core::error::CoreError> {
-    self
-      .application_services()
-      .logout_all_sessions(user_id)
-      .await
-  }
-
-  /// Create new chat - Delegate to application services
-  pub async fn create_new_chat(
-    &self,
-    chat_type: fechatter_core::ChatType,
-    name: Option<String>,
-    description: Option<String>,
-    creator_id: fechatter_core::UserId,
-    initial_members: Vec<fechatter_core::UserId>,
-  ) -> Result<fechatter_core::Chat, fechatter_core::error::CoreError> {
-    self
-      .application_services()
-      .create_new_chat(
-        chat_type,
-        name.unwrap_or_default(),
-        description,
-        creator_id,
-        initial_members,
-      )
-      .await
-      .map_err(|e| fechatter_core::error::CoreError::Internal(e.to_string()))
-  }
-
-  /// Create message - Delegate to application services
-  pub async fn create_message(
-    &self,
-    payload: fechatter_core::CreateMessage,
-    chat_id: fechatter_core::ChatId,
-    sender_id: fechatter_core::UserId,
-  ) -> Result<fechatter_core::Message, fechatter_core::error::CoreError> {
-    self
-      .application_services()
-      .create_message(payload, chat_id, sender_id)
-      .await
-  }
-
-  /// Find user by ID - Delegate to application services
-  pub async fn find_user_by_id(
-    &self,
-    user_id: i64,
-  ) -> Result<Option<fechatter_core::User>, AppError> {
-    self
-      .application_services()
-      .find_user_by_id(fechatter_core::UserId(user_id))
-      .await
-      .map_err(|e| AppError::InvalidInput(format!("Failed to find user: {}", e)))
-  }
-
-  /// Generate new tokens for user - Delegate to application services
-  pub async fn generate_new_tokens_for_user(
-    &self,
-    user_id: i64,
-    auth_context: Option<fechatter_core::contracts::AuthContext>,
-  ) -> Result<fechatter_core::AuthTokens, fechatter_core::error::CoreError> {
-    self
-      .application_services()
-      .generate_new_tokens_for_user(user_id, auth_context)
-      .await
-  }
-
-  // ========================================================================
-  // Temporary/Legacy Methods - TODO: Move to appropriate services
-  // ========================================================================
-
-  /// Simple user access check - TODO: Move to authorization service
-  pub async fn user_can_access_chat(&self, user_id: i64, chat_id: i64) -> Result<bool, AppError> {
-    // TODO: Implement proper authorization check through authorization service
-    let _ = (user_id, chat_id);
-    Ok(true)
-  }
-
-  /// Delete chat by ID - TODO: Move to chat service
-  pub async fn delete_chat_by_id(
-    &self,
-    chat_id: fechatter_core::ChatId,
-    user_id: fechatter_core::UserId,
-  ) -> Result<bool, fechatter_core::error::CoreError> {
-    // TODO: Implement through chat service
-    let _ = (chat_id, user_id);
-    Ok(true)
-  }
-
-  /// Add chat members - TODO: Move to chat service
-  pub async fn add_chat_members(
-    &self,
-    chat_id: fechatter_core::ChatId,
-    user_id: fechatter_core::UserId,
-    member_ids: Vec<fechatter_core::UserId>,
-  ) -> Result<Vec<fechatter_core::ChatMember>, fechatter_core::error::CoreError> {
-    // TODO: Implement through chat service
-    let _ = (chat_id, user_id, member_ids);
-    Ok(vec![])
-  }
-
-  /// Remove chat members - TODO: Move to chat service
-  pub async fn remove_chat_members(
-    &self,
-    chat_id: fechatter_core::ChatId,
-    user_id: fechatter_core::UserId,
-    member_ids: Vec<fechatter_core::UserId>,
-  ) -> Result<bool, fechatter_core::error::CoreError> {
-    // TODO: Implement through chat service
-    let _ = (chat_id, user_id, member_ids);
-    Ok(true)
-  }
-
-  /// Transfer chat ownership - TODO: Move to chat service
-  pub async fn transfer_chat_ownership(
-    &self,
-    chat_id: fechatter_core::ChatId,
-    from_user_id: fechatter_core::UserId,
-    to_user_id: fechatter_core::UserId,
-  ) -> Result<bool, fechatter_core::error::CoreError> {
-    // TODO: Implement through chat service
-    let _ = (chat_id, from_user_id, to_user_id);
-    Ok(true)
+  /// Create AppState - Main initialization method
+  pub async fn try_new(config: AppConfig) -> Result<Self, AppError> {
+    crate::state::create_production_state(config).await
   }
 }
 
@@ -432,209 +234,225 @@ impl fmt::Debug for AppStateInner {
   }
 }
 
-// Ensure service module and AuthService are exported
-pub use crate::services::application::auth_app_service::AuthService;
+/// Create database pool - Utility function
+pub async fn create_pool(db_url: &str) -> Result<sqlx::PgPool, sqlx::Error> {
+  crate::state::create_pool_impl_pub(db_url).await
+}
 
-// Re-export key handlers for external use
-pub use handlers::*;
+/// Debug middleware to log route information
+async fn route_debug_middleware(req: Request, next: Next) -> Response {
+  let method = req.method().clone();
+  let uri = req.uri().clone();
+  let path = uri.path();
 
-// Re-export domains for direct access (no models layer)
-pub use domains::*;
+  debug!("🔍 [ROUTE_DEBUG] {} {} - Processing request", method, path);
 
+  let response = next.run(req).await;
+  let status = response.status();
+
+  if status.is_client_error() || status.is_server_error() {
+    warn!(
+      "🔍 [ROUTE_DEBUG] {} {} - Response: {}",
+      method, path, status
+    );
+  } else {
+    debug!(
+      "🔍 [ROUTE_DEBUG] {} {} - Response: {}",
+      method, path, status
+    );
+  }
+
+  response
+}
+
+/// 🎯 PURE EXTENSION ARCHITECTURE: Create the main application router
+///
+/// This implementation uses ONLY Extension-based middleware to avoid Axum 0.7.9 with_state() bugs
+/// All handlers use Extension<AppState> instead of State<AppState>
+/// Returns Router<()> for complete type unification
 pub async fn get_router(state: AppState) -> Result<Router, AppError> {
-  // Public routes - only need token refresh middleware
-  let public_routes = Router::new()
-    .route("/signin", post(signin_handler))
-    .route("/signup", post(signup_handler))
-    .route(
-      "/refresh",
-      post(|state, cookies, headers, auth_user| {
-        refresh_token_handler(state, cookies, headers, auth_user)
-      }),
-    )
-    .with_middlewares(state.clone())
-    .build();
+  use crate::handlers::{
+    auth::{
+      logout_all_handler, logout_handler, refresh_token_handler, signin_handler, signup_handler,
+    },
+    cache_stats::{get_cache_config_handler, get_cache_stats_handler},
+    chat::{
+      create_chat_handler, delete_chat_handler, get_chat_handler, list_chats_handler,
+      update_chat_handler,
+    },
+    chat_members::{
+      add_chat_members_handler as add_chat_members_to_chat_handler, list_chat_members_handler,
+    },
+    files::{file_handler, fix_file_storage_handler, upload_handler, upload_single_file_handler},
+    health::{health_check, simple_health_check},
+    messages::{
+      get_all_unread_counts_handler, get_unread_count_handler, list_messages_handler, send_message_handler,
+      get_message_mentions_handler, get_unread_mentions_handler, get_detailed_message_receipts_handler,
+      mark_message_read_enhanced_handler,
+    },
+    realtime::{
+      get_message_receipts, get_typing_users, mark_message_read, start_typing, stop_typing,
+      update_presence,
+    },
+    search::{
+      get_search_suggestions, global_search_messages, reindex_chat_messages,
+      search_messages_in_chat, simple_search_messages_in_chat,
+    },
+    users::{
+      get_user_profile, get_user_profile_by_id, update_user_profile, update_user_profile_by_id,
+      change_password_handler, list_workspace_users_handler,
+    },
+  };
 
-  // Basic auth routes - need Auth and Refresh middleware
-  // Execution order: Auth -> Refresh -> Infrastructure middleware -> Handler
-  let auth_routes = Router::new()
-    .route("/upload", post(upload_handler))
-    .route("/files/{ws_id}/{*path}", get(file_handler))
-    .route("/fix-files/{ws_id}", post(fix_file_storage_handler))
-    .route("/users", get(list_all_workspace_users_handler))
-    .route("/logout", post(logout_handler))
-    .route("/logout_all", post(logout_all_handler))
-    .with_middlewares(state.clone())
-    .with_auth_refresh() // Use helper method to add Auth and Refresh at once
-    .build();
+  // Use the factory functions for guaranteed type unification
+  use crate::middlewares::builder_old::builder::{
+    create_extension_middleware_builder, create_stateless_router_with_routes,
+  };
 
-  // Search routes - need Auth and Refresh middleware
-  let search_routes = Router::new()
-    .route("/search/messages", get(global_search_messages))
-    .route("/search/suggestions", get(get_search_suggestions))
-    .route(
-      "/chat/{chat_id}/messages/search",
-      post(search_messages_in_chat),
-    )
-    .route("/admin/chat/{chat_id}/reindex", post(reindex_chat_messages))
-    .with_middlewares(state.clone())
-    .with_auth_refresh()
-    .build();
+  // ============================================================================
+  // Public routes (no auth required, but still need state)
+  // ============================================================================
+  let public_routes = create_stateless_router_with_routes(|router| {
+    router
+      .route("/signup", post(signup_handler))
+      .route("/signin", post(signin_handler))
+      .route("/refresh", post(refresh_token_handler))
+  });
 
-  // Chat create routes - need Auth, Refresh and Workspace middleware
-  // Execution order: Auth -> Refresh -> Workspace -> Infrastructure middleware -> Handler
-  let chat_create_routes = Router::new()
-    .route("/chat", post(create_chat_handler))
-    .with_middlewares(state.clone())
-    .with_auth_refresh_workspace() // Use helper method to add Auth, Refresh, and Workspace at once
-    .build();
+  let public_routes = create_extension_middleware_builder(public_routes, state.clone())
+    .with_state_extension()
+    .finalize_extension_based();
 
-  // Chat management routes - need Auth, Refresh, Workspace and Chat middleware
-  // Execution order: Auth -> Refresh -> Workspace -> Chat -> Infrastructure middleware -> Handler
-  let chat_management_routes = Router::new()
-    .route("/chat/{chat_id}/members", get(list_chat_members_handler))
-    .route("/chat/{chat_id}/members", post(add_chat_members_batch_handler))
-    .route("/chat/{chat_id}", patch(update_chat_handler))
-    .route("/chat/{chat_id}", delete(delete_chat_handler))
-    .route(
-      "/chat/{chat_id}/transfer",
-      post(transfer_chat_ownership_handler),
-    )
-    .route("/chats", get(list_chats_handler))
-    .route("/chat/{chat_id}/messages", get(list_messages_handler))
-    .route("/chat/{chat_id}/messages", post(send_message_handler))
-    .with_middlewares(state.clone())
-    .with_auth_refresh_workspace_chat() // Use helper method to add all middlewares
-    .build();
+  // ============================================================================
+  // Authenticated routes (auth middleware required)
+  // ============================================================================
+  let auth_routes = create_stateless_router_with_routes(|router| {
+    router
+      .route("/logout", post(logout_handler))
+      .route("/logout-all", post(logout_all_handler))
+      .route("/cache/stats", get(get_cache_stats_handler))
+      .route("/cache/config", get(get_cache_config_handler))
+      // File management routes
+      .route("/upload", post(upload_handler))
+      .route("/files/single", post(upload_single_file_handler))
+      .route("/files/{workspace_id}/{file_id}", get(file_handler))
+      .route("/workspaces/{workspace_id}/files/fix", post(fix_file_storage_handler))
+      // Global search routes
+      .route("/search/messages", post(global_search_messages))
+      .route("/search/suggestions", get(get_search_suggestions))
+      // Simplified chat search route (only requires auth, not chat membership)
+      .route("/search/chat/{chat_id}/messages", get(simple_search_messages_in_chat))
+      // Realtime presence routes (user-level)
+      .route("/realtime/presence", post(update_presence))
+      // Unread counts routes
+      .route("/unread-counts", get(get_all_unread_counts_handler))
+      // Mentions routes
+      .route("/mentions/unread", get(get_unread_mentions_handler))
+  });
 
-  // Health check routes (no middleware needed)
+  let auth_routes = create_extension_middleware_builder(auth_routes, state.clone())
+    .with_state_extension()
+    .with_auth()
+    .finalize_extension_based();
+
+  // ============================================================================
+  // Workspace routes (auth + workspace middleware)
+  // ============================================================================
+  let workspace_routes = create_stateless_router_with_routes(|router| {
+    router
+      .route(
+        "/workspace/chats",
+        get(list_chats_handler).post(create_chat_handler),
+      )
+      // User routes
+      .route("/users", get(list_workspace_users_handler))
+      .route("/users/profile", get(get_user_profile).put(update_user_profile))
+      .route("/users/{user_id}/profile", get(get_user_profile_by_id).put(update_user_profile_by_id))
+      // Presence status (alias for workspace users)
+      .route("/presence/status", get(list_workspace_users_handler))
+      // Password management
+      .route("/users/change-password", post(change_password_handler))
+  });
+
+  let workspace_routes = create_extension_middleware_builder(workspace_routes, state.clone())
+    .with_workspace()         // Apply workspace middleware first (executes third)
+    .with_auth()             // Apply auth middleware second (executes second)
+    .with_state_extension()   // Apply state extension last (executes first)
+    .finalize_extension_based();
+
+  // ============================================================================
+  // Chat routes with parameters (auth + workspace + chat membership)
+  // ============================================================================
+  let chat_routes = create_stateless_router_with_routes(|router| {
+    router
+      // Chat basic operations
+      .route("/chat/{id}", 
+        get(get_chat_handler)
+          .patch(update_chat_handler)
+          .delete(delete_chat_handler)
+      )
+      // Chat members operations
+      .route("/chat/{id}/members", 
+        get(list_chat_members_handler)
+        .post(add_chat_members_to_chat_handler)
+      )
+      // Chat messages operations
+      .route("/chat/{id}/messages", 
+        get(list_messages_handler)
+        .post(send_message_handler)
+      )
+      // Chat search operations
+      .route("/chat/{id}/messages/search", 
+        get(simple_search_messages_in_chat)
+        .post(search_messages_in_chat)
+      )
+      // Realtime operations (require chat membership)
+      .route("/chat/{id}/typing/start", post(start_typing))
+      .route("/chat/{id}/typing/stop", post(stop_typing))
+      .route("/chat/{id}/typing/users", get(get_typing_users))
+      .route("/chat/{id}/messages/{message_id}/read", post(mark_message_read))
+      .route("/messages/{message_id}/receipts", get(get_message_receipts))
+      // Enhanced message operations
+      .route("/messages/{message_id}/mentions", get(get_message_mentions_handler))
+      .route("/messages/{message_id}/receipts/detailed", get(get_detailed_message_receipts_handler))
+      .route("/chat/{chat_id}/messages/{message_id}/read/enhanced", post(mark_message_read_enhanced_handler))
+      // Unread count for specific chat
+      .route("/chat/{id}/unread", get(get_unread_count_handler))
+      // Admin operations
+      .route("/admin/chat/{id}/reindex", 
+        post(reindex_chat_messages)
+      )
+  });
+
+  let chat_routes = create_extension_middleware_builder(chat_routes, state.clone())
+    .with_chat_membership()   // Apply chat middleware first (executes fourth)
+    .with_workspace()         // Apply workspace middleware second (executes third)
+    .with_auth()             // Apply auth middleware third (executes second)
+    .with_state_extension()   // Apply state extension last (executes first)
+    .finalize_extension_based();
+
+  // ============================================================================
+  // Health Routes (use State for simplicity - infrastructure level)
+  // ============================================================================
   let health_routes = Router::new()
     .route("/health", get(health_check))
-    .route("/health/simple", get(simple_health_check));
+    .route("/health/readiness", get(simple_health_check))
+    .with_state(state.clone());
 
-  // Root route
-  let root_routes = Router::new().route("/", get(index_handler));
-
-  // Combine all routes
-  let app = Router::new()
+  // ============================================================================
+  // Final Router Assembly - ALL stateless Router<()>
+  // ============================================================================
+  let api_routes = Router::new()
     .merge(public_routes)
     .merge(auth_routes)
-    .merge(search_routes)
-    .merge(chat_create_routes)
-    .merge(chat_management_routes)
+    .merge(workspace_routes)
+    .merge(chat_routes);
+
+  // Build final application - NO with_state() calls!
+  let app = Router::new()
+    .nest("/api", api_routes)
     .merge(health_routes)
-    .merge(root_routes)
-    .with_state(state)
-    .set_layer();
+    .layer(axum::middleware::from_fn(route_debug_middleware));
 
   Ok(app)
-}
-
-pub async fn create_pool(db_url: &str) -> Result<sqlx::PgPool, sqlx::Error> {
-  use sqlx::postgres::PgPoolOptions;
-  use std::time::Duration;
-
-  PgPoolOptions::new()
-    .max_connections(10)
-    .min_connections(1)
-    .acquire_timeout(Duration::from_secs(5))
-    .idle_timeout(Duration::from_secs(60))
-    .max_lifetime(Duration::from_secs(1800))
-    .test_before_acquire(true)
-    .connect(db_url)
-    .await
-}
-
-impl AppState {
-  #[cfg(test)]
-  pub fn default_for_tests() -> Self {
-    // Create minimal test configuration
-    let config = AppConfig::minimal_dev_config().expect("Failed to create minimal dev config");
-
-    // Create minimal service provider for tests
-    let pool = sqlx::PgPool::connect_lazy("postgresql://test:test@localhost/test").unwrap();
-    let refresh_token_repo = Arc::new(crate::domains::auth::RefreshTokenAdaptor::new(Arc::new(
-      pool.clone(),
-    )));
-    let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo).unwrap();
-    let service_provider = crate::services::service_provider::ServiceProvider::new_with_search(
-      pool,
-      token_manager,
-      None,
-    );
-
-    // Create application service provider
-    let application_services =
-      ApplicationServiceProvider::new(Arc::new(service_provider.clone())).unwrap();
-
-    Self {
-      inner: Arc::new(AppStateInner {
-        config,
-        service_provider,
-        application_services,
-        chat_list_cache: DashMap::new(),
-        event_publisher: None,
-      }),
-    }
-  }
-
-  pub async fn try_new(config: AppConfig) -> Result<Self, AppError> {
-    fs::create_dir_all(&config.server.base_dir).await?;
-
-    // Create database connection pool
-    let pool = create_pool(&config.server.db_url).await?;
-
-    // Create refresh token adapter and token manager
-    let refresh_token_repo = Arc::new(crate::domains::auth::RefreshTokenAdaptor::new(Arc::new(
-      pool.clone(),
-    )));
-    let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo)?;
-
-    // Initialize search service if enabled - simplified
-    let search_service = if config.search.enabled {
-      tracing::info!("Search service enabled but initialization deferred to service layer");
-      // TODO: Implement proper search service initialization in services module
-      None
-    } else {
-      tracing::info!("Search service disabled");
-      None
-    };
-
-    // Create service provider with search service
-    let service_provider = crate::services::service_provider::ServiceProvider::new_with_search(
-      pool,
-      token_manager,
-      search_service,
-    );
-
-    // Create application service provider
-    let application_services = ApplicationServiceProvider::new(Arc::new(service_provider.clone()))
-      .map_err(|e| AppError::Internal(format!("Failed to create application services: {}", e)))?;
-
-    // Create chat list cache
-    let chat_list_cache = DashMap::new();
-
-    // Initialize NATS client and EventPublisher if enabled - simplified
-    let event_publisher = if config.messaging.enabled {
-      tracing::info!("Event publishing enabled but initialization deferred to service layer");
-      // TODO: Implement proper event publisher initialization in services module
-      None
-    } else {
-      tracing::info!("Event publishing disabled");
-      None
-    };
-
-    // Create application state
-    let state = AppStateInner {
-      config,
-      service_provider,
-      application_services,
-      chat_list_cache,
-      event_publisher,
-    };
-
-    Ok(Self {
-      inner: Arc::new(state),
-    })
-  }
 }

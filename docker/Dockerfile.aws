@@ -1,0 +1,89 @@
+# AWS EKS 专用 Dockerfile - 微服务版本
+FROM messense/rust-musl-cross:aarch64-musl as builder
+
+WORKDIR /app
+
+# 设置 AWS/ARM64 构建环境
+ENV SQLX_OFFLINE=true
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-musl-gcc
+ENV CC_aarch64_unknown_linux_musl=aarch64-linux-musl-gcc
+ENV CXX_aarch64_unknown_linux_musl=aarch64-linux-musl-g++
+ENV ENVIRONMENT=production
+
+# 安装 protoc
+RUN apt-get update && apt-get install -y protobuf-compiler && rm -rf /var/lib/apt/lists/*
+
+# 复制工作空间配置
+COPY Cargo.toml Cargo.lock ./
+
+# 复制所有成员项目的 Cargo.toml
+COPY fechatter_core/Cargo.toml ./fechatter_core/
+COPY fechatter_server/Cargo.toml ./fechatter_server/
+COPY notify_server/Cargo.toml ./notify_server/
+COPY analytics_server/Cargo.toml ./analytics_server/
+COPY bot_server/Cargo.toml ./bot_server/
+COPY fechatter_macro/Cargo.toml ./fechatter_macro/
+COPY fechatter_tests/Cargo.toml ./fechatter_tests/
+COPY ai_sdk/Cargo.toml ./ai_sdk/
+COPY swiftide-pgvector/Cargo.toml ./swiftide-pgvector/
+COPY fechatter_gateway/Cargo.toml ./fechatter_gateway/
+
+# 创建虚拟源文件以缓存依赖
+RUN mkdir -p fechatter_core/src fechatter_server/src notify_server/src analytics_server/src \
+    bot_server/src fechatter_macro/src fechatter_tests/src ai_sdk/src swiftide-pgvector/src \
+    fechatter_gateway/src && \
+    echo "fn main() {}" > fechatter_server/src/main.rs && \
+    echo "fn main() {}" > notify_server/src/main.rs && \
+    echo "fn main() {}" > analytics_server/src/main.rs && \
+    echo "fn main() {}" > bot_server/src/main.rs && \
+    echo "fn main() {}" > fechatter_gateway/src/main.rs && \
+    echo "#![no_std]" > fechatter_core/src/lib.rs && \
+    echo "fn main() {}" > fechatter_macro/src/lib.rs && \
+    echo "#[test] fn test() {}" > fechatter_tests/src/lib.rs && \
+    echo "fn main() {}" > ai_sdk/src/lib.rs && \
+    echo "fn main() {}" > swiftide-pgvector/src/lib.rs
+
+# 构建依赖
+RUN cargo build --release --target aarch64-unknown-linux-musl
+
+# 复制实际源代码
+COPY . .
+
+# 重新触发构建
+RUN find . -name "main.rs" -exec touch {} \;
+
+# 构建指定服务
+ARG APP_NAME=fechatter_server
+RUN cargo build --release --target aarch64-unknown-linux-musl --bin $APP_NAME
+
+# 运行时阶段 - Alpine for ARM64
+FROM alpine:3.19
+
+WORKDIR /app
+
+# 安装 AWS 生产环境依赖
+RUN apk add --no-cache \
+    ca-certificates \
+    postgresql-client \
+    redis \
+    curl \
+    netcat-openbsd
+
+# 复制二进制文件
+ARG APP_NAME
+COPY --from=builder /app/target/aarch64-unknown-linux-musl/release/$APP_NAME /app/$APP_NAME
+
+# 复制云检测脚本
+COPY scripts/cloud-detect.sh /app/cloud-detect.sh
+COPY scripts/wait-for-services*.sh /app/
+RUN chmod +x /app/*.sh
+
+# 设置二进制文件权限
+RUN chmod +x /app/$APP_NAME
+
+# 暴露端口
+ARG APP_PORT=8080
+EXPOSE $APP_PORT
+
+# 使用云检测脚本启动
+CMD ["/bin/sh", "-c", "/app/cloud-detect.sh /app/$APP_NAME"]
