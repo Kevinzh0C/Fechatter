@@ -9,6 +9,8 @@ import { analytics } from '../lib/analytics-protobuf';
 import { errorHandler } from '@/utils/errorHandler';
 import MentionsService from '@/services/MentionsService';
 import ReadReceiptsService from '@/services/ReadReceiptsService';
+import requestIsolation from '@/utils/requestIsolation';
+import strictChannelMessageValidator from '@/utils/strictChannelMessageValidator';
 
 // Create global message batcher instance
 const messageBatcher = useMessageBatcher();
@@ -158,96 +160,49 @@ export const useChatStore = defineStore('chat', {
   },
 
   actions: {
-    // ===== Helper: Normalize message data =====
+    /**
+     * Normalize message data - with caching
+     * Following Occam's Razor: Simple normalization, no over-engineering
+     */
     normalizeMessage(message) {
-      const authStore = useAuthStore();
-      const userStore = useUserStore();
-      const currentUser = authStore.user;
+      if (!message) return null;
 
-      // If message already has proper sender info, return as is
-      if (message.sender && message.sender.id && message.sender.fullname && message.sender.fullname !== 'Unknown User') {
+      // Check if already normalized (has _normalized flag)
+      if (message._normalized) {
         return message;
       }
 
-      const normalizedMessage = { ...message };
-      const senderId = message.sender_id || message.user_id || message.sender?.id;
+      // Simple normalization
+      const normalized = {
+        ...message,
+        _normalized: true, // Mark as normalized
+        id: message.id || message._id || message.temp_id,
+        temp_id: message.temp_id || null,
+        content: message.content || '',
+        sender_id: message.sender_id || message.sender?.id,
+        sender: message.sender || null,
+        created_at: message.created_at || new Date().toISOString(),
+        updated_at: message.updated_at || message.created_at,
+        files: message.files || [],
+        reply_to: message.reply_to || null,
+        mentions: message.mentions || [],
+        status: message.status || 'sent',
+        isOptimistic: message.isOptimistic || false,
+        // Add timestamp for sorting (parse once)
+        _timestamp: new Date(message.created_at || Date.now()).getTime()
+      };
 
-      // Handle current user's messages
-      if (senderId === currentUser?.id) {
-        normalizedMessage.sender = {
-          id: senderId,
-          fullname: currentUser.fullname || currentUser.username || 'You',
-          email: currentUser.email || null,
-          username: currentUser.username || null
+      // Handle sender normalization only if needed
+      if (normalized.sender && typeof normalized.sender === 'object') {
+        normalized.sender = {
+          id: normalized.sender.id,
+          fullname: normalized.sender.fullname || normalized.sender.name || 'Unknown',
+          email: normalized.sender.email || '',
+          avatar_url: normalized.sender.avatar_url || null
         };
-        normalizedMessage.sender_id = senderId;
-      } else {
-        // Try multiple sources to find sender info
-        let senderInfo = null;
-
-        // 1. Try workspace users first (most reliable)
-        if (userStore.workspaceUsers && userStore.workspaceUsers.length > 0) {
-          const user = userStore.getUserById(senderId);
-          if (user) {
-            senderInfo = {
-              id: senderId,
-              fullname: user.fullname || user.username || 'Unknown User',
-              email: user.email || null,
-              username: user.username || null
-            };
-          }
-        }
-
-        // 2. Try chat members if available
-        if (!senderInfo && this.chatMembers[this.currentChatId]) {
-          const member = this.chatMembers[this.currentChatId].find(
-            m => m.user_id === senderId || m.id === senderId
-          );
-          if (member) {
-            senderInfo = {
-              id: senderId,
-              fullname: member.fullname || member.username || 'Unknown User',
-              email: member.email || null,
-              username: member.username || null
-            };
-          }
-        }
-
-        // 3. Try current chat members
-        if (!senderInfo && this.getCurrentChat?.chat_members) {
-          const member = this.getCurrentChat.chat_members.find(
-            m => m.user_id === senderId || m.id === senderId
-          );
-          if (member) {
-            senderInfo = {
-              id: senderId,
-              fullname: member.fullname || member.username || 'Unknown User',
-              email: member.email || null,
-              username: member.username || null
-            };
-          }
-        }
-
-        // 4. Use message's own sender info if available
-        if (!senderInfo) {
-          senderInfo = {
-            id: senderId,
-            fullname: message.sender_name || message.sender_fullname || message.sender?.fullname || 'Unknown User',
-            email: message.sender_email || message.sender?.email || null,
-            username: message.sender_username || message.sender?.username || null
-          };
-        }
-
-        normalizedMessage.sender = senderInfo;
-        normalizedMessage.sender_id = senderId;
       }
 
-      // Ensure all required fields exist
-      normalizedMessage.id = normalizedMessage.id || normalizedMessage.temp_id;
-      normalizedMessage.created_at = normalizedMessage.created_at || new Date().toISOString();
-      normalizedMessage.files = normalizedMessage.files || [];
-
-      return normalizedMessage;
+      return normalized;
     },
 
     // 🔥 Get unread counts for all chats
@@ -498,6 +453,14 @@ export const useChatStore = defineStore('chat', {
       const normalizedMessage = this.normalizeMessage(message);
       const authStore = useAuthStore();
 
+      // CRITICAL: Validate message belongs to the correct chat
+      try {
+        strictChannelMessageValidator.validateMessage(normalizedMessage, chat.id);
+      } catch (error) {
+        console.error('❌ [SSE] Incoming message validation failed:', error.message);
+        return; // DO NOT process messages for wrong channel
+      }
+
       // Optimization: Check if the message is sent by the current user
       if (normalizedMessage.sender_id === authStore.user?.id) {
         // First, try to verify optimistic update for the message
@@ -542,6 +505,14 @@ export const useChatStore = defineStore('chat', {
 
       // Add to messages if it's the current chat
       if (message.chat_id === this.currentChatId) {
+        // CRITICAL: Final validation before adding to current messages
+        try {
+          strictChannelMessageValidator.validateMessage(normalizedMessage, this.currentChatId);
+        } catch (error) {
+          console.error('❌ [SSE] Message does not belong to current chat:', error.message);
+          return;
+        }
+
         // Add new message to the end (newest messages at bottom)
         this.messages.push(normalizedMessage);
 
@@ -780,7 +751,8 @@ export const useChatStore = defineStore('chat', {
           this.chats.splice(chatIndex, 1);
           if (this.currentChatId === chatId) {
             this.currentChatId = null;
-            this.messages = [];
+            // Use reactive method instead of direct assignment
+            this.messages.length = 0;
             if (typeof window !== 'undefined' && window.$router) {
               window.$router.push('/home');
             }
@@ -1133,42 +1105,170 @@ export const useChatStore = defineStore('chat', {
     },
 
     /**
-     * Fetch messages for a chat - compatibility method
+     * Fetch messages for a chat - optimized version
      */
-    async fetchMessages(chatId, limit = 50) {
+    async fetchMessages(chatId, limit = 50, retryCount = 0) {
       try {
+        // CRITICAL: Validate chatId
+        const validChatId = parseInt(chatId, 10);
+        if (!validChatId || isNaN(validChatId)) {
+          throw new Error(`Invalid chat ID: ${chatId}`);
+        }
+
+        console.log(`📥 [FETCH_MESSAGES] Starting fetch for chat ${validChatId}`);
+
+        // Ensure workspace users are loaded for sender info
+        const { useUserStore } = await import('@/stores/user');
+        const { useWorkspaceStore } = await import('@/stores/workspace');
+        const userStore = useUserStore();
+        const workspaceStore = useWorkspaceStore();
+
+        if (userStore.workspaceUsers.length === 0) {
+          console.log('📥 [ChatStore] Loading workspace users for message senders...');
+          await workspaceStore.fetchWorkspaceUsers();
+        }
+
         // Check cache first
-        if (this.messageCache[chatId] &&
-          Date.now() - this.messageCache[chatId].timestamp < this.cacheTimeout) {
-          this.messages = this.messageCache[chatId].messages;
+        if (this.messageCache[validChatId] &&
+          Date.now() - this.messageCache[validChatId].timestamp < this.cacheTimeout) {
+          console.log(`📦 [FETCH_MESSAGES] Using cache for chat ${validChatId}`);
+
+          // CRITICAL: Validate cached messages before using them
+          const cachedMessages = this.messageCache[validChatId].messages;
+          const validatedMessages = strictChannelMessageValidator.validateMessageArray(cachedMessages, validChatId);
+
+          // Clear and reload with validated messages only
+          this.messages.length = 0;
+          validatedMessages.forEach(msg => {
+            this.messages.push(msg);
+          });
+
+          console.log(`✅ [FETCH_MESSAGES] Loaded ${validatedMessages.length} validated messages from cache`);
           return this.messages;
         }
 
-        // Fetch from API
-        const response = await api.get(`/chat/${chatId}/messages`, {
-          params: { limit }
-        });
+        // Use request isolation to prevent extension interference
+        const response = await requestIsolation.queueRequest(
+          `fetch-messages-${validChatId}`,
+          async ({ signal }) => {
+            return await api.get(`/chat/${validChatId}/messages`, {
+              params: { limit },
+              signal // Pass abort signal to axios
+            });
+          }
+        );
 
         const messagesData = response.data?.data || response.data || [];
+        console.log(`📨 [FETCH_MESSAGES] Received ${messagesData.length} messages from API`);
 
-        // Normalize messages
-        this.messages = messagesData.map(msg => this.normalizeMessage(msg));
+        // CRITICAL: Validate ALL messages before processing
+        const validMessages = [];
+        const invalidMessages = [];
 
-        // Sort by created_at ascending (oldest first)
-        this.messages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        messagesData.forEach(msg => {
+          try {
+            // Validate BEFORE normalization
+            strictChannelMessageValidator.validateMessage(msg, validChatId);
+            validMessages.push(msg);
+          } catch (error) {
+            console.error(`❌ [FETCH_MESSAGES] Rejected invalid message:`, error.message);
+            invalidMessages.push(msg);
+          }
+        });
 
-        // Update cache
-        this.messageCache[chatId] = {
-          messages: this.messages,
-          timestamp: Date.now()
+        if (invalidMessages.length > 0) {
+          console.error(`❌ [FETCH_MESSAGES] Found ${invalidMessages.length} messages belonging to wrong channel!`);
+          // Log details for debugging
+          console.table(invalidMessages.map(msg => ({
+            id: msg.id,
+            chat_id: msg.chat_id,
+            expected: validChatId,
+            content: msg.content?.substring(0, 30) + '...'
+          })));
+        }
+
+        // Normalize only valid messages
+        const normalizedMessages = validMessages.map(msg => this.normalizeMessage(msg));
+
+        // Enhance messages with user data from store
+        const userMap = new Map();
+        userStore.workspaceUsers.forEach(user => {
+          userMap.set(user.id, user);
+        });
+
+        normalizedMessages.forEach(msg => {
+          if (msg.sender_id && (!msg.sender || !msg.sender.fullname)) {
+            const user = userMap.get(msg.sender_id);
+            if (user) {
+              msg.sender = {
+                id: user.id,
+                fullname: user.fullname || user.name || user.email?.split('@')[0],
+                email: user.email,
+                avatar_url: user.avatar_url || null
+              };
+            }
+          }
+        });
+
+        // Sort by pre-computed timestamp
+        normalizedMessages.sort((a, b) => {
+          return (a._timestamp || 0) - (b._timestamp || 0);
+        });
+
+        // CRITICAL: Clear ALL existing messages
+        this.messages.length = 0;
+
+        // CRITICAL: One final validation before adding to store
+        normalizedMessages.forEach(msg => {
+          try {
+            strictChannelMessageValidator.validateMessage(msg, validChatId);
+            this.messages.push(msg);
+          } catch (error) {
+            console.error('❌ [FETCH_MESSAGES] Final validation failed:', error.message);
+          }
+        });
+
+        console.log(`✅ [FETCH_MESSAGES] Successfully loaded ${this.messages.length} messages for chat ${validChatId}`);
+
+        // Update cache with validated messages only
+        this.messageCache[validChatId] = {
+          messages: [...this.messages], // Create a copy
+          timestamp: Date.now(),
+          sorted: true,
+          validated: true // Mark as validated
         };
         sessionStorage.setItem('messageCache', JSON.stringify(this.messageCache));
 
-        // Set current chat
-        this.currentChatId = chatId;
-
         return this.messages;
       } catch (error) {
+        // Enhanced error handling with fallback to cache
+        const isExtensionError = requestIsolation.isExtensionInterference(error);
+
+        if (isExtensionError) {
+          console.error('🔧 Extension conflict detected while fetching messages');
+          // Try to show cached messages if available
+          if (this.messageCache[chatId]) {
+            console.log('📦 Using cached messages due to extension conflict');
+
+            // Validate cached messages
+            const cachedMessages = this.messageCache[chatId].messages;
+            const validatedMessages = strictChannelMessageValidator.validateMessageArray(cachedMessages, chatId);
+
+            this.messages.length = 0;
+            validatedMessages.forEach(msg => {
+              this.messages.push(msg);
+            });
+
+            // Show notification to user
+            if (window.errorHandler?.showNotification) {
+              window.errorHandler.showNotification('info',
+                'Using cached messages. Disable browser extensions if issues persist.');
+            }
+
+            return this.messages;
+          }
+        }
+
         errorHandler.handle(error, {
           context: `Fetch messages for chat ${chatId}`,
           silent: false
@@ -1207,7 +1307,8 @@ export const useChatStore = defineStore('chat', {
      * Clear messages - used when switching chats
      */
     clearMessages() {
-      this.messages = [];
+      // Use reactive method instead of direct assignment
+      this.messages.length = 0;
       this.hasMoreMessages = true;
       this.lastMessageId = null;
     },
@@ -1216,7 +1317,12 @@ export const useChatStore = defineStore('chat', {
      * Set current chat
      */
     async setCurrentChat(chatId) {
-      if (this.currentChatId === chatId) return;
+      console.log('📍 [ChatStore] setCurrentChat called with:', chatId, 'current:', this.currentChatId);
+
+      // FIXED: Don't skip if same chat ID - we need to refresh messages
+      // This was causing all channels to show the same message list
+      // Previously, if currentChatId === chatId, it would return early
+      // Now we always fetch fresh messages to ensure correct display
 
       this.currentChatId = chatId;
       this.loading = true;
@@ -1224,9 +1330,31 @@ export const useChatStore = defineStore('chat', {
       try {
         // Find the chat in our list
         const chat = this.chats.find(c => c.id === chatId);
+        console.log('📍 [ChatStore] Found chat in list:', !!chat);
+
         if (!chat) {
-          // If not found, fetch it
-          const response = await api.get(`/chat/${chatId}`);
+          console.log('📍 [ChatStore] Chat not found, fetching from API');
+          // If not found, fetch it with isolation
+          const response = await requestIsolation.executeIsolatedRequest(
+            async ({ signal }) => {
+              return await api.get(`/chat/${chatId}`, { signal });
+            },
+            {
+              fallbackFn: async () => {
+                // Fallback: return minimal chat object
+                console.warn('[ChatStore] Using fallback chat data');
+                return {
+                  data: {
+                    id: chatId,
+                    name: 'Chat',
+                    unread_count: 0,
+                    chat_type: 'PublicChannel'
+                  }
+                };
+              }
+            }
+          );
+
           const chatData = response.data?.data || response.data;
           if (chatData) {
             const normalizedChat = this._normalizeChat(chatData);
@@ -1239,11 +1367,17 @@ export const useChatStore = defineStore('chat', {
           }
         }
 
+        // ✅ CRITICAL FIX: Always fetch messages for the chat
+        console.log('📍 [ChatStore] About to fetch messages for chat:', chatId);
+        await this.fetchMessages(chatId);
+        console.log('📍 [ChatStore] Messages fetched successfully');
+
         // Mark messages as read
         if (chat && chat.unread_count > 0) {
           await this.markChatAsRead(chatId);
         }
       } catch (error) {
+        console.error('📍 [ChatStore] Error in setCurrentChat:', error);
         errorHandler.handle(error, {
           context: `Set current chat ${chatId}`,
           silent: true
@@ -1258,7 +1392,25 @@ export const useChatStore = defineStore('chat', {
      */
     async fetchChatMembers(chatId) {
       try {
-        const response = await api.get(`/chat/${chatId}/members`);
+        // Use request isolation to prevent extension interference
+        const response = await requestIsolation.executeIsolatedRequest(
+          async ({ signal }) => {
+            return await api.get(`/chat/${chatId}/members`, { signal });
+          },
+          {
+            fallbackFn: async () => {
+              // Fallback: return cached members if available
+              const cachedMembers = this.chatMembers[chatId];
+              if (cachedMembers && cachedMembers.length > 0) {
+                console.log('[ChatStore] Using cached members due to extension conflict');
+                return { data: { data: cachedMembers } };
+              }
+              // Return empty array as last resort
+              return { data: { data: [] } };
+            }
+          }
+        );
+
         const members = response.data?.data || response.data || [];
 
         // Store in chatMembers map
@@ -1456,7 +1608,8 @@ export const useChatStore = defineStore('chat', {
         // Clear messages if it was current chat
         if (this.currentChatId === chatId) {
           this.currentChatId = null;
-          this.messages = [];
+          // Use reactive method instead of direct assignment
+          this.messages.length = 0;
         }
 
         return true;
@@ -1486,7 +1639,8 @@ export const useChatStore = defineStore('chat', {
         // Clear messages if it was current chat
         if (this.currentChatId === chatId) {
           this.currentChatId = null;
-          this.messages = [];
+          // Use reactive method instead of direct assignment
+          this.messages.length = 0;
         }
 
         return true;

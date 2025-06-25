@@ -29,7 +29,7 @@ export async function validateArchitecture() {
     }
 
     // 2. 验证Gateway URL配置
-    const expectedGatewayUrl = 'http://127.0.0.1:8080';
+    const expectedGatewayUrl = 'http://45.77.178.85:8080';
 
     if (config.gateway_url === expectedGatewayUrl) {
       addResult(results, 'success', 'Gateway URL', 'Gateway地址正确', config.gateway_url);
@@ -38,14 +38,15 @@ export async function validateArchitecture() {
     }
 
     // 3. 验证所有端点都指向Gateway
-    const endpoints = [
-      { name: 'API Base URL', key: 'base_url', expected: 'http://127.0.0.1:8080/api' },
-      { name: 'File URL', key: 'file_url', expected: 'http://127.0.0.1:8080/files' },
-      { name: 'SSE URL', key: 'sse_url', expected: 'http://127.0.0.1:8080/events' },
-      { name: 'Notify URL', key: 'notify_url', expected: 'http://127.0.0.1:8080' }
+    const expectedEndpoints = [
+      { name: 'Gateway URL', key: 'gateway_url', expected: 'http://45.77.178.85:8080' },
+      { name: 'API Base URL', key: 'base_url', expected: 'http://45.77.178.85:8080/api' },
+      { name: 'File URL', key: 'file_url', expected: 'http://45.77.178.85:8080/files' },
+      { name: 'SSE URL', key: 'sse_url', expected: 'http://45.77.178.85:8080/events' },
+      { name: 'Notify URL', key: 'notify_url', expected: 'http://45.77.178.85:8080' }
     ];
 
-    endpoints.forEach(endpoint => {
+    expectedEndpoints.forEach(endpoint => {
       if (config[endpoint.key] === endpoint.expected) {
         addResult(results, 'success', endpoint.name, '端点配置正确', config[endpoint.key]);
       } else {
@@ -57,25 +58,25 @@ export async function validateArchitecture() {
     // 4. 验证Vite代理配置（运行时检测）
     if (import.meta.env.DEV) {
       try {
-        // 检查代理是否工作 - 这里故意使用相对URL来测试Vite代理
-        const proxyTest = await fetch('/api/health', {
+        // 检查代理是否工作 - 使用相对URL测试Vite代理
+        const proxyTest = await fetch('/health', {
           method: 'HEAD',
           timeout: 3000
         }).catch(() => null);
 
         if (proxyTest && proxyTest.ok) {
-          addResult(results, 'success', 'Vite Proxy', 'API代理工作正常', '/api -> Gateway');
+          addResult(results, 'success', 'Vite Proxy', 'Health代理工作正常', '/health -> Gateway');
         } else {
-          // 如果代理不工作，测试直接连接Gateway
-          const directTest = await fetch('http://127.0.0.1:8080/health', {
+          // 如果代理不工作，测试直接连接Gateway（仅用于诊断）
+          const directTest = await fetch('/health', {
             method: 'HEAD',
             timeout: 3000
           }).catch(() => null);
-          
-          if (directTest && directTest.ok) {
-            addResult(results, 'warning', 'Vite Proxy', 'Gateway运行但代理有问题', '请检查vite.config.js proxy配置');
+
+          if (directTest) {
+            addResult(results, 'warning', 'Vite Proxy', 'Health端点可访问但可能有配置问题', '请检查vite.config.js proxy配置');
           } else {
-            addResult(results, 'error', 'Vite Proxy', 'Gateway未运行', '请先启动Gateway');
+            addResult(results, 'error', 'Vite Proxy', 'Health端点不可访问', '请检查Gateway是否运行和代理配置');
           }
         }
       } catch (error) {
@@ -126,9 +127,9 @@ export async function testConnectionPaths() {
 
   const tests = [
     {
-      name: 'Gateway Health Check',
-      url: 'http://127.0.0.1:8080/health',
-      description: '测试Gateway健康检查'
+      name: 'Gateway Health Check (via proxy)',
+      url: '/health',
+      description: '测试Gateway健康检查（通过vite代理）'
     },
     {
       name: 'API通过Gateway',
@@ -137,8 +138,8 @@ export async function testConnectionPaths() {
     },
     {
       name: 'SSE通过Gateway',
-      url: 'http://127.0.0.1:8080/events',
-      description: '测试SSE端点是否可达',
+      url: '/events',
+      description: '测试SSE端点是否可达（通过vite代理）',
       method: 'HEAD'
     }
   ];

@@ -1,0 +1,150 @@
+server:
+  port: 6688
+  db_url: ${DATABASE_URL}
+  base_dir: "/data/uploads"
+  max_upload_size: 10485760
+  request_timeout_ms: 30000
+  analytics:
+    enabled: ${ANALYTICS_ENABLED:-true}
+    endpoint: "http://localhost:6690"
+    batch_size: 100
+    flush_interval_seconds: 30
+    timeout_seconds: 10
+    use_grpc: false
+
+  # Production CORS configuration
+  cors:
+    enabled: true
+    allow_origins:
+    - "https://*.fly.dev"
+    - "https://localhost:*"
+    - ${FRONTEND_URL:-https://fechatter.fly.dev}
+    allow_methods: [ "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS" ]
+    allow_headers: [ "Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin" ]
+    allow_credentials: true
+    max_age: 3600
+
+auth:
+  sk: |
+    -----BEGIN PRIVATE KEY-----
+    MC4CAQAwBQYDK2VwBCIEIP/S+etN7RQJctehWKkdjgnrtQ0AUDIMkCnYS4Zk8RFR
+    -----END PRIVATE KEY-----
+  pk: |
+    -----BEGIN PUBLIC KEY-----
+    MCowBQYDK2VwAyEAMnnmEdL53E3O5UTdVW/VEs9qT6To/48iU7jWpKuVb2c=
+    -----END PUBLIC KEY-----
+  token_expiration: 86400
+  refresh_token_expiration: 2592000
+
+# Production feature configurations
+features:
+  # Cache settings (Fly Redis)
+  cache:
+    enabled: true
+    redis_url: ${REDIS_URL}
+    key_prefix: "fechatter"
+    default_ttl: 3600
+    pool_size: 10
+    connection_timeout_ms: 5000
+
+  # Search functionality (optional external service)
+  search:
+    enabled: ${SEARCH_ENABLED:-false}
+    provider: "meilisearch"
+    meilisearch_url: ${MEILISEARCH_URL:-}
+    meilisearch_api_key: ${MEILISEARCH_KEY:-}
+    async_indexing: true
+    batch_size: 100
+
+  # Messaging/Events (optional external service)
+  messaging:
+    enabled: ${MESSAGING_ENABLED:-false}
+    provider: "nats"
+    nats_url: ${NATS_URL:-}
+    jetstream_enabled: ${JETSTREAM_ENABLED:-false}
+
+  # Message Service Configuration
+  message_service:
+    max_concurrent_sends_per_chat: 10
+    send_timeout_seconds: 30
+    cache_timeout_ms: 500
+    event_publish_timeout_seconds: 5
+    stream_publish_timeout_seconds: 5
+    enable_detailed_tracing: false
+    max_retry_attempts: 3
+    retry_backoff_base_ms: 100
+
+  # Notifications (simplified for production)
+  notifications:
+    in_app_enabled: true
+    realtime_enabled: true
+    max_per_user: 100
+    retention_days: 30
+    email_enabled: false
+
+  # Production observability
+  observability:
+    log_level: ${RUST_LOG:-info}
+    log_format: "json"
+    log_to_file: true
+    log_file_path: "/data/logs/fechatter.log"
+    metrics_enabled: true
+    metrics_bind_address: "0.0.0.0:9091"
+    tracing_enabled: false
+    service_name: "fechatter-server"
+    service_version: "0.1.0"
+    environment: "production"
+
+  # Rate limiting for production
+  rate_limiting:
+    enabled: true
+    window_seconds: 60
+    max_requests: 1000
+    sliding_window: true
+    strategy: "UserBased"
+
+# Simplified messaging for standalone deployment
+messaging:
+  enabled: ${MESSAGING_ENABLED:-false}
+  provider: "nats"
+  nats:
+    url: ${NATS_URL:-}
+    auth:
+      enabled: false
+    subjects:
+      message_created: "fechatter.messages.created"
+      message_updated: "fechatter.messages.updated"
+      message_deleted: "fechatter.messages.deleted"
+      chat_created: "fechatter.chats.created"
+      chat_updated: "fechatter.chats.updated"
+      chat_deleted: "fechatter.chats.deleted"
+      user_joined_chat: "fechatter.chats.member.joined"
+      user_left_chat: "fechatter.chats.member.left"
+
+# Optional search configuration
+search:
+  enabled: ${SEARCH_ENABLED:-false}
+  provider: "meilisearch"
+  async_indexing:
+    enabled: ${SEARCH_ENABLED:-false}
+    batch_size: 10
+    batch_timeout_ms: 1000
+  meilisearch:
+    url: ${MEILISEARCH_URL:-}
+    api_key: ${MEILISEARCH_KEY:-}
+    connection_timeout_ms: 2000
+    request_timeout_ms: 3000
+
+# In-app notifications only for production
+notification:
+  in_app:
+    enabled: true
+    realtime_enabled: true
+    max_notifications_per_user: 100
+    retention_days: 30
+  push:
+    enabled: false
+  delivery:
+    max_retries: 3
+    retry_delay_seconds: 5
+    batch_size: 10

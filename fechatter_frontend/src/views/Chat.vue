@@ -5,8 +5,10 @@
       <div class="chat-header-info">
         <div class="chat-title">
           <span class="channel-prefix">
-            <svg v-if="currentChat?.chat_type === 'PrivateChannel'" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+            <svg v-if="currentChat?.chat_type === 'PrivateChannel'" width="16" height="16" viewBox="0 0 24 24"
+              fill="currentColor">
+              <path
+                d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
             </svg>
             <span v-else class="font-bold text-lg">#</span>
           </span>
@@ -16,38 +18,38 @@
           {{ currentChat.description }}
         </div>
       </div>
-      
+
       <div class="chat-header-actions">
         <!-- Online Users -->
-        <OnlineUsers 
-          :chat-id="currentChatId"
-          :workspace-id="workspaceStore.activeWorkspaceId"
-          @user-clicked="handleUserProfileOpened"
-        />
-        
+        <OnlineUsers :chat-id="currentChatId" :workspace-id="workspaceStore.activeWorkspaceId"
+          @user-clicked="handleUserProfileOpened" />
+
         <!-- Member Count -->
         <div class="header-action" :title="`${chatMembers.length} members`">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            <path
+              d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
           </svg>
           <span>{{ chatMembers.length }}</span>
         </div>
-        
+
         <!-- Search -->
         <button class="header-action" @click="handleSearchClick" title="Search in channel (Ctrl+F)">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            <path
+              d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
           </svg>
         </button>
-        
+
         <!-- More Actions -->
         <div class="chat-dropdown">
           <button class="header-action" @click="showMoreMenu = !showMoreMenu" title="More actions">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+              <path
+                d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
             </svg>
           </button>
-          
+
           <!-- More Menu -->
           <div v-if="showMoreMenu" class="chat-dropdown-menu">
             <div class="chat-menu-item" @click="showMemberManagement = true; showMoreMenu = false">
@@ -74,69 +76,40 @@
       </div>
 
       <!-- Messages -->
-      <MessageList
-        v-else
-        :messages="chatStore.messages"
-        :current-user-id="authStore.user?.id || 0"
-        :chat-id="currentChatId"
-        :loading="chatStore.loading"
-        @load-more-messages="handleLoadMoreMessages"
-        @user-profile-opened="handleUserProfileOpened"
-        @dm-created="handleDMCreated"
-        ref="messageListRef"
-        class="message-list"
-      />
+      <MessageList v-else :messages="chatStore.messages" :current-user-id="authStore.user?.id || 0"
+        :chat-id="currentChatId" :loading="chatStore.loading" @load-more-messages="handleLoadMoreMessages"
+        @user-profile-opened="handleUserProfileOpened" @dm-created="handleDMCreated" ref="messageListRef"
+        class="message-list" />
     </div>
 
     <!-- Typing Indicator (Only for DM/Single chats) -->
-    <TypingIndicator 
-      v-if="currentChatId && currentChat?.chat_type === 'Single'"
-      :chat-id="currentChatId"
-      :current-user-id="authStore.user?.id || 0"
-    />
+    <TypingIndicator v-if="currentChatId && currentChat?.chat_type === 'Single'" :chat-id="currentChatId"
+      :current-user-id="authStore.user?.id || 0" />
 
     <!-- Message Input -->
     <div class="input-container">
-      <MessageInput 
-        @send="handleSendMessage" 
-        :placeholder="`Message #${currentChat?.name || 'channel'}`"
-        :chat-id="currentChatId"
-        :chat-type="currentChat?.chat_type"
-        class="message-input"
-      />
+      <MessageInput @send="handleSendMessage" :placeholder="`Message #${currentChat?.name || 'channel'}`"
+        :chat-id="currentChatId" :chat-type="currentChat?.chat_type" class="message-input" />
     </div>
 
     <!-- User Profile Modal -->
-    <UserProfile 
-      v-if="selectedUserProfile"
-      :user="selectedUserProfile"
-      @close="selectedUserProfile = null"
-      @dm-created="handleDMCreated"
-    />
+    <UserProfile v-if="selectedUserProfile" :user="selectedUserProfile" @close="selectedUserProfile = null"
+      @dm-created="handleDMCreated" />
 
     <!-- Modals -->
 
     <!-- Member Management Modal -->
     <div v-if="showMemberManagement" class="chat-modal-overlay" @click="showMemberManagement = false">
       <div class="chat-modal" @click.stop>
-        <MemberManagement 
-          :chat="currentChat" 
-          @close="showMemberManagement = false"
-          @updated="handleMembersUpdated"
-          @dm-created="handleDMCreated"
-        />
+        <MemberManagement :chat="currentChat" @close="showMemberManagement = false" @updated="handleMembersUpdated"
+          @dm-created="handleDMCreated" />
       </div>
     </div>
 
     <!-- Search Modal -->
-    <ChatSearchModal
-      :model-value="showSearchModal"
-      @update:model-value="showSearchModal = $event"
-      :chat-id="currentChatId"
-      :chat-name="currentChat?.name"
-      :chat-members="chatMembers"
-      @select-message="handleSearchMessageSelect"
-    />
+    <ChatSearchModal :model-value="showSearchModal" @update:model-value="showSearchModal = $event"
+      :chat-id="currentChatId" :chat-name="currentChat?.name" :chat-members="chatMembers"
+      @select-message="handleSearchMessageSelect" />
 
     <!-- Chat Settings Modal -->
     <div v-if="showChatSettings" class="chat-modal-overlay" @click="showChatSettings = false">
@@ -145,7 +118,8 @@
           <h3>Channel Settings</h3>
           <button @click="showChatSettings = false" class="chat-modal-close">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              <path
+                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
             </svg>
           </button>
         </div>
@@ -155,12 +129,12 @@
               <label>Channel Name</label>
               <input v-model="editChatName" class="chat-input">
             </div>
-            
+
             <div class="chat-form-group">
               <label>Description</label>
               <textarea v-model="editChatDescription" class="chat-input" rows="3"></textarea>
             </div>
-            
+
             <div class="chat-settings-info">
               <h4>Channel Information</h4>
               <div class="chat-info-grid">
@@ -182,7 +156,7 @@
                 </div>
               </div>
             </div>
-            
+
             <div v-if="canDeleteChat" class="chat-danger-zone">
               <h4>Danger Zone</h4>
               <button @click="confirmDeleteChat" class="chat-btn-danger">
@@ -207,16 +181,17 @@
 <script setup>
 import { ref, onMounted, watch, computed, nextTick, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useChatStore } from '../stores/chat';
-import { useAuthStore } from '../stores/auth';
-import { useWorkspaceStore } from '../stores/workspace';
-import MessageList from '../components/chat/MessageList.vue';
-import MessageInput from '../components/chat/MessageInput.vue';
-import MemberManagement from '../components/chat/MemberManagement.vue';
-import ChatSearchModal from '../components/chat/ChatSearchModal.vue';
-import TypingIndicator from '../components/chat/TypingIndicator.vue';
-import OnlineUsers from '../components/chat/OnlineUsers.vue';
-import UserProfile from '../components/modals/UserProfile.vue';
+import { useChatStore } from '@/stores/chat';
+import { useAuthStore } from '@/stores/auth';
+import { useWorkspaceStore } from '@/stores/workspace';
+import { useUserStore } from '@/stores/user';
+import MessageList from '@/components/chat/MessageList.vue';
+import MessageInput from '@/components/chat/MessageInput.vue';
+import MemberManagement from '@/components/chat/MemberManagement.vue';
+import ChatSearchModal from '@/components/chat/ChatSearchModal.vue';
+import TypingIndicator from '@/components/chat/TypingIndicator.vue';
+import OnlineUsers from '@/components/chat/OnlineUsers.vue';
+import UserProfile from '@/components/modals/UserProfile.vue';
 import api from '../services/api';
 
 const route = useRoute();
@@ -224,6 +199,7 @@ const router = useRouter();
 const chatStore = useChatStore();
 const authStore = useAuthStore();
 const workspaceStore = useWorkspaceStore();
+const userStore = useUserStore();
 
 // Reactive state
 const showMemberManagement = ref(false);
@@ -258,33 +234,24 @@ const chatOwner = computed(() => {
 });
 
 const canDeleteChat = computed(() => {
-  return currentChat.value && 
-         authStore.user?.id === currentChat.value.owner_id;
+  return currentChat.value &&
+    authStore.user?.id === currentChat.value.owner_id;
 });
 
 // Lifecycle hooks
 onMounted(async () => {
-  if (!authStore.token) {
-    router.push('/login');
-    return;
-  }
-  
-  if (route.params.id) {
-    await loadChatData();
-  }
-  
   // Add keyboard shortcut for search
   document.addEventListener('keydown', handleKeyDown);
-  
+
   // Listen for global keyboard shortcut events
   window.addEventListener('fechatter:open-search', () => {
     handleSearchClick();
   });
-  
+
   window.addEventListener('fechatter:show-chat-info', () => {
     showChatSettings.value = true;
   });
-  
+
   window.addEventListener('fechatter:cancel-action', () => {
     // Close any open modals or reset states
     showSearchModal.value = false;
@@ -292,7 +259,7 @@ onMounted(async () => {
     showChatSettings.value = false;
     showMoreMenu.value = false;
   });
-  
+
   window.addEventListener('fechatter:toggle-members-list', () => {
     showMemberManagement.value = !showMemberManagement.value;
   });
@@ -302,13 +269,13 @@ onMounted(async () => {
 const handleKeyDown = (event) => {
   // Don't interfere with the global shortcut system for most keys
   // Only handle very specific chat-context shortcuts here
-  
+
   // Ctrl/Cmd + F or Ctrl/Cmd + K for search (legacy support)
   if ((event.ctrlKey || event.metaKey) && (event.key === 'f' || event.key === 'k')) {
     event.preventDefault();
     handleSearchClick();
   }
-  
+
   // Escape to close modals or cancel actions
   if (event.key === 'Escape') {
     if (showSearchModal.value) {
@@ -347,23 +314,23 @@ async function handleSearchClick() {
       token: !!sessionStorage.getItem('token')
     }
   });
-  
+
   if (!authStore.isAuthenticated || !authStore.token) {
     console.error('🔐 User not authenticated - cannot open search');
     router.push('/login');
     return;
   }
-  
+
   // Test auth by making a simple API call
   try {
     const response = await api.get('/workspaces');
-    } catch (error) {
+  } catch (error) {
     console.error('❌ Auth test failed:', {
       status: error.response?.status,
       data: error.response?.data,
       headers: error.config?.headers
     });
-    
+
     if (error.response?.status === 401) {
       console.error('🔐 Token is invalid or expired');
       authStore.clearAuthState();
@@ -371,47 +338,93 @@ async function handleSearchClick() {
       return;
     }
   }
-  
+
   showSearchModal.value = true;
 }
 
-// 🚀 预加载机制：当鼠标悬停在聊天链接上时预加载
-const preloadChatData = async (chatId) => {
-  if (!chatId || chatStore.messageCache[chatId]) {
-    return; // 已有缓存，无需预加载
-  }
-  
+// Helper function to check if chat is a preview
+function isPreviewChat(chatId) {
+  return String(chatId).startsWith('preview-dm-');
+}
+
+// 🚀 智能预加载：提升聊天切换速度
+async function preloadChatData(chatId) {
+  if (!chatId || chatStore.messageCache[chatId]) return;
+
   try {
-    // 在后台预加载数据
+    // 在后台预加载消息，不影响当前操作
     await chatStore.fetchMessages(chatId, 10); // 预加载少量消息
   } catch (error) {
-    console.warn('预加载失败:', error);
+    console.debug('预加载失败，不影响使用:', error);
   }
-};
+}
 
-// 🚀 性能优化：防抖路由变化，避免快速切换时的重复加载
-let routeChangeTimeout = null;
-watch(() => route.params.id, async (newId, oldId) => {
-  if (newId && newId !== oldId) {
-    // 清除之前的定时器
-    if (routeChangeTimeout) {
-      clearTimeout(routeChangeTimeout);
+// 🚀 Optimized chat data loading with extension conflict handling
+async function loadChatData(chatId) {
+  if (!chatId) return;
+
+  // Handle preview chats (temporary DMs)
+  if (isPreviewChat(chatId)) {
+    const previewChat = chatStore.chats.find(c => c.id === chatId);
+    if (previewChat) {
+      chatStore.messages = [];
+      chatStore.currentChatId = chatId;
+      chatStore.setCurrentChat(chatId);
     }
+    return;
+  }
+
+  // Convert to number for regular chats
+  const numericChatId = parseInt(chatId, 10);
+
+  // Load messages directly with enhanced error handling
+  try {
+    // Set current chat first - this will also fetch messages
+    await chatStore.setCurrentChat(numericChatId);
+
+    // Load members in background
+    loadChatMembersIfNeeded(numericChatId);
+
+    // Scroll to bottom after loading
+    await nextTick();
+    if (messageListRef.value) {
+      messageListRef.value.scrollToBottom(false);
+    }
+  } catch (error) {
+    console.error('Failed to load chat data:', error);
     
-    // Handle cleanup of temporary DM previews
-    if (oldId && String(oldId).startsWith('preview-dm-')) {
-      const previousChat = chatStore.getChatById(oldId);
-      if (previousChat && previousChat.is_preview) {
-        chatStore.removeTemporaryDM(oldId);
+    // Check if we can recover from cache
+    const cachedMessages = chatStore.messageCache[numericChatId];
+    if (cachedMessages && cachedMessages.messages.length > 0) {
+      console.log('📦 Recovered from cache after error');
+      // Messages should already be loaded from cache by store
+    } else {
+      // Show user-friendly error
+      if (window.errorHandler?.showNotification) {
+        window.errorHandler.showNotification('error', 
+          'Unable to load messages. Please check your browser extensions and try again.');
       }
     }
-    
-    // Debounce the new chat loading
-    routeChangeTimeout = setTimeout(async () => {
-      await loadChatData();
-    }, 50); // 50ms防抖
   }
-});
+}
+
+// 🚀 性能优化：防抖路由变化，避免快速切换时的重复加载
+let routeChangeTimer = null;
+watch(() => route.params.id, (newId, oldId) => {
+  // Skip if same ID
+  if (newId === oldId) return;
+  
+  if (routeChangeTimer) {
+    clearTimeout(routeChangeTimer);
+  }
+
+  routeChangeTimer = setTimeout(() => {
+    if (newId) {
+      console.log('🔄 [Chat.vue] Route changed, loading chat:', newId);
+      loadChatData(newId);
+    }
+  }, 50); // 50ms防抖
+}, { immediate: true });
 
 watch(currentChat, (newChat) => {
   if (newChat) {
@@ -434,78 +447,32 @@ const handleClickOutside = (event) => {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
-  document.addEventListener('keydown', handleKeyDown);
 });
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
-  document.removeEventListener('keydown', handleKeyDown);
-  
+
   // Remove global keyboard shortcut event listeners
   window.removeEventListener('fechatter:open-search', handleSearchClick);
-  window.removeEventListener('fechatter:show-chat-info', () => {});
-  window.removeEventListener('fechatter:cancel-action', () => {});
-  window.removeEventListener('fechatter:toggle-members-list', () => {});
-  
+  window.removeEventListener('fechatter:show-chat-info', () => { });
+  window.removeEventListener('fechatter:cancel-action', () => { });
+  window.removeEventListener('fechatter:toggle-members-list', () => { });
+
   // 🚀 清理定时器
-  if (routeChangeTimeout) {
-    clearTimeout(routeChangeTimeout);
+  if (routeChangeTimer) {
+    clearTimeout(routeChangeTimer);
   }
 });
 
 // Methods
-async function loadChatData() {
-  if (!currentChatId.value) return;
-
-  const chatId = currentChatId.value;
-  const chat = chatStore.getChatById(chatId);
-
-  // Handle preview chats: they have no server messages.
-  if (chat && chat.is_preview) {
-    chatStore.messages = [];
-    chatStore.hasMoreMessages = false;
-    chatStore.currentChatId = chatId;
-    return;
-  }
-
-  // Handle real chats
-  try {
-    // 1. Check for a valid cache first.
-    const cachedData = chatStore.messageCache[chatId];
-    const hasValidCache = cachedData && (Date.now() - cachedData.timestamp) < chatStore.cacheTimeout;
-
-    if (hasValidCache) {
-      chatStore.messages = cachedData.messages;
-      chatStore.hasMoreMessages = cachedData.hasMoreMessages;
-    } else {
-      // 2. If no valid cache, clear previous messages and fetch from server.
-      chatStore.clearMessages();
-      await chatStore.fetchMessages(chatId, 15);
-    }
-
-    // 3. Set the current chat and load members in the background.
-    chatStore.setCurrentChat(chatId);
-    loadChatMembersIfNeeded(chatId);
-
-    // 4. Scroll to bottom after messages are loaded.
-    await nextTick();
-    if (messageListRef.value) {
-      messageListRef.value.scrollToBottom(false);
-    }
-  } catch (error) {
-    console.error('Failed to load chat data:', error);
-  } finally {
-    }
-}
-
 async function loadChatMessages() {
   if (!currentChatId.value) return;
-  
+
   try {
     await chatStore.fetchMessages(currentChatId.value, 15);
-    } catch (error) {
+  } catch (error) {
     console.error('Failed to load chat messages:', error);
-    }
+  }
 }
 
 // 🚀 新增：智能成员加载
@@ -513,13 +480,13 @@ async function loadChatMembersIfNeeded(chatId) {
   try {
     // 检查是否已有成员缓存
     const existingMembers = chatStore.getChatMembers(chatId);
-    
+
     if (existingMembers && existingMembers.length > 0) {
       return;
     }
-    
+
     await chatStore.fetchChatMembers(chatId);
-    } catch (error) {
+  } catch (error) {
     console.error('Failed to load chat members:', error);
   }
 }
@@ -536,13 +503,13 @@ async function loadChatMembers() {
 }
 
 async function handleSendMessage({ content, files }) {
-  console.log('📮 [Chat.vue] handleSendMessage called:', { 
+  console.log('📮 [Chat.vue] handleSendMessage called:', {
     currentChatId: currentChatId.value,
     content,
     filesCount: files?.length || 0,
     chatStore_currentChatId: chatStore.currentChatId
   });
-  
+
   if (!currentChatId.value || (!content.trim() && files.length === 0)) return;
 
   const chat = currentChat.value;
@@ -555,7 +522,7 @@ async function handleSendMessage({ content, files }) {
       console.error("Could not find the other user in the preview chat.");
       return;
     }
-    
+
     try {
       // Create the actual chat
       const newChat = await chatStore.createChat(
@@ -564,10 +531,10 @@ async function handleSendMessage({ content, files }) {
         '',
         'Single'
       );
-      
+
       // Replace the temporary route with the real one
       router.replace(`/chat/${newChat.id}`);
-      
+
       // Send the message to the new chat
       await chatStore.sendMessage(newChat.id, { content, files });
 
@@ -586,7 +553,7 @@ async function handleSendMessage({ content, files }) {
 
 async function updateChat() {
   if (!currentChatId.value) return;
-  
+
   try {
     await chatStore.updateChat(currentChatId.value, editChatName.value, editChatDescription.value);
     showChatSettings.value = false;
@@ -597,10 +564,10 @@ async function updateChat() {
 
 async function confirmDeleteChat() {
   if (!currentChat.value) return;
-  
+
   const confirmed = confirm(`Are you sure you want to delete "${currentChat.value.name}"? This action cannot be undone.`);
   if (!confirmed) return;
-  
+
   try {
     await chatStore.deleteChat(currentChatId.value);
     router.push('/home');
@@ -616,10 +583,10 @@ const handleLeaveChat = () => {
 
 async function confirmLeaveChat() {
   if (!currentChat.value) return;
-  
+
   const confirmed = confirm(`Are you sure you want to leave "${currentChat.value.name}"?`);
   if (!confirmed) return;
-  
+
   try {
     await chatStore.leaveChat(currentChatId.value);
     router.push('/home');
@@ -651,11 +618,11 @@ function handleUserProfileOpened(user) {
 async function handleSearchMessageSelect(event) {
   // Close the search modal first
   showSearchModal.value = false;
-  
+
   // If the message is in a different chat, navigate to it
   if (event.chatId && event.chatId !== currentChatId.value) {
     await router.push(`/chat/${event.chatId}`);
-    
+
     // Wait for the new chat to load
     await nextTick();
     setTimeout(() => {
@@ -866,8 +833,13 @@ async function handleLoadMoreMessages() {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Message Input */
@@ -1202,9 +1174,11 @@ async function handleLoadMoreMessages() {
 
 /* Online status indicator */
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
@@ -1215,6 +1189,7 @@ async function handleLoadMoreMessages() {
   0% {
     background-position: -200px 0;
   }
+
   100% {
     background-position: calc(200px + 100%) 0;
   }
@@ -1237,5 +1212,4 @@ async function handleLoadMoreMessages() {
 .chat-messages-container::-webkit-scrollbar-thumb:hover {
   background: #e1e5e9;
 }
-
 </style>

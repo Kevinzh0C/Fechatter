@@ -165,9 +165,11 @@ const formatTime = (timestamp) => {
   color: rgba(255, 255, 255, 0.95);
 }
 
+/* Keep font weight consistent regardless of unread status
 .channel-item.unread .name-text {
   font-weight: 600;
 }
+*/
 
 .channel-item.muted {
   opacity: 0.5;

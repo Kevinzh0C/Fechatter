@@ -175,8 +175,9 @@ where
       warn!("Token refresh failed: {:?}", e);
       if !has_access_token {
         debug!("No valid refresh token and no authorization token, returning 401");
+        // Fix for development environment - remove Secure flag for HTTP compatibility
         let expired_cookie = format!(
-          "{}=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict; Secure",
+          "{}=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict",
           AUTH_COOKIE_NAME
         );
         let mut response = StatusCode::UNAUTHORIZED.into_response();
@@ -199,9 +200,9 @@ fn create_refresh_cookie(token_data: &RefreshTokenData) -> String {
     .try_into()
     .unwrap_or(0);
 
-  // Set HTTP-only cookie with secure flag
+  // Fix for development environment - remove Secure flag for HTTP compatibility
   format!(
-    "{}={}; Path=/; Max-Age={}; HttpOnly; SameSite=Strict; Secure",
+    "{}={}; Path=/; Max-Age={}; HttpOnly; SameSite=Strict",
     AUTH_COOKIE_NAME, token_data.token, max_age
   )
 }

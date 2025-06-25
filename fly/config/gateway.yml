@@ -1,0 +1,139 @@
+# Gateway Configuration for Fly.io
+server:
+  port: 8080
+  host: 0.0.0.0
+
+  # Request handling
+  request_timeout: 30
+  max_body_size: 10485760 # 10MB
+
+# Upstream services
+upstreams:
+  # Main Fechatter server
+  fechatter:
+    url: http://localhost:6688
+    healthcheck:
+      path: /health
+      interval: 10
+      timeout: 5
+
+  # Analytics server
+  analytics:
+    url: http://localhost:6690
+    healthcheck:
+      path: /health
+      interval: 10
+      timeout: 5
+
+  # Notification server
+  notify:
+    url: http://localhost:6687
+    healthcheck:
+      path: /health
+      interval: 10
+      timeout: 5
+
+  # Bot server
+  bot:
+    url: http://localhost:6686
+    healthcheck:
+      path: /health
+      interval: 10
+      timeout: 5
+
+# Routing rules
+routes:
+# API routes
+- path: /api/v1/auth
+  upstream: fechatter
+  methods: [ GET, POST, PUT, DELETE ]
+
+- path: /api/v1/users
+  upstream: fechatter
+  methods: [ GET, POST, PUT, DELETE ]
+
+- path: /api/v1/chat
+  upstream: fechatter
+  methods: [ GET, POST, PUT, DELETE ]
+
+- path: /api/v1/messages
+  upstream: fechatter
+  methods: [ GET, POST, PUT, DELETE ]
+
+# Analytics routes
+- path: /api/v1/analytics
+  upstream: analytics
+  methods: [ GET, POST ]
+
+# Notification routes
+- path: /api/v1/notifications
+  upstream: notify
+  methods: [ GET, POST ]
+
+- path: /sse
+  upstream: notify
+  methods: [ GET ]
+  websocket: true
+
+# Bot routes
+- path: /api/v1/bot
+  upstream: bot
+  methods: [ GET, POST ]
+
+# Health check
+- path: /health
+  handler: health
+
+# Metrics
+- path: /metrics
+  handler: metrics
+
+# Features
+features:
+  # Load balancing
+  load_balancing:
+    enabled: true
+    algorithm: round_robin
+
+  # Circuit breaker
+  circuit_breaker:
+    enabled: true
+    failure_threshold: 5
+    timeout: 30
+
+  # Request/Response modification
+  transformations:
+    enabled: true
+    add_headers:
+      X-Gateway: "Fechatter-Gateway"
+
+# Security
+security:
+  # CORS
+  cors:
+    enabled: true
+    allow_origins: [ "*" ]
+    allow_methods: [ GET, POST, PUT, DELETE, OPTIONS ]
+    allow_headers: [ Content-Type, Authorization ]
+
+  # Rate limiting
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 100
+    burst_size: 20
+
+  # Authentication
+  auth:
+    enabled: false # Gateway passes through auth
+
+# Observability
+observability:
+  log_level: info
+  log_format: json
+
+  metrics:
+    enabled: true
+    port: 9091
+
+  tracing:
+    enabled: false
