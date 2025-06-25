@@ -1,0 +1,16 @@
+{
+  "data": {
+    "chat_type": "Group",
+    "created_at": "2025-06-14T15:38:50.406808Z",
+    "created_by": 2,
+    "description": "关于最新会议布置的讨论",
+    "id": 2,
+    "last_activity": "2025-06-14T15:38:50.406808Z",
+    "member_count": 3,
+    "name": "会议安排讨论组",
+    "updated_at": "2025-06-14T15:38:50.406808Z",
+    "workspace_id": 2
+  },
+  "message": "Chat created successfully",
+  "success": true
+}

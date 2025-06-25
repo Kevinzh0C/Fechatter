@@ -1,0 +1,10 @@
+# Fechatter x86_64 Binary Manifest
+# Generated: Wed Jun 11 07:53:51 JST 2025
+# Target: x86_64-unknown-linux-musl
+
+fechatter_server/fechatter_server  37a533bd53cfdebd1dcbf6e5ced52417c588ecfd6f9af069cd1cb21081ef4e71
+analytics_server/analytics_server  3585351f9248b7068a71f299ff6b9e479e3b89a877233c18b31e3213ffeb0ca5
+notify_server/notify_server  a5a6ea427ed81fda7a774aada87a8a37916ddd68ee932ebe3a8be15bfc63d87d
+fechatter_gateway/fechatter_gateway  70c4d90646ac4d79f110b50c8fdcad29de0e5967fb4f19fd41efd22a963a213a
+bot_server/bot  4d5cb76b83fa1af8433301dc77d728b3c4ec427f71c24f3b6c98ab0c97bf1484
+bot_server/indexer  bdb92bf0d51cf59bb4313e517f46ac3087f4067085ee9ba465bcb03226b84a58

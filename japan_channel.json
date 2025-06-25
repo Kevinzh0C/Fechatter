@@ -1,0 +1,16 @@
+{
+  "data": {
+    "chat_type": "PublicChannel",
+    "created_at": "2025-06-14T15:49:54.952184Z",
+    "created_by": 2,
+    "description": "日本市場のビジネス戦略と進捗",
+    "id": 5,
+    "last_activity": "2025-06-14T15:49:54.952184Z",
+    "member_count": 9,
+    "name": "日本市場チャンネル",
+    "updated_at": "2025-06-14T15:49:54.952184Z",
+    "workspace_id": 2
+  },
+  "message": "Chat created successfully",
+  "success": true
+}

@@ -7,16 +7,15 @@
 // Environment Configuration
 // =============================================================================
 
-const config = {
-  // API Configuration
-  api: {
-    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8080/api',
-    sseURL: import.meta.env.VITE_SSE_URL || 'http://127.0.0.1:8080/events',
-    fileBaseURL: import.meta.env.VITE_FILE_BASE_URL || 'http://127.0.0.1:8080/files',
-    timeout: parseInt(import.meta.env.VITE_REQUEST_TIMEOUT) || 15000,
-    maxRetries: parseInt(import.meta.env.VITE_MAX_RETRIES) || 3,
-    retryDelay: parseInt(import.meta.env.VITE_RETRY_DELAY) || 1000,
-  },
+// 统一配置文件 - 通过vite代理访问，避免CORS
+export const config = {
+  // API配置 - 使用相对路径
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  sseURL: import.meta.env.VITE_SSE_URL || '/events',
+  fileBaseURL: import.meta.env.VITE_FILE_BASE_URL || '/files',
+  timeout: parseInt(import.meta.env.VITE_REQUEST_TIMEOUT) || 15000,
+  maxRetries: parseInt(import.meta.env.VITE_MAX_RETRIES) || 3,
+  retryDelay: parseInt(import.meta.env.VITE_RETRY_DELAY) || 1000,
 
   // Application Configuration
   app: {
@@ -155,9 +154,9 @@ export const getConfigSummary = () => {
 
   return {
     api: {
-      baseURL: config.api.baseURL,
-      timeout: config.api.timeout,
-      maxRetries: config.api.maxRetries,
+      baseURL: config.baseURL,
+      timeout: config.timeout,
+      maxRetries: config.maxRetries,
     },
     app: config.app,
     features: config.features,
@@ -175,7 +174,7 @@ export const initializeConfig = () => {
   if (config.dev.debug) {
     console.group('🔧 Fechatter Configuration');
     console.log('Environment:', config.app.environment);
-    console.log('API Base URL:', config.api.baseURL);
+    console.log('API Base URL:', config.baseURL);
     console.log('Features:', config.features);
 
     if (!validation.isValid) {

@@ -5,6 +5,7 @@
 // Import required stores and utilities
 import { useChatStore } from '@/stores/chat';
 import { useAuthStore } from '@/stores/auth';
+import tokenManager from '@/services/tokenManager';
 import { errorHandler } from '@/utils/errorHandler';
 import { createSSEErrorHandler } from '@/composables/useSSEErrorSuppression';
 import sseGlobalManager from '@/utils/SSEGlobalManager';
@@ -22,7 +23,6 @@ class RealtimeCommunicationService {
     // 🚨 全局管理器集成
     this.connectionId = null;
     this.isGloballyBanned = false;
-    this.isPaused = false;
 
     // 新增：重试控制配置
     this.retryControl = {
@@ -116,14 +116,15 @@ class RealtimeCommunicationService {
         throw new Error('SSE connection is globally banned');
       }
 
-      if (this.isPaused) {
-        console.warn('🚨 SSE: Connection is paused, refusing to connect');
-        throw new Error('SSE connection is paused');
-      }
-
       // Check if already connected
       if (this.isConnected && this.eventSource) {
         console.log('🔌 SSE: Already connected');
+        return;
+      }
+
+      // Critical fix: Prevent concurrent connection attempts in singleton
+      if (this.connectionState === 'connecting') {
+        console.warn('🔌 SSE: Connection already in progress, skipping');
         return;
       }
 
@@ -131,13 +132,17 @@ class RealtimeCommunicationService {
       const authStore = useAuthStore();
 
       // Check if token is about to expire (within 5 minutes)
-      if (authStore.shouldRefreshToken || authStore.tokenExpiresIn < 300000) {
+      const tokens = tokenManager.getTokens();
+      const tokenExpiresIn = tokens.expiresAt ? tokens.expiresAt - Date.now() : 0;
+
+      if (tokenManager.shouldRefreshToken() || tokenExpiresIn < 300000) {
         console.log('🔐 SSE: Token is about to expire, refreshing before connection...');
         try {
-          await authStore.refreshToken();
-          // Use the new token after refresh
-          token = authStore.token;
-          console.log('✅ SSE: Token refreshed successfully');
+          await tokenManager.refreshToken();
+          // Fix: Get the new token from tokenManager after refresh
+          const refreshedTokens = tokenManager.getTokens();
+          token = refreshedTokens.accessToken;
+          console.log('✅ SSE: Token refreshed successfully, using fresh token for connection');
         } catch (error) {
           console.error('❌ SSE: Failed to refresh token:', error);
           throw new Error('Failed to refresh token for SSE connection');
@@ -145,7 +150,7 @@ class RealtimeCommunicationService {
       }
 
       // Check if token is already expired
-      if (authStore.isTokenExpired) {
+      if (tokenManager.isTokenExpired()) {
         console.error('❌ SSE: Token is expired, cannot establish connection');
         throw new Error('Token is expired');
       }
@@ -173,8 +178,8 @@ class RealtimeCommunicationService {
 
         const apiConfig = getApiConfig();
 
-        // Validate SSE URL configuration
-        let sseUrl = apiConfig.sse_url || 'http://127.0.0.1:8080/events';
+        // Validate SSE URL configuration - 使用相对路径通过vite代理
+        let sseUrl = apiConfig.sse_url || '/events';
 
         if (!sseUrl) {
           throw new Error('SSE URL not configured');
@@ -200,7 +205,26 @@ class RealtimeCommunicationService {
         } catch (error) {
           console.error('🚨 Failed to register with global manager:', error.message);
           this.isGloballyBanned = true;
+          // Critical fix: Ensure eventSource is cleaned up if registration fails
+          if (this.eventSource) {
+            try {
+              this.eventSource.close();
+            } catch (closeError) {
+              console.warn('Error closing EventSource after registration failure:', closeError);
+            }
+            this.eventSource = null;
+          }
           throw error;
+        }
+
+        // Critical fix: Verify eventSource still exists after global manager registration
+        if (!this.eventSource) {
+          throw new Error('EventSource was terminated by global manager during registration');
+        }
+
+        // Critical fix: Double-check connection state before setting handlers
+        if (this.connectionState !== 'connecting') {
+          throw new Error(`Connection state changed unexpectedly: ${this.connectionState}`);
         }
 
         this.eventSource.onopen = this.handleOpen.bind(this);
@@ -236,6 +260,12 @@ class RealtimeCommunicationService {
    * Set up SSE event listeners
    */
   setupEventListeners() {
+    // Critical fix: Ensure eventSource exists before setting up listeners
+    if (!this.eventSource) {
+      console.warn('🔌 SSE: Cannot set up event listeners - eventSource is null');
+      return;
+    }
+
     // New message event
     this.eventSource.addEventListener('NewMessage', (event) => {
       try {
@@ -468,13 +498,20 @@ class RealtimeCommunicationService {
     if (error.type === 'error' && this.eventSource && this.eventSource.readyState === EventSource.CLOSED) {
       // SSE doesn't provide status codes directly, but we can infer 401 from the connection state
       console.warn('🔐 SSE: Connection closed, possibly due to authentication failure');
-      
+
       // Try to refresh token before giving up
       const authStore = useAuthStore();
-      if (authStore.tokens.refreshToken && !authStore.isRefreshing) {
+
+      // Fix: Use tokenManager to get refresh token instead of authStore.tokens
+      const tokens = tokenManager.getTokens();
+      const hasRefreshToken = !!tokens.refreshToken;
+      const isRefreshing = authStore.isRefreshing || false;
+
+      if (hasRefreshToken && !isRefreshing) {
         console.log('🔐 SSE: Attempting to refresh token after connection failure...');
-        
-        authStore.refreshToken().then(() => {
+
+        // Fix: Use tokenManager.refreshToken() for consistency
+        tokenManager.refreshToken().then(() => {
           console.log('✅ SSE: Token refreshed after 401, will reconnect with new token');
           // Reset consecutive failures since this is a token issue, not a network issue
           this.retryControl.consecutiveFailures = 0;
@@ -485,7 +522,7 @@ class RealtimeCommunicationService {
           // Continue with normal error handling
           this.handleErrorInternal(error);
         });
-        
+
         // Stop further processing while we try to refresh
         return;
       }
@@ -601,8 +638,18 @@ class RealtimeCommunicationService {
    */
   async sendPresenceUpdate(status = 'online') {
     try {
-      const authStore = useAuthStore();
-      if (!authStore.token) return;
+      // Check if we're on auth pages - don't send presence updates
+      if (window.location.pathname === '/login' ||
+        window.location.pathname === '/register' ||
+        window.location.pathname === '/forgot-password' ||
+        window.location.pathname === '/reset-password') {
+        console.log('📡 [SSE] Skipping presence update on auth page');
+        return;
+      }
+
+      // Fix: Use tokenManager for consistent token access
+      const tokens = tokenManager.getTokens();
+      if (!tokens.accessToken) return;
 
       // Import API service
       const { default: api } = await import('@/services/api');
@@ -677,53 +724,12 @@ class RealtimeCommunicationService {
   }
 
   /**
-   * 🚨 暂停连接 (由全局管理器调用)
-   */
-  pause() {
-    console.log('🚨 SSE: Pausing connection');
-    this.isPaused = true;
-
-    if (this.eventSource) {
-      try {
-        this.eventSource.close();
-      } catch (error) {
-        console.warn('Error closing EventSource in pause:', error);
-      }
-      this.eventSource = null;
-    }
-
-    this.stopHeartbeat();
-    this.isConnected = false;
-    this.connectionState = 'paused';
-  }
-
-  /**
-   * 🚨 恢复连接 (由全局管理器调用)
-   */
-  resume() {
-    console.log('🚨 SSE: Resuming connection');
-    this.isPaused = false;
-
-    if (!this.isGloballyBanned && !this.retryControl.permanentFailure) {
-      const authStore = useAuthStore();
-      if (authStore.token) {
-        this.connect(authStore.token);
-      }
-    }
-  }
-
-  /**
    * Schedule reconnection
    */
   scheduleReconnect() {
     // 🚨 检查全局状态
     if (this.isGloballyBanned) {
       console.warn('🚨 SSE: Skipping reconnect due to global ban');
-      return;
-    }
-
-    if (this.isPaused) {
-      console.warn('🚨 SSE: Skipping reconnect due to pause state');
       return;
     }
 
@@ -754,8 +760,10 @@ class RealtimeCommunicationService {
         }
 
         const authStore = useAuthStore();
-        if (authStore.token) {
-          this.connect(authStore.token);
+        // Fix: Get token from tokenManager for consistency
+        const tokens = tokenManager.getTokens();
+        if (tokens.accessToken) {
+          this.connect(tokens.accessToken);
         }
       }, delay);
 
@@ -799,13 +807,15 @@ class RealtimeCommunicationService {
     this.longTermReconnect.timeout = setTimeout(() => {
       if (!this.isConnected && this.longTermReconnect.enabled) {
         const authStore = useAuthStore();
-        if (authStore.token) {
+        // Fix: Get token from tokenManager for consistency
+        const tokens = tokenManager.getTokens();
+        if (tokens.accessToken) {
           // 临时重置短期重试计数器以尝试连接
           const originalAttempts = this.reconnectAttempts;
           this.reconnectAttempts = 0;
           this.reconnectDelay = 1000;
 
-          this.connect(authStore.token).then(() => {
+          this.connect(tokens.accessToken).then(() => {
             // 连接成功会通过 handleOpen 重置状态
           }).catch(() => {
             // 连接失败，恢复原来的状态并继续长期重连
@@ -929,7 +939,6 @@ class RealtimeCommunicationService {
     // 🚨 重置全局状态
     this.connectionId = null;
     this.isGloballyBanned = false;
-    this.isPaused = false;
 
     // 🔧 清理事件监听器
     if (typeof window !== 'undefined' && this.boundHandlers) {
@@ -1070,19 +1079,22 @@ class RealtimeCommunicationService {
    * 🔧 处理页面可见性变化
    */
   handleVisibilityChange() {
-    if (document.hidden) {
-      // 页面隐藏 - 设置为away状态
-      this.sendPresenceUpdate('away');
-    } else {
-      // 页面可见 - 设置为online状态
-      this.sendPresenceUpdate('online');
-    }
+    // Occam's Razor: Don't change presence based on tab visibility
+    // Users often switch tabs while still being active
+    // Only set offline when they actually close the page or disconnect
+
+    // if (document.hidden) {
+    //   this.sendPresenceUpdate('away');
+    // } else {
+    //   this.sendPresenceUpdate('online');
+    // }
   }
 
   /**
    * 🔧 处理窗口获得焦点
    */
   handleWindowFocus() {
+    // Keep user online when they return to the window
     this.sendPresenceUpdate('online');
   }
 
@@ -1090,12 +1102,14 @@ class RealtimeCommunicationService {
    * 🔧 处理窗口失去焦点
    */
   handleWindowBlur() {
-    // 短暂延迟后设置为away，避免快速切换
-    setTimeout(() => {
-      if (!document.hasFocus()) {
-        this.sendPresenceUpdate('away');
-      }
-    }, 1000);
+    // Occam's Razor: Don't set away just because window lost focus
+    // Users might be reading another document or using another app while chatting
+
+    // setTimeout(() => {
+    //   if (!document.hasFocus()) {
+    //     this.sendPresenceUpdate('away');
+    //   }
+    // }, 1000);
   }
 
   /**
@@ -1103,8 +1117,9 @@ class RealtimeCommunicationService {
    */
   handleBeforeUnload() {
     // 同步发送离线状态（使用beacon API避免被阻塞）
-    const authStore = useAuthStore();
-    if (authStore.token && navigator.sendBeacon) {
+    // Fix: Use tokenManager for consistent token access
+    const tokens = tokenManager.getTokens();
+    if (tokens.accessToken && navigator.sendBeacon) {
       try {
         const data = JSON.stringify({
           status: 'offline',
@@ -1167,11 +1182,11 @@ class RealtimeCommunicationService {
       const authStore = useAuthStore();
 
       // Only refresh if connected and token is about to expire
-      if (this.isConnected && authStore.shouldRefreshToken) {
+      if (this.isConnected && tokenManager.shouldRefreshToken()) {
         console.log('🔐 SSE: Refreshing token to maintain connection...');
 
         try {
-          await authStore.refreshToken();
+          await tokenManager.refreshToken();
           console.log('✅ SSE: Token refreshed successfully during active connection');
 
           // Note: We cannot update the existing SSE connection's token
