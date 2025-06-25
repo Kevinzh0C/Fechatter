@@ -1,0 +1,40 @@
+# Staging环境 Kustomize 配置
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# 基础配置
+resources:
+  - ../base
+
+# Staging环境命名空间
+namespace: fechatter-staging
+
+# 通用标签
+commonLabels:
+  environment: staging
+  region: japan
+
+# 名称前缀
+namePrefix: staging-
+
+# 镜像替换
+images:
+  - name: ghcr.io/your-org/fechatter/fechatter_server
+    newTag: staging
+  - name: ghcr.io/your-org/fechatter/fechatter_gateway
+    newTag: staging
+  - name: ghcr.io/your-org/fechatter/notify_server
+    newTag: staging
+
+# 资源配置覆盖
+patchesStrategicMerge:
+  - staging-resources.yaml
+
+# 配置文件替换
+configMapGenerator:
+  - name: app-config
+    literals:
+      - ENVIRONMENT=staging
+      - RUST_LOG=debug
+      - REGION=japan
+      - MAX_CONNECTIONS=20

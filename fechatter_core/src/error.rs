@@ -135,7 +135,8 @@ pub enum ChatValidationError {
   ChatNotFound(String),
 }
 
-/// Core error types that can be mapped to app-specific errors
+/// Core domain error types
+/// These errors represent business domain issues, not technical implementation details
 #[derive(Error, Debug, Clone, Serialize, Deserialize)]
 pub enum CoreError {
   /// Database errors from sqlx
@@ -157,6 +158,22 @@ pub enum CoreError {
   /// Specific validation error for user already exists case
   #[error("user already exists: {0}")]
   UserAlreadyExists(String),
+
+  /// User not found errors
+  #[error("user not found: {0}")]
+  UserNotFound(String),
+
+  /// Chat not found errors  
+  #[error("chat not found: {0}")]
+  ChatNotFound(String),
+
+  /// Foreign key constraint violation errors
+  #[error("referenced resource not found: {0}")]
+  ForeignKeyViolation(String),
+
+  /// Unique constraint violation errors
+  #[error("resource already exists: {0}")]
+  UniqueViolation(String),
 
   /// Not found errors
   #[error("not found: {0}")]
@@ -195,10 +212,69 @@ pub enum CoreError {
   Internal(String),
 }
 
+/// Database error mapping utility
+impl CoreError {
+  /// Map sqlx database errors to specific CoreError variants
+  pub fn from_database_error(error: sqlx::Error) -> Self {
+    if let Some(db_err) = error.as_database_error() {
+      // Handle constraint violations
+      if db_err.is_foreign_key_violation() {
+        return Self::map_foreign_key_error(&error.to_string());
+      }
+
+      if db_err.is_unique_violation() {
+        return Self::map_unique_constraint_error(&error.to_string());
+      }
+
+      // Handle other constraint types
+      if db_err.is_check_violation() {
+        return CoreError::Validation(format!("Data validation failed: {}", db_err.message()));
+      }
+    }
+
+    // Default to generic database error
+    CoreError::Database(error.to_string())
+  }
+
+  /// Map foreign key constraint errors to specific business errors
+  fn map_foreign_key_error(error_msg: &str) -> Self {
+    if error_msg.contains("chat_members_user_id_fkey") {
+      CoreError::UserNotFound("Cannot add user to chat: user does not exist".to_string())
+    } else if error_msg.contains("chat_members_chat_id_fkey") {
+      CoreError::ChatNotFound("Cannot add user to chat: chat does not exist".to_string())
+    } else if error_msg.contains("messages_chat_id_fkey") {
+      CoreError::ChatNotFound("Cannot send message: chat does not exist".to_string())
+    } else if error_msg.contains("messages_sender_id_fkey") {
+      CoreError::UserNotFound("Cannot send message: sender does not exist".to_string())
+    } else if error_msg.contains("refresh_tokens_user_id_fkey") {
+      CoreError::UserNotFound("Cannot create refresh token: user does not exist".to_string())
+    } else if error_msg.contains("users_workspace_id_fkey") {
+      CoreError::NotFound("Cannot create user: workspace does not exist".to_string())
+    } else {
+      // Generic foreign key error
+      CoreError::ForeignKeyViolation(format!("Referenced resource not found: {}", error_msg))
+    }
+  }
+
+  /// Map unique constraint errors to specific business errors  
+  fn map_unique_constraint_error(error_msg: &str) -> Self {
+    if error_msg.contains("users_email_key") {
+      CoreError::UserAlreadyExists("A user with this email already exists".to_string())
+    } else if error_msg.contains("workspaces_name_key") {
+      CoreError::Conflict("A workspace with this name already exists".to_string())
+    } else if error_msg.contains("refresh_tokens_token_hash_key") {
+      CoreError::Conflict("Refresh token already exists".to_string())
+    } else {
+      // Generic unique constraint error
+      CoreError::UniqueViolation(format!("Resource already exists: {}", error_msg))
+    }
+  }
+}
+
 // Implement conversions from common error types to CoreError
 impl From<sqlx::Error> for CoreError {
   fn from(err: sqlx::Error) -> Self {
-    CoreError::Database(err.to_string())
+    CoreError::from_database_error(err)
   }
 }
 

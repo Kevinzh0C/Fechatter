@@ -8,7 +8,7 @@ mod tests {
   use sqlx::PgPool;
 
   use crate::config::AppConfig;
-  use crate::domains::auth::RefreshTokenAdaptor;
+  use crate::domains::auth::RefreshTokenRepositoryImpl;
   use crate::services::ServiceProvider;
   use crate::services::service_provider::ServerTokenService;
   use crate::{AppState, AuthService};
@@ -55,11 +55,13 @@ mod tests {
     let token_service: Box<dyn fechatter_core::TokenService + Send + Sync + 'static> =
       Box::new(ServerTokenService::new(token_manager));
 
-    let refresh_token_repository = Box::new(RefreshTokenAdaptor::new(pool));
+    let refresh_token_repository = Box::new(RefreshTokenRepositoryImpl::new(pool));
 
     // Create a simple event publisher for testing
     let event_publisher = Arc::new(
-      crate::services::application::application_event_publisher::ApplicationEventPublisher::new(),
+      crate::services::infrastructure::flows::events::SimplifiedEventPublisher::new(Arc::new(
+        crate::services::application::CacheStrategyService::new_simple(),
+      )),
     );
 
     AuthService::new(
@@ -132,7 +134,7 @@ mod tests {
     };
 
     // Create a test token manager
-    let refresh_token_repo = Arc::new(RefreshTokenAdaptor::new(pool_arc.clone()));
+    let refresh_token_repo = Arc::new(RefreshTokenRepositoryImpl::new(pool_arc.clone()));
     let token_manager = Arc::new(
       fechatter_core::jwt::TokenManager::from_config(&test_config, refresh_token_repo)
         .expect("Failed to create token manager"),
@@ -192,7 +194,7 @@ mod tests {
     };
 
     // Create a test token manager
-    let refresh_token_repo = Arc::new(RefreshTokenAdaptor::new(Arc::new(pool.clone())));
+    let refresh_token_repo = Arc::new(RefreshTokenRepositoryImpl::new(Arc::new(pool.clone())));
     let token_manager =
       fechatter_core::jwt::TokenManager::from_config(&test_config, refresh_token_repo)
         .expect("Failed to create token manager");

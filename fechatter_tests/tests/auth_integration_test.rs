@@ -58,7 +58,7 @@ mod auth_integration_tests {
 
   // Helper function - extract cookie
   #[allow(dead_code)]
-fn get_cookie<'a>(response: &'a Response, name: &str) -> Option<Cookie<'a>> {
+  fn get_cookie<'a>(response: &'a Response, name: &str) -> Option<Cookie<'a>> {
     response
       .headers()
       .get_all(header::SET_COOKIE)

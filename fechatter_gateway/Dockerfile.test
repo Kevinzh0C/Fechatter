@@ -1,0 +1,19 @@
+# Test Pingora on Linux
+FROM rust:1.75-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy source code
+COPY . .
+
+# Build gateway
+RUN cargo build --release --bin fechatter_gateway
+
+# Test command (will work fine on Linux)
+CMD ["./target/release/fechatter_gateway", "--force-pingora"] 

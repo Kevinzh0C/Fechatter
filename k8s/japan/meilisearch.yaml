@@ -1,0 +1,121 @@
+# Meilisearch - 日本地区优化配置
+# 搜索服务，针对1000人规模优化
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meilisearch
+  namespace: fechatter
+  labels:
+    app: meilisearch
+    version: v1
+    region: japan
+spec:
+  replicas: 1  # 搜索服务1个副本即可
+  strategy:
+    type: Recreate  # 搜索引擎使用Recreate策略
+  selector:
+    matchLabels:
+      app: meilisearch
+  template:
+    metadata:
+      labels:
+        app: meilisearch
+        version: v1
+    spec:
+      containers:
+      - name: meilisearch
+        image: getmeili/meilisearch:v1.5
+        ports:
+        - containerPort: 7700
+        env:
+        - name: MEILI_MASTER_KEY
+          valueFrom:
+            secretKeyRef:
+              name: fechatter-secrets
+              key: meili-master-key
+        - name: MEILI_ENV
+          value: "production"
+        - name: MEILI_DB_PATH
+          value: "/meili_data"
+        - name: MEILI_HTTP_ADDR
+          value: "0.0.0.0:7700"
+        - name: MEILI_LOG_LEVEL
+          value: "INFO"
+        # 日本地区优化配置
+        - name: MEILI_MAX_INDEXING_MEMORY
+          value: "256MB"     # 限制索引内存使用
+        - name: MEILI_MAX_INDEXING_THREADS
+          value: "2"         # 限制索引线程数
+        - name: MEILI_SNAPSHOT_INTERVAL_SEC
+          value: "3600"      # 1小时快照间隔
+        - name: TZ
+          valueFrom:
+            configMapKeyRef:
+              name: timezone-config
+              key: TZ
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi      # 搜索引擎需要较多内存
+        volumeMounts:
+        - name: meilisearch-data
+          mountPath: /meili_data
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 7700
+            httpHeaders:
+            - name: Authorization
+              value: "Bearer $(MEILI_MASTER_KEY)"
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 7700
+            httpHeaders:
+            - name: Authorization
+              value: "Bearer $(MEILI_MASTER_KEY)"
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 2
+      volumes:
+      - name: meilisearch-data
+        persistentVolumeClaim:
+          claimName: meilisearch-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: meilisearch
+  namespace: fechatter
+  labels:
+    app: meilisearch
+spec:
+  type: ClusterIP
+  ports:
+  - port: 7700
+    targetPort: 7700
+    protocol: TCP
+    name: http
+  selector:
+    app: meilisearch
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: meilisearch-data-pvc
+  namespace: fechatter
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi  # 20GB存储，支持1000用户的消息搜索索引
+  storageClassName: gp3  # AWS EBS GP3存储类型

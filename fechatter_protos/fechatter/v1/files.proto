@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+package fechatter.v1;
+
+import "fechatter/v1/core.proto";
+import "google/protobuf/empty.proto";
+
+// 文件服务
+service FileService {
+  // 上传文件
+  rpc UploadFile(stream UploadFileRequest) returns (UploadFileResponse);
+  
+  // 下载文件
+  rpc DownloadFile(DownloadFileRequest) returns (stream DownloadFileResponse);
+  
+  // 获取文件信息
+  rpc GetFileInfo(GetFileInfoRequest) returns (GetFileInfoResponse);
+  
+  // 删除文件
+  rpc DeleteFile(DeleteFileRequest) returns (google.protobuf.Empty);
+  
+  // 获取文件列表
+  rpc ListFiles(ListFilesRequest) returns (ListFilesResponse);
+}
+
+// 上传文件请求
+message UploadFileRequest {
+  oneof data {
+    FileMetadata metadata = 1;
+    FileChunk chunk = 2;
+  }
+}
+
+// 文件元数据
+message FileMetadata {
+  string filename = 1;
+  string content_type = 2;
+  int64 size = 3;
+  int64 chat_id = 4;
+  string checksum = 5;
+}
+
+// 文件块
+message FileChunk {
+  bytes data = 1;
+  int32 chunk_number = 2;
+  bool is_last = 3;
+}
+
+// 上传文件响应
+message UploadFileResponse {
+  string file_id = 1;
+  string url = 2;
+  int64 size = 3;
+  Error error = 4;
+}
+
+// 下载文件请求
+message DownloadFileRequest {
+  string file_id = 1;
+  int64 offset = 2;
+  int64 limit = 3;
+}
+
+// 下载文件响应
+message DownloadFileResponse {
+  oneof data {
+    FileInfo file_info = 1;
+    FileChunk chunk = 2;
+    Error error = 3;
+  }
+}
+
+// 获取文件信息请求
+message GetFileInfoRequest {
+  string file_id = 1;
+}
+
+// 获取文件信息响应
+message GetFileInfoResponse {
+  FileInfo file_info = 1;
+  Error error = 2;
+}
+
+// 删除文件请求
+message DeleteFileRequest {
+  string file_id = 1;
+}
+
+// 文件列表请求
+message ListFilesRequest {
+  int64 chat_id = 1;
+  string content_type = 2;
+  Pagination pagination = 3;
+}
+
+// 文件列表响应
+message ListFilesResponse {
+  repeated FileInfo files = 1;
+  PaginatedResponse pagination = 2;
+  Error error = 3;
+} 

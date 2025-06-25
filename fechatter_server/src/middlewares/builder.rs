@@ -1,6 +1,7 @@
 use axum::{Router, middleware::from_fn};
-use fechatter_core::middlewares::SetLayer as _;
+use fechatter_core::SetLayer as _;
 use std::sync::Arc;
+use tracing::{debug, info};
 
 // Locally define type state markers instead of importing
 // Authentication state markers
@@ -27,257 +28,230 @@ use axum::middleware::Next;
 use axum::response::IntoResponse;
 use fechatter_core::jwt::TokenManager;
 use fechatter_core::middlewares::custom_builder::{add_auth_middleware, add_refresh_middleware};
-use fechatter_core::middlewares::{
-  ActualAuthServiceProvider, TokenVerifier, WithServiceProvider, WithTokenManager,
-};
+use fechatter_core::middlewares::server_time::ServerTimeLayer as _; // Import server time middleware
 use fechatter_core::models::AuthUser;
-use fechatter_core::models::jwt::UserClaims;
 
-/// Helper function to add workspace middleware to a router following the same pattern as core middleware functions
-pub fn add_workspace_middleware<S>(router: Router<S>, state: AppState) -> Router<S>
-where
-  S: Clone + Send + Sync + 'static,
-{
-  // The from_fn middleware expects a function that returns Future<Output = Response>
-  router.layer(from_fn(move |req: Request<Body>, next: Next| {
-    let state_clone = state.clone();
+// ============================================================================
+// Simple Middleware Builder - Essential Features Only
+// ============================================================================
 
-    // We must extract Extension<AuthUser> from the request directly,
-    // as it's added by the auth middleware
-    async move {
-      let extension = req.extensions().get::<AuthUser>().cloned();
-
-      if let Some(auth_user) = extension {
-        // Pass auth_user as Extension
-        with_workspace_context(State(state_clone), Extension(auth_user), req, next).await
-      } else {
-        // Auth user extension is missing, return 401
-        // Return a Response directly
-        StatusCode::UNAUTHORIZED.into_response()
-      }
-    }
-  }))
-}
-
-/// Helper function to add chat membership middleware to a router following the same pattern as core middleware functions
-pub fn add_chat_membership_middleware<S>(router: Router<S>, state: AppState) -> Router<S>
-where
-  S: Clone + Send + Sync + 'static,
-{
-  // Use from_fn_with_state directly for middleware that expects State extractor
-  router.layer(axum::middleware::from_fn_with_state(
-    state,
-    verify_chat_membership_middleware,
-  ))
-}
-
-// Use bit flags to represent applied middleware types
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct MiddlewareFlags(u8);
-
-impl MiddlewareFlags {
-  const NONE: Self = Self(0);
-  const AUTH: Self = Self(1);
-  const REFRESH: Self = Self(2);
-  const WORKSPACE: Self = Self(4);
-  const CHAT_MEMBERSHIP: Self = Self(8);
-
-  const fn contains(self, other: Self) -> bool {
-    (self.0 & other.0) == other.0
-  }
-
-  const fn add(self, other: Self) -> Self {
-    Self(self.0 | other.0)
-  }
-}
-
-/// A more concise and flexible middleware builder
-/// Uses bit flags instead of type parameters to track middleware state
-pub struct MiddlewareBuilder<S, T> {
+/// Simple Middleware Builder - Only essential auth, chat, workspace
+pub struct SimpleMiddlewareBuilder<S> {
   router: Router<S>,
-  state: T,
-  app_state: Option<Arc<AppState>>,
-  applied: MiddlewareFlags, // Track applied middlewares
+  state: AppState,
 }
 
-impl<S, T> MiddlewareBuilder<S, T>
+impl<S> SimpleMiddlewareBuilder<S>
 where
   S: Clone + Send + Sync + 'static,
-  T: TokenVerifier<Claims = UserClaims>
-    + WithTokenManager<TokenManagerType = TokenManager>
-    + WithServiceProvider
-    + Into<AppState>
-    + Clone
-    + Send
-    + Sync
-    + 'static,
-  <T as TokenVerifier>::Error: Send + 'static,
-  <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
-  AuthUser: From<UserClaims>,
 {
-  /// Create a new middleware builder
-  pub fn new(router: Router<S>, state: T) -> Self {
+  /// Create new simple middleware builder
+  pub fn new(router: Router<S>, state: AppState) -> Self {
     Self {
       router,
       state,
-      app_state: None,
-      applied: MiddlewareFlags::NONE,
     }
   }
 
-  /// Get or create AppState
-  fn get_or_create_app_state(&mut self) -> Arc<AppState> {
-    if let Some(app_state) = &self.app_state {
-      app_state.clone()
-    } else {
-      let app_state = Arc::new(self.state.clone().into());
-      self.app_state = Some(app_state.clone());
-      app_state
-    }
-  }
+  // ========================================================================
+  // Core Authentication (from fechatter_core)
+  // ========================================================================
 
-  /// Add authentication middleware
+  /// Add JWT authentication middleware with refresh token support (from core)
   pub fn with_auth(mut self) -> Self {
-    if !self.applied.contains(MiddlewareFlags::AUTH) {
-      self.router = add_auth_middleware(self.router, self.state.clone());
-      self.applied = self.applied.add(MiddlewareFlags::AUTH);
-    }
+    debug!("🔧 [SIMPLE_BUILDER] Adding authentication middleware with refresh token support");
+    // First add refresh token middleware, then auth middleware
+    self.router = add_refresh_middleware(self.router, self.state.clone());
+    self.router = add_auth_middleware(self.router, self.state.clone());
     self
   }
 
-  /// Add token refresh middleware
-  pub fn with_refresh(mut self) -> Self {
-    if !self.applied.contains(MiddlewareFlags::REFRESH) {
-      self.router = add_refresh_middleware(self.router, self.state.clone());
-      self.applied = self.applied.add(MiddlewareFlags::REFRESH);
-    }
-    self
-  }
+  // ========================================================================
+  // Simple Workspace Middleware 
+  // ========================================================================
 
-  /// Add workspace middleware
+  /// Add workspace validation middleware (simple version)
   pub fn with_workspace(mut self) -> Self {
-    if !self.applied.contains(MiddlewareFlags::WORKSPACE) {
-      let app_state = self.get_or_create_app_state();
-      self.router = add_workspace_middleware(self.router, (*app_state).clone());
-      self.applied = self.applied.add(MiddlewareFlags::WORKSPACE);
-    }
+    debug!("🔧 [SIMPLE_BUILDER] Adding simple workspace middleware");
+    let state_clone = self.state.clone();
+    self.router = self.router.layer(from_fn(move |req: Request<Body>, next: Next| {
+      let state = state_clone.clone();
+      async move {
+        // Extract AuthUser from request
+        let (mut parts, body) = req.into_parts();
+        if let Some(auth_user) = parts.extensions.get::<AuthUser>().cloned() {
+          let req = Request::from_parts(parts, body);
+          with_workspace_context(
+            State(state),
+            axum::extract::Extension(auth_user),
+            req,
+            next,
+          ).await
+        } else {
+          let req = Request::from_parts(parts, body);
+          debug!("🔧 [SIMPLE_BUILDER] No AuthUser found, proceeding without workspace context");
+          next.run(req).await
+        }
+      }
+    }));
     self
   }
 
-  /// Add chat membership middleware
-  pub fn with_chat_membership(mut self) -> Self {
-    if !self.applied.contains(MiddlewareFlags::CHAT_MEMBERSHIP) {
-      let app_state = self.get_or_create_app_state();
-      self.router = add_chat_membership_middleware(self.router, (*app_state).clone());
-      self.applied = self.applied.add(MiddlewareFlags::CHAT_MEMBERSHIP);
-    }
+  // ========================================================================
+  // Simple Chat Middleware
+  // ========================================================================
+
+  /// Add chat access control middleware (simple version)
+  pub fn with_chat_access(mut self) -> Self {
+    debug!("🔧 [SIMPLE_BUILDER] Adding simple chat access middleware");
+    let state_clone = self.state.clone();
+    self.router = self.router.layer(from_fn(move |req: Request<Body>, next: Next| {
+      let state = state_clone.clone();
+      async move {
+        // Apply to all routes containing "/chat/" in the path
+        if req.uri().path().contains("/chat/") {
+          info!("🔧 [SIMPLE_BUILDER] Applying chat middleware to path: {}", req.uri().path());
+          verify_chat_membership_middleware(state, req, next).await
+        } else {
+          info!("🔧 [SIMPLE_BUILDER] Skipping chat middleware for path: {}", req.uri().path());
+          next.run(req).await
+        }
+      }
+    }));
     self
   }
 
-  /// Add all business middlewares (Auth, Refresh, Workspace, Chat Membership)
-  /// Order will automatically be set to: Auth -> Refresh -> Workspace -> ChatMembership
-  pub fn with_all_middlewares(self) -> Self {
+  // ========================================================================
+  // Simple Authentication Check
+  // ========================================================================
+
+  /// Add simple authentication requirement (check AuthUser exists)
+  pub fn with_auth_required(mut self) -> Self {
+    debug!("🔧 [SIMPLE_BUILDER] Adding auth required middleware");
+    self.router = self.router.layer(from_fn(|req: Request<Body>, next: Next| async move {
+      if req.extensions().get::<AuthUser>().is_some() {
+        next.run(req).await
+      } else {
+        (StatusCode::UNAUTHORIZED, "Authentication required").into_response()
+      }
+    }));
     self
-      .with_chat_membership()
-      .with_workspace()
-      .with_refresh()
+  }
+
+  // ========================================================================
+  // Simple Middleware Stacks
+  // ========================================================================
+
+  /// Public routes (no authentication required)
+  pub fn with_public_stack(self) -> Self {
+    debug!("🔧 [SIMPLE_BUILDER] Applying public stack (no middleware)");
+    self
+  }
+
+  /// Basic authenticated routes (Auth only)
+  pub fn with_auth_stack(self) -> Self {
+    debug!("🔧 [SIMPLE_BUILDER] Applying auth stack (auth only)");
+    self.with_auth()
+  }
+
+  /// Workspace routes (Auth + Workspace)
+  pub fn with_workspace_stack(self) -> Self {
+    debug!("🔧 [SIMPLE_BUILDER] Applying workspace stack (auth + workspace)");
+    self
       .with_auth()
+      .with_workspace()
   }
 
-  /// Apply Auth and Refresh middlewares
-  pub fn with_auth_refresh(self) -> Self {
-    self.with_refresh().with_auth()
+  /// Chat routes (Auth + Chat access)
+  pub fn with_chat_stack(self) -> Self {
+    debug!("🔧 [SIMPLE_BUILDER] Applying chat stack (auth + chat access)");
+    // Apply auth and chat access middleware
+    let result = self
+      .with_auth()
+      .with_chat_access();
+    debug!("🔧 [SIMPLE_BUILDER] Chat stack applied successfully");
+    result
   }
 
-  /// Apply Auth, Refresh and Workspace middlewares
-  pub fn with_auth_refresh_workspace(self) -> Self {
-    self.with_workspace().with_refresh().with_auth()
+  /// Chat with workspace routes (Auth + Workspace + Chat access)
+  pub fn with_chat_workspace_stack(self) -> Self {
+    debug!("🔧 [SIMPLE_BUILDER] Applying chat+workspace stack");
+    self
+      .with_auth()
+      .with_workspace()
+      .with_chat_access()
   }
 
-  /// Build the final router, apply infrastructure middlewares and return
+  // ========================================================================
+  // Build and Finalize
+  // ========================================================================
+
+  /// Build the final router with minimal infrastructure middleware
   pub fn build(self) -> Router<S> {
-    // Apply infrastructure middlewares (ServerTime, RequestId, Compression, Trace)
+    debug!("🔧 [SIMPLE_BUILDER] Building final simple router");
+    // Apply minimal infrastructure middleware (ServerTime, RequestId)
     self.router.set_layer()
   }
 }
 
-// Provide RouterExt extension trait for chained calls
-pub trait RouterExt<S>: Sized {
-  fn with_middlewares<T>(self, state: T) -> MiddlewareBuilder<S, T>
-  where
-    S: Clone + Send + Sync + 'static,
-    T: TokenVerifier<Claims = UserClaims>
-      + WithTokenManager<TokenManagerType = TokenManager>
-      + WithServiceProvider
-      + Into<AppState>
-      + Clone
-      + Send
-      + Sync
-      + 'static,
-    <T as TokenVerifier>::Error: Send + 'static,
-    <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
-    AuthUser: From<UserClaims>;
+// ========================================================================
+// Simple RouterExt Extension Trait
+// ========================================================================
+
+/// Simple router extension trait for middleware composition
+pub trait SimpleRouterExt<S>: Sized {
+  fn with_middlewares(self, state: AppState) -> SimpleMiddlewareBuilder<S>;
+
+  // Convenient stack methods
+  fn with_public_stack(self, state: AppState) -> Router<S>;
+  fn with_auth_stack(self, state: AppState) -> Router<S>;
+  fn with_workspace_stack(self, state: AppState) -> Router<S>;
+  fn with_chat_stack(self, state: AppState) -> Router<S>;
+  fn with_chat_workspace_stack(self, state: AppState) -> Router<S>;
 }
 
-impl<S> RouterExt<S> for Router<S> {
-  fn with_middlewares<T>(self, state: T) -> MiddlewareBuilder<S, T>
-  where
-    S: Clone + Send + Sync + 'static,
-    T: TokenVerifier<Claims = UserClaims>
-      + WithTokenManager<TokenManagerType = TokenManager>
-      + WithServiceProvider
-      + Into<AppState>
-      + Clone
-      + Send
-      + Sync
-      + 'static,
-    <T as TokenVerifier>::Error: Send + 'static,
-    <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
-    AuthUser: From<UserClaims>,
-  {
-    MiddlewareBuilder::new(self, state)
-  }
-}
-
-// To maintain compatibility with the old API, keep these methods
-impl<S, T> MiddlewareBuilder<S, T>
+impl<S> SimpleRouterExt<S> for Router<S>
 where
   S: Clone + Send + Sync + 'static,
-  T: TokenVerifier<Claims = UserClaims>
-    + WithTokenManager<TokenManagerType = TokenManager>
-    + WithServiceProvider
-    + Into<AppState>
-    + Clone
-    + Send
-    + Sync
-    + 'static,
-  <T as TokenVerifier>::Error: Send + 'static,
-  <T as WithServiceProvider>::ServiceProviderType: ActualAuthServiceProvider,
-  AuthUser: From<UserClaims>,
 {
-  /// Similar to finalize, but doesn't add any middlewares
-  /// Only adds infrastructure middlewares (ServerTime, RequestId, Compression, Trace)
-  pub fn finalize_base(self) -> Router<S> {
-    self.build()
+  fn with_middlewares(self, state: AppState) -> SimpleMiddlewareBuilder<S> {
+    SimpleMiddlewareBuilder::new(self, state)
   }
 
-  /// Add authentication middleware and infrastructure middlewares
-  pub fn finalize_auth_only(self) -> Router<S> {
-    self.with_auth().build()
+  fn with_public_stack(self, state: AppState) -> Router<S> {
+    self.with_middlewares(state).with_public_stack().build()
   }
 
-  /// Add authentication, refresh middleware and infrastructure middlewares
-  pub fn finalize_auth_refresh(self) -> Router<S> {
-    self.with_auth_refresh().build()
+  fn with_auth_stack(self, state: AppState) -> Router<S> {
+    self.with_middlewares(state).with_auth_stack().build()
   }
 
-  /// Add authentication, refresh, workspace middleware and infrastructure middlewares
-  pub fn finalize_auth_refresh_workspace(self) -> Router<S> {
-    self.with_auth_refresh_workspace().build()
+  fn with_workspace_stack(self, state: AppState) -> Router<S> {
+    self.with_middlewares(state).with_workspace_stack().build()
   }
 
-  /// Add all middlewares: authentication, refresh, workspace, chat membership and infrastructure middlewares
-  pub fn finalize(self) -> Router<S> {
-    self.with_all_middlewares().build()
+  fn with_chat_stack(self, state: AppState) -> Router<S> {
+    debug!("🔧 [ROUTER_EXT] 🧪 with_chat_stack() called!");
+    let result = self.with_middlewares(state).with_chat_stack().build();
+    debug!("🔧 [ROUTER_EXT] 🧪 with_chat_stack() completed!");
+    result
   }
+
+  fn with_chat_workspace_stack(self, state: AppState) -> Router<S> {
+    self.with_middlewares(state).with_chat_workspace_stack().build()
+  }
+}
+
+// ========================================================================
+// Legacy Compatibility (for existing code)
+// ========================================================================
+
+// Export simple builder as default
+pub use SimpleMiddlewareBuilder as MiddlewareBuilder;
+pub use SimpleRouterExt as RouterExt;
+
+// Legacy complex builder (temporarily disabled)
+pub mod complex {
+  // Complex business middleware builder can be imported separately if needed
+  // This keeps the simple version as default
 }

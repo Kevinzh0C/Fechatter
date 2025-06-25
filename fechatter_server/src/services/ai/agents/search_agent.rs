@@ -4,7 +4,7 @@ use crate::{
   error::AppError,
   services::{
     ai::{CohereClient, OpenAIClient},
-    infrastructure::vector_db::{VectorDatabase, VectorSearchResult},
+    infrastructure::vector_db::VectorDatabase,
   },
 };
 

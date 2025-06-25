@@ -1,0 +1,132 @@
+server:
+  port: 6690
+
+  # ClickHouse Database Configuration - 硬编码配置
+  clickhouse:
+    host: localhost
+    port: 8123
+    database: fechatter_analytics
+    user: default
+    password: ""
+    # HTTP URL for REST API access
+    http_url: http://clickhouse:8123
+    # Native TCP URL for high-performance access
+    native_url: clickhouse://clickhouse:9000/fechatter_analytics
+
+  # Application directories
+  base_dir: /tmp/fechatter_analytics
+
+  # Request handling
+  request_timeout_ms: 30000
+  max_concurrent_requests: 100
+
+# Feature configurations
+features:
+  # Analytics data processing
+  analytics:
+    enabled: true
+    batch_size: 100
+    flush_interval_seconds: 30
+    max_retry_attempts: 3
+    retry_backoff_ms: 1000
+
+  # Real-time event streaming
+  streaming:
+    enabled: true
+    buffer_size: 1000
+    flush_threshold: 500
+
+  # Data aggregation
+  aggregation:
+    enabled: true
+    interval_seconds: 300 # 5 minutes
+    batch_size: 1000
+
+# External service integrations
+integrations:
+  # NATS messaging for event ingestion
+  messaging:
+    enabled: true
+    nats_url: nats://nats:4222
+    jetstream_enabled: true
+
+    # JetStream configuration for analytics stream
+    jetstream:
+      stream_name: "ANALYTICS"
+      max_bytes: 1073741824 # 1GB (optimized for 1000 users, 50% DAU)
+      max_messages: 10000000 # 10M messages
+      max_age_hours: 720 # 30 days (24 * 30)
+      storage_type: "file"
+      num_replicas: 1
+      retention_policy: "limits"
+
+    subjects:
+      # Primary analytics events stream - covers ALL analytics events
+      analytics_events: "fechatter.analytics.events"
+      analytics_batch: "fechatter.analytics.batch"
+      # Specific event type subjects for fine-grained control  
+      user_events: "fechatter.analytics.user.events"
+      chat_events: "fechatter.analytics.chat.events"
+      message_events: "fechatter.analytics.message.events"
+      bot_events: "fechatter.analytics.bot.events"
+      error_events: "fechatter.analytics.error.events"
+
+  # Redis for caching and session management
+  cache:
+    enabled: true
+    redis_url: redis://:fechatter_redis_pass@redis:6379
+    key_prefix: "fechatter:analytics"
+    default_ttl: 3600
+
+  # PostgreSQL for metadata and configuration
+  postgres:
+    enabled: false
+    database_url: postgres://postgres:postgres@postgres:5432/fechatter
+
+# Observability and monitoring
+observability:
+  # Logging configuration
+  log_level: info
+  log_format: json
+  log_to_file: false
+
+  # Metrics and monitoring
+  metrics:
+    enabled: true
+    port: 9091
+    path: "/metrics"
+
+  # Health checks
+  health_check:
+    enabled: true
+    path: "/health"
+    timeout_ms: 5000
+
+  # Performance monitoring
+  performance:
+    track_query_performance: true
+    slow_query_threshold_ms: 1000
+    enable_profiling: false
+
+# Security settings
+security:
+  # API authentication (optional)
+  auth:
+    enabled: false
+    jwt_secret: "your-super-secret-jwt-key-change-this-in-production"
+
+  # CORS configuration
+  cors:
+    enabled: true
+    allow_origins:
+    - "http://localhost:1420"
+    - "http://127.0.0.1:1420"
+    - "http://localhost:3000"
+    allow_methods: [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ]
+    allow_headers: [ "Content-Type", "Authorization" ]
+
+  # Rate limiting
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 1000
+    burst_size: 100

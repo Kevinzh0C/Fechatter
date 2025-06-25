@@ -3,10 +3,13 @@ use crate::{
   models::{Chat, ChatId, CreateUser, Message, MessageId, SigninUser, User, UserId},
 };
 use async_trait::async_trait;
+use std::any::Any;
 
 /// 用户仓储接口契约
 #[async_trait]
 pub trait UserRepository: Send + Sync {
+  /// 允许向下转换到具体类型
+  fn as_any(&self) -> &dyn Any;
   /// 创建新用户
   async fn create(&self, user_data: &CreateUser) -> Result<User, CoreError>;
 
@@ -57,7 +60,7 @@ pub trait ChatRepository: Send + Sync {
 pub trait MessageRepository: Send + Sync {
   /// 创建消息
   async fn create(&self, message_data: &crate::models::CreateMessage)
-  -> Result<Message, CoreError>;
+    -> Result<Message, CoreError>;
 
   /// 根据ID查找消息
   async fn find_by_id(&self, id: MessageId) -> Result<Option<Message>, CoreError>;

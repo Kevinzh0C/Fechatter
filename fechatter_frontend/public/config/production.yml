@@ -1,0 +1,58 @@
+# Fechatter Frontend - Production Configuration
+# 生产环境：v0部署前端 + fly.io部署Gateway
+
+app:
+  name: "Fechatter"
+  version: "1.0.0"
+  environment: "production"
+  debug: false
+
+# 前端部署配置 (v0)
+frontend:
+  domain: "fechatter.v0.app"
+  port: 443
+  protocol: "https"
+
+# API配置 - 全部通过fly.io上的Gateway
+api:
+  # Gateway地址 - fly.io部署
+  gateway_url: "https://fechatter-gateway.fly.dev"
+
+  # 所有API端点都通过Gateway
+  base_url: "https://fechatter-gateway.fly.dev/api"
+  file_url: "https://fechatter-gateway.fly.dev/files"
+  # 使用SSE而不是WebSocket进行实时通信
+  sse_url: "https://fechatter-gateway.fly.dev/events"
+  notify_url: "https://fechatter-gateway.fly.dev"
+
+  # 生产环境请求配置
+  timeout: 30000
+  max_retries: 5
+  retry_delay: 2000
+
+# CORS配置
+cors:
+  enabled: true
+  origins:
+  - "https://fechatter.v0.app"
+  - "https://*.v0.app"
+  credentials: true
+
+# 安全配置
+security:
+  enable_csp: true
+  enable_https_only: true
+  enable_hsts: true
+
+# 性能配置
+performance:
+  enable_compression: true
+  enable_caching: true
+  cache_duration: 3600
+
+# 日志配置
+logging:
+  level: "info"
+  enable_network_logs: false
+  enable_api_logs: true
+  enable_error_tracking: true

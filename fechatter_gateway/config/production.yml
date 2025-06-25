@@ -1,0 +1,237 @@
+# Fechatter Gateway - Production Configuration
+# 生产环境：fly.io部署Gateway，对接v0前端
+
+server:
+  listen_addr: "0.0.0.0:8080"
+  worker_threads: 4
+  max_connections: 2000
+  keepalive_timeout: 75
+  request_timeout: 45
+
+# 上游服务配置 - fly.io内部网络
+# 只包含HTTP服务，bot_server是数据库监听器，不需要HTTP路由
+upstreams:
+  fechatter-server:
+    servers:
+    - "fechatter-server.internal:6688" # fly.io内部DNS
+    health_check:
+      interval: 15
+      timeout: 3
+      path: "/health"
+      expected_status: [ 200 ]
+      healthy_threshold: 2
+      unhealthy_threshold: 5
+    load_balancing: RoundRobin
+
+  notify-server:
+    servers:
+    - "notify-server.internal:6687" # fly.io内部DNS - corrected port
+    health_check:
+      interval: 15
+      timeout: 3
+      path: "/sse/health"
+      expected_status: [ 200 ]
+      healthy_threshold: 2
+      unhealthy_threshold: 5
+    load_balancing: RoundRobin
+
+  analytics-server:
+    servers:
+    - "analytics-server.internal:6690" # fly.io内部DNS
+    health_check:
+      interval: 15
+      timeout: 3
+      path: "/health"
+      expected_status: [ 200 ]
+      healthy_threshold: 2
+      unhealthy_threshold: 5
+    load_balancing: RoundRobin
+
+  search-service:
+    servers:
+    - "search-service.internal:7700" # fly.io内部DNS - Meilisearch
+    health_check:
+      interval: 15
+      timeout: 3
+      path: "/health"
+      expected_status: [ 200 ]
+      healthy_threshold: 2
+      unhealthy_threshold: 5
+    load_balancing: RoundRobin
+
+# 生产环境路由配置
+routes:
+# 健康检查路由
+- path: "/health"
+  methods: [ "GET" ]
+  upstream: "fechatter-server"
+  cors_enabled: false
+
+# 根路径路由
+- path: "/"
+  methods: [ "GET" ]
+  upstream: "fechatter-server"
+  cors_enabled: false
+
+# 认证相关路由 - 支持v0前端CORS
+- path: "/api/signin"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "https://fechatter.v0.app"
+  - "https://*.v0.app"
+
+- path: "/api/signup"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "https://fechatter.v0.app"
+  - "https://*.v0.app"
+
+- path: "/api/refresh"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "https://fechatter.v0.app"
+  - "https://*.v0.app"
+
+- path: "/api/logout"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "https://fechatter.v0.app"
+  - "https://*.v0.app"
+
+- path: "/api/logout-all"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "https://fechatter.v0.app"
+  - "https://*.v0.app"
+
+# 所有其他API路由 - 通配符路由
+- path: "/api/"
+  methods: [ "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "https://fechatter.v0.app"
+  - "https://*.v0.app"
+
+# 文件服务路由
+- path: "/files/"
+  methods: [ "GET", "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "https://fechatter.v0.app"
+  - "https://*.v0.app"
+
+# 通知服务路由
+- path: "/events"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "notify-server"
+  cors_enabled: true
+  cors_origins:
+  - "https://fechatter.v0.app"
+  - "https://*.v0.app"
+
+- path: "/online-users"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "notify-server"
+  cors_enabled: true
+  cors_origins:
+  - "https://fechatter.v0.app"
+  - "https://*.v0.app"
+
+- path: "/sse/health"
+  methods: [ "GET" ]
+  upstream: "notify-server"
+  cors_enabled: false
+
+# Analytics服务路由 - 修正API路径
+- path: "/api/event"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "analytics-server"
+  cors_enabled: true
+  cors_origins:
+  - "https://fechatter.v0.app"
+  - "https://*.v0.app"
+
+- path: "/api/batch"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "analytics-server"
+  cors_enabled: true
+  cors_origins:
+  - "https://fechatter.v0.app"
+  - "https://*.v0.app"
+
+# Analytics健康检查和监控端点
+- path: "/analytics/health"
+  methods: [ "GET" ]
+  upstream: "analytics-server"
+  cors_enabled: false
+
+- path: "/analytics/metrics"
+  methods: [ "GET" ]
+  upstream: "analytics-server"
+  cors_enabled: false
+
+- path: "/analytics/ready"
+  methods: [ "GET" ]
+  upstream: "analytics-server"
+  cors_enabled: false
+
+- path: "/analytics/live"
+  methods: [ "GET" ]
+  upstream: "analytics-server"
+  cors_enabled: false
+
+# Analytics OpenAPI 文档
+- path: "/analytics/openapi.json"
+  methods: [ "GET" ]
+  upstream: "analytics-server"
+  cors_enabled: true
+  cors_origins:
+  - "https://fechatter.v0.app"
+  - "https://*.v0.app"
+
+- path: "/analytics/swagger-ui/"
+  methods: [ "GET" ]
+  upstream: "analytics-server"
+  cors_enabled: true
+  cors_origins:
+  - "https://fechatter.v0.app"
+  - "https://*.v0.app"
+
+# Search服务路由 (Meilisearch)
+- path: "/api/search/"
+  methods: [ "GET", "POST", "OPTIONS" ]
+  upstream: "search-service"
+  cors_enabled: true
+  cors_origins:
+  - "https://fechatter.v0.app"
+  - "https://*.v0.app"
+
+# 生产环境安全说明：
+# ClickHouse 不应直接通过 Gateway 暴露给外部访问
+# 所有 ClickHouse 操作应通过 analytics-server 进行
+# 如需管理 ClickHouse，请使用 VPN 或跳板机直接连接
+#
+# 如果确实需要管理接口，应该：
+# 1. 添加强认证机制（API Key + IP 白名单）
+# 2. 限制访问路径和方法
+# 3. 添加操作审计日志
+# 4. 使用 HTTPS 和证书验证
+#
+# 示例受限管理路由（仅在必要时启用）：
+# - path: "/admin/clickhouse/health"
+#   methods: [ "GET" ]
+#   upstream: "clickhouse-service"  # 需要在upstreams中配置
+#   cors_enabled: false
+#   # 额外的认证和访问控制需要在Gateway中间件中实现

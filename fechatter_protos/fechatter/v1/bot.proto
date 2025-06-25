@@ -1,0 +1,200 @@
+syntax = "proto3";
+
+package fechatter.v1;
+
+import "fechatter/v1/core.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// 机器人服务
+service BotService {
+  // 创建机器人
+  rpc CreateBot(CreateBotRequest) returns (CreateBotResponse);
+  
+  // 获取机器人信息
+  rpc GetBot(GetBotRequest) returns (GetBotResponse);
+  
+  // 更新机器人配置
+  rpc UpdateBot(UpdateBotRequest) returns (UpdateBotResponse);
+  
+  // 删除机器人
+  rpc DeleteBot(DeleteBotRequest) returns (google.protobuf.Empty);
+  
+  // 获取机器人列表
+  rpc ListBots(ListBotsRequest) returns (ListBotsResponse);
+  
+  // 查询机器人
+  rpc QueryBot(QueryBotRequest) returns (QueryBotResponse);
+}
+
+// 代码索引服务
+service CodeIndexService {
+  // 索引代码库
+  rpc IndexCodebase(IndexCodebaseRequest) returns (IndexCodebaseResponse);
+  
+  // 搜索代码
+  rpc SearchCode(SearchCodeRequest) returns (SearchCodeResponse);
+  
+  // 获取索引状态
+  rpc GetIndexStatus(GetIndexStatusRequest) returns (GetIndexStatusResponse);
+}
+
+// 机器人类型
+enum BotType {
+  BOT_TYPE_UNSPECIFIED = 0;
+  BOT_TYPE_RAG = 1;           // RAG 问答机器人
+  BOT_TYPE_CODE_ASSISTANT = 2; // 代码助手
+  BOT_TYPE_CUSTOM = 3;        // 自定义机器人
+}
+
+// 机器人配置
+message BotConfig {
+  string name = 1;
+  string description = 2;
+  BotType type = 3;
+  string model = 4;           // AI 模型名称
+  map<string, string> parameters = 5;
+  bool enabled = 6;
+}
+
+// 机器人信息
+message Bot {
+  int64 id = 1;
+  BotConfig config = 2;
+  int64 creator_id = 3;
+  int64 workspace_id = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+// 创建机器人请求
+message CreateBotRequest {
+  BotConfig config = 1;
+  int64 workspace_id = 2;
+}
+
+// 创建机器人响应
+message CreateBotResponse {
+  Bot bot = 1;
+  Error error = 2;
+}
+
+// 获取机器人请求
+message GetBotRequest {
+  int64 id = 1;
+}
+
+// 获取机器人响应
+message GetBotResponse {
+  Bot bot = 1;
+  Error error = 2;
+}
+
+// 更新机器人请求
+message UpdateBotRequest {
+  int64 id = 1;
+  BotConfig config = 2;
+}
+
+// 更新机器人响应
+message UpdateBotResponse {
+  Bot bot = 1;
+  Error error = 2;
+}
+
+// 删除机器人请求
+message DeleteBotRequest {
+  int64 id = 1;
+}
+
+// 机器人列表请求
+message ListBotsRequest {
+  int64 workspace_id = 1;
+  Pagination pagination = 2;
+}
+
+// 机器人列表响应
+message ListBotsResponse {
+  repeated Bot bots = 1;
+  PaginatedResponse pagination = 2;
+  Error error = 3;
+}
+
+// 查询机器人请求
+message QueryBotRequest {
+  int64 bot_id = 1;
+  string question = 2;
+  int64 chat_id = 3;
+  map<string, string> context = 4;
+}
+
+// 查询机器人响应
+message QueryBotResponse {
+  string answer = 1;
+  repeated string sources = 2;
+  float confidence = 3;
+  Error error = 4;
+}
+
+// 索引代码库请求
+message IndexCodebaseRequest {
+  string repository_url = 1;
+  string branch = 2;
+  repeated string file_patterns = 3;
+  repeated string exclude_patterns = 4;
+}
+
+// 索引代码库响应
+message IndexCodebaseResponse {
+  string job_id = 1;
+  string status = 2;
+  Error error = 3;
+}
+
+// 搜索代码请求
+message SearchCodeRequest {
+  string query = 1;
+  repeated string file_types = 2;
+  int32 limit = 3;
+}
+
+// 代码搜索结果
+message CodeSearchResult {
+  string file_path = 1;
+  string content = 2;
+  int32 start_line = 3;
+  int32 end_line = 4;
+  float score = 5;
+}
+
+// 搜索代码响应
+message SearchCodeResponse {
+  repeated CodeSearchResult results = 1;
+  int32 total = 2;
+  Error error = 3;
+}
+
+// 索引状态请求
+message GetIndexStatusRequest {
+  string job_id = 1;
+}
+
+// 索引状态
+enum IndexStatus {
+  INDEX_STATUS_UNSPECIFIED = 0;
+  INDEX_STATUS_PENDING = 1;
+  INDEX_STATUS_RUNNING = 2;
+  INDEX_STATUS_COMPLETED = 3;
+  INDEX_STATUS_FAILED = 4;
+}
+
+// 索引状态响应
+message GetIndexStatusResponse {
+  string job_id = 1;
+  IndexStatus status = 2;
+  int32 progress = 3;
+  string message = 4;
+  google.protobuf.Timestamp started_at = 5;
+  google.protobuf.Timestamp completed_at = 6;
+  Error error = 7;
+} 

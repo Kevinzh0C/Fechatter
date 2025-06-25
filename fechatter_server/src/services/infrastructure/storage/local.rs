@@ -85,7 +85,7 @@ impl StorageService for LocalStorage {
     let parts: Vec<&str> = file_id.split('.').collect();
     if parts.len() != 2 {
       return Err(AppError::NotFound(vec![
-        "Invalid file identifier".to_string()
+        "Invalid file identifier".to_string(),
       ]));
     }
 
@@ -107,7 +107,7 @@ impl StorageService for LocalStorage {
     let parts: Vec<&str> = file_id.split('.').collect();
     if parts.len() != 2 {
       return Err(AppError::NotFound(vec![
-        "Invalid file identifier".to_string()
+        "Invalid file identifier".to_string(),
       ]));
     }
 

@@ -4,7 +4,7 @@ use crate::{
   error::AppError,
   services::{
     ai::{CohereClient, HuggingFaceClient, OpenAIClient},
-    infrastructure::storage::{MinIOStorage, S3Storage, StorageService},
+    infrastructure::storage::{/*MinIOStorage, S3Storage,*/ StorageService},
   },
 };
 use fechatter_core::AIService;
@@ -133,9 +133,9 @@ pub struct ThirdPartyManager {
   cohere_client: tokio::sync::OnceCell<Arc<CohereClient>>,
   huggingface_client: tokio::sync::OnceCell<Arc<HuggingFaceClient>>,
 
-  // Storage Services (lazy initialized)
-  s3_storage: tokio::sync::OnceCell<Arc<S3Storage>>,
-  minio_storage: tokio::sync::OnceCell<Arc<MinIOStorage>>,
+  // Storage Services (lazy initialized) - Temporarily disabled
+  // s3_storage: tokio::sync::OnceCell<Arc<S3Storage>>,
+  // minio_storage: tokio::sync::OnceCell<Arc<MinIOStorage>>,
 }
 
 impl ThirdPartyManager {
@@ -145,8 +145,8 @@ impl ThirdPartyManager {
       openai_client: tokio::sync::OnceCell::new(),
       cohere_client: tokio::sync::OnceCell::new(),
       huggingface_client: tokio::sync::OnceCell::new(),
-      s3_storage: tokio::sync::OnceCell::new(),
-      minio_storage: tokio::sync::OnceCell::new(),
+      // s3_storage: tokio::sync::OnceCell::new(),
+      // minio_storage: tokio::sync::OnceCell::new(),
     }
   }
 
@@ -198,11 +198,12 @@ impl ThirdPartyManager {
   }
 
   /// Get storage service based on configuration priority
+  /* Temporarily disabled - depends on S3Storage and MinIOStorage
   pub async fn storage(&self) -> Result<Arc<dyn StorageService>, AppError> {
     // Priority: MinIO > AWS S3 > Cloudflare R2
     if let Some(minio_config) = &self.config.minio_config {
       let storage = self
-        .minio_storage
+        // .minio_storage
         .get_or_try_init(|| async {
           let storage = MinIOStorage::new(
             minio_config.endpoint.clone(),
@@ -219,7 +220,7 @@ impl ThirdPartyManager {
 
     if let Some(aws_config) = &self.config.aws_config {
       let storage = self
-        .s3_storage
+        // .s3_storage
         .get_or_try_init(|| async {
           let storage =
             S3Storage::new_aws(aws_config.bucket.clone(), aws_config.region.clone()).await?;
@@ -231,7 +232,7 @@ impl ThirdPartyManager {
 
     if let Some(r2_config) = &self.config.cloudflare_r2_config {
       let storage = self
-        .s3_storage
+        // .s3_storage
         .get_or_try_init(|| async {
           let storage = S3Storage::new_r2(
             r2_config.bucket.clone(),
@@ -250,6 +251,7 @@ impl ThirdPartyManager {
       "No storage service configured".to_string(),
     ))
   }
+  */
 
   /// Get AI service for general use (OpenAI as default)
   pub async fn ai_service(&self) -> Result<Arc<dyn AIService>, AppError> {

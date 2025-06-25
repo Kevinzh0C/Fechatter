@@ -1,0 +1,39 @@
+[package]
+name = "bot_server"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "bot"
+path = "src/server.rs"
+
+[[bin]]
+name = "indexer"
+path = "src/indexer.rs"
+
+
+[dependencies]
+anyhow = { workspace = true }
+async-nats = "0.37"
+axum = { workspace = true }
+chrono = { workspace = true }
+fechatter_core = { workspace = true }
+fechatter_protos = { path = "../fechatter_protos" }
+futures = { workspace = true }
+prost = "0.13"
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+sqlx = { workspace = true }
+swiftide = { version = "0.13.3", features = ["openai", "tree-sitter"] }
+swiftide-pgvector = "0.1.1"
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+tonic = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { workspace = true }
+# Metrics
+metrics = "0.24.0"
+metrics-exporter-prometheus = "0.17.0"

@@ -1,37 +1,37 @@
-// 重新设计的DTOs架构
+// Redesigned DTOs Architecture
 //
-// 从Clean Architecture角度，DTOs属于Interface Adapters层
-// 核心职责：
-// 1. 边界隔离 - API层与Domain层之间的防腐层
-// 2. 数据适配 - 外部格式↔内部模型的双向转换
-// 3. 契约定义 - API接口的稳定契约，独立于内部实现变化
-// 4. 验证前置 - 在数据进入核心业务逻辑前进行完整验证
+// From the perspective of Clean Architecture, DTOs belong to the Interface Adapters layer.
+// Core responsibilities:
+// 1. Boundary isolation - an anti-corruption layer between the API layer and the Domain layer
+// 2. Data adaptation - bidirectional conversion between external formats and internal models
+// 3. Contract definition - stable API interface contracts, independent of internal implementation changes
+// 4. Pre-validation - complete validation before data enters core business logic
 //
-// 架构设计原则：
-// - 依赖方向：DTOs → Domain (单向依赖)
-// - 职责分离：Request DTOs负责输入，Response DTOs负责输出
-// - 可组合性：通过统一框架支持复杂业务场景
-// - 类型安全：强类型的转换和验证机制
-// - 性能优化：支持批量转换和缓存策略
+// Architectural design principles:
+// - Dependency direction: DTOs → Domain (one-way dependency)
+// - Separation of concerns: Request DTOs handle input, Response DTOs handle output
+// - Composability: Unified framework supports complex business scenarios
+// - Type safety: Strongly-typed conversion and validation mechanisms
+// - Performance optimization: Supports batch conversion and caching strategies
 
-// === 核心框架 ===
+// === Core Framework ===
 pub mod core;
 
-// === 传统模块（重构中）===
+// === Legacy Modules (under refactoring) ===
 pub mod mappers;
 pub mod models;
 
-// === 重新导出核心类型 ===
+// === Re-export Core Types ===
 pub use core::*;
 
-// === 传统类型重新导出（向后兼容）===
+// === Re-export Legacy Types (for backward compatibility) ===
 pub use models::*;
 
-// === 新架构的统一入口 ===
+// === Unified Entry Point for the New Architecture ===
 
 use std::sync::Arc;
 
-/// DTOs管理器 - 统一管理所有DTOs相关功能
+/// DTOs Manager - Unified management for all DTO-related functionality
 pub struct DtoManager {
   validator_registry: Arc<ValidatorRegistry>,
   converter_registry: Arc<ConverterRegistry>,
@@ -39,24 +39,24 @@ pub struct DtoManager {
   pagination_config: PaginationConfig,
 }
 
-/// 验证器注册表
+/// Validator Registry
 pub struct ValidatorRegistry {
   validators: std::collections::HashMap<String, Box<dyn CustomValidator>>,
 }
 
-/// 转换器注册表
+/// Converter Registry
 pub struct ConverterRegistry {
-  // 存储类型到转换器的映射
-  // 这里简化为字符串键，实际实现中可能需要更复杂的类型系统
+  // Stores mapping from types to converters
+  // Simplified as string keys here; actual implementation may require a more complex type system
 }
 
-/// 响应构建器
+/// Response Builder
 pub struct ResponseBuilder {
   default_server_info: Option<ServerInfo>,
   request_id_generator: Box<dyn Fn() -> String + Send + Sync>,
 }
 
-/// 分页配置
+/// Pagination Configuration
 #[derive(Debug, Clone)]
 pub struct PaginationConfig {
   pub default_page_size: u32,
@@ -75,7 +75,7 @@ impl Default for PaginationConfig {
 }
 
 impl DtoManager {
-  /// 创建新的DTOs管理器
+  /// Create a new DTOs manager
   pub fn new() -> Self {
     Self {
       validator_registry: Arc::new(ValidatorRegistry::new()),
@@ -85,43 +85,43 @@ impl DtoManager {
     }
   }
 
-  /// 配置分页参数
+  /// Configure pagination parameters
   pub fn with_pagination_config(mut self, config: PaginationConfig) -> Self {
     self.pagination_config = config;
     self
   }
 
-  /// 配置响应构建器
+  /// Configure response builder
   pub fn with_response_builder(mut self, builder: ResponseBuilder) -> Self {
     self.response_builder = Arc::new(builder);
     self
   }
 
-  /// 注册验证器
+  /// Register a validator
   pub fn register_validator(&mut self, name: String, validator: Box<dyn CustomValidator>) {
     Arc::get_mut(&mut self.validator_registry)
       .unwrap()
       .register(name, validator);
   }
 
-  /// 验证DTO
+  /// Validate DTO
   pub fn validate_dto<T: BaseDto>(
     &self,
     dto: &T,
     context: &ValidationContext,
   ) -> Result<(), Vec<DtoValidationError>> {
-    // 1. 基础验证
+    // 1. Basic validation
     if let Err(error) = dto.validate() {
       return Err(vec![error]);
     }
 
-    // 2. 自定义验证（如果需要）
-    // 这里可以添加更复杂的验证逻辑
+    // 2. Custom validation (if needed)
+    // More complex validation logic can be added here
 
     Ok(())
   }
 
-  /// 转换请求DTO到领域模型
+  /// Convert request DTO to domain model
   pub fn convert_request<R: RequestDto>(
     &self,
     request: &R,
@@ -130,7 +130,7 @@ impl DtoManager {
     request.to_domain()
   }
 
-  /// 从领域模型创建响应DTO
+  /// Create response DTO from domain model
   pub fn create_response<R: ResponseDto>(
     &self,
     domain: &R::DomainModel,
@@ -140,7 +140,7 @@ impl DtoManager {
     Ok(ApiResponse::success(response_dto, request_id))
   }
 
-  /// 创建分页响应
+  /// Create paginated response
   pub fn create_paginated_response<R: ResponseDto>(
     &self,
     domains: &[R::DomainModel],
@@ -158,7 +158,7 @@ impl DtoManager {
     Ok(ApiResponse::success(paginated, request_id))
   }
 
-  /// 创建批量操作响应
+  /// Create batch operation response
   pub fn create_batch_response<R: ResponseDto>(
     &self,
     results: Vec<Result<R::DomainModel, fechatter_core::error::CoreError>>,
@@ -173,7 +173,7 @@ impl DtoManager {
             batch_response.add_success(index, None, dto);
           } else {
             let error = ApiError::from(fechatter_core::error::CoreError::Validation(
-              "转换失败".to_string(),
+              "Conversion failed".to_string(),
             ));
             batch_response.add_failure(index, None, error);
           }
@@ -195,7 +195,7 @@ impl ValidatorRegistry {
       validators: std::collections::HashMap::new(),
     };
 
-    // 注册内置验证器
+    // Register built-in validators
     registry.register("email".to_string(), ValidatorFactory::email());
     registry.register(
       "password_strength".to_string(),
@@ -221,7 +221,7 @@ impl ValidatorRegistry {
 impl ConverterRegistry {
   pub fn new() -> Self {
     Self {
-      // 初始化转换器注册表
+      // Initialize converter registry
     }
   }
 }
@@ -274,30 +274,23 @@ impl ResponseBuilder {
   }
 }
 
-/// 全局DTOs管理器实例
-static mut DTO_MANAGER: Option<DtoManager> = None;
-static mut DTO_MANAGER_INIT: std::sync::Once = std::sync::Once::new();
+/// Global DTOs manager instance
+use std::sync::OnceLock;
 
-/// 获取全局DTOs管理器
+static DTO_MANAGER: OnceLock<DtoManager> = OnceLock::new();
+
+/// Get the global DTOs manager
 pub fn get_dto_manager() -> &'static DtoManager {
-  unsafe {
-    DTO_MANAGER_INIT.call_once(|| {
-      DTO_MANAGER = Some(DtoManager::new());
-    });
-    DTO_MANAGER.as_ref().unwrap()
-  }
+  DTO_MANAGER.get_or_init(DtoManager::new)
 }
 
-/// 初始化DTOs管理器（可自定义配置）
+/// Initialize the DTOs manager (custom configuration allowed)
 pub fn init_dto_manager(manager: DtoManager) {
-  unsafe {
-    DTO_MANAGER_INIT.call_once(|| {
-      DTO_MANAGER = Some(manager);
-    });
-  }
+  // Only the first call to set will succeed; subsequent calls are ignored.
+  let _ = DTO_MANAGER.set(manager);
 }
 
-/// 定义请求DTO的宏
+/// Macro to define request DTOs
 #[macro_export]
 macro_rules! define_request_dto {
   (
@@ -337,7 +330,7 @@ macro_rules! define_request_dto {
               .unwrap_or_else(|| {
                 $crate::dtos::core::DtoValidationError::new(
                   $crate::dtos::core::ValidationErrorType::Custom,
-                  "验证失败".to_string(),
+                  "Validation failed".to_string(),
                   None,
                 )
               })
@@ -358,7 +351,7 @@ macro_rules! define_request_dto {
   };
 }
 
-/// 定义响应DTO的宏
+/// Macro to define response DTOs
 #[macro_export]
 macro_rules! define_response_dto {
   (
@@ -391,7 +384,7 @@ macro_rules! define_response_dto {
       }
 
       fn validate(&self) -> Result<(), $crate::dtos::core::DtoValidationError> {
-        // 响应DTO通常不需要验证
+        // Response DTOs usually do not require validation
         Ok(())
       }
     }
@@ -409,12 +402,12 @@ macro_rules! define_response_dto {
   };
 }
 
-// === 示例用法（文档） ===
+// === Example Usage (Documentation) ===
 #[cfg(test)]
 mod example_usage {
   use super::*;
 
-  // 使用新的宏定义DTOs的示例：
+  // Example of defining DTOs using the new macros:
   /*
   define_request_dto! {
     #[derive(Debug)]

@@ -1,10 +1,10 @@
-use crate::dtos::core::{ConversionError, ResponseDto};
+use crate::dtos::core::{BaseDto, ConversionError, DtoMetadata, DtoValidationError, ResponseDto};
 use fechatter_core::Message;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 /// 单个消息响应
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct MessageResponse {
   #[schema(example = 123)]
   pub id: i64,
@@ -48,15 +48,40 @@ impl ResponseDto for MessageResponse {
       content: domain.content.clone(),
       files: domain.files.clone(),
       created_at: domain.created_at,
-      reply_to: domain.reply_to.map(|id| id.into()),
-      mentions: domain.mentions.clone(),
-      is_edited: false, // TODO: 从domain获取编辑状态
-      idempotency_key: domain.idempotency_key.clone(),
+      reply_to: None,             // Not implemented in core Message struct yet
+      mentions: Some(Vec::new()), // Not implemented in core Message struct yet
+      is_edited: false,           // TODO: 从domain获取编辑状态
+      idempotency_key: domain.idempotency_key.map(|uuid| uuid.to_string()),
     })
   }
 
   fn from_domain_collection(domains: &[Self::DomainModel]) -> Result<Vec<Self>, ConversionError> {
     domains.iter().map(Self::from_domain).collect()
+  }
+}
+
+impl BaseDto for MessageResponse {
+  fn dto_type() -> &'static str {
+    "MessageResponse"
+  }
+
+  fn validate(&self) -> Result<(), DtoValidationError> {
+    if self.content.is_empty() {
+      return Err(DtoValidationError {
+        error_type: crate::dtos::core::validation::ValidationErrorType::Required,
+        message: "Message content cannot be empty".to_string(),
+        field_path: Some("content".to_string()),
+        rule: Some("required".to_string()),
+        expected: Some("non-empty string".to_string()),
+        actual: Some("empty string".to_string()),
+        suggestion: Some("Provide message content".to_string()),
+      });
+    }
+    Ok(())
+  }
+
+  fn metadata(&self) -> DtoMetadata {
+    DtoMetadata::default()
   }
 }
 

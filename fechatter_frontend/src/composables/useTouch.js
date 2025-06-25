@@ -1,11 +1,19 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 
-export function useTouch() {
+export function useTouch(elementRef) {
   const touchStartX = ref(0);
   const touchStartY = ref(0);
   const touchEndX = ref(0);
   const touchEndY = ref(0);
   const isSwiping = ref(false);
+  
+  // Callback storage
+  const callbacks = ref({
+    swipeUp: null,
+    swipeDown: null,
+    swipeLeft: null,
+    swipeRight: null
+  });
 
   const handleTouchStart = (e) => {
     touchStartX.value = e.touches[0].clientX;
@@ -30,10 +38,10 @@ export function useTouch() {
     if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
       if (deltaX > 0) {
         // Swipe right
-        return 'swipe-right';
+        if (callbacks.value.swipeRight) callbacks.value.swipeRight();
       } else {
         // Swipe left
-        return 'swipe-left';
+        if (callbacks.value.swipeLeft) callbacks.value.swipeLeft();
       }
     }
     
@@ -41,28 +49,59 @@ export function useTouch() {
     if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > minSwipeDistance) {
       if (deltaY > 0) {
         // Swipe down
-        return 'swipe-down';
+        if (callbacks.value.swipeDown) callbacks.value.swipeDown();
       } else {
         // Swipe up
-        return 'swipe-up';
+        if (callbacks.value.swipeUp) callbacks.value.swipeUp();
       }
     }
     
     isSwiping.value = false;
-    return null;
   };
 
   const addTouchListeners = (element) => {
+    if (!element) return;
     element.addEventListener('touchstart', handleTouchStart, { passive: true });
     element.addEventListener('touchmove', handleTouchMove, { passive: true });
     element.addEventListener('touchend', handleTouchEnd, { passive: true });
   };
 
   const removeTouchListeners = (element) => {
+    if (!element) return;
     element.removeEventListener('touchstart', handleTouchStart);
     element.removeEventListener('touchmove', handleTouchMove);
     element.removeEventListener('touchend', handleTouchEnd);
   };
+
+  // Callback registration functions
+  const onSwipeUp = (callback) => {
+    callbacks.value.swipeUp = callback;
+  };
+
+  const onSwipeDown = (callback) => {
+    callbacks.value.swipeDown = callback;
+  };
+
+  const onSwipeLeft = (callback) => {
+    callbacks.value.swipeLeft = callback;
+  };
+
+  const onSwipeRight = (callback) => {
+    callbacks.value.swipeRight = callback;
+  };
+
+  // Auto-setup touch listeners if elementRef is provided
+  onMounted(() => {
+    if (elementRef && elementRef.value) {
+      addTouchListeners(elementRef.value);
+    }
+  });
+
+  onUnmounted(() => {
+    if (elementRef && elementRef.value) {
+      removeTouchListeners(elementRef.value);
+    }
+  });
 
   return {
     touchStartX,
@@ -74,6 +113,10 @@ export function useTouch() {
     handleTouchMove,
     handleTouchEnd,
     addTouchListeners,
-    removeTouchListeners
+    removeTouchListeners,
+    onSwipeUp,
+    onSwipeDown,
+    onSwipeLeft,
+    onSwipeRight
   };
 } 

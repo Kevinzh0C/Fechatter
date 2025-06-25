@@ -12,6 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.staging
+
+# Sensitive configuration
+config.json
+secrets.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +34,20 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# OS generated files
+Thumbs.db
+.AppleDouble
+.LSOverride
+
+# Tauri specific
+src-tauri/target/
+src-tauri/Cargo.lock
+
+# Coverage reports
+coverage/
+*.lcov
+
+# Test results
+test-results/
+test-reports/

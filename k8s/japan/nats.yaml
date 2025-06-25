@@ -1,0 +1,109 @@
+# NATS JetStream - 日本地区优化配置
+# 消息队列服务，针对200日活用户
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nats
+  namespace: fechatter
+  labels:
+    app: nats
+    version: v1
+    region: japan
+spec:
+  replicas: 1  # NATS单实例即可，200日活用户负载不高
+  strategy:
+    type: Recreate  # NATS使用Recreate策略保证数据一致性
+  selector:
+    matchLabels:
+      app: nats
+  template:
+    metadata:
+      labels:
+        app: nats
+        version: v1
+    spec:
+      containers:
+      - name: nats
+        image: nats:2.10-alpine
+        ports:
+        - containerPort: 4222
+          name: client
+        - containerPort: 8222
+          name: monitoring
+        args:
+        - "--jetstream"
+        - "--store_dir=/data"
+        - "--max_file_store=2GB"     # 限制文件存储大小
+        - "--max_memory_store=512MB" # 限制内存存储大小
+        - "--server_name=nats-japan"
+        - "--cluster_name=fechatter-japan"
+        env:
+        - name: TZ
+          valueFrom:
+            configMapKeyRef:
+              name: timezone-config
+              key: TZ
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 300m
+            memory: 512Mi
+        volumeMounts:
+        - name: nats-data
+          mountPath: /data
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8222
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8222
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 2
+          failureThreshold: 2
+      volumes:
+      - name: nats-data
+        persistentVolumeClaim:
+          claimName: nats-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats
+  namespace: fechatter
+  labels:
+    app: nats
+spec:
+  type: ClusterIP
+  ports:
+  - port: 4222
+    targetPort: 4222
+    protocol: TCP
+    name: client
+  - port: 8222
+    targetPort: 8222
+    protocol: TCP
+    name: monitoring
+  selector:
+    app: nats
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nats-data-pvc
+  namespace: fechatter
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi  # 10GB存储，足够200日活用户的消息队列
+  storageClassName: gp3  # AWS EBS GP3存储类型

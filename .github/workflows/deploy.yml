@@ -1,0 +1,210 @@
+name: Deploy to Cloud
+
+on:
+  push:
+    branches: [ main, staging ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: fechatter
+
+jobs:
+  # 构建和测试阶段
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [fechatter_server, notify_server, bot_server, analytics_server, fechatter_gateway]
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.service }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix=commit-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        build-args: |
+          APP_NAME=${{ matrix.service }}
+          APP_PORT=${{ matrix.service == 'fechatter_gateway' && '8080' || matrix.service == 'fechatter_server' && '6688' || matrix.service == 'notify_server' && '6687' || matrix.service == 'bot_server' && '6686' || '6690' }}
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+
+  # 安全扫描
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event_name == 'push'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'repo'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # 部署到 staging
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [build-and-test, security-scan]
+    if: github.ref == 'refs/heads/staging'
+    environment: staging
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
+
+    - name: Install kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --region us-west-2 --name fechatter-staging
+
+    - name: Deploy to staging
+      run: |
+        # 使用 Kustomize 部署到 staging
+        kubectl kustomize k8s/overlays/staging | kubectl apply -f -
+        
+        # 等待部署完成
+        kubectl rollout status deployment/gateway -n fechatter-staging
+        kubectl rollout status deployment/fechatter-server -n fechatter-staging
+        
+        # 运行健康检查
+        ./scripts/k8s-health-check.sh fechatter-staging
+
+    - name: Run integration tests
+      run: |
+        # 获取服务 URL
+        GATEWAY_URL=$(kubectl get service gateway -n fechatter-staging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+        
+        # 运行集成测试
+        export API_BASE_URL="http://$GATEWAY_URL"
+        ./scripts/integration-tests.sh
+
+  # 部署到生产环境
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [build-and-test, security-scan]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
+
+    - name: Install kubectl
+      uses: azure/setup-kubectl@v3
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --region us-west-2 --name fechatter-production
+
+    - name: Blue/Green Deployment
+      run: |
+        # 创建新版本部署
+        kubectl kustomize k8s/overlays/production | \
+          sed "s/fechatter-green/fechatter-blue/g" | \
+          kubectl apply -f -
+        
+        # 等待新版本就绪
+        kubectl rollout status deployment/gateway-blue -n fechatter-production
+        
+        # 切换流量
+        kubectl patch service gateway -n fechatter-production -p '{"spec":{"selector":{"version":"blue"}}}'
+        
+        # 健康检查
+        ./scripts/k8s-health-check.sh fechatter-production
+        
+        # 清理旧版本
+        kubectl delete deployment gateway-green -n fechatter-production || true
+
+    - name: Notify deployment
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        text: 'Fechatter deployed to production successfully! 🚀'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # 多云部署选项
+  deploy-multicloud:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[deploy-multicloud]')
+    
+    strategy:
+      matrix:
+        cloud: [aws, gcp]
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Deploy to ${{ matrix.cloud }}
+      run: |
+        case ${{ matrix.cloud }} in
+          aws)
+            ./scripts/deploy-aws.sh
+            ;;
+          gcp)
+            ./scripts/deploy-gcp.sh
+            ;;
+          azure)
+            ./scripts/deploy-azure.sh
+            ;;
+        esac

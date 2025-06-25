@@ -1,0 +1,60 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'fechatter-fly'
+    region: '${FLY_REGION}'
+    app_name: '${FLY_APP_NAME}'
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Scrape configurations
+scrape_configs:
+  # Fechatter main server
+  - job_name: 'fechatter_server'
+    static_configs:
+      - targets: ['fechatter.internal:9090']
+        labels:
+          service: 'fechatter_server'
+          instance: 'fly'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  # Notify server
+  - job_name: 'notify_server'
+    static_configs:
+      - targets: ['fechatter.internal:9091']
+        labels:
+          service: 'notify_server'
+          instance: 'fly'
+
+  # Bot server
+  - job_name: 'bot_server'
+    static_configs:
+      - targets: ['fechatter.internal:9092']
+        labels:
+          service: 'bot_server'
+          instance: 'fly'
+
+  # Analytics server
+  - job_name: 'analytics_server'
+    static_configs:
+      - targets: ['fechatter.internal:7778']
+        labels:
+          service: 'analytics_server'
+          instance: 'fly'
+
+# Remote write to Grafana Cloud (optional)
+remote_write:
+  - url: '${GRAFANA_PROMETHEUS_URL}'
+    basic_auth:
+      username: '${GRAFANA_PROMETHEUS_USER}'
+      password: '${GRAFANA_PROMETHEUS_API_KEY}'
+    write_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'go_.*'
+        action: drop

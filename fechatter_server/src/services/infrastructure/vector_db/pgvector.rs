@@ -4,7 +4,6 @@ use pgvector::Vector;
 use serde_json::Value;
 use sqlx::{PgPool, Row};
 
-use crate::error::AppError;
 use fechatter_core::{
   error::{CoreError, VectorDbError},
   models::time_management::TimeManager,

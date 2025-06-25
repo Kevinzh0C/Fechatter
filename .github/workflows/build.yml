@@ -1,7 +1,11 @@
+name: build
+
 on:
   push:
     branches:
     - master
+    tags:
+    - v*
   pull_request:
     branches:
     - master
@@ -13,110 +17,54 @@ jobs:
   build-rust:
     strategy:
       matrix:
-        include:
-        - os: "ubuntu-latest"
-          rust-version: "stable"
-        - os: "ubuntu-latest"
-          rust-version: "nightly"
-    runs-on: ${{ matrix.os }}
-    env:
-      MAKE_FEATURES_FLAG: "--all-features"
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-    defaults:
-      run:
-        shell: bash
-
+        platform: [ ubuntu-latest ]
+    runs-on: ${{ matrix.platform }}
     services:
       postgres:
-        image: postgres
+        image: postgres:17
         env:
           POSTGRES_PASSWORD: postgres
-        options: >-
-          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
         ports:
         - 5432:5432
-
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
         submodules: recursive
-
-    - name: Setup Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: ${{ matrix.rust-version }}
-        components: rustfmt, clippy
-
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v3
+    - name: Install Rust
+      run: rustup toolchain install stable --component llvm-tools-preview
     - name: Install cargo-llvm-cov
-      uses: taiki-e/install-action@v2
-      with:
-        tool: cargo-llvm-cov
-
-    - name: Install cargo-nextest
-      uses: taiki-e/install-action@v2
-      with:
-        tool: cargo-nextest
-
-    - name: Install cargo-binstall
-      uses: cargo-bins/cargo-binstall@main
-
-    - name: Cargo + sqlx cache
-      uses: Swatinem/rust-cache@v2
-      id: rust-cache
-      with:
-        shared-key: "main"
-        save-if: ${{ github.ref == 'refs/heads/master' }}
-        cache-targets: true
-        cache-directories: |
-          ~/.cargo/bin
-
-    - name: Add sqlx to PATH
-      run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-
-    - name: Ensure cargo-binstall
-      run: command -v cargo-binstall >/dev/null || cargo install cargo-binstall --locked
-
+      uses: taiki-e/install-action@cargo-llvm-cov
+    - name: install nextest
+      uses: taiki-e/install-action@nextest
     - name: Install sqlx-cli
-      run: |
-        echo "Installing sqlx-cli..."
-        cargo binstall sqlx-cli@0.7.4 --no-confirm --force --features=postgres || \
-        cargo install sqlx-cli --version 0.7.4 --locked --features=postgres
-        echo "Verifying sqlx-cli installation..."
-        command -v sqlx || { echo "sqlx-cli installation failed"; exit 1; }
-
-    - name: Add sqlx-cli to PATH
-      run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-
+      uses: taiki-e/install-action@v2
+      with:
+        tool: sqlx-cli@0.8.0
+    - uses: Swatinem/rust-cache@v2
     - name: Create database
       run: sqlx database create
       env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/fechatter
     - name: Run database migrations
-      run: |
-        echo "Current directory: $(pwd)"
-        find . -name "migrations" -type d || echo "No migrations directory found"
-        sqlx migrate run --source ./migrations
+      run: sqlx migrate run --source ./migrations
       env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/fechatter
     - name: Check code format
-      id: fmt_check
-      run: cargo fmt -- --check
-      continue-on-error: true
-
+      run: cargo fmt --all -- --check
     - name: Check the package for errors
       run: cargo check --all
-
-    - name: Lint rust source
-      run: cargo clippy --all-targets --all-features --tests --benches -- -D warnings -A clippy::uninlined_format_args
-      continue-on-error: true
-
+    - name: Lint rust sources
+      run: cargo clippy --all-targets --all-features --tests --benches -- -D warnings
     - name: Execute rust tests
       run: cargo nextest run --all-features
-
-    # ---- Only generate changelog & release when a Tag is pushed ----------
+      env:
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/fechatter
     - name: Generate a changelog
       uses: orhun/git-cliff-action@v2
       id: git-cliff
@@ -126,10 +74,8 @@ jobs:
         args: -vv --latest --strip header
       env:
         OUTPUT: CHANGES.md
-
     - name: Release
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/')
       with:
         body: ${{ steps.git-cliff.outputs.content }}
-      continue-on-error: true
