@@ -13,8 +13,12 @@ import './utils/extensionErrorSuppressor.js';
 
 // 🎨 AESTHETIC RESTORATION: Import unified design system FIRST to override conflicts
 import './styles/unified-aesthetic-system.css';
+import './styles/unified-channel-fonts.css';
 import './style.css';
 import './styles/z-index.css';
+
+// 🚀 CODE HIGHLIGHTING: Import enhanced code highlighting styles
+import './styles/enhanced-code-highlight.css';
 
 // 🛡️ Security Initializations - MUST load first (restored after aesthetic fix)
 import secureLogger from './utils/secureLogger'
@@ -131,6 +135,7 @@ if (import.meta.env.DEV) {
   import('./utils/messageServiceDiagnostics'); // Import UnifiedMessageService diagnostics
   import('./utils/fetchMoreMessagesTest'); // Import fetchMoreMessages fix verification
   import('./utils/systemHealthValidator'); // Import system health validator
+  import('./utils/sseDebugger'); // 🚀 Import SSE debugger for comprehensive SSE diagnosis
 
   // 🆕 NEW: Import advanced UX systems for development
   import('./services/ProgressiveLoadManager.js'); // Import progressive loading system
@@ -179,6 +184,77 @@ async function initializeStores() {
 
     // Initialize auth state from storage
     await authStore.initialize()
+
+    // 🚀 ENHANCED: More strict SSE connection validation
+    if (import.meta.env.DEV) {
+      console.log('🔍 [SSE] Checking SSE initialization conditions...');
+      console.log('🔍 [SSE] authStore.isAuthenticated:', authStore.isAuthenticated);
+      console.log('🔍 [SSE] authStore.token exists:', !!authStore.token);
+      console.log('🔍 [SSE] Current route:', router.currentRoute.value?.path);
+      if (authStore.token) {
+        console.log('🔍 [SSE] Token preview:', authStore.token.substring(0, 20) + '...');
+      }
+    }
+
+    // 🚀 CRITICAL FIX: More comprehensive authentication validation
+    const isUserLoggedIn = authStore.isAuthenticated &&
+      authStore.token &&
+      authStore.user &&
+      authStore.token.length > 50; // Ensure token is substantial
+
+    // 🚀 ADDITIONAL: Don't initialize SSE on login/register pages
+    const currentPath = router.currentRoute.value?.path || window.location.pathname;
+    const isOnAuthPage = currentPath.includes('/login') ||
+      currentPath.includes('/register') ||
+      currentPath === '/';
+
+    if (import.meta.env.DEV) {
+      console.log('🔍 [SSE] Enhanced validation:');
+      console.log('  - isUserLoggedIn:', isUserLoggedIn);
+      console.log('  - isOnAuthPage:', isOnAuthPage);
+      console.log('  - currentPath:', currentPath);
+    }
+
+    if (isUserLoggedIn && !isOnAuthPage) {
+      try {
+        if (import.meta.env.DEV) {
+          console.log('🔗 [SSE] ✅ ALL CONDITIONS MET! Initializing SSE connection...');
+          console.log('🔗 [SSE] User:', authStore.user?.email || 'Unknown');
+          console.log('🔗 [SSE] minimalSSE service:', !!minimalSSE);
+        }
+
+        minimalSSE.connect(authStore.token);
+
+        // Wait a moment and verify connection
+        setTimeout(() => {
+          const sseStatus = minimalSSE.getStatus();
+          if (import.meta.env.DEV) {
+            console.log('📡 [SSE] Startup connection status:', sseStatus);
+            console.log('📡 [SSE] EventSource exists:', !!minimalSSE.eventSource);
+            if (minimalSSE.eventSource) {
+              console.log('📡 [SSE] EventSource URL:', minimalSSE.eventSource.url);
+              console.log('📡 [SSE] EventSource readyState:', minimalSSE.eventSource.readyState);
+            }
+          }
+        }, 2000);
+
+      } catch (sseError) {
+        if (import.meta.env.DEV) {
+          console.error('❌ [SSE] Failed to initialize SSE on startup:', sseError);
+        }
+      }
+    } else {
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ [SSE] SKIPPING SSE initialization:');
+        console.warn('  - isAuthenticated:', authStore.isAuthenticated);
+        console.warn('  - token exists:', !!authStore.token);
+        console.warn('  - user exists:', !!authStore.user);
+        console.warn('  - token length:', authStore.token?.length || 0);
+        console.warn('  - isOnAuthPage:', isOnAuthPage);
+        console.warn('  - currentPath:', currentPath);
+        console.warn('💡 SSE will initialize after successful login and navigation to chat');
+      }
+    }
 
     if (import.meta.env.DEV) {
       console.log('✅ Application stores initialized')
@@ -379,6 +455,10 @@ window.pinia = pinia;
 window.$router = router;
 window.errorHandler = errorHandler;
 window.sseConnectionManager = sseConnectionManager;
+
+// 🚀 CRITICAL FIX: Expose tokenManager to window for SSE service access
+import tokenManager from './services/tokenManager.js';
+window.tokenManager = tokenManager;
 
 // Expose security utilities for API parameter limiting
 window.securityUtils = {

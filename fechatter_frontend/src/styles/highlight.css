@@ -1,0 +1,521 @@
+/**
+ * ✨ Highlight.js Theme for Fechatter
+ * Modern GitHub-style syntax highlighting
+ */
+
+/* 全局浅色调代码高亮样式 */
+
+.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1rem;
+  margin: 0;
+  background: #f8f9fa !important;
+  color: #24292f !important;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  border: 1px solid #e1e8ed;
+}
+
+/* 语法高亮颜色 - 浅色调 */
+.hljs-comment,
+.hljs-quote {
+  color: #6a737d;
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in,
+.hljs-name,
+.hljs-tag {
+  color: #d73a49;
+  font-weight: 600;
+}
+
+.hljs-string,
+.hljs-title,
+.hljs-section,
+.hljs-attribute,
+.hljs-literal,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-addition {
+  color: #032f62;
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-variable,
+.hljs-deletion {
+  color: #005cc5;
+}
+
+.hljs-function,
+.hljs-title.function_ {
+  color: #6f42c1;
+  font-weight: 600;
+}
+
+.hljs-class .hljs-title,
+.hljs-title.class_ {
+  color: #e36209;
+  font-weight: 600;
+}
+
+.hljs-params {
+  color: #24292f;
+}
+
+.hljs-attr {
+  color: #005cc5;
+}
+
+.hljs-meta {
+  color: #6a737d;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
+.hljs-link {
+  text-decoration: underline;
+}
+
+/* 特定语言支持 */
+.hljs-doctag {
+  color: #d73a49;
+  font-weight: 600;
+}
+
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-selector-attr,
+.hljs-selector-pseudo {
+  color: #6f42c1;
+}
+
+.hljs-property {
+  color: #005cc5;
+}
+
+.hljs-regexp {
+  color: #032f62;
+}
+
+.hljs-subst {
+  color: #24292f;
+}
+
+/* JSON 特殊样式 */
+.hljs.language-json .hljs-attr {
+  color: #005cc5;
+}
+
+.hljs.language-json .hljs-string {
+  color: #032f62;
+}
+
+.hljs.language-json .hljs-number {
+  color: #005cc5;
+}
+
+.hljs.language-json .hljs-literal {
+  color: #d73a49;
+  font-weight: 600;
+}
+
+/* XML/HTML 特殊样式 */
+.hljs.language-xml .hljs-tag,
+.hljs.language-html .hljs-tag {
+  color: #116329;
+}
+
+.hljs.language-xml .hljs-name,
+.hljs.language-html .hljs-name {
+  color: #116329;
+  font-weight: 600;
+}
+
+.hljs.language-xml .hljs-attr,
+.hljs.language-html .hljs-attr {
+  color: #0550ae;
+}
+
+/* CSS 特殊样式 */
+.hljs.language-css .hljs-selector-tag {
+  color: #116329;
+}
+
+.hljs.language-css .hljs-selector-class {
+  color: #6f42c1;
+}
+
+.hljs.language-css .hljs-selector-id {
+  color: #0550ae;
+}
+
+.hljs.language-css .hljs-property {
+  color: #005cc5;
+}
+
+.hljs.language-css .hljs-number {
+  color: #005cc5;
+}
+
+/* 代码块包装器样式 */
+.code-block-wrapper {
+  margin: 0.5rem 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #f8f9fa;
+  border: 1px solid #e1e8ed;
+}
+
+.code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background-color: #f1f3f4;
+  border-bottom: 1px solid #e1e8ed;
+  font-size: 0.75rem;
+  color: #656d76;
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.code-language {
+  font-weight: 600;
+  color: #0969da;
+}
+
+.copy-button {
+  background: none;
+  border: 1px solid #d1d9e0;
+  color: #656d76;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.copy-button:hover {
+  background-color: #f1f3f4;
+  border-color: #bfbfbf;
+  color: #24292f;
+}
+
+.copy-button:active {
+  background-color: #e1e8ed;
+}
+
+.copy-button.copied {
+  background-color: #dcfce7;
+  border-color: #16a34a;
+  color: #16a34a;
+}
+
+/* 行号支持 */
+.hljs.line-numbers {
+  padding-left: 3rem;
+  position: relative;
+}
+
+.hljs.line-numbers::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 2.5rem;
+  background-color: #f1f3f4;
+  border-right: 1px solid #e1e8ed;
+}
+
+.hljs .line-number {
+  position: absolute;
+  left: 0;
+  width: 2.5rem;
+  text-align: right;
+  padding-right: 0.5rem;
+  color: #656d76;
+  user-select: none;
+  font-size: 0.8rem;
+}
+
+/* 滚动条样式 */
+.hljs::-webkit-scrollbar {
+  height: 8px;
+}
+
+.hljs::-webkit-scrollbar-track {
+  background: #f1f3f4;
+}
+
+.hljs::-webkit-scrollbar-thumb {
+  background: #c9d1d9;
+  border-radius: 4px;
+}
+
+.hljs::-webkit-scrollbar-thumb:hover {
+  background: #959da5;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .hljs {
+    font-size: 0.8rem;
+    padding: 0.75rem;
+  }
+
+  .code-block-header {
+    padding: 0.375rem 0.75rem;
+  }
+
+  .hljs.line-numbers {
+    padding-left: 2.5rem;
+  }
+
+  .hljs.line-numbers::before {
+    width: 2rem;
+  }
+
+  .hljs .line-number {
+    width: 2rem;
+  }
+}
+
+/* 浅色调内联代码样式 */
+.inline-code {
+  background-color: #f1f3f4;
+  color: #24292f;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+  font-size: 0.875em;
+  border: 1px solid #e1e8ed;
+  white-space: nowrap;
+}
+
+/* 消息组件中的代码高亮优化 */
+.message-content .code-block-wrapper {
+  margin: 0.75rem 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #f8f9fa;
+  border: 1px solid #e1e8ed;
+  box-shadow: 0 1px 3px rgba(9, 105, 218, 0.05);
+}
+
+.message-content .code-block-header {
+  background: linear-gradient(135deg, #f1f3f4 0%, #e1e8ed 100%);
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #e1e8ed;
+  font-size: 0.75rem;
+  color: #656d76;
+  font-family: 'Consolas', 'Monaco', monospace;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.message-content .code-language {
+  font-weight: 600;
+  color: #0969da;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.message-content .copy-button {
+  background: none;
+  border: 1px solid #d1d9e0;
+  color: #656d76;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  transition: all 0.2s ease;
+}
+
+.message-content .copy-button:hover {
+  background-color: #f1f3f4;
+  border-color: #bfbfbf;
+  color: #24292f;
+}
+
+.message-content .copy-button.copied {
+  background-color: #dcfce7;
+  border-color: #16a34a;
+  color: #16a34a;
+}
+
+.message-content .hljs {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  padding: 1rem;
+  background-color: #f8f9fa !important;
+  color: #24292f !important;
+  overflow-x: auto;
+  max-height: 400px;
+  margin: 0;
+  border: none;
+}
+
+/* 行号支持 - 消息组件 */
+.message-content .hljs.line-numbers {
+  padding-left: 3rem;
+  position: relative;
+}
+
+.message-content .hljs.line-numbers::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 2.5rem;
+  background-color: #f1f3f4;
+  border-right: 1px solid #e1e8ed;
+}
+
+.message-content .hljs .line-number {
+  position: absolute;
+  left: 0;
+  width: 2.5rem;
+  text-align: right;
+  padding-right: 0.5rem;
+  color: #656d76;
+  user-select: none;
+  font-size: 0.8rem;
+}
+
+.message-content .hljs .line-content {
+  padding-left: 0.5rem;
+}
+
+.message-content .hljs .line-content.highlighted {
+  background-color: rgba(255, 235, 59, 0.3);
+  border-left: 3px solid #ffc107;
+  padding-left: calc(0.5rem - 3px);
+}
+
+/* 消息组件滚动条 */
+.message-content .hljs::-webkit-scrollbar {
+  height: 8px;
+}
+
+.message-content .hljs::-webkit-scrollbar-track {
+  background: #f1f3f4;
+  border-radius: 4px;
+}
+
+.message-content .hljs::-webkit-scrollbar-thumb {
+  background: #c9d1d9;
+  border-radius: 4px;
+}
+
+.message-content .hljs::-webkit-scrollbar-thumb:hover {
+  background: #959da5;
+}
+
+/* 代码高亮状态指示器 - 浅色调 */
+.code-highlighting-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background-color: rgba(9, 105, 218, 0.1);
+  border: 1px solid rgba(9, 105, 218, 0.3);
+  border-radius: 6px;
+  color: #0969da;
+  font-size: 0.875rem;
+  margin: 0.5rem 0;
+}
+
+.highlighting-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(9, 105, 218, 0.2);
+  border-top: 2px solid #0969da;
+  border-radius: 50%;
+  animation: highlight-spin 1s linear infinite;
+}
+
+.code-highlight-error {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background-color: rgba(209, 36, 47, 0.1);
+  border: 1px solid rgba(209, 36, 47, 0.3);
+  border-radius: 6px;
+  color: #d1242f;
+  font-size: 0.875rem;
+  margin: 0.5rem 0;
+}
+
+.retry-highlight-btn {
+  background-color: #d1242f;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.retry-highlight-btn:hover {
+  background-color: #b91c1c;
+}
+
+@keyframes highlight-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 响应式优化 - 消息组件 */
+@media (max-width: 768px) {
+  .message-content .hljs {
+    font-size: 0.8rem;
+    padding: 0.75rem;
+  }
+
+  .message-content .code-block-header {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.7rem;
+  }
+
+  .message-content .hljs.line-numbers {
+    padding-left: 2.5rem;
+  }
+
+  .message-content .hljs.line-numbers::before {
+    width: 2rem;
+  }
+
+  .message-content .hljs .line-number {
+    width: 2rem;
+    font-size: 0.75rem;
+  }
+
+  .inline-code {
+    font-size: 0.8em;
+    padding: 0.1rem 0.3rem;
+  }
+}

@@ -8,7 +8,7 @@
             <h2 class="modal-title">Search Messages</h2>
             <button @click="close" class="close-button">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 6L6 18M6 6l12 12"/>
+                <path d="M18 6L6 18M6 6l12 12" />
               </svg>
             </button>
           </div>
@@ -17,24 +17,16 @@
           <div class="search-input-container">
             <div class="search-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="M21 21l-4.35-4.35"/>
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
               </svg>
             </div>
-            <input
-              ref="searchInput"
-              v-model="searchQuery"
-              @input="debouncedSearch"
-              @keydown.enter="performSearch"
-              @keydown.escape="close"
-              type="text"
-              placeholder="Search messages..."
-              class="search-input"
-            />
+            <input ref="searchInput" v-model="searchQuery" @input="debouncedSearch" @keydown.enter="performSearch"
+              @keydown.escape="close" type="text" placeholder="Search messages..." class="search-input" />
             <div v-if="searchQuery" @click="clearSearch" class="clear-button">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M15 9l-6 6M9 9l6 6"/>
+                <circle cx="12" cy="12" r="10" />
+                <path d="M15 9l-6 6M9 9l6 6" />
               </svg>
             </div>
           </div>
@@ -42,11 +34,7 @@
           <!-- Search Options -->
           <div class="search-options">
             <label class="option-item">
-              <input 
-                type="checkbox" 
-                v-model="searchCurrentChatOnly"
-                @change="performSearch"
-              />
+              <input type="checkbox" v-model="searchCurrentChatOnly" @change="performSearch" />
               <span>Search in current chat only</span>
             </label>
           </div>
@@ -62,9 +50,9 @@
             <!-- No Results -->
             <div v-else-if="searchPerformed && results.length === 0" class="empty-state">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="M21 21l-4.35-4.35"/>
-                <path d="M8 11h6"/>
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+                <path d="M8 11h6" />
               </svg>
               <p>No messages found</p>
               <span class="empty-hint">Try different keywords or search options</span>
@@ -75,19 +63,16 @@
               <div class="results-header">
                 <span>{{ results.length }} results found</span>
               </div>
-              <div
-                v-for="result in results"
-                :key="result.id"
-                @click="jumpToMessage(result)"
-                class="result-item"
-              >
+              <div v-for="result in results" :key="result.id" @click="jumpToMessage(result)" class="result-item">
                 <div class="result-header">
-                  <span class="result-sender">{{ result.sender_fullname || result.sender_name || result.sender?.fullname || 'Unknown' }}</span>
+                  <span class="result-sender">{{ result.sender_fullname || result.sender_name || result.sender?.fullname
+                    || 'Unknown' }}</span>
                   <span class="result-time">{{ formatTime(result.created_at) }}</span>
                 </div>
                 <div class="result-chat">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/>
+                    <path
+                      d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
                   </svg>
                   {{ result.chat_name }}
                 </div>
@@ -98,8 +83,8 @@
             <!-- Initial State -->
             <div v-else class="initial-state">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="M21 21l-4.35-4.35"/>
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
               </svg>
               <p>Type to search messages</p>
               <div class="search-tips">
@@ -168,11 +153,12 @@ watch(() => props.modelValue, (newVal) => {
     results.value = [];
     searchPerformed.value = false;
     searchCurrentChatOnly.value = !!props.currentChatId;
-    
+
     // Focus input after DOM update
     nextTick(() => {
       searchInput.value?.focus();
     });
+  }
 });
 
 // Methods
@@ -185,6 +171,7 @@ function handleBackdropClick(event) {
   if (event.target === event.currentTarget) {
     close();
   }
+}
 
 function clearSearch() {
   searchQuery.value = '';
@@ -221,12 +208,13 @@ async function performSearch() {
   } finally {
     loading.value = false;
   }
+}
 
 function debouncedSearch() {
   if (debounceTimer) {
     clearTimeout(debounceTimer);
   }
-  
+
   debounceTimer = setTimeout(() => {
     performSearch();
   }, 300);
@@ -234,7 +222,7 @@ function debouncedSearch() {
 
 function highlightMatch(text, query) {
   if (!query) return text;
-  
+
   const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const regex = new RegExp(`(${escapedQuery})`, 'gi');
   return text.replace(regex, '<mark>$1</mark>');
@@ -244,43 +232,46 @@ function formatTime(timestamp) {
   const date = new Date(timestamp);
   const now = new Date();
   const diffInHours = (now - date) / (1000 * 60 * 60);
-  
+
   if (diffInHours < 24) {
-    return date.toLocaleTimeString('zh-CN', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('zh-CN', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: false 
+      hour12: false
     });
   } else if (diffInHours < 168) { // 7 days
-    return date.toLocaleDateString('zh-CN', { 
+    return date.toLocaleDateString('zh-CN', {
       weekday: 'short',
-      hour: '2-digit', 
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: false 
+      hour12: false
     });
   } else {
-    return date.toLocaleDateString('zh-CN', { 
-      month: 'short', 
+    return date.toLocaleDateString('zh-CN', {
+      month: 'short',
       day: 'numeric',
       year: 'numeric'
     });
+  }
+}
 
 async function jumpToMessage(result) {
   // Close modal
   close();
-  
+
   // Navigate to chat if needed
   if (result.chat_id !== chatStore.currentChatId) {
     await router.push(`/chat/${result.chat_id}`);
     // Wait for chat to load
     await new Promise(resolve => setTimeout(resolve, 300));
   }
-  
+
   // Emit event to scroll to message
   emit('message-selected', {
     messageId: result.id,
     chatId: result.chat_id
   });
+}
 </script>
 
 <style scoped>
@@ -442,7 +433,10 @@ async function jumpToMessage(result) {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 /* Empty State */
 .empty-state {
@@ -643,7 +637,7 @@ async function jumpToMessage(result) {
     background: #1f2937;
     color: #f9fafb;
   }
-  
+
   .modal-header,
   .search-input-container,
   .search-options,
@@ -651,57 +645,56 @@ async function jumpToMessage(result) {
   .result-item {
     border-color: #374151;
   }
-  
+
   .modal-title,
   .result-sender {
     color: #f9fafb;
   }
-  
+
   .search-input {
     background-color: #111827;
     border-color: #374151;
     color: #f9fafb;
   }
-  
+
   .search-input:focus {
     background-color: #1f2937;
     border-color: #3b82f6;
   }
-  
+
   .search-options {
     background-color: #111827;
   }
-  
+
   .close-button:hover,
   .clear-button:hover {
     background-color: #374151;
     color: #f9fafb;
   }
-  
+
   .result-item:hover {
     background-color: #111827;
   }
-  
+
   .result-content {
     color: #e5e7eb;
   }
-  
+
   .result-content mark {
     background-color: #854d0e;
     color: #fef3c7;
   }
-  
+
   .search-tips {
     background-color: #111827;
   }
-  
+
   .modal-footer {
     background-color: #111827;
   }
-  
+
   .footer-hint kbd {
     background-color: #374151;
     border-color: #4b5563;
     color: #f9fafb;
-  }
-</style>
+  }</style>

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🛡️ Quick Message Fix Verification</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      margin: 0;
+      padding: 20px;
+      color: white;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 2rem;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .status-card {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .status-good {
+      background: rgba(72, 187, 120, 0.2);
+      border-color: #48bb78;
+    }
+
+    .status-warning {
+      background: rgba(237, 137, 54, 0.2);
+      border-color: #ed8936;
+    }
+
+    .status-error {
+      background: rgba(245, 101, 101, 0.2);
+      border-color: #f56565;
+    }
+
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      margin: 10px 0;
+      font-size: 1.1rem;
+    }
+
+    .metric-value {
+      font-weight: bold;
+      font-family: monospace;
+    }
+
+    .test-button {
+      background: rgba(66, 153, 225, 0.8);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 5px;
+      font-weight: 600;
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .test-button:hover {
+      background: rgba(66, 153, 225, 1);
+      transform: translateY(-2px);
+    }
+
+    .success {
+      background: rgba(72, 187, 120, 0.8);
+    }
+
+    .success:hover {
+      background: rgba(72, 187, 120, 1);
+    }
+
+    .results {
+      margin-top: 20px;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+
+    .result-good {
+      color: #9ae6b4;
+    }
+
+    .result-error {
+      color: #feb2b2;
+    }
+
+    .result-warning {
+      color: #f6e05e;
+    }
+
+    .big-status {
+      text-align: center;
+      font-size: 3rem;
+      margin: 20px 0;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🛡️ Quick Message Fix Verification</h1>
+
+    <div id="big-status" class="big-status">🔄 Checking...</div>
+
+    <div class="status-grid">
+      <div class="status-card" id="system-card">
+        <h3>📊 System Status</h3>
+        <div class="metric">
+          <span>MessageDisplayGuarantee:</span>
+          <span class="metric-value" id="guarantee-status">-</span>
+        </div>
+        <div class="metric">
+          <span>Success Rate:</span>
+          <span class="metric-value" id="success-rate">-</span>
+        </div>
+        <div class="metric">
+          <span>Active Tracking:</span>
+          <span class="metric-value" id="active-tracking">-</span>
+        </div>
+      </div>
+
+      <div class="status-card" id="chat-card">
+        <h3>💬 Current Chat</h3>
+        <div class="metric">
+          <span>Chat ID:</span>
+          <span class="metric-value" id="chat-id">-</span>
+        </div>
+        <div class="metric">
+          <span>Messages Found:</span>
+          <span class="metric-value" id="messages-found">-</span>
+        </div>
+        <div class="metric">
+          <span>Registration Rate:</span>
+          <span class="metric-value" id="registration-rate">-</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align: center;">
+      <button class="test-button" onclick="runQuickTest()">🧪 Quick Test</button>
+      <button class="test-button success" onclick="forceFixNow()">🔧 Force Fix Now</button>
+      <button class="test-button" onclick="openMonitor()">📊 Open Monitor</button>
+    </div>
+
+    <div class="results" id="results"></div>
+  </div>
+
+  <script>
+    function log(message, type = 'info') {
+      const results = document.getElementById('results');
+      const timestamp = new Date().toLocaleTimeString();
+      const className = type === 'success' ? 'result-good' :
+        type === 'error' ? 'result-error' :
+          type === 'warning' ? 'result-warning' : '';
+      results.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+      results.scrollTop = results.scrollHeight;
+    }
+
+    function updateBigStatus(status, emoji) {
+      const bigStatus = document.getElementById('big-status');
+      bigStatus.textContent = `${emoji} ${status}`;
+    }
+
+    function runQuickTest() {
+      log('🧪 Starting quick verification test...', 'info');
+
+      // Test 1: MessageDisplayGuarantee availability
+      if (!window.messageDisplayGuarantee) {
+        log('❌ CRITICAL: MessageDisplayGuarantee not found!', 'error');
+        updateBigStatus('SYSTEM ERROR', '🚨');
+        return;
+      }
+      log('✅ MessageDisplayGuarantee is available', 'success');
+
+      // Test 2: Get metrics
+      const metrics = window.messageDisplayGuarantee.getMetrics();
+      const successRate = parseFloat(metrics.successRate);
+
+      document.getElementById('guarantee-status').textContent = 'ACTIVE';
+      document.getElementById('success-rate').textContent = metrics.successRate + '%';
+      document.getElementById('active-tracking').textContent = metrics.activeTracking;
+
+      // Test 3: Check current chat
+      const chatId = window.location.pathname.match(/\/chat\/(\d+)/)?.[1];
+      document.getElementById('chat-id').textContent = chatId || 'None';
+
+      if (!chatId) {
+        log('⚠️ No chat detected - navigate to a chat to test', 'warning');
+        updateBigStatus('NO CHAT', '⚠️');
+        return;
+      }
+
+      // Test 4: Count DOM elements
+      const messageElements = document.querySelectorAll('[data-message-id]');
+      document.getElementById('messages-found').textContent = messageElements.length;
+      log(`🔍 Found ${messageElements.length} message elements in DOM`, 'info');
+
+      // Test 5: Check tracking for current chat
+      const contexts = Array.from(window.messageDisplayGuarantee.verificationQueue.entries());
+      const currentContext = contexts.find(([_, ctx]) => ctx.chatId == chatId);
+
+      if (currentContext) {
+        const [_, context] = currentContext;
+        const expected = context.messageIds.size;
+        const displayed = context.displayedIds.size;
+        const rate = expected > 0 ? ((displayed / expected) * 100).toFixed(1) : '100';
+
+        document.getElementById('registration-rate').textContent = rate + '%';
+        log(`📊 Registration: ${displayed}/${expected} messages (${rate}%)`, 'info');
+
+        if (rate >= 95) {
+          log('🎉 EXCELLENT: Message registration working perfectly!', 'success');
+          updateBigStatus('FIXED', '✅');
+          updateCardStatus('system-card', 'status-good');
+          updateCardStatus('chat-card', 'status-good');
+        } else if (rate >= 80) {
+          log('⚠️ GOOD: Message registration mostly working, some issues remain', 'warning');
+          updateBigStatus('MOSTLY FIXED', '⚠️');
+          updateCardStatus('system-card', 'status-warning');
+          updateCardStatus('chat-card', 'status-warning');
+        } else {
+          log('❌ POOR: Message registration still has issues', 'error');
+          updateBigStatus('NEEDS FIX', '🚨');
+          updateCardStatus('system-card', 'status-error');
+          updateCardStatus('chat-card', 'status-error');
+        }
+      } else {
+        document.getElementById('registration-rate').textContent = '100%';
+        log('✅ No active tracking (normal for static content)', 'success');
+        updateBigStatus('OK', '✅');
+        updateCardStatus('system-card', 'status-good');
+        updateCardStatus('chat-card', 'status-good');
+      }
+
+      // Overall assessment
+      if (successRate >= 95) {
+        log('🎯 VERDICT: Message display system is working correctly!', 'success');
+      } else if (successRate >= 80) {
+        log('🎯 VERDICT: System working but could be improved', 'warning');
+      } else {
+        log('🎯 VERDICT: System needs attention', 'error');
+      }
+    }
+
+    function updateCardStatus(cardId, statusClass) {
+      const card = document.getElementById(cardId);
+      card.className = `status-card ${statusClass}`;
+    }
+
+    function forceFixNow() {
+      log('🔧 Force fixing message registration...', 'info');
+
+      if (!window.messageDisplayGuarantee) {
+        log('❌ Cannot fix: MessageDisplayGuarantee not available', 'error');
+        return;
+      }
+
+      const chatId = window.location.pathname.match(/\/chat\/(\d+)/)?.[1];
+      if (!chatId) {
+        log('❌ Cannot fix: No chat detected', 'error');
+        return;
+      }
+
+      const elements = document.querySelectorAll('[data-message-id]');
+      let registered = 0;
+      let failed = 0;
+
+      elements.forEach(el => {
+        const messageId = el.getAttribute('data-message-id');
+        if (messageId && el.offsetParent !== null) {
+          try {
+            window.messageDisplayGuarantee.markMessageDisplayed(
+              parseInt(messageId), el, parseInt(chatId)
+            );
+            registered++;
+          } catch (error) {
+            failed++;
+            log(`❌ Failed to register message ${messageId}`, 'error');
+          }
+        }
+      });
+
+      log(`✅ Force fix complete: ${registered} registered, ${failed} failed`,
+        failed === 0 ? 'success' : 'warning');
+
+      // Re-run test to see results
+      setTimeout(() => runQuickTest(), 500);
+    }
+
+    function openMonitor() {
+      window.open('message-display-real-time-monitor.html', '_blank');
+    }
+
+    // Auto-run test on load
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(runQuickTest, 1000);
+    });
+  </script>
+</body>
+
+</html>

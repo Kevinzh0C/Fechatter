@@ -1,6 +1,6 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { SearchService } from '@/services/api'
+import searchService from '@/services/searchService'
 import { useToast } from '@/composables/useToast'
 
 // Types
@@ -90,9 +90,9 @@ export function useCompactSearch() {
   const hasActiveFilters = computed(() => {
     const { filters } = state.value
     return filters.timeRange !== 'all' ||
-           filters.messageType !== 'all' ||
-           filters.fromUser !== '' ||
-           filters.sortBy !== 'newest'
+      filters.messageType !== 'all' ||
+      filters.fromUser !== '' ||
+      filters.sortBy !== 'newest'
   })
 
   const canSearch = computed(() => {
@@ -126,7 +126,7 @@ export function useCompactSearch() {
   // Initialize from URL query parameters
   const initializeFromRoute = () => {
     const query = route.query
-    
+
     if (query.q) state.value.query = String(query.q)
     if (query.timeRange) state.value.filters.timeRange = String(query.timeRange) as SearchFilter['timeRange']
     if (query.messageType) state.value.filters.messageType = String(query.messageType) as SearchFilter['messageType']
@@ -138,7 +138,7 @@ export function useCompactSearch() {
   // Sync state to URL
   const syncToRoute = () => {
     const query: Record<string, string> = {}
-    
+
     if (state.value.query) query.q = state.value.query
     if (state.value.filters.timeRange !== 'all') query.timeRange = state.value.filters.timeRange
     if (state.value.filters.messageType !== 'all') query.messageType = state.value.filters.messageType
@@ -187,8 +187,8 @@ export function useCompactSearch() {
         limit: state.value.pagination.limit
       }
 
-      const response = await SearchService.search(searchParams)
-      
+      const response = await searchService.intelligentSearch(searchParams)
+
       if (resetPagination) {
         state.value.results = response.results
       } else {
@@ -202,10 +202,10 @@ export function useCompactSearch() {
       }
 
       state.value.hasSearched = true
-      
+
       // Cache results
       setCachedResults(cacheKey, state.value.results)
-      
+
       // Sync to URL
       syncToRoute()
 
@@ -224,7 +224,7 @@ export function useCompactSearch() {
     if (debounceTimer) {
       clearTimeout(debounceTimer)
     }
-    
+
     debounceTimer = setTimeout(() => {
       performSearch(resetPagination)
     }, 400)
@@ -267,7 +267,7 @@ export function useCompactSearch() {
   // Text highlighting
   const highlightSearchTerms = (content: string): string => {
     if (!state.value.query) return content
-    
+
     const regex = new RegExp(`(${state.value.query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
     return content.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-800 px-1 rounded">$1</mark>')
   }
@@ -281,7 +281,7 @@ export function useCompactSearch() {
     const date = new Date(timestamp)
     const now = new Date()
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
-    
+
     if (diffInHours < 1) {
       return 'Just now'
     } else if (diffInHours < 24) {
@@ -307,12 +307,12 @@ export function useCompactSearch() {
   return {
     // State
     state: computed(() => state.value),
-    
+
     // Computed
     hasActiveFilters,
     canSearch,
     isRateLimited,
-    
+
     // Actions
     search,
     debouncedSearch,
@@ -320,12 +320,12 @@ export function useCompactSearch() {
     updateFilter,
     clearFilters,
     clearAll,
-    
+
     // Utilities
     highlightSearchTerms,
     getInitials,
     formatTime,
-    
+
     // Direct state access for v-model
     query: computed({
       get: () => state.value.query,

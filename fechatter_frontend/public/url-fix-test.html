@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head><title>URL Fix Test</title></head>
+<body>
+<h1>File URL Fix Test</h1>
+<div id="test1">Test 1: Path normalization</div>
+<div id="test2">Test 2: Image load test</div>
+<button onclick="runTests()">Run Tests</button>
+<script>
+function getFileUrl(file) {
+    let url = file.file_url || file.url || '';
+    if (url) {
+        const fileName = url.split('/').pop();
+        if (fileName && fileName.includes('.')) {
+            url = `/files/${fileName}`;
+        }
+    }
+    return url;
+}
+
+function runTests() {
+    // Test path normalization
+    const mockFile = { url: '60c/155/658fcb1ef14145b5c9e359a571c504b8e1a7449d96577283c1eebb68.png' };
+    const result = getFileUrl(mockFile);
+    document.getElementById('test1').innerHTML = 'Test 1: ' + result;
+    
+    // Test image loading
+    const testUrl = '/files/658fcb1ef14145b5c9e359a571c504b8e1a7449d96577283c1eebb68.png';
+    const img = new Image();
+    img.onload = () => {
+        document.getElementById('test2').innerHTML = 'Test 2: ✅ Image loads correctly!';
+    };
+    img.onerror = () => {
+        document.getElementById('test2').innerHTML = 'Test 2: ❌ Image failed to load';
+    };
+    img.src = testUrl;
+}
+</script>
+</body>
+</html>

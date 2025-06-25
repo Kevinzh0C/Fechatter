@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Syntax Fix Verification</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-result {
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px 0;
+            font-weight: 600;
+        }
+
+        .success {
+            background: #d1f2eb;
+            color: #0d6b47;
+            border: 2px solid #27d795;
+        }
+
+        .error {
+            background: #ffeaea;
+            color: #c53030;
+            border: 2px solid #fc8181;
+        }
+
+        .info {
+            background: #e6f3ff;
+            color: #2b6cb0;
+            border: 2px solid #63b3ed;
+        }
+
+        .code {
+            background: #f7fafc;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 14px;
+            margin: 8px 0;
+            border: 1px solid #e2e8f0;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .test-section {
+            margin: 24px 0;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: #fafbfc;
+        }
+
+        .btn {
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 8px 4px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #3182ce;
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Fechatter FileUrlHandler 语法修复验证</h1>
+            <p>测试 Vite 语法错误是否已解决</p>
+        </div>
+
+        <div id="results">
+            <div class="info test-result">
+                🔄 正在初始化测试系统...
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>自动测试</h3>
+            <button class="btn" onclick="runAllTests()">🚀 运行完整测试</button>
+            <button class="btn" onclick="testFileUrlHandler()">📁 测试 FileUrlHandler</button>
+            <button class="btn" onclick="testVueComponents()">🔧 测试 Vue 组件</button>
+        </div>
+    </div>
+
+    <script type="module">
+        const results = document.getElementById('results');
+
+        function addResult(type, message, details = '') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `${message}${details ? `<div class="code">${details}</div>` : ''}`;
+            results.appendChild(div);
+        }
+
+        async function testFileUrlHandler() {
+            try {
+                addResult('info', '🔄 测试 FileUrlHandler 导入...');
+
+                const module = await import('/src/utils/fileUrlHandler.js');
+                addResult('success', '✅ FileUrlHandler 导入成功！');
+
+                if (module.getStandardFileUrl) {
+                    addResult('success', '✅ getStandardFileUrl 函数可用');
+
+                    // 测试函数调用
+                    const testUrl = 'test-file.png';
+                    const result = module.getStandardFileUrl(testUrl, { workspaceId: 2 });
+
+                    if (result) {
+                        addResult('success', '✅ 函数调用成功', `输入: ${testUrl}\n输出: ${result}`);
+                    } else {
+                        addResult('error', '❌ 函数返回空值');
+                    }
+                } else {
+                    addResult('error', '❌ getStandardFileUrl 函数未找到');
+                }
+
+            } catch (error) {
+                addResult('error', '❌ FileUrlHandler 测试失败', `错误: ${error.message}\n堆栈: ${error.stack}`);
+            }
+        }
+
+        async function testVueComponents() {
+            try {
+                addResult('info', '🔄 测试 Vue 组件导入...');
+
+                // 测试 DiscordMessageItem
+                try {
+                    const discordModule = await import('/src/components/discord/DiscordMessageItem.vue');
+                    addResult('success', '✅ DiscordMessageItem.vue 导入成功');
+                } catch (error) {
+                    addResult('error', '❌ DiscordMessageItem.vue 导入失败', error.message);
+                }
+
+                // 测试 FilePreview
+                try {
+                    const filePreviewModule = await import('/src/components/chat/FilePreview.vue');
+                    addResult('success', '✅ FilePreview.vue 导入成功');
+                } catch (error) {
+                    addResult('error', '❌ FilePreview.vue 导入失败', error.message);
+                }
+
+            } catch (error) {
+                addResult('error', '❌ Vue 组件测试失败', error.message);
+            }
+        }
+
+        async function testViteServer() {
+            try {
+                addResult('info', '🔄 测试 Vite 开发服务器状态...');
+
+                const response = await fetch('/');
+                if (response.ok) {
+                    addResult('success', '✅ Vite 开发服务器正常运行');
+                } else {
+                    addResult('error', `❌ 服务器响应错误: ${response.status}`);
+                }
+
+            } catch (error) {
+                addResult('error', '❌ 无法连接到 Vite 服务器', error.message);
+            }
+        }
+
+        window.runAllTests = async function () {
+            results.innerHTML = '<div class="info test-result">🚀 开始运行完整测试套件...</div>';
+
+            await testViteServer();
+            await testFileUrlHandler();
+            await testVueComponents();
+
+            addResult('success', '🎉 测试完成！检查上述结果确认修复状态。');
+        };
+
+        window.testFileUrlHandler = testFileUrlHandler;
+        window.testVueComponents = testVueComponents;
+
+        // 自动运行测试
+        runAllTests();
+    </script>
+</body>
+
+</html>

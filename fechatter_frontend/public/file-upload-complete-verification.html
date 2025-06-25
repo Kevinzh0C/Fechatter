@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fechatter File Upload Complete Verification</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .test { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        .results { margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🚀 Fechatter File Upload Complete Verification</h1>
+    
+    <div class="test">
+        <h2>1. Backend File Service Test</h2>
+        <button onclick="testFileService()">Test File Service</button>
+        <div id="fileServiceResult" class="results"></div>
+    </div>
+    
+    <div class="test">
+        <h2>2. File Upload Test</h2>
+        <input type="file" id="fileInput" accept="image/*">
+        <button onclick="testUpload()">Upload File</button>
+        <div id="uploadResult" class="results"></div>
+    </div>
+    
+    <div class="test">
+        <h2>3. End-to-End Test</h2>
+        <button onclick="runCompleteTest()">Run Complete Test</button>
+        <div id="completeResult" class="results"></div>
+    </div>
+
+    <script>
+        async function testFileService() {
+            const testUrl = 'http://45.77.178.85:8080/files/658fcb1ef14145b5c9e359a571c504b8e1a7449d9965f720d3c1eebb68.png';
+            
+            try {
+                const response = await fetch(testUrl, { method: 'HEAD' });
+                if (response.ok) {
+                    document.getElementById('fileServiceResult').innerHTML = 
+                        `<div class="success">✅ File service working! Status: ${response.status}, Type: ${response.headers.get('content-type')}</div>`;
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                document.getElementById('fileServiceResult').innerHTML = 
+                    `<div class="error">❌ File service failed: ${error.message}</div>`;
+            }
+        }
+        
+        async function testUpload() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file first');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch('/api/files/single', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    const fileUrl = result.data?.url || result.file_url || result.url;
+                    
+                    document.getElementById('uploadResult').innerHTML = 
+                        `<div class="success">✅ Upload successful!<br>File URL: ${fileUrl}</div>`;
+                        
+                    // Test if file is accessible after upload
+                    setTimeout(async () => {
+                        try {
+                            const testResponse = await fetch(fileUrl, { method: 'HEAD' });
+                            if (testResponse.ok) {
+                                document.getElementById('uploadResult').innerHTML += 
+                                    `<div class="success">✅ File is accessible immediately!</div>`;
+                            } else {
+                                document.getElementById('uploadResult').innerHTML += 
+                                    `<div class="warning">⚠️ File not yet accessible (sync pending)</div>`;
+                            }
+                        } catch (error) {
+                            document.getElementById('uploadResult').innerHTML += 
+                                `<div class="error">❌ File access test failed: ${error.message}</div>`;
+                        }
+                    }, 2000);
+                } else {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+            } catch (error) {
+                document.getElementById('uploadResult').innerHTML = 
+                    `<div class="error">❌ Upload failed: ${error.message}</div>`;
+            }
+        }
+        
+        async function runCompleteTest() {
+            document.getElementById('completeResult').innerHTML = '<div>Running complete test...</div>';
+            
+            // Test 1: File service
+            await testFileService();
+            
+            // Test 2: Upload if file selected
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput.files[0]) {
+                await testUpload();
+            }
+            
+            document.getElementById('completeResult').innerHTML = 
+                '<div class="success">✅ Complete test finished! Check individual test results above.</div>';
+        }
+    </script>
+</body>
+</html>

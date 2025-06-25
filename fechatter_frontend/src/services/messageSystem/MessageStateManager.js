@@ -81,26 +81,27 @@ class MessageMetadata {
         break;
     }
 
-  /**
-   * Check if message can be retried
-   */
-  canRetry() {
-    return (this.state === MessageState.FAILED || this.state === MessageState.TIMEOUT) &&
-      this.retryCount < this.maxRetries;
-  }
+    /**
+     * Check if message can be retried
+     */
+    canRetry() {
+      return (this.state === MessageState.FAILED || this.state === MessageState.TIMEOUT) &&
+        this.retryCount < this.maxRetries;
+    }
 
-  /**
-   * Check if message is in terminal state
-   */
-  isTerminal() {
-    return [MessageState.DELIVERED, MessageState.READ, MessageState.REJECTED].includes(this.state);
-  }
+    /**
+     * Check if message is in terminal state
+     */
+    isTerminal() {
+      return [MessageState.DELIVERED, MessageState.READ, MessageState.REJECTED].includes(this.state);
+    }
 
-  /**
-   * Check if message is pending
-   */
-  isPending() {
-    return [MessageState.QUEUED, MessageState.SENDING, MessageState.SENT].includes(this.state);
+    /**
+     * Check if message is pending
+     */
+    isPending() {
+      return [MessageState.QUEUED, MessageState.SENDING, MessageState.SENT].includes(this.state);
+    }
   }
 
 /**
@@ -108,7 +109,7 @@ class MessageMetadata {
  */
 class CompleteMessage {
   constructor(content, chatId, senderId, options = {}) {
-    this.content = content;
+    this.content = this._extractSafeContent(content);
     this.chatId = chatId;
     this.senderId = senderId;
     this.files = options.files || [];
@@ -120,6 +121,53 @@ class CompleteMessage {
     this.replyTo = options.replyTo || null;
     this.edited = options.edited || false;
     this.editedAt = options.editedAt || null;
+  }
+
+  /**
+   * 🚀 NEW: Safe content extraction to prevent [object Object] display issues
+   */
+  _extractSafeContent(rawContent) {
+    if (!rawContent) return '';
+
+    // If it's already a string, check for object serialization issues
+    if (typeof rawContent === 'string') {
+      if (rawContent.includes('[object Object]')) {
+        console.warn('[MessageStateManager] Detected [object Object] string in message data');
+        return 'Message content error - please refresh';
+      }
+      return rawContent;
+    }
+
+    // If it's an object, extract content safely
+    if (typeof rawContent === 'object' && rawContent !== null) {
+      if (import.meta.env.DEV) {
+        console.warn('[MessageStateManager] Message content is object, extracting safely:', rawContent);
+      }
+
+      // Try multiple extraction strategies
+      const extracted = rawContent.text ||
+        rawContent.content ||
+        rawContent.message ||
+        rawContent.body ||
+        rawContent.data ||
+        // Handle array content
+        (Array.isArray(rawContent) ? rawContent.join(' ') : null);
+
+      if (extracted && typeof extracted === 'string') {
+        return extracted;
+      }
+
+      // Last resort: safe JSON stringify
+      try {
+        return JSON.stringify(rawContent, null, 2);
+      } catch (e) {
+        console.error('[MessageStateManager] Failed to stringify message content:', e);
+        return 'Complex object content - display error';
+      }
+    }
+
+    // Convert any other type to string
+    return String(rawContent);
   }
 
   /**
@@ -179,6 +227,7 @@ class CompleteMessage {
       edited_at: this.editedAt
     };
   }
+}
 
 /**
  * Message State Manager - Core state management class
@@ -233,388 +282,388 @@ export class MessageStateManager {
 
     if (import.meta.env.DEV) {
       console.log(`📝 Created message: ${clientId} (chat: ${chatId})`);
-    return message;
-  }
-
-  /**
-   * Update message state with complete validation
-   */
-  updateMessageState(clientId, newState, additionalData = {}) {
-    const message = this.messages.get(clientId);
-    if (!message) {
-      if (import.meta.env.DEV) {
-        console.warn(`❌ Message not found: ${clientId}`);
-      return false;
+      return message;
     }
 
-    const oldState = message.metadata.state;
-
-    // Validate state transition
-    if (!this.isValidStateTransition(oldState, newState)) {
-      if (import.meta.env.DEV) {
-        console.warn(`❌ Invalid state transition: ${oldState} → ${newState} for message ${clientId}`);
-      return false;
-    }
-
-    // Update state
-    message.updateState(newState, additionalData);
-
-    // Update indexes
-    this.updateIndexes(message, oldState);
-
-    // Update statistics
-    this.updateStats(message, 'update', oldState);
-
-    // Handle state-specific logic
-    this.handleStateChange(message, oldState, newState);
-
-    if (import.meta.env.DEV) {
-      console.log(`🔄 Updated message state: ${clientId} (${oldState} → ${newState})`);
-    return true;
-  }
-
-  /**
-   * Validate state transition
-   */
-  isValidStateTransition(fromState, toState) {
-    const validTransitions = {
-      [MessageState.DRAFT]: [MessageState.QUEUED, MessageState.SENDING],
-      [MessageState.QUEUED]: [MessageState.SENDING, MessageState.FAILED],
-      [MessageState.SENDING]: [MessageState.SENT, MessageState.FAILED, MessageState.TIMEOUT],
-      [MessageState.SENT]: [MessageState.DELIVERED, MessageState.FAILED, MessageState.TIMEOUT],
-      [MessageState.DELIVERED]: [MessageState.READ],
-      [MessageState.FAILED]: [MessageState.QUEUED, MessageState.SENDING, MessageState.REJECTED],
-      [MessageState.TIMEOUT]: [MessageState.QUEUED, MessageState.SENDING, MessageState.REJECTED],
-      [MessageState.READ]: [], // Terminal state
-      [MessageState.REJECTED]: [] // Terminal state
-    };
-
-    return validTransitions[fromState]?.includes(toState) || false;
-  }
-
-  /**
-   * Handle state change logic
-   */
-  handleStateChange(message, oldState, newState) {
-    const clientId = message.metadata.clientId;
-
-    // Clear timeout when message reaches terminal state
-    if (message.metadata.isTerminal() && message.metadata.timeout) {
-      clearTimeout(message.metadata.timeout);
-      message.metadata.timeout = null;
-    }
-
-    // Set timeout for sending state
-    if (newState === MessageState.SENDING) {
-      message.metadata.timeout = setTimeout(() => {
-        this.updateMessageState(clientId, MessageState.TIMEOUT, {
-          errorInfo: { reason: 'Send timeout', timestamp: new Date().toISOString() }
-        });
-      }, this.config.timeoutMs);
-    }
-
-    // Remove from pending operations when completed or failed
-    if (message.metadata.isTerminal() || newState === MessageState.FAILED) {
-      this.pendingOperations.delete(clientId);
-    }
-
-  /**
-   * Get message by client ID
-   */
-  getMessage(clientId) {
-    return this.messages.get(clientId);
-  }
-
-  /**
-   * Get message by server ID
-   */
-  getMessageByServerId(serverId) {
-    const clientId = this.serverIdIndex.get(serverId);
-    return clientId ? this.messages.get(clientId) : null;
-  }
-
-  /**
-   * Get messages for a chat
-   */
-  getMessagesForChat(chatId, states = null) {
-    const clientIds = this.chatIndex.get(chatId) || new Set();
-    const messages = [];
-
-    for (const clientId of clientIds) {
+    /**
+     * Update message state with complete validation
+     */
+    updateMessageState(clientId, newState, additionalData = {}) {
       const message = this.messages.get(clientId);
-      if (message && (!states || states.includes(message.metadata.state))) {
-        messages.push(message);
-      }
-
-    // Sort by creation time
-    return messages.sort((a, b) =>
-      new Date(a.metadata.createdAt) - new Date(b.metadata.createdAt)
-    );
-  }
-
-  /**
-   * Get messages by state
-   */
-  getMessagesByState(state) {
-    const clientIds = this.stateIndex.get(state) || new Set();
-    const messages = [];
-
-    for (const clientId of clientIds) {
-      const message = this.messages.get(clientId);
-      if (message) {
-        messages.push(message);
-      }
-
-    return messages;
-  }
-
-  /**
-   * Update message with server response
-   */
-  updateFromServerResponse(clientId, serverResponse) {
-    const message = this.messages.get(clientId);
-    if (!message) {
-      if (import.meta.env.DEV) {
-        console.warn(`❌ Message not found for server response: ${clientId}`);
-      return false;
-    }
-
-    // Update server ID
-    if (serverResponse.id && !message.metadata.serverId) {
-      message.metadata.serverId = serverResponse.id;
-      this.serverIdIndex.set(serverResponse.id, clientId);
-    }
-
-    // Update other server-provided data
-    if (serverResponse.created_at) {
-      message.metadata.createdAt = serverResponse.created_at;
-    }
-
-    // Update state to sent
-    this.updateMessageState(clientId, MessageState.SENT, {
-      sentAt: serverResponse.created_at || new Date().toISOString()
-    });
-
-    if (import.meta.env.DEV) {
-      console.log(`📨 Updated message from server: ${clientId} → ${serverResponse.id}`);
-    return true;
-  }
-
-  /**
-   * Match incoming SSE message with pending message
-   */
-  matchSSEMessage(sseMessage) {
-    // Try to match by server ID first
-    if (sseMessage.id) {
-      const message = this.getMessageByServerId(sseMessage.id);
-      if (message) {
-        this.updateMessageState(message.metadata.clientId, MessageState.DELIVERED, {
-          deliveredAt: sseMessage.created_at || new Date().toISOString()
-        });
-        return message;
-      }
-
-    // Try to match by content and sender for recent messages
-    const recentMessages = this.getMessagesByState(MessageState.SENT);
-    const now = Date.now();
-
-    for (const message of recentMessages) {
-      // Match within last 60 seconds
-      const messageTime = new Date(message.metadata.sentAt || message.metadata.createdAt).getTime();
-      if (now - messageTime > 60000) continue;
-
-      // Match by content and sender
-      if (message.content === sseMessage.content &&
-        message.senderId === sseMessage.sender_id &&
-        message.chatId === sseMessage.chat_id) {
-
-        // Update with server ID
-        if (sseMessage.id) {
-          message.metadata.serverId = sseMessage.id;
-          this.serverIdIndex.set(sseMessage.id, message.metadata.clientId);
+      if (!message) {
+        if (import.meta.env.DEV) {
+          console.warn(`❌ Message not found: ${clientId}`);
+          return false;
         }
 
-        this.updateMessageState(message.metadata.clientId, MessageState.DELIVERED, {
-          deliveredAt: sseMessage.created_at || new Date().toISOString()
-        });
+        const oldState = message.metadata.state;
 
-        if (import.meta.env.DEV) {
-          console.log(`🔗 Matched SSE message: ${message.metadata.clientId} ↔ ${sseMessage.id}`);
-        return message;
-      }
+        // Validate state transition
+        if (!this.isValidStateTransition(oldState, newState)) {
+          if (import.meta.env.DEV) {
+            console.warn(`❌ Invalid state transition: ${oldState} → ${newState} for message ${clientId}`);
+            return false;
+          }
 
-    return null;
-  }
+          // Update state
+          message.updateState(newState, additionalData);
 
-  /**
-   * Remove message
-   */
-  removeMessage(clientId) {
-    const message = this.messages.get(clientId);
-    if (!message) return false;
+          // Update indexes
+          this.updateIndexes(message, oldState);
 
-    // Clear timeout
-    if (message.metadata.timeout) {
-      clearTimeout(message.metadata.timeout);
-    }
+          // Update statistics
+          this.updateStats(message, 'update', oldState);
 
-    // Remove from indexes
-    this.removeFromIndexes(message);
+          // Handle state-specific logic
+          this.handleStateChange(message, oldState, newState);
 
-    // Update statistics
-    this.updateStats(message, 'remove');
+          if (import.meta.env.DEV) {
+            console.log(`🔄 Updated message state: ${clientId} (${oldState} → ${newState})`);
+            return true;
+          }
 
-    // Remove from storage
-    this.messages.delete(clientId);
+          /**
+           * Validate state transition
+           */
+          isValidStateTransition(fromState, toState) {
+            const validTransitions = {
+              [MessageState.DRAFT]: [MessageState.QUEUED, MessageState.SENDING],
+              [MessageState.QUEUED]: [MessageState.SENDING, MessageState.FAILED],
+              [MessageState.SENDING]: [MessageState.SENT, MessageState.FAILED, MessageState.TIMEOUT],
+              [MessageState.SENT]: [MessageState.DELIVERED, MessageState.FAILED, MessageState.TIMEOUT],
+              [MessageState.DELIVERED]: [MessageState.READ],
+              [MessageState.FAILED]: [MessageState.QUEUED, MessageState.SENDING, MessageState.REJECTED],
+              [MessageState.TIMEOUT]: [MessageState.QUEUED, MessageState.SENDING, MessageState.REJECTED],
+              [MessageState.READ]: [], // Terminal state
+              [MessageState.REJECTED]: [] // Terminal state
+            };
 
-    if (import.meta.env.DEV) {
-      console.log(`🗑️ Removed message: ${clientId}`);
-    return true;
-  }
+            return validTransitions[fromState]?.includes(toState) || false;
+          }
 
-  /**
-   * Update indexes
-   */
-  updateIndexes(message, oldState = null) {
-    const clientId = message.metadata.clientId;
-    const { chatId, state, serverId } = {
-      chatId: message.chatId,
-      state: message.metadata.state,
-      serverId: message.metadata.serverId
-    };
+          /**
+           * Handle state change logic
+           */
+          handleStateChange(message, oldState, newState) {
+            const clientId = message.metadata.clientId;
 
-    // Update chat index
-    if (!this.chatIndex.has(chatId)) {
-      this.chatIndex.set(chatId, new Set());
-    this.chatIndex.get(chatId).add(clientId);
+            // Clear timeout when message reaches terminal state
+            if (message.metadata.isTerminal() && message.metadata.timeout) {
+              clearTimeout(message.metadata.timeout);
+              message.metadata.timeout = null;
+            }
 
-    // Update state index
-    if (oldState && this.stateIndex.has(oldState)) {
-      this.stateIndex.get(oldState).delete(clientId);
-    if (!this.stateIndex.has(state)) {
-      this.stateIndex.set(state, new Set());
-    this.stateIndex.get(state).add(clientId);
+            // Set timeout for sending state
+            if (newState === MessageState.SENDING) {
+              message.metadata.timeout = setTimeout(() => {
+                this.updateMessageState(clientId, MessageState.TIMEOUT, {
+                  errorInfo: { reason: 'Send timeout', timestamp: new Date().toISOString() }
+                });
+              }, this.config.timeoutMs);
+            }
 
-    // Update server ID index
-    if (serverId) {
-      this.serverIdIndex.set(serverId, clientId);
-    }
+            // Remove from pending operations when completed or failed
+            if (message.metadata.isTerminal() || newState === MessageState.FAILED) {
+              this.pendingOperations.delete(clientId);
+            }
 
-  /**
-   * Remove from indexes
-   */
-  removeFromIndexes(message) {
-    const clientId = message.metadata.clientId;
-    const { chatId, state, serverId } = {
-      chatId: message.chatId,
-      state: message.metadata.state,
-      serverId: message.metadata.serverId
-    };
+            /**
+             * Get message by client ID
+             */
+            getMessage(clientId) {
+              return this.messages.get(clientId);
+            }
 
-    // Remove from chat index
-    if (this.chatIndex.has(chatId)) {
-      this.chatIndex.get(chatId).delete(clientId);
-    }
+            /**
+             * Get message by server ID
+             */
+            getMessageByServerId(serverId) {
+              const clientId = this.serverIdIndex.get(serverId);
+              return clientId ? this.messages.get(clientId) : null;
+            }
 
-    // Remove from state index
-    if (this.stateIndex.has(state)) {
-      this.stateIndex.get(state).delete(clientId);
-    }
+            /**
+             * Get messages for a chat
+             */
+            getMessagesForChat(chatId, states = null) {
+              const clientIds = this.chatIndex.get(chatId) || new Set();
+              const messages = [];
 
-    // Remove from server ID index
-    if (serverId) {
-      this.serverIdIndex.delete(serverId);
-    }
+              for (const clientId of clientIds) {
+                const message = this.messages.get(clientId);
+                if (message && (!states || states.includes(message.metadata.state))) {
+                  messages.push(message);
+                }
 
-  /**
-   * Update statistics
-   */
-  updateStats(message, operation, oldState = null) {
-    if (operation === 'add') {
-      this.stats.total++;
-      this.updateStatCount(this.stats.byState, message.metadata.state, 1);
-      this.updateStatCount(this.stats.byChat, message.chatId, 1);
-    } else if (operation === 'remove') {
-      this.stats.total--;
-      this.updateStatCount(this.stats.byState, message.metadata.state, -1);
-      this.updateStatCount(this.stats.byChat, message.chatId, -1);
-    } else if (operation === 'update' && oldState) {
-      this.updateStatCount(this.stats.byState, oldState, -1);
-      this.updateStatCount(this.stats.byState, message.metadata.state, 1);
-    }
+                // Sort by creation time
+                return messages.sort((a, b) =>
+                  new Date(a.metadata.createdAt) - new Date(b.metadata.createdAt)
+                );
+              }
 
-  /**
-   * Update stat count helper
-   */
-  updateStatCount(statMap, key, delta) {
-    const current = statMap.get(key) || 0;
-    const newValue = current + delta;
-    if (newValue <= 0) {
-      statMap.delete(key);
-    } else {
-      statMap.set(key, newValue);
-    }
+              /**
+               * Get messages by state
+               */
+              getMessagesByState(state) {
+                const clientIds = this.stateIndex.get(state) || new Set();
+                const messages = [];
 
-  /**
-   * Get statistics
-   */
-  getStats() {
-    return {
-      total: this.stats.total,
-      byState: Object.fromEntries(this.stats.byState),
-      byChat: Object.fromEntries(this.stats.byChat),
-      pendingOperations: this.pendingOperations.size
-    };
-  }
+                for (const clientId of clientIds) {
+                  const message = this.messages.get(clientId);
+                  if (message) {
+                    messages.push(message);
+                  }
 
-  /**
-   * Cleanup old completed messages
-   */
-  cleanup() {
-    const now = Date.now();
-    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-    const toRemove = [];
+                  return messages;
+                }
 
-    for (const [clientId, message] of this.messages) {
-      const messageAge = now - new Date(message.metadata.updatedAt).getTime();
+                /**
+                 * Update message with server response
+                 */
+                updateFromServerResponse(clientId, serverResponse) {
+                  const message = this.messages.get(clientId);
+                  if (!message) {
+                    if (import.meta.env.DEV) {
+                      console.warn(`❌ Message not found for server response: ${clientId}`);
+                      return false;
+                    }
 
-      // Remove old completed messages
-      if (message.metadata.isTerminal() && messageAge > maxAge) {
-        toRemove.push(clientId);
-      }
+                    // Update server ID
+                    if (serverResponse.id && !message.metadata.serverId) {
+                      message.metadata.serverId = serverResponse.id;
+                      this.serverIdIndex.set(serverResponse.id, clientId);
+                    }
 
-    toRemove.forEach(clientId => this.removeMessage(clientId));
+                    // Update other server-provided data
+                    if (serverResponse.created_at) {
+                      message.metadata.createdAt = serverResponse.created_at;
+                    }
 
-    if (toRemove.length > 0) {
-      if (import.meta.env.DEV) {
-        console.log(`🧹 Cleaned up ${toRemove.length} old messages`);
-      }
+                    // Update state to sent
+                    this.updateMessageState(clientId, MessageState.SENT, {
+                      sentAt: serverResponse.created_at || new Date().toISOString()
+                    });
 
-  /**
-   * Start cleanup timer
-   */
-  startCleanupTimer() {
-    setInterval(() => {
-      this.cleanup();
-    }, this.config.cleanupIntervalMs);
-  }
+                    if (import.meta.env.DEV) {
+                      console.log(`📨 Updated message from server: ${clientId} → ${serverResponse.id}`);
+                      return true;
+                    }
 
-  /**
-   * Get configuration
-   */
-  getConfig() {
-    return { ...this.config };
-  }
+                    /**
+                     * Match incoming SSE message with pending message
+                     */
+                    matchSSEMessage(sseMessage) {
+                      // Try to match by server ID first
+                      if (sseMessage.id) {
+                        const message = this.getMessageByServerId(sseMessage.id);
+                        if (message) {
+                          this.updateMessageState(message.metadata.clientId, MessageState.DELIVERED, {
+                            deliveredAt: sseMessage.created_at || new Date().toISOString()
+                          });
+                          return message;
+                        }
 
-  /**
-   * Update configuration
-   */
-  updateConfig(newConfig) {
-    Object.assign(this.config, newConfig);
-  }
+                        // Try to match by content and sender for recent messages
+                        const recentMessages = this.getMessagesByState(MessageState.SENT);
+                        const now = Date.now();
 
-// Create global instance
-export const messageStateManager = new MessageStateManager();
+                        for (const message of recentMessages) {
+                          // Match within last 60 seconds
+                          const messageTime = new Date(message.metadata.sentAt || message.metadata.createdAt).getTime();
+                          if (now - messageTime > 60000) continue;
 
-// Export for testing
-export { CompleteMessage, MessageMetadata }; 
+                          // Match by content and sender
+                          if (message.content === sseMessage.content &&
+                            message.senderId === sseMessage.sender_id &&
+                            message.chatId === sseMessage.chat_id) {
+
+                            // Update with server ID
+                            if (sseMessage.id) {
+                              message.metadata.serverId = sseMessage.id;
+                              this.serverIdIndex.set(sseMessage.id, message.metadata.clientId);
+                            }
+
+                            this.updateMessageState(message.metadata.clientId, MessageState.DELIVERED, {
+                              deliveredAt: sseMessage.created_at || new Date().toISOString()
+                            });
+
+                            if (import.meta.env.DEV) {
+                              console.log(`🔗 Matched SSE message: ${message.metadata.clientId} ↔ ${sseMessage.id}`);
+                              return message;
+                            }
+
+                            return null;
+                          }
+
+                          /**
+                           * Remove message
+                           */
+                          removeMessage(clientId) {
+                            const message = this.messages.get(clientId);
+                            if (!message) return false;
+
+                            // Clear timeout
+                            if (message.metadata.timeout) {
+                              clearTimeout(message.metadata.timeout);
+                            }
+
+                            // Remove from indexes
+                            this.removeFromIndexes(message);
+
+                            // Update statistics
+                            this.updateStats(message, 'remove');
+
+                            // Remove from storage
+                            this.messages.delete(clientId);
+
+                            if (import.meta.env.DEV) {
+                              console.log(`🗑️ Removed message: ${clientId}`);
+                              return true;
+                            }
+
+                            /**
+                             * Update indexes
+                             */
+                            updateIndexes(message, oldState = null) {
+                              const clientId = message.metadata.clientId;
+                              const { chatId, state, serverId } = {
+                                chatId: message.chatId,
+                                state: message.metadata.state,
+                                serverId: message.metadata.serverId
+                              };
+
+                              // Update chat index
+                              if (!this.chatIndex.has(chatId)) {
+                                this.chatIndex.set(chatId, new Set());
+                                this.chatIndex.get(chatId).add(clientId);
+
+                                // Update state index
+                                if (oldState && this.stateIndex.has(oldState)) {
+                                  this.stateIndex.get(oldState).delete(clientId);
+                                  if (!this.stateIndex.has(state)) {
+                                    this.stateIndex.set(state, new Set());
+                                    this.stateIndex.get(state).add(clientId);
+
+                                    // Update server ID index
+                                    if (serverId) {
+                                      this.serverIdIndex.set(serverId, clientId);
+                                    }
+
+                                    /**
+                                     * Remove from indexes
+                                     */
+                                    removeFromIndexes(message) {
+                                      const clientId = message.metadata.clientId;
+                                      const { chatId, state, serverId } = {
+                                        chatId: message.chatId,
+                                        state: message.metadata.state,
+                                        serverId: message.metadata.serverId
+                                      };
+
+                                      // Remove from chat index
+                                      if (this.chatIndex.has(chatId)) {
+                                        this.chatIndex.get(chatId).delete(clientId);
+                                      }
+
+                                      // Remove from state index
+                                      if (this.stateIndex.has(state)) {
+                                        this.stateIndex.get(state).delete(clientId);
+                                      }
+
+                                      // Remove from server ID index
+                                      if (serverId) {
+                                        this.serverIdIndex.delete(serverId);
+                                      }
+
+                                      /**
+                                       * Update statistics
+                                       */
+                                      updateStats(message, operation, oldState = null) {
+                                        if (operation === 'add') {
+                                          this.stats.total++;
+                                          this.updateStatCount(this.stats.byState, message.metadata.state, 1);
+                                          this.updateStatCount(this.stats.byChat, message.chatId, 1);
+                                        } else if (operation === 'remove') {
+                                          this.stats.total--;
+                                          this.updateStatCount(this.stats.byState, message.metadata.state, -1);
+                                          this.updateStatCount(this.stats.byChat, message.chatId, -1);
+                                        } else if (operation === 'update' && oldState) {
+                                          this.updateStatCount(this.stats.byState, oldState, -1);
+                                          this.updateStatCount(this.stats.byState, message.metadata.state, 1);
+                                        }
+
+                                        /**
+                                         * Update stat count helper
+                                         */
+                                        updateStatCount(statMap, key, delta) {
+                                          const current = statMap.get(key) || 0;
+                                          const newValue = current + delta;
+                                          if (newValue <= 0) {
+                                            statMap.delete(key);
+                                          } else {
+                                            statMap.set(key, newValue);
+                                          }
+
+                                          /**
+                                           * Get statistics
+                                           */
+                                          getStats() {
+                                            return {
+                                              total: this.stats.total,
+                                              byState: Object.fromEntries(this.stats.byState),
+                                              byChat: Object.fromEntries(this.stats.byChat),
+                                              pendingOperations: this.pendingOperations.size
+                                            };
+                                          }
+
+                                          /**
+                                           * Cleanup old completed messages
+                                           */
+                                          cleanup() {
+                                            const now = Date.now();
+                                            const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+                                            const toRemove = [];
+
+                                            for (const [clientId, message] of this.messages) {
+                                              const messageAge = now - new Date(message.metadata.updatedAt).getTime();
+
+                                              // Remove old completed messages
+                                              if (message.metadata.isTerminal() && messageAge > maxAge) {
+                                                toRemove.push(clientId);
+                                              }
+
+                                              toRemove.forEach(clientId => this.removeMessage(clientId));
+
+                                              if (toRemove.length > 0) {
+                                                if (import.meta.env.DEV) {
+                                                  console.log(`🧹 Cleaned up ${toRemove.length} old messages`);
+                                                }
+
+                                                /**
+                                                 * Start cleanup timer
+                                                 */
+                                                startCleanupTimer() {
+                                                  setInterval(() => {
+                                                    this.cleanup();
+                                                  }, this.config.cleanupIntervalMs);
+                                                }
+
+                                                /**
+                                                 * Get configuration
+                                                 */
+                                                getConfig() {
+                                                  return { ...this.config };
+                                                }
+
+                                                /**
+                                                 * Update configuration
+                                                 */
+                                                updateConfig(newConfig) {
+                                                  Object.assign(this.config, newConfig);
+                                                }
+
+                                                // Create global instance
+                                                export const messageStateManager = new MessageStateManager();
+
+                                                // Export for testing
+                                                export { CompleteMessage, MessageMetadata }; 

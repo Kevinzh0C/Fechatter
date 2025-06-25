@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enhanced MessageInput Verification</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f3f4f6;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      color: #6b7280;
+      margin: 0;
+    }
+
+    .test-section {
+      margin-bottom: 32px;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #f9fafb;
+    }
+
+    .test-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      color: white;
+    }
+
+    .status-pass {
+      background: #10b981;
+    }
+
+    .status-test {
+      background: #f59e0b;
+    }
+
+    .test-instructions {
+      color: #6b7280;
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+
+    .test-checklist {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .test-checklist li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      color: #374151;
+    }
+
+    .checkbox {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #d1d5db;
+      border-radius: 3px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .checkbox.checked {
+      background: #10b981;
+      border-color: #10b981;
+      color: white;
+    }
+
+    .checkbox:hover {
+      border-color: #9ca3af;
+    }
+
+    .feature-demo {
+      margin-top: 20px;
+      padding: 16px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .code-sample {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      margin: 12px 0;
+      overflow-x: auto;
+    }
+
+    .code-sample .keyword {
+      color: #8b5cf6;
+      font-weight: 600;
+    }
+
+    .code-sample .string {
+      color: #10b981;
+    }
+
+    .code-sample .number {
+      color: #f59e0b;
+    }
+
+    .code-sample .comment {
+      color: #6b7280;
+      font-style: italic;
+    }
+
+    .icon-showcase {
+      display: flex;
+      gap: 16px;
+      margin: 16px 0;
+      flex-wrap: wrap;
+    }
+
+    .icon-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: white;
+      min-width: 80px;
+    }
+
+    .icon-item svg {
+      width: 24px;
+      height: 24px;
+      stroke: #64748b;
+    }
+
+    .icon-item span {
+      font-size: 12px;
+      color: #6b7280;
+      text-align: center;
+    }
+
+    .alignment-test {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 16px;
+      background: #f8fafc;
+      border-radius: 8px;
+      margin: 16px 0;
+    }
+
+    .alignment-test button {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      color: #64748b;
+      padding: 0;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      transition: all 0.2s ease;
+    }
+
+    .alignment-test button:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+
+    .alignment-test .file-btn {
+      width: 44px;
+      height: 44px;
+    }
+
+    .alignment-test .send-btn {
+      background: #6366f1;
+      border: none;
+      color: white;
+      width: 44px;
+      height: 44px;
+    }
+
+    .results-summary {
+      margin-top: 32px;
+      padding: 20px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+    }
+
+    .results-summary h3 {
+      color: #166534;
+      margin: 0 0 12px 0;
+    }
+
+    .results-summary p {
+      color: #166534;
+      margin: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Enhanced MessageInput Verification</h1>
+      <p>Testing Code preview, business-style icons, and perfect icon alignment</p>
+    </div>
+
+    <!-- Test 1: Code Mode Preview -->
+    <div class="test-section">
+      <div class="test-title">
+        <div class="status-icon status-test">1</div>
+        Code Mode with Automatic Syntax Highlighting Preview
+      </div>
+      <div class="test-instructions">
+        Test the new code mode functionality with automatic real-time syntax highlighting preview.
+      </div>
+      <ul class="test-checklist">
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          Switch MessageInput to "CODE" mode (TEXT → MARKDOWN → CODE)
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          Code preview appears AUTOMATICALLY when entering CODE mode
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          No additional preview button is needed (clean interface)
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          Type JavaScript code and see live syntax highlighting
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          Language detection works automatically (JavaScript, Python, CSS, etc.)
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          Copy button works in code preview header
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          Preview disappears when switching away from CODE mode
+        </li>
+      </ul>
+      <div class="feature-demo">
+        <strong>Code Sample to Test:</strong>
+        <div class="code-sample">
+          <span class="keyword">function</span> <span class="function">calculateTotal</span>(<span
+            class="parameter">items</span>) {
+          <span class="comment">// Calculate total price</span>
+          <span class="keyword">const</span> <span class="variable">total</span> = <span
+            class="variable">items</span>.<span class="method">reduce</span>((<span class="parameter">sum, item</span>)
+          => {
+          <span class="keyword">return</span> <span class="variable">sum</span> + <span
+            class="variable">item</span>.<span class="property">price</span> * <span class="variable">item</span>.<span
+            class="property">quantity</span>;
+          }, <span class="number">0</span>);
+          <span class="keyword">return</span> <span class="variable">total</span>.<span
+            class="method">toFixed</span>(<span class="number">2</span>);
+          }
+        </div>
+        <div
+          style="margin-top: 12px; padding: 12px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px;">
+          <strong>✨ New Behavior:</strong> No manual preview toggle needed - switching to CODE mode automatically shows
+          preview!
+        </div>
+      </div>
+    </div>
+
+    <!-- Test 2: Business-Style Icons -->
+    <div class="test-section">
+      <div class="test-title">
+        <div class="status-icon status-test">2</div>
+        Professional Business-Style Icons
+      </div>
+      <div class="test-instructions">
+        Verify that all icons have been upgraded to professional, business-appropriate designs.
+      </div>
+      <ul class="test-checklist">
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          File upload uses folder icon (not document icon)
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          Emoji picker uses professional smile icon (dots for eyes)
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          Preview button uses clean eye icon
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          Markdown toolbar uses vector icons (code, link, etc.)
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          All icons maintain consistent stroke width
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          Icons look professional and business-appropriate
+        </li>
+      </ul>
+      <div class="icon-showcase">
+        <div class="icon-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <span>Folder</span>
+        </div>
+        <div class="icon-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+            <line x1="9" y1="9" x2="9.01" y2="9"></line>
+            <line x1="15" y1="9" x2="15.01" y2="9"></line>
+          </svg>
+          <span>Emoji</span>
+        </div>
+        <div class="icon-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <span>Preview</span>
+        </div>
+        <div class="icon-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="4,17 10,11 4,5"></polyline>
+            <line x1="12" y1="19" x2="20" y2="19"></line>
+          </svg>
+          <span>Code</span>
+        </div>
+        <div class="icon-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path>
+            <line x1="8" y1="12" x2="16" y2="12"></line>
+          </svg>
+          <span>Link</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Test 3: Icon Alignment -->
+    <div class="test-section">
+      <div class="test-title">
+        <div class="status-icon status-test">3</div>
+        Perfect Icon Center-Axis Alignment
+      </div>
+      <div class="test-instructions">
+        Verify that all buttons and icons are perfectly aligned on the same center axis.
+      </div>
+      <ul class="test-checklist">
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          All action buttons have consistent height (40px for mode/emoji, 44px for file/send)
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          Icons are vertically centered within buttons
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          Button spacing is consistent (8px gap)
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          File and Send buttons align with textarea baseline
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          Mode and action buttons form perfect horizontal line
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          No visual misalignment or jitter between elements
+        </li>
+      </ul>
+      <div class="alignment-test">
+        <button class="file-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </button>
+        <div
+          style="flex: 1; height: 42px; background: #f3f4f6; border-radius: 8px; display: flex; align-items: center; padding: 0 16px; color: #9ca3af;">
+          Input area simulation</div>
+        <button style="min-width: 50px; padding: 0 8px;">CODE</button>
+        <button>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </button>
+        <button>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+            <line x1="9" y1="9" x2="9.01" y2="9"></line>
+            <line x1="15" y1="9" x2="15.01" y2="9"></line>
+          </svg>
+        </button>
+        <button class="send-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22,2 15,22 11,13 2,9"></polygon>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Test 4: Integration Testing -->
+    <div class="test-section">
+      <div class="test-title">
+        <div class="status-icon status-test">4</div>
+        Integration & User Experience
+      </div>
+      <div class="test-instructions">
+        Test the complete user experience with all enhancements working together.
+      </div>
+      <ul class="test-checklist">
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          Mode switching works smoothly (Text → Markdown → Code)
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          Preview functionality works in both Markdown and Code modes
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          Icons remain perfectly aligned during mode changes
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          All hover effects work correctly
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          Send message functionality preserves after changes
+        </li>
+        <li>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          Overall UI feels polished and professional
+        </li>
+      </ul>
+    </div>
+
+    <div class="results-summary">
+      <h3>✅ Enhancement Summary</h3>
+      <p><strong>Code Mode Preview:</strong> Automatic real-time syntax highlighting<br>
+        <strong>Business Icons:</strong> Professional folder, emoji, and preview icons<br>
+        <strong>Perfect Alignment:</strong> All icons centered on consistent axis<br>
+        <strong>Production Ready:</strong> Professional, maintainable, scalable implementation
+      </p>
+    </div>
+  </div>
+
+  <script>
+    function toggleCheck(checkbox) {
+      checkbox.classList.toggle('checked');
+      if (checkbox.classList.contains('checked')) {
+        checkbox.innerHTML = '✓';
+      } else {
+        checkbox.innerHTML = '';
+      }
+
+      updateProgress();
+    }
+
+    function updateProgress() {
+      const allChecks = document.querySelectorAll('.checkbox');
+      const checkedCount = document.querySelectorAll('.checkbox.checked').length;
+      const totalCount = allChecks.length;
+      const progress = Math.round((checkedCount / totalCount) * 100);
+
+      console.log(`Progress: ${checkedCount}/${totalCount} (${progress}%)`);
+
+      if (progress === 100) {
+        document.querySelector('.results-summary').style.background = '#f0fdf4';
+        document.querySelector('.results-summary').style.borderColor = '#bbf7d0';
+        console.log('🎉 All tests completed! Enhanced MessageInput verification successful.');
+      }
+    }
+
+    // Initialize
+    console.log('Enhanced MessageInput Verification Tool Loaded');
+    console.log('Please test the functionality in the actual Fechatter application.');
+  </script>
+</body>
+
+</html>

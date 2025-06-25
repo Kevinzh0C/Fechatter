@@ -5,8 +5,9 @@
 
 class AnalyticsClient {
   constructor(config = {}) {
+    // Disable analytics in development environment to avoid API call errors
+    this.enabled = this.shouldEnable(config);
     this.endpoint = config.endpoint || this.getEndpoint();
-    this.enabled = config.enabled !== false;
     this.debug = config.debug || false;
     this.batchSize = config.batchSize || 10;
     this.flushInterval = config.flushInterval || 5000;
@@ -25,9 +26,21 @@ class AnalyticsClient {
       console.log('[Analytics] Initialized:', {
         endpoint: this.endpoint,
         clientId: this.clientId,
-        sessionId: this.sessionId
+        sessionId: this.sessionId,
+        enabled: this.enabled
       });
     }
+  }
+
+  shouldEnable(config) {
+    // Disable by default in development environment
+    if (process.env.NODE_ENV === 'development') {
+      // Only enable if explicitly requested and backend is available
+      return config.enabled === true && config.forceEnable === true;
+    }
+
+    // In production, check if backend is available
+    return config.enabled !== false;
   }
 
   getEndpoint() {
@@ -325,17 +338,23 @@ class AnalyticsClient {
   }
 }
 
-// Create singleton instance
+// Create singleton instance - disable in development to avoid API errors
 const analytics = new AnalyticsClient({
-  debug: process.env.NODE_ENV === 'development'
+  debug: process.env.NODE_ENV === 'development',
+  enabled: process.env.NODE_ENV !== 'development' // Disable in development
 });
 
-// Retry offline events on startup
-setTimeout(() => {
-  analytics.retryOfflineEvents();
-}, 5000);
+// Only retry offline events and track app start if enabled
+if (analytics.enabled) {
+  // Retry offline events on startup
+  setTimeout(() => {
+    analytics.retryOfflineEvents();
+  }, 5000);
 
-// Track app start
-analytics.trackAppStart();
+  // Track app start
+  analytics.trackAppStart();
+} else {
+  console.log('[Analytics] Disabled in development environment');
+}
 
 export default analytics; 

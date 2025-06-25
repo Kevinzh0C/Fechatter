@@ -420,8 +420,9 @@ const handleSubmit = async () => {
  */
 const verifyAuthStateReady = async () => {
   try {
-    // 🔧 MINIMAL: Very short wait for basic state stability
-    await new Promise(resolve => setTimeout(resolve, 50));
+    // 🔧 ENHANCED: Longer wait for state synchronization stability
+    // Give auth.js setImmediateAuthState more time to complete
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     // 🔧 ESSENTIAL CHECKS: Only verify what's absolutely necessary
     const hasToken = !!authStore.token && authStore.token.length > 10;

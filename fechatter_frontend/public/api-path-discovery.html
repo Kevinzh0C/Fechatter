@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔍 API Path Discovery</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f8f9fa;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .test-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .test-card {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 16px;
+      border-left: 4px solid #007bff;
+    }
+
+    .test-btn {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 4px;
+      font-size: 12px;
+    }
+
+    .test-btn:hover {
+      background: #0056b3;
+    }
+
+    .test-btn:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+
+    .result {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 12px;
+      margin: 8px 0;
+      font-family: monospace;
+      font-size: 11px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .success {
+      background: #d4edda;
+      border-color: #c3e6cb;
+      color: #155724;
+    }
+
+    .error {
+      background: #f8d7da;
+      border-color: #f5c6cb;
+      color: #721c24;
+    }
+
+    .warning {
+      background: #fff3cd;
+      border-color: #ffeaa7;
+      color: #856404;
+    }
+
+    .upload-area {
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      margin: 16px 0;
+      cursor: pointer;
+    }
+
+    .upload-area:hover {
+      border-color: #007bff;
+      background: #f8f9ff;
+    }
+
+    #fileInput {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔍 API Path Discovery Tool</h1>
+    <p>Finding the correct file download API endpoint format for Fechatter backend.</p>
+
+    <!-- Login Section -->
+    <div class="test-card">
+      <h3>🔐 Authentication</h3>
+      <button class="test-btn" onclick="login()" id="loginBtn">Login with Test Credentials</button>
+      <div>Token: <span id="tokenDisplay">None</span></div>
+    </div>
+
+    <!-- Upload Test -->
+    <div class="test-card">
+      <h3>📤 Upload Test</h3>
+      <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+        <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+        <p>📎 Click to upload a file and discover the response format</p>
+      </div>
+      <button class="test-btn" onclick="testUpload()" id="uploadBtn" disabled>Upload Selected File</button>
+      <div id="uploadResult"></div>
+    </div>
+
+    <!-- Path Testing Grid -->
+    <div class="test-grid">
+      <div class="test-card">
+        <h4>📁 File ID Format</h4>
+        <button class="test-btn" onclick="testPath('/api/files/1')">Test ID: 1</button>
+        <button class="test-btn" onclick="testPath('/api/files/2')">Test ID: 2</button>
+        <button class="test-btn" onclick="testPath('/api/files/123')">Test ID: 123</button>
+        <div id="result-id-format" class="result">No tests run</div>
+      </div>
+
+      <div class="test-card">
+        <h4>📄 Filename Format</h4>
+        <button class="test-btn" onclick="testPath('/api/files/test.png')">Direct filename</button>
+        <button class="test-btn" onclick="testPath('/api/file/test.png')">Without 's'</button>
+        <button class="test-btn" onclick="testPath('/files/test.png')">No api prefix</button>
+        <div id="result-filename-format" class="result">No tests run</div>
+      </div>
+
+      <div class="test-card">
+        <h4>🔽 Download Path</h4>
+        <button class="test-btn" onclick="testPath('/api/files/download/test.png')">Current path</button>
+        <button class="test-btn" onclick="testPath('/api/download/files/test.png')">Alt order</button>
+        <button class="test-btn" onclick="testPath('/api/file/download/test.png')">Singular file</button>
+        <div id="result-download-path" class="result">No tests run</div>
+      </div>
+
+      <div class="test-card">
+        <h4>🌐 Alternative APIs</h4>
+        <button class="test-btn" onclick="testPath('/api/storage/test.png')">Storage API</button>
+        <button class="test-btn" onclick="testPath('/api/assets/test.png')">Assets API</button>
+        <button class="test-btn" onclick="testPath('/api/media/test.png')">Media API</button>
+        <div id="result-alternative-apis" class="result">No tests run</div>
+      </div>
+
+      <div class="test-card">
+        <h4>🏷️ With Extensions</h4>
+        <button class="test-btn" onclick="testPath('/api/files/download')">No filename</button>
+        <button class="test-btn" onclick="testPath('/api/files/list')">List endpoint</button>
+        <button class="test-btn" onclick="testPath('/api/files/info/1')">Info endpoint</button>
+        <div id="result-extensions" class="result">No tests run</div>
+      </div>
+
+      <div class="test-card">
+        <h4>📊 Summary</h4>
+        <button class="test-btn" onclick="runAllTests()" id="runAllBtn">Run All Tests</button>
+        <button class="test-btn" onclick="clearResults()">Clear Results</button>
+        <div id="summary" class="result">Click 'Run All Tests' to see summary</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentToken = null;
+    let selectedFile = null;
+    let testResults = {};
+
+    async function login() {
+      try {
+        const response = await fetch('/api/signin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: 'super@test.com',
+            password: 'password'
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          currentToken = data.data.access_token;
+          document.getElementById('tokenDisplay').textContent = currentToken ? currentToken.substring(0, 20) + '...' : 'Failed';
+          document.getElementById('uploadBtn').disabled = !selectedFile;
+          document.getElementById('runAllBtn').disabled = false;
+          logResult('login', '✅ Login successful', 'success');
+        } else {
+          logResult('login', `❌ Login failed: ${response.status}`, 'error');
+        }
+      } catch (error) {
+        logResult('login', `❌ Login error: ${error.message}`, 'error');
+      }
+    }
+
+    function handleFileSelect(event) {
+      selectedFile = event.target.files[0];
+      if (selectedFile) {
+        document.getElementById('uploadBtn').disabled = !currentToken;
+        logResult('upload', `📁 Selected: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)}KB)`, 'success');
+      }
+    }
+
+    async function testUpload() {
+      if (!selectedFile || !currentToken) {
+        logResult('upload', '❌ Need file and token', 'error');
+        return;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        const response = await fetch('/api/files/single', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${currentToken}` },
+          body: formData
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const result = `✅ Upload successful!
+Response format: ${JSON.stringify(data, null, 2)}
+File ID: ${data.data?.id || data.id || 'Not found'}
+File URL: ${data.data?.url || data.url || 'Not found'}`;
+
+          logResult('upload', result, 'success');
+          document.getElementById('uploadResult').innerHTML = `<div class="success">${result}</div>`;
+
+          // Auto-test with discovered file ID
+          if (data.data?.id || data.id) {
+            const fileId = data.data?.id || data.id;
+            setTimeout(() => testPath(`/api/files/${fileId}`), 1000);
+          }
+        } else {
+          const errorText = await response.text();
+          logResult('upload', `❌ Upload failed: ${response.status} - ${errorText}`, 'error');
+        }
+      } catch (error) {
+        logResult('upload', `❌ Upload error: ${error.message}`, 'error');
+      }
+    }
+
+    async function testPath(path) {
+      if (!currentToken) {
+        logResult('path-test', '❌ Login required first', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch(path, {
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+
+        const status = response.status;
+        const statusText = response.statusText;
+        const contentType = response.headers.get('content-type') || 'unknown';
+        const contentLength = response.headers.get('content-length') || 'unknown';
+
+        let body = '';
+        try {
+          body = await response.text();
+          if (body.length > 200) body = body.substring(0, 200) + '...';
+        } catch { }
+
+        const result = `${path}
+Status: ${status} ${statusText}
+Type: ${contentType}
+Size: ${contentLength}
+Body: ${body}`;
+
+        const resultType = status === 200 ? 'success' : status === 404 ? 'warning' : 'error';
+        logResult(path, result, resultType);
+
+        testResults[path] = { status, contentType, success: status === 200 };
+
+      } catch (error) {
+        const result = `${path}
+Error: ${error.message}`;
+        logResult(path, result, 'error');
+        testResults[path] = { error: error.message, success: false };
+      }
+    }
+
+    async function runAllTests() {
+      if (!currentToken) {
+        await login();
+        await new Promise(r => setTimeout(r, 1000));
+      }
+
+      const paths = [
+        '/api/files/1', '/api/files/2', '/api/files/123',
+        '/api/files/test.png', '/api/file/test.png', '/files/test.png',
+        '/api/files/download/test.png', '/api/download/files/test.png', '/api/file/download/test.png',
+        '/api/storage/test.png', '/api/assets/test.png', '/api/media/test.png',
+        '/api/files/download', '/api/files/list', '/api/files/info/1'
+      ];
+
+      testResults = {};
+
+      for (const path of paths) {
+        await testPath(path);
+        await new Promise(r => setTimeout(r, 100)); // Small delay
+      }
+
+      // Generate summary
+      setTimeout(generateSummary, 500);
+    }
+
+    function generateSummary() {
+      const successful = Object.entries(testResults).filter(([_, result]) => result.success);
+      const errors = Object.entries(testResults).filter(([_, result]) => !result.success && result.error);
+      const notFound = Object.entries(testResults).filter(([_, result]) => !result.success && !result.error);
+
+      const summary = `📊 Test Summary:
+✅ Successful (200): ${successful.length}
+${successful.map(([path]) => `  • ${path}`).join('\n')}
+
+❌ Errors: ${errors.length}
+${errors.map(([path]) => `  • ${path}`).join('\n')}
+
+⚠️ Not Found (404): ${notFound.length}
+${notFound.map(([path]) => `  • ${path}`).join('\n')}
+
+💡 Recommendation: ${successful.length > 0 ? `Use ${successful[0][0]} format` : 'No working paths found - check backend configuration'}`;
+
+      document.getElementById('summary').innerHTML = summary;
+      document.getElementById('summary').className = 'result ' + (successful.length > 0 ? 'success' : 'warning');
+    }
+
+    function logResult(test, content, type) {
+      console.log(`[${test}] ${content}`);
+    }
+
+    function clearResults() {
+      document.querySelectorAll('.result').forEach(el => {
+        if (el.id !== 'summary') {
+          el.textContent = 'No tests run';
+          el.className = 'result';
+        }
+      });
+      testResults = {};
+    }
+
+    // Auto-login on page load
+    setTimeout(login, 1000);
+  </script>
+</body>
+
+</html>

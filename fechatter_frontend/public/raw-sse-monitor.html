@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Raw SSE Monitor</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      margin: 20px;
+    }
+
+    .header {
+      background: #0d7377;
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .controls {
+      background: #2d2d30;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      background: #007acc;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+
+    .event-log {
+      background: #0c0c0c;
+      border: 1px solid #404040;
+      border-radius: 8px;
+      padding: 15px;
+      height: 500px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 4px;
+      margin: 5px;
+      font-weight: bold;
+    }
+
+    .connected {
+      background: #4caf50;
+      color: white;
+    }
+
+    .disconnected {
+      background: #f44336;
+      color: white;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <h1>🔍 Raw SSE Event Monitor</h1>
+    <p>直接监控从服务器发送的所有SSE事件</p>
+  </div>
+
+  <div class="controls">
+    <span>连接状态：</span>
+    <span id="connectionStatus" class="status disconnected">断开连接</span>
+    <button onclick="connect()">🔗 连接</button>
+    <button onclick="disconnect()">❌ 断开</button>
+    <button onclick="clearLog()">🗑️ 清除日志</button>
+    <button onclick="sendTestMessage()">📤 发送测试消息</button>
+  </div>
+
+  <div class="event-log" id="eventLog">
+    <div>[系统] 原始SSE监控器已启动，等待连接...</div>
+  </div>
+
+  <script>
+    let eventSource = null;
+    let eventCount = 0;
+
+    function log(message, data = null) {
+      const eventLog = document.getElementById('eventLog');
+      const timestamp = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.innerHTML = `[${timestamp}] ${message}${data ? '<br><pre>' + data + '</pre>' : ''}`;
+      eventLog.appendChild(entry);
+      eventLog.scrollTop = eventLog.scrollHeight;
+    }
+
+    function getToken() {
+      return localStorage.getItem('auth_token') ||
+        window.__PINIA__?.state?.value?.auth?.token ||
+        window.tokenManager?.getAccessToken();
+    }
+
+    function connect() {
+      const token = getToken();
+      if (!token) {
+        log('❌ 无法获取认证token');
+        return;
+      }
+
+      if (eventSource) disconnect();
+
+      const url = `/events?access_token=${encodeURIComponent(token)}`;
+      log(`🔗 连接SSE: ${url}`);
+
+      eventSource = new EventSource(url);
+
+      eventSource.onopen = function (event) {
+        document.getElementById('connectionStatus').className = 'status connected';
+        document.getElementById('connectionStatus').textContent = '已连接';
+        log('✅ SSE连接已建立');
+      };
+
+      eventSource.onmessage = function (event) {
+        eventCount++;
+        log(`📨 [${eventCount}] 收到SSE事件`, `原始数据: ${event.data}`);
+
+        try {
+          const data = JSON.parse(event.data);
+          log(`✅ 解析成功`, `类型: ${data.type || '未知'}\n完整数据: ${JSON.stringify(data, null, 2)}`);
+
+          if (data.type === 'NewMessage' || data.type === 'new_message') {
+            log(`🎯 发现NewMessage事件!`,
+              `消息ID: ${data.id || data.message_id}\n` +
+              `发送者: ${data.sender_id}\n` +
+              `内容: ${data.content || data.message}`);
+          }
+        } catch (e) {
+          log(`❌ 解析失败: ${e.message}`, event.data);
+        }
+      };
+
+      eventSource.onerror = function (event) {
+        document.getElementById('connectionStatus').className = 'status disconnected';
+        document.getElementById('connectionStatus').textContent = '连接错误';
+        log(`❌ SSE连接错误`, `ReadyState: ${eventSource?.readyState}`);
+      };
+    }
+
+    function disconnect() {
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+      document.getElementById('connectionStatus').className = 'status disconnected';
+      document.getElementById('connectionStatus').textContent = '断开连接';
+      log('🔌 SSE连接已断开');
+    }
+
+    function clearLog() {
+      document.getElementById('eventLog').innerHTML = '';
+      eventCount = 0;
+    }
+
+    function sendTestMessage() {
+      log('📤 发送测试消息...');
+      if (window.chatStore && window.chatStore.sendMessage) {
+        const testMsg = `Raw SSE Test ${Date.now()}`;
+        window.chatStore.sendMessage(testMsg)
+          .then(result => log(`✅ 消息发送成功: ${result.message?.id}`))
+          .catch(error => log(`❌ 消息发送失败: ${error.message}`));
+      } else {
+        log('❌ ChatStore不可用');
+      }
+    }
+
+    // 自动连接
+    setTimeout(() => {
+      if (getToken()) connect();
+    }, 1000);
+  </script>
+</body>
+
+</html>

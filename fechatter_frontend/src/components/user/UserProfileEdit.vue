@@ -9,7 +9,9 @@
     <!-- 错误提示 -->
     <div v-if="error" class="error-alert">
       <svg class="error-icon" fill="currentColor" viewBox="0 0 20 20">
-        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+        <path fill-rule="evenodd"
+          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+          clip-rule="evenodd" />
       </svg>
       <span>{{ error }}</span>
     </div>
@@ -17,7 +19,9 @@
     <!-- 成功提示 -->
     <div v-if="successMessage" class="success-alert">
       <svg class="success-icon" fill="currentColor" viewBox="0 0 20 20">
-        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+        <path fill-rule="evenodd"
+          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+          clip-rule="evenodd" />
       </svg>
       <span>{{ successMessage }}</span>
     </div>
@@ -25,29 +29,17 @@
     <!-- 头像编辑 -->
     <div class="avatar-section">
       <div class="avatar-container">
-        <img 
-          :src="avatarUrl || defaultAvatarUrl" 
-          :alt="formData.fullname || 'User Avatar'"
-          class="avatar"
-        />
-        <button 
-          @click="triggerAvatarUpload"
-          class="avatar-upload-btn"
-          :disabled="loading"
-        >
+        <img :src="avatarUrl || defaultAvatarUrl" :alt="formData.fullname || 'User Avatar'" class="avatar" />
+        <button @click="triggerAvatarUpload" class="avatar-upload-btn" :disabled="loading">
           <svg class="upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
           上传头像
         </button>
-        <input 
-          ref="avatarInput"
-          type="file"
-          accept="image/*"
-          @change="handleAvatarUpload"
-          class="hidden-file-input"
-        />
+        <input ref="avatarInput" type="file" accept="image/*" @change="handleAvatarUpload" class="hidden-file-input" />
       </div>
     </div>
 
@@ -56,20 +48,13 @@
       <!-- 基本信息 -->
       <div class="form-section">
         <h3 class="section-title">基本信息</h3>
-        
+
         <div class="form-grid">
           <!-- 姓名 -->
           <div class="form-group">
             <label for="fullname" class="form-label">姓名 *</label>
-            <input
-              id="fullname"
-              v-model="formData.fullname"
-              type="text"
-              class="form-input"
-              :class="{ 'form-input-error': validationErrors.fullname }"
-              placeholder="请输入您的姓名"
-              required
-            />
+            <input id="fullname" v-model="formData.fullname" type="text" class="form-input"
+              :class="{ 'form-input-error': validationErrors.fullname }" placeholder="请输入您的姓名" required />
             <span v-if="validationErrors.fullname" class="form-error">
               {{ validationErrors.fullname }}
             </span>
@@ -78,15 +63,8 @@
           <!-- 邮箱 -->
           <div class="form-group">
             <label for="email" class="form-label">邮箱 *</label>
-            <input
-              id="email"
-              v-model="formData.email"
-              type="email"
-              class="form-input"
-              :class="{ 'form-input-error': validationErrors.email }"
-              placeholder="请输入您的邮箱"
-              required
-            />
+            <input id="email" v-model="formData.email" type="email" class="form-input"
+              :class="{ 'form-input-error': validationErrors.email }" placeholder="请输入您的邮箱" required />
             <span v-if="validationErrors.email" class="form-error">
               {{ validationErrors.email }}
             </span>
@@ -95,47 +73,25 @@
           <!-- 电话 -->
           <div class="form-group">
             <label for="phone" class="form-label">电话</label>
-            <input
-              id="phone"
-              v-model="formData.phone"
-              type="tel"
-              class="form-input"
-              placeholder="请输入您的电话号码"
-            />
+            <input id="phone" v-model="formData.phone" type="tel" class="form-input" placeholder="请输入您的电话号码" />
           </div>
 
           <!-- 职位 -->
           <div class="form-group">
             <label for="title" class="form-label">职位</label>
-            <input
-              id="title"
-              v-model="formData.title"
-              type="text"
-              class="form-input"
-              placeholder="请输入您的职位"
-            />
+            <input id="title" v-model="formData.title" type="text" class="form-input" placeholder="请输入您的职位" />
           </div>
 
           <!-- 部门 -->
           <div class="form-group">
             <label for="department" class="form-label">部门</label>
-            <input
-              id="department"
-              v-model="formData.department"
-              type="text"
-              class="form-input"
-              placeholder="请输入您的部门"
-            />
+            <input id="department" v-model="formData.department" type="text" class="form-input" placeholder="请输入您的部门" />
           </div>
 
           <!-- 时区 -->
           <div class="form-group">
             <label for="timezone" class="form-label">时区</label>
-            <select
-              id="timezone"
-              v-model="formData.timezone"
-              class="form-select"
-            >
+            <select id="timezone" v-model="formData.timezone" class="form-select">
               <option value="">选择时区</option>
               <option value="Asia/Shanghai">北京时间 (UTC+8)</option>
               <option value="Asia/Tokyo">东京时间 (UTC+9)</option>
@@ -149,11 +105,7 @@
           <!-- 语言 -->
           <div class="form-group">
             <label for="language" class="form-label">语言</label>
-            <select
-              id="language"
-              v-model="formData.language"
-              class="form-select"
-            >
+            <select id="language" v-model="formData.language" class="form-select">
               <option value="">选择语言</option>
               <option value="zh-CN">简体中文</option>
               <option value="zh-TW">繁體中文</option>
@@ -168,17 +120,11 @@
       <!-- 个人简介 -->
       <div class="form-section">
         <h3 class="section-title">个人简介</h3>
-        
+
         <div class="form-group">
           <label for="bio" class="form-label">简介</label>
-          <textarea
-            id="bio"
-            v-model="formData.bio"
-            class="form-textarea"
-            rows="4"
-            maxlength="500"
-            placeholder="简单介绍一下自己..."
-          />
+          <textarea id="bio" v-model="formData.bio" class="form-textarea" rows="4" maxlength="500"
+            placeholder="简单介绍一下自己..." />
           <div class="character-count">
             {{ (formData.bio || '').length }}/500
           </div>
@@ -187,20 +133,11 @@
 
       <!-- 表单操作 -->
       <div class="form-actions">
-        <button
-          type="button"
-          @click="handleCancel"
-          class="btn btn-secondary"
-          :disabled="loading"
-        >
+        <button type="button" @click="handleCancel" class="btn btn-secondary" :disabled="loading">
           取消
         </button>
-        
-        <button
-          type="submit"
-          class="btn btn-primary"
-          :disabled="loading || !hasChanges"
-        >
+
+        <button type="submit" class="btn btn-primary" :disabled="loading || !hasChanges">
           <span v-if="loading" class="loading-spinner" />
           {{ loading ? '保存中...' : '保存' }}
         </button>
@@ -265,7 +202,7 @@ const defaultAvatarUrl = computed(() => {
 // 检查是否有变更
 const hasChanges = computed(() => {
   if (!originalData.value) return false;
-  
+
   return Object.keys(formData).some(key => {
     const formValue = (formData as any)[key] || '';
     const originalValue = (originalData.value as any)[key] || '';
@@ -316,7 +253,7 @@ const loadUserProfile = async () => {
     error.value = '';
 
     let profile: UserProfileResponse;
-    
+
     if (props.userId) {
       // 加载指定用户的档案
       profile = await UserService.getUserProfile(props.userId);
@@ -357,18 +294,18 @@ const triggerAvatarUpload = () => {
 const handleAvatarUpload = async (event: Event) => {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
-  
+
   if (!file) return;
 
   // 验证文件类型
   if (!file.type.startsWith('image/')) {
-    notifyError('上传失败', '请选择图片文件');
+    notifyError('上传失败：请选择图片文件');
     return;
   }
 
   // 验证文件大小（5MB）
   if (file.size > 5 * 1024 * 1024) {
-    notifyError('上传失败', '图片文件大小不能超过5MB');
+    notifyError('上传失败：图片文件大小不能超过5MB');
     return;
   }
 
@@ -418,11 +355,11 @@ const handleSubmit = async () => {
 
     // 更新成功
     successMessage.value = result.message;
-    notifySuccess('档案更新成功', `已更新: ${result.updated_fields.join(', ')}`);
+    notifySuccess(`档案更新成功 - 已更新: ${result.updated_fields.join(', ')}`);
 
     // 如果是当前用户，更新认证状态
     if (!props.userId && authStore.user) {
-      authStore.user = { ...authStore.user, ...result.profile };
+      // authStore.user = { ...authStore.user, ...result.profile }; // TODO: Use a setter method
     }
 
     // 更新原始数据
@@ -518,7 +455,8 @@ onMounted(() => {
   color: #059669;
 }
 
-.error-icon, .success-icon {
+.error-icon,
+.success-icon {
   width: 20px;
   height: 20px;
   margin-right: 8px;
@@ -614,7 +552,9 @@ onMounted(() => {
   margin-bottom: 6px;
 }
 
-.form-input, .form-select, .form-textarea {
+.form-input,
+.form-select,
+.form-textarea {
   padding: 12px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
@@ -622,7 +562,9 @@ onMounted(() => {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.form-input:focus, .form-select:focus, .form-textarea:focus {
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
   outline: none;
   border-color: #6366f1;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
@@ -722,15 +664,15 @@ onMounted(() => {
   .user-profile-edit {
     padding: 16px;
   }
-  
+
   .form-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .form-actions {
     flex-direction: column;
   }
-  
+
   .btn {
     width: 100%;
   }

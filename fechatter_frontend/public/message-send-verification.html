@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚀 消息发送系统验证工具</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    }
+    
+    h1 {
+      color: #2d3748;
+      margin-bottom: 2rem;
+      font-size: 2rem;
+      font-weight: 700;
+      text-align: center;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .test-section {
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      background: #f8fafc;
+    }
+    
+    .test-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 1rem;
+    }
+    
+    .test-button {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-right: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .test-button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .status {
+      padding: 0.5rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-top: 0.5rem;
+    }
+    
+    .status.success {
+      background: #f0fff4;
+      color: #22543d;
+      border: 1px solid #9ae6b4;
+    }
+    
+    .status.error {
+      background: #fed7d7;
+      color: #742a2a;
+      border: 1px solid #feb2b2;
+    }
+    
+    .status.pending {
+      background: #fefcbf;
+      color: #744210;
+      border: 1px solid #f6e05e;
+    }
+    
+    .log-panel {
+      background: #1a202c;
+      color: #e2e8f0;
+      border-radius: 12px;
+      padding: 1.5rem;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 0.875rem;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 1rem;
+    }
+    
+    .log-entry {
+      margin-bottom: 0.5rem;
+      padding: 0.25rem 0;
+      border-bottom: 1px solid #2d3748;
+    }
+    
+    .log-timestamp { color: #a0aec0; margin-right: 0.5rem; }
+    .log-success { color: #68d391; }
+    .log-error { color: #fc8181; }
+    .log-info { color: #63b3ed; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 消息发送验证工具</h1>
+    
+    <!-- 基础消息测试 -->
+    <div class="test-section">
+      <div class="test-title">📝 基础消息测试</div>
+      <button class="test-button" onclick="sendTestMessage('text')">发送文本消息</button>
+      <button class="test-button" onclick="sendTestMessage('markdown')">发送Markdown</button>
+      <button class="test-button" onclick="sendTestMessage('code')">发送代码</button>
+      <div id="basicStatus" class="status" style="display: none;"></div>
+    </div>
+    
+    <!-- UUID测试 -->
+    <div class="test-section">
+      <div class="test-title">🆔 UUID格式测试</div>
+      <button class="test-button" onclick="testUUID()">测试UUID生成</button>
+      <div id="uuidStatus" class="status" style="display: none;"></div>
+    </div>
+    
+    <!-- 系统状态 -->
+    <div class="test-section">
+      <div class="test-title">🔍 系统状态检查</div>
+      <button class="test-button" onclick="checkSystemStatus()">检查状态</button>
+      <div id="systemStatus" class="status" style="display: none;"></div>
+    </div>
+    
+    <!-- 日志 -->
+    <div class="log-panel">
+      <div id="logContainer"></div>
+    </div>
+  </div>
+
+  <script>
+    const testChatId = 2;
+    
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const logContainer = document.getElementById('logContainer');
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log-entry';
+      logEntry.innerHTML = `
+        <span class="log-timestamp">[${timestamp}]</span>
+        <span class="log-${type}">${message}</span>
+      `;
+      logContainer.appendChild(logEntry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    function updateStatus(elementId, message, type) {
+      const element = document.getElementById(elementId);
+      element.textContent = message;
+      element.className = `status ${type}`;
+      element.style.display = 'block';
+    }
+
+    function generateUUID() {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+      }
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        const r = Math.random() * 16 | 0;
+        const v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+
+    function getAuthToken() {
+      return localStorage.getItem('authToken') || localStorage.getItem('token');
+    }
+
+    async function sendTestMessage(type) {
+      const token = getAuthToken();
+      if (!token) {
+        updateStatus('basicStatus', '❌ 未找到认证token', 'error');
+        return;
+      }
+
+      const contents = {
+        text: '测试文本消息 ' + new Date().toLocaleTimeString(),
+        markdown: '**粗体测试** 和 *斜体测试*\n\n- 列表项1\n- 列表项2',
+        code: '```javascript\nconst test = () => {\n  console.log("测试代码");\n};\n```'
+      };
+
+      const content = contents[type];
+      const payload = {
+        content,
+        files: [],
+        mentions: [],
+        reply_to: null,
+        idempotency_key: generateUUID()
+      };
+
+      updateStatus('basicStatus', `发送${type}消息中...`, 'pending');
+      log(`📤 发送${type}消息: ${payload.idempotency_key}`, 'info');
+
+      try {
+        const response = await fetch(`/api/chat/${testChatId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        log(`📡 响应: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const result = await response.json();
+        updateStatus('basicStatus', `✅ ${type}消息发送成功`, 'success');
+        log(`✅ 消息ID: ${result.data?.id || result.id}`, 'success');
+
+      } catch (error) {
+        updateStatus('basicStatus', `❌ 发送失败: ${error.message}`, 'error');
+        log(`❌ 错误: ${error.message}`, 'error');
+      }
+    }
+
+    function testUUID() {
+      const uuid = generateUUID();
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      
+      log(`🆔 生成UUID: ${uuid}`, 'info');
+      
+      if (uuidRegex.test(uuid)) {
+        updateStatus('uuidStatus', '✅ UUID格式正确', 'success');
+        log('✅ UUID格式验证通过', 'success');
+      } else {
+        updateStatus('uuidStatus', '❌ UUID格式错误', 'error');
+        log('❌ UUID格式验证失败', 'error');
+      }
+    }
+
+    async function checkSystemStatus() {
+      updateStatus('systemStatus', '检查中...', 'pending');
+      
+      const checks = [];
+      const token = getAuthToken();
+      
+      if (token) {
+        checks.push('✅ Auth Token');
+        log(`🔑 Token前缀: ${token.substring(0, 10)}...`, 'info');
+      } else {
+        checks.push('❌ 缺少Token');
+      }
+      
+      const uuid = generateUUID();
+      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid);
+      checks.push(isValidUUID ? '✅ UUID生成' : '❌ UUID错误');
+      
+      try {
+        const response = await fetch('/api/users', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        checks.push(response.ok ? '✅ API连接' : `⚠️ API ${response.status}`);
+      } catch (error) {
+        checks.push('❌ API连接失败');
+      }
+      
+      const hasErrors = checks.some(c => c.includes('❌'));
+      const statusType = hasErrors ? 'error' : 'success';
+      
+      updateStatus('systemStatus', checks.join(' | '), statusType);
+    }
+
+    // 页面加载时检查
+    document.addEventListener('DOMContentLoaded', function() {
+      log('🚀 验证工具已加载', 'success');
+      setTimeout(checkSystemStatus, 500);
+    });
+  </script>
+</body>
+</html>

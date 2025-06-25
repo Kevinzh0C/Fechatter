@@ -1,278 +1,187 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>✅ Markdown.js Fix Verification</title>
+  <title>📝 Markdown预览修复验证</title>
   <style>
     body {
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.6;
+      color: #333;
       max-width: 800px;
       margin: 0 auto;
       padding: 20px;
-      background: #0f172a;
-      color: #e2e8f0;
-      line-height: 1.6;
+      background: #f5f7fa;
     }
 
-    .header {
-      text-align: center;
-      margin-bottom: 30px;
-      padding: 20px;
-      background: linear-gradient(135deg, #1e293b, #334155);
+    .container {
+      background: white;
       border-radius: 12px;
-      border: 1px solid #475569;
-    }
-
-    h1 {
-      margin: 0;
-      color: #10b981;
-      font-size: 2rem;
-    }
-
-    .section {
-      background: #1e293b;
-      border-radius: 8px;
-      padding: 20px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       margin-bottom: 20px;
-      border: 1px solid #334155;
     }
 
-    .status {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 12px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      margin-left: 10px;
+    .status-item {
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
-    .fixed {
-      background: #064e3b;
-      color: #34d399;
-    }
-
-    .error {
-      background: #7f1d1d;
-      color: #fca5a5;
-    }
-
-    .code-block {
-      background: #111827;
-      border-radius: 6px;
-      padding: 15px;
-      margin: 15px 0;
-      border: 1px solid #374151;
-      font-family: 'Consolas', 'Monaco', monospace;
-      font-size: 0.9rem;
-      overflow-x: auto;
-    }
-
-    .before {
-      border-left: 4px solid #ef4444;
-    }
-
-    .after {
+    .status-success {
+      background: #f0fdf4;
       border-left: 4px solid #10b981;
     }
 
-    .test-button {
-      background: linear-gradient(135deg, #10b981, #059669);
-      color: white;
-      border: none;
-      padding: 12px 24px;
+    .status-error {
+      background: #fef2f2;
+      border-left: 4px solid #ef4444;
+    }
+
+    .status-warning {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+    }
+
+    .test-input {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
       border-radius: 6px;
-      font-weight: 600;
-      cursor: pointer;
-      margin: 10px 10px 10px 0;
-      transition: all 0.3s ease;
+      padding: 8px 12px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 13px;
+      color: #374151;
     }
 
-    .test-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-    }
-
-    .test-result {
-      padding: 15px;
+    .expected-output {
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
       border-radius: 6px;
-      margin: 15px 0;
-      font-family: monospace;
+      padding: 8px 12px;
+      font-size: 13px;
+      color: #0c4a6e;
     }
 
-    .success {
-      background: #064e3b;
-      border: 1px solid #10b981;
-      color: #34d399;
+    h1,
+    h2 {
+      color: #1f2937;
     }
 
-    .error {
-      background: #7f1d1d;
-      border: 1px solid #ef4444;
-      color: #fca5a5;
+    h3 {
+      color: #374151;
     }
   </style>
 </head>
 
 <body>
-  <div class="header">
-    <h1>✅ Markdown.js 修复验证</h1>
-    <p>验证 marked v15 API 兼容性修复</p>
-  </div>
+  <div class="container">
+    <h1>📝 MessageInput Markdown预览修复报告</h1>
+    <p><strong>修复时间:</strong> <span id="timestamp"></span></p>
 
-  <div class="section">
     <h2>🔧 修复内容</h2>
 
-    <h3>1. API 升级 <span class="status fixed">FIXED</span></h3>
-    <div class="code-block before">
-      // 🔥 修复前 (v15 不兼容)
-      let html = marked(content)
-      marked.setOptions({ ... })
-      new marked.Renderer()
-    </div>
-    <div class="code-block after">
-      // ✨ 修复后 (v15 兼容)
-      let html = marked.parse(content)
-      marked.use({ renderer, ... })
-      const renderer = { code() {...}, codespan() {...} }
+    <div class="status-item status-success">
+      <span style="font-size: 18px;">✅</span>
+      <div>
+        <strong>标题渲染修复</strong>
+        <div class="test-input">输入: ## Hello</div>
+        <div class="expected-output">期望输出: &lt;h2&gt;Hello&lt;/h2&gt;</div>
+        <p>添加了专用的 <code>renderer.heading</code> 函数确保标题正确渲染</p>
+      </div>
     </div>
 
-    <h3>2. 错误信息</h3>
-    <div class="code-block error">
-      ❌ ReferenceError: marked is not defined at markdown.js:304:18
-      ❌ Failed to navigate to route /chat/6
-      ❌ Navigation to chat 6 failed
+    <div class="status-item status-success">
+      <span style="font-size: 18px;">✅</span>
+      <div>
+        <strong>段落渲染优化</strong>
+        <div class="test-input">输入: nihao</div>
+        <div class="expected-output">期望输出: &lt;p&gt;nihao&lt;/p&gt;</div>
+        <p>添加了 <code>renderer.paragraph</code> 函数确保段落正确包装</p>
+      </div>
     </div>
 
-    <h3>3. 修复说明</h3>
-    <ul>
-      <li><strong>API 更新</strong>: 适配 marked v15 的新 API</li>
-      <li><strong>配置方式</strong>: 使用 <code>marked.use()</code> 替代 <code>marked.setOptions()</code></li>
-      <li><strong>渲染器</strong>: 使用对象形式替代 <code>new marked.Renderer()</code></li>
-      <li><strong>解析方法</strong>: 使用 <code>marked.parse()</code> 替代 <code>marked()</code></li>
-    </ul>
-  </div>
+    <div class="status-item status-success">
+      <span style="font-size: 18px;">✅</span>
+      <div>
+        <strong>强调文本渲染</strong>
+        <div class="test-input">输入: **粗体** *斜体*</div>
+        <div class="expected-output">期望输出: &lt;strong&gt;粗体&lt;/strong&gt; &lt;em&gt;斜体&lt;/em&gt;</div>
+        <p>添加了 <code>renderer.strong</code> 和 <code>renderer.em</code> 函数</p>
+      </div>
+    </div>
 
-  <div class="section">
-    <h2>🧪 验证测试</h2>
-    <p>点击测试按钮验证修复效果：</p>
+    <div class="status-item status-success">
+      <span style="font-size: 18px;">✅</span>
+      <div>
+        <strong>错误处理增强</strong>
+        <p>添加了详细的错误日志和用户友好的错误消息</p>
+      </div>
+    </div>
 
-    <button class="test-button" onclick="testBasicMarkdown()">测试基础 Markdown</button>
-    <button class="test-button" onclick="testCodeBlocks()">测试代码块</button>
-    <button class="test-button" onclick="testNavigation()">测试导航</button>
+    <h2>🎯 预期效果</h2>
 
-    <div id="testResults"></div>
-  </div>
+    <div class="status-item status-warning">
+      <span style="font-size: 18px;">⚠️</span>
+      <div>
+        <strong>现在当你输入:</strong>
+        <div class="test-input">## Hello<br>nihao</div>
+        <strong>应该显示为:</strong>
+        <div class="expected-output">
+          <h2
+            style="margin: 8px 0; font-size: 20px; font-weight: 600; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px;">
+            Hello</h2>
+          <p style="margin: 8px 0;">nihao</p>
+        </div>
+      </div>
+    </div>
 
-  <div class="section">
-    <h2>📋 测试示例</h2>
-    <p>以下是可以在聊天中测试的内容：</p>
+    <h2>🔍 验证步骤</h2>
+    <ol>
+      <li><strong>切换到MD模式:</strong> 点击"A"按钮切换到"MD"</li>
+      <li><strong>开启预览:</strong> 点击👁️按钮开启预览</li>
+      <li><strong>输入测试内容:</strong> 在输入框中输入 <code>## Hello</code> 回车 <code>nihao</code></li>
+      <li><strong>检查预览:</strong> 预览区域应该显示带格式的标题和段落</li>
+    </ol>
 
-    <div class="code-block">
-      # 标题测试
+    <h2>🛠️ 如果仍有问题</h2>
+    <div class="status-item status-error">
+      <span style="font-size: 18px;">❌</span>
+      <div>
+        <strong>可能的原因:</strong>
+        <ul>
+          <li>浏览器缓存: 按 <kbd>Ctrl+F5</kbd> 强制刷新</li>
+          <li>组件未重新加载: 重启开发服务器</li>
+          <li>marked.js 库问题: 检查控制台错误</li>
+          <li>CSS样式问题: 检查标题样式是否正确加载</li>
+        </ul>
+      </div>
+    </div>
 
-      这是一个 **粗体** 和 *斜体* 的测试。
-
-      ## 代码块测试
-
-      ```javascript
-      function test() {
-      console.log('Hello, Fechatter!');
-      }
-      ```
-
-      ## 列表测试
-
-      - 项目 1
-      - 项目 2
-      - 项目 3
-
-      ## 链接测试
-
-      [Fechatter](https://github.com/fechatter) 项目链接
-
-      ## 内联代码
-
-      这是 `内联代码` 示例。
+    <div class="container">
+      <h3>📊 修复总结</h3>
+      <p>通过添加专用的渲染器函数和增强错误处理，markdown预览功能现在应该能正确显示:</p>
+      <ul>
+        <li>✅ 标题格式 (H1-H6)</li>
+        <li>✅ 粗体和斜体文本</li>
+        <li>✅ 段落换行</li>
+        <li>✅ 行内代码和代码块</li>
+        <li>✅ 列表和引用</li>
+        <li>✅ 链接</li>
+      </ul>
     </div>
   </div>
 
   <script>
-    let testCounter = 0;
+    // 设置时间戳
+    document.getElementById('timestamp').textContent = new Date().toLocaleString('zh-CN');
 
-    function addTestResult(success, message) {
-      const container = document.getElementById('testResults');
-      const div = document.createElement('div');
-      div.className = `test-result ${success ? 'success' : 'error'}`;
-      div.innerHTML = `
-        <strong>测试 ${++testCounter}:</strong> ${message}
-        <br><small>时间: ${new Date().toLocaleTimeString()}</small>
-      `;
-      container.appendChild(div);
-    }
-
-    function testBasicMarkdown() {
-      try {
-        // 模拟基础 markdown 测试
-        const testContent = '# 测试标题\n\n这是 **粗体** 文本。';
-
-        // 检查是否能访问到相关功能
-        if (typeof fetch !== 'undefined') {
-          addTestResult(true, '基础 Markdown 解析功能正常');
-        } else {
-          addTestResult(false, '无法访问解析功能');
-        }
-      } catch (error) {
-        addTestResult(false, `基础 Markdown 测试失败: ${error.message}`);
-      }
-    }
-
-    function testCodeBlocks() {
-      try {
-        const codeTest = '```javascript\nconsole.log("test");\n```';
-
-        // 模拟代码块处理
-        const hasCodeBlock = /```[\s\S]*?```/.test(codeTest);
-
-        if (hasCodeBlock) {
-          addTestResult(true, '代码块检测和处理功能正常');
-        } else {
-          addTestResult(false, '代码块检测失败');
-        }
-      } catch (error) {
-        addTestResult(false, `代码块测试失败: ${error.message}`);
-      }
-    }
-
-    function testNavigation() {
-      try {
-        // 检查是否能正常访问聊天页面
-        const currentHost = window.location.host;
-        const chatUrl = `http://${currentHost}/chat/6`;
-
-        addTestResult(true, `导航测试准备就绪: ${chatUrl}`);
-
-        // 提供导航按钮
-        setTimeout(() => {
-          const container = document.getElementById('testResults');
-          const navButton = document.createElement('button');
-          navButton.className = 'test-button';
-          navButton.textContent = '🚀 前往聊天测试';
-          navButton.onclick = () => window.location.href = '/chat/6';
-          container.appendChild(navButton);
-        }, 500);
-
-      } catch (error) {
-        addTestResult(false, `导航测试失败: ${error.message}`);
-      }
-    }
-
-    // 页面加载完成提示
-    document.addEventListener('DOMContentLoaded', () => {
-      console.log('✅ Markdown.js 修复验证页面已加载');
-      addTestResult(true, 'Markdown.js 修复验证页面加载成功');
-    });
+    console.log('📝 Markdown预览修复验证工具已加载');
+    console.log('修复内容: 标题渲染、段落处理、强调文本、错误处理');
   </script>
 </body>
 

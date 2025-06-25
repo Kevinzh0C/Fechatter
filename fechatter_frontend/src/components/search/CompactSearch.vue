@@ -3,33 +3,21 @@
     <!-- Search Input -->
     <div class="p-4 border-b border-gray-200 dark:border-gray-700">
       <div class="relative">
-        <svg 
-          class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none"
+          stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
         </svg>
-        <input 
-          v-model="query" 
-          @keyup.enter="search"
-          type="text" 
-          :placeholder="'Search messages...'"
-          :aria-label="'Search messages'"
-          data-testid="search-input"
-          class="w-full pl-10 pr-12 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors duration-200"
-        >
-        <button 
-          @click="toggleFilters" 
-          :aria-label="'Toggle filters'"
-          :aria-expanded="showFilters"
+        <input v-model="query" @keyup.enter="search" type="text" :placeholder="'Search messages...'"
+          :aria-label="'Search messages'" data-testid="search-input"
+          class="w-full pl-10 pr-12 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors duration-200">
+        <button @click="toggleFilters" :aria-label="'Toggle filters'" :aria-expanded="showFilters"
           data-testid="filter-toggle"
-          class="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-200"
-        >
+          class="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-200">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4">
+            </path>
           </svg>
         </button>
       </div>
@@ -39,11 +27,8 @@
     <div v-if="showFilters" class="p-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
         <!-- Time Range -->
-        <select 
-          v-model="timeRange" 
-          :aria-label="'Time range filter'"
-          class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-        >
+        <select v-model="timeRange" :aria-label="'Time range filter'"
+          class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
           <option value="all">All time</option>
           <option value="today">Today</option>
           <option value="week">This week</option>
@@ -51,11 +36,8 @@
         </select>
 
         <!-- Message Type -->
-        <select 
-          v-model="messageType"
-          :aria-label="'Message type filter'"
-          class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-        >
+        <select v-model="messageType" :aria-label="'Message type filter'"
+          class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
           <option value="all">All types</option>
           <option value="text">Text only</option>
           <option value="files">With files</option>
@@ -63,11 +45,8 @@
         </select>
 
         <!-- From User -->
-        <select 
-          v-model="fromUser"
-          :aria-label="'From user filter'"
-          class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-        >
+        <select v-model="fromUser" :aria-label="'From user filter'"
+          class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
           <option value="">Anyone</option>
           <option v-for="user in availableUsers" :key="user.id" :value="user.id">
             {{ user.fullname }}
@@ -75,30 +54,21 @@
         </select>
 
         <!-- Sort -->
-        <select 
-          v-model="sortBy"
-          :aria-label="'Sort by'"
-          class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-        >
+        <select v-model="sortBy" :aria-label="'Sort by'"
+          class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
           <option value="newest">Newest first</option>
           <option value="oldest">Oldest first</option>
           <option value="relevance">Most relevant</option>
         </select>
       </div>
-      
+
       <div class="flex justify-between items-center mt-3">
-        <button 
-          @click="clearFilters" 
-          class="text-xs text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-200"
-        >
+        <button @click="clearFilters"
+          class="text-xs text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-200">
           Clear filters
         </button>
-        <button 
-          @click="search" 
-          data-testid="search-btn"
-          :disabled="!canSearch"
-          class="px-3 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-        >
+        <button @click="search" data-testid="search-btn" :disabled="!canSearch"
+          class="px-3 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200">
           Search
         </button>
       </div>
@@ -106,11 +76,8 @@
 
     <!-- Quick Action Bar -->
     <div class="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-900">
-      <div 
-        class="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400"
-        aria-live="polite"
-        aria-atomic="true"
-      >
+      <div class="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400" aria-live="polite"
+        aria-atomic="true">
         <span v-if="searchState.loading">Searching...</span>
         <span v-else-if="searchState.results.length > 0">
           {{ searchState.results.length }} of {{ searchState.pagination.total }} results
@@ -118,14 +85,10 @@
         <span v-else-if="searchState.hasSearched">No results found</span>
         <span v-else>Enter search terms</span>
       </div>
-      
+
       <div class="flex items-center space-x-1">
-        <button 
-          v-if="query || hasActiveFilters" 
-          @click="clearAll" 
-          :aria-label="'Clear all'"
-          class="p-1 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-200"
-        >
+        <button v-if="query || hasActiveFilters" @click="clearAll" :aria-label="'Clear all'"
+          class="p-1 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-200">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
@@ -149,21 +112,15 @@
 
     <!-- Results -->
     <div v-else-if="searchState.results.length > 0" class="max-h-96 overflow-y-auto">
-      <div 
-        v-for="result in searchState.results" 
-        :key="result.id" 
-        data-testid="result-item"
+      <div v-for="result in searchState.results" :key="result.id" data-testid="result-item"
         class="p-4 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-200"
-        @click="handleResultSelect(result)"
-        @keyup.enter="handleResultSelect(result)"
-        @keyup.space="handleResultSelect(result)"
-        tabindex="0"
-        role="button"
-        :aria-label="`Select result: ${result.content.slice(0, 50)}`"
-      >
+        @click="handleResultSelect(result)" @keyup.enter="handleResultSelect(result)"
+        @keyup.space="handleResultSelect(result)" tabindex="0" role="button"
+        :aria-label="`Select result: ${result.content.slice(0, 50)}`">
         <div class="flex items-start space-x-3">
           <div class="flex-shrink-0">
-            <div class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+            <div
+              class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
               {{ getInitials(result.sender_fullname || result.sender_name || result.sender?.fullname || 'U') }}
             </div>
           </div>
@@ -179,28 +136,25 @@
                 #{{ result.chat_name }}
               </span>
             </div>
-            <p 
-              class="text-sm text-gray-800 dark:text-gray-200 line-clamp-2" 
-              v-html="highlightSearchTerms(result.content)"
-            ></p>
+            <p class="text-sm text-gray-800 dark:text-gray-200 line-clamp-2"
+              v-html="highlightSearchTerms(result.content)"></p>
             <!-- 显示附件信息 -->
             <div v-if="result.files && result.files.length > 0" class="mt-1 flex items-center space-x-2">
               <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13">
+                </path>
               </svg>
               <span class="text-xs text-gray-500">{{ result.files.length }} file(s)</span>
             </div>
           </div>
         </div>
       </div>
-      
+
       <!-- Load More Button -->
       <div v-if="searchState.pagination.hasMore" class="p-4 text-center">
-        <button 
-          @click="loadMore"
-          :disabled="searchState.loading"
-          class="px-4 py-2 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-        >
+        <button @click="loadMore" :disabled="searchState.loading"
+          class="px-4 py-2 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200">
           Load More
         </button>
       </div>
@@ -208,8 +162,10 @@
 
     <!-- No Results -->
     <div v-else-if="searchState.hasSearched" class="p-8 text-center">
-      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+        aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
       </svg>
       <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
         No messages found
@@ -223,7 +179,8 @@
     <div v-if="searchState.error" class="p-4 bg-red-50 dark:bg-red-900 border-l-4 border-red-400">
       <div class="flex">
         <svg class="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
         <div class="ml-3">
           <p class="text-sm text-red-700 dark:text-red-200">
@@ -270,10 +227,10 @@ const sortBy = ref('newest')
 
 // Computed
 const hasActiveFilters = computed(() => {
-  return timeRange.value !== 'all' || 
-         messageType.value !== 'all' || 
-         fromUser.value !== '' ||
-         sortBy.value !== 'newest'
+  return timeRange.value !== 'all' ||
+    messageType.value !== 'all' ||
+    fromUser.value !== '' ||
+    sortBy.value !== 'newest'
 })
 
 const canSearch = computed(() => {
@@ -283,11 +240,11 @@ const canSearch = computed(() => {
 // Methods
 const search = async () => {
   if (!canSearch.value) return
-  
+
   searchState.value.loading = true
   searchState.value.error = null
   searchState.value.hasSearched = true
-  
+
   try {
     // 使用真实的搜索 API
     const response = await SearchService.search({
@@ -334,12 +291,13 @@ const search = async () => {
   } finally {
     searchState.value.loading = false
   }
+}
 
 const loadMore = async () => {
   if (!searchState.value.pagination.hasMore || searchState.value.loading) return
-  
+
   searchState.value.loading = true
-  
+
   try {
     const nextPage = searchState.value.pagination.page + 1
     const response = await SearchService.search({
@@ -366,6 +324,7 @@ const loadMore = async () => {
   } finally {
     searchState.value.loading = false
   }
+}
 
 const clearFilters = () => {
   timeRange.value = 'all'
@@ -384,6 +343,7 @@ const clearAll = () => {
     hasMore: false,
     page: 1
   }
+}
 
 const highlightSearchTerms = (text) => {
   if (!query.value) return text
@@ -401,7 +361,7 @@ const formatTime = (timestamp) => {
   const date = new Date(timestamp)
   const now = new Date()
   const diff = now - date
-  
+
   if (diff < 60000) return 'just now'
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
@@ -483,16 +443,17 @@ onMounted(async () => {
   .border-gray-200 {
     @apply border-gray-900;
   }
-  
+
   .text-gray-400 {
     @apply text-gray-700;
   }
+}
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
+
   .transition-colors,
   .animate-pulse {
     transition: none;
     animation: none;
-  }
-</style>
+  }</style>

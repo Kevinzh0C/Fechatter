@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stable Markdown Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f5f7fa;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .panel {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h2 {
+      margin-top: 0;
+      color: #333;
+      border-bottom: 2px solid #5865f2;
+      padding-bottom: 8px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 400px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: monospace;
+    }
+
+    .preview {
+      height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 12px;
+      background: #fafafa;
+    }
+
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 6px;
+    }
+
+    .success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    /* Markdown Preview Styles */
+    .markdown-preview h1,
+    .markdown-preview h2,
+    .markdown-preview h3 {
+      color: #333;
+    }
+
+    .markdown-preview code {
+      background: #f3f4f6;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+
+    .markdown-preview pre {
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+
+    .markdown-preview blockquote {
+      border-left: 4px solid #5865f2;
+      margin: 12px 0;
+      padding: 8px 16px;
+      background: #f8fafc;
+    }
+
+    .markdown-preview table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+    }
+
+    .markdown-preview th,
+    .markdown-preview td {
+      border: 1px solid #ddd;
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    .markdown-preview th {
+      background: #f3f4f6;
+    }
+
+    .markdown-preview .task-checkbox {
+      margin-right: 6px;
+    }
+
+    .markdown-preview .markdown-highlight {
+      background: #fef3c7;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="panel">
+      <h2>📝 输入 Markdown</h2>
+      <textarea id="input" placeholder="在这里输入 Markdown...">
+# 🚀 增强版 Markdown 预览测试
+
+## 文本格式
+这是 **粗体文字**、*斜体文字* 和 `行内代码`。
+
+你还可以使用 ~~删除线~~ 和 ==高亮文本==。
+
+## 链接和资源
+- [内部链接](#test)
+- [外部链接](https://github.com) (注意图标)
+- Email: test@example.com
+
+## 代码块
+```javascript
+function markdownTest() {
+  console.log("支持语法高亮!");
+  return "🎉 生产就绪!";
+}
+```
+
+```python
+def hello_world():
+    print("多语言支持! 🐍")
+    return True
+```
+
+## 任务列表
+- [x] ✅ 增强渲染
+- [x] ✅ 代码语法高亮
+- [ ] 🚧 数学公式 (计划中)
+- [ ] 📊 图表支持 (计划中)
+
+## 表格
+| 功能 | 状态 | 优先级 |
+|------|------|--------|
+| 语法高亮 | ✅ 完成 | 高 |
+| 任务列表 | ✅ 完成 | 高 |
+| 外部链接 | ✅ 完成 | 中 |
+
+## 引用和提示
+> **💡 专业提示:** 这个增强版预览支持 GitHub 风格的 Markdown，带有自定义样式以获得更好的可读性和用户体验。
+
+## 表情符号支持
+文字表情符号快捷方式: :rocket: :heart: :thumbsup: :fire: :star: :check:
+
+试试这些: :smile: :laugh: :love: :wink: :cool: :party:
+            </textarea>
+    </div>
+
+    <div class="panel">
+      <h2>👁️ 实时预览</h2>
+      <div id="preview" class="preview markdown-preview"></div>
+    </div>
+  </div>
+
+  <div id="status" class="status success">
+    ✅ MessageInput 组件已升级为 markdown-it 引擎，更稳定可靠！
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
+  <script>
+    const input = document.getElementById('input');
+    const preview = document.getElementById('preview');
+    const status = document.getElementById('status');
+
+    // Initialize markdown-it
+    const md = window.markdownit({
+      html: true,
+      breaks: true,
+      linkify: true,
+      typographer: true
+    });
+
+    // Enhanced link rendering
+    const defaultRender = md.renderer.rules.link_open || function (tokens, idx, options, env, renderer) {
+      return renderer.renderToken(tokens, idx, options);
+    };
+
+    md.renderer.rules.link_open = function (tokens, idx, options, env, renderer) {
+      const token = tokens[idx];
+      const href = token.attrGet('href');
+
+      if (href && (href.startsWith('http') || href.startsWith('//'))) {
+        token.attrSet('target', '_blank');
+        token.attrSet('rel', 'noopener noreferrer');
+        token.attrPush(['class', 'external-link']);
+      }
+
+      return defaultRender(tokens, idx, options, env, renderer);
+    };
+
+    function renderMarkdown(content) {
+      if (!content.trim()) {
+        return '<p style="color: #999; font-style: italic;">开始输入 Markdown...</p>';
+      }
+
+      try {
+        let html = md.render(content);
+
+        // Post-process for task lists
+        html = html.replace(/\[ \]/g, '<input type="checkbox" disabled class="task-checkbox">');
+        html = html.replace(/\[x\]/gi, '<input type="checkbox" checked disabled class="task-checkbox">');
+
+        // Post-process for highlights
+        html = html.replace(/==(.*?)==/g, '<mark class="markdown-highlight">$1</mark>');
+
+        // Post-process for emoji
+        html = html.replace(/:([a-z_]+):/g, (match, emoji) => {
+          const emojiMap = {
+            smile: '😊', heart: '❤️', thumbsup: '👍', fire: '🔥',
+            rocket: '🚀', star: '⭐', check: '✅', warning: '⚠️',
+            info: 'ℹ️', question: '❓', bulb: '💡', gear: '⚙️',
+            laugh: '😂', love: '😍', wink: '😉', cool: '😎',
+            party: '🎉', tada: '🎊', clap: '👏', ok: '👌'
+          };
+          return emojiMap[emoji] || match;
+        });
+
+        // Add external link icons
+        html = html.replace(
+          /<a([^>]*class="[^"]*external-link[^"]*"[^>]*)>([^<]*)<\/a>/g,
+          '<a$1>$2 🔗</a>'
+        );
+
+        return DOMPurify.sanitize(html);
+
+      } catch (error) {
+        status.className = 'status error';
+        status.textContent = '❌ 渲染错误: ' + error.message;
+        return '<p style="color: red;">Markdown 渲染错误</p>';
+      }
+    }
+
+    function updatePreview() {
+      const html = renderMarkdown(input.value);
+      preview.innerHTML = html;
+
+      if (!status.textContent.includes('错误')) {
+        status.className = 'status success';
+        status.textContent = '✅ Markdown 渲染成功! MessageInput 组件已升级。';
+      }
+    }
+
+    input.addEventListener('input', updatePreview);
+    updatePreview(); // Initial render
+
+    console.log('✅ Stable Markdown Test loaded successfully!');
+    console.log('🔧 MessageInput component now uses markdown-it engine');
+  </script>
+</body>
+
+</html>

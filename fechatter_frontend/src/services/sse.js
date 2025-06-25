@@ -38,7 +38,7 @@ class SSEService {
         return true;
       }
 
-      const token = authStore.tokens?.accessToken;
+      const token = authStore.token;
       if (!token) {
         if (import.meta.env.DEV) {
           console.warn('🔌 SSE: No access token available');

@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🖼️ Image Size Optimizer</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f8f9fa;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .control-group {
+      background: #f8f9fa;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #dee2e6;
+    }
+
+    .slider-container {
+      margin: 10px 0;
+    }
+
+    .slider {
+      width: 100%;
+      margin: 10px 0;
+    }
+
+    .preset-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .preset-btn {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .preset-btn:hover {
+      background: #0056b3;
+    }
+
+    .preset-btn.active {
+      background: #28a745;
+    }
+
+    .chat-simulator {
+      background: #ffffff;
+      border: 1px solid #e1e8ed;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .message-item {
+      display: flex;
+      gap: 12px;
+      margin: 16px 0;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    .message-content {
+      flex: 1;
+    }
+
+    .username {
+      font-weight: 600;
+      color: #374151;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .message-text {
+      color: #111827;
+      font-size: 15px;
+      margin-bottom: 8px;
+    }
+
+    .image-attachment {
+      position: relative;
+      overflow: hidden;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      width: fit-content;
+      background: #f1f3f4;
+      border: 1px solid #e1e8ed;
+    }
+
+    .image-attachment:hover {
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .attachment-image {
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      transition: transform 0.2s ease;
+      display: block;
+    }
+
+    .image-attachment:hover .attachment-image {
+      transform: scale(1.02);
+    }
+
+    .image-overlay {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 11px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .image-attachment:hover .image-overlay {
+      opacity: 1;
+    }
+
+    .size-info {
+      background: #e3f2fd;
+      border: 1px solid #1976d2;
+      border-radius: 6px;
+      padding: 12px;
+      margin: 16px 0;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .comparison-item {
+      text-align: center;
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .comparison-label {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #374151;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🖼️ Image Thumbnail Size Optimizer</h1>
+    <p>找到聊天应用中最合适的图片缩略图尺寸</p>
+
+    <!-- Size Controls -->
+    <div class="controls">
+      <div class="control-group">
+        <h3>📐 尺寸控制</h3>
+
+        <div class="slider-container">
+          <label>最大宽度: <span id="widthValue">280</span>px</label>
+          <input type="range" id="widthSlider" class="slider" min="120" max="500" value="280" step="20">
+        </div>
+
+        <div class="slider-container">
+          <label>最大高度: <span id="heightValue">200</span>px</label>
+          <input type="range" id="heightSlider" class="slider" min="80" max="400" value="200" step="20">
+        </div>
+
+        <div class="preset-buttons">
+          <button class="preset-btn" onclick="applyPreset(200, 150, this)">微信风格<br>200×150</button>
+          <button class="preset-btn" onclick="applyPreset(250, 180, this)">QQ风格<br>250×180</button>
+          <button class="preset-btn active" onclick="applyPreset(280, 200, this)">当前设置<br>280×200</button>
+          <button class="preset-btn" onclick="applyPreset(320, 240, this)">Slack风格<br>320×240</button>
+          <button class="preset-btn" onclick="applyPreset(360, 270, this)">Discord风格<br>360×270</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <h3>🎯 显示选项</h3>
+
+        <div>
+          <label><input type="radio" name="objectFit" value="contain" checked> Contain (显示完整图片)</label><br>
+          <label><input type="radio" name="objectFit" value="cover"> Cover (填满容器)</label><br>
+          <label><input type="radio" name="objectFit" value="fill"> Fill (拉伸适应)</label>
+        </div>
+
+        <div style="margin-top: 16px;">
+          <label><input type="checkbox" id="showHover" checked> 显示悬停效果</label><br>
+          <label><input type="checkbox" id="showBorder" checked> 显示边框</label><br>
+          <label><input type="checkbox" id="showShadow" checked> 显示阴影</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Current Size Info -->
+    <div class="size-info">
+      <strong>当前缩略图设置:</strong><br>
+      最大尺寸: <span id="currentSize">280×200px</span> |
+      显示模式: <span id="currentMode">contain</span> |
+      占用空间: <span id="spaceUsage">中等</span>
+    </div>
+
+    <!-- Chat Simulator -->
+    <div class="chat-simulator">
+      <h3>💬 聊天界面预览</h3>
+
+      <div class="message-item">
+        <div class="avatar">SU</div>
+        <div class="message-content">
+          <div class="username">Super User</div>
+          <div class="message-text">这是一个测试消息，包含图片附件</div>
+          <div class="image-attachment" id="testImage1">
+            <img
+              src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYmciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojNjY3ZWVhO3N0b3Atb3BhY2l0eToxIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3NjRiYTI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2JnKSIgLz4KICA8dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPuaWueW9ouWbvueJhzwvdGV4dD4KPC9zdmc+"
+              class="attachment-image" alt="方形图片">
+            <div class="image-overlay">🔍 点击查看</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="message-item">
+        <div class="avatar">SU</div>
+        <div class="message-content">
+          <div class="username">Super User</div>
+          <div class="message-text">这是一个宽屏图片的例子</div>
+          <div class="image-attachment" id="testImage2">
+            <img
+              src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYmcyIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIwJSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNmZjc5ODE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6I2ZmZmY4MTtzdG9wLW9wYWNpdHk6MSIgLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjYmcyKSIgLz4KICA8dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSJibGFjayIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPuWuveWxj+WbvueJhzwvdGV4dD4KPC9zdmc+"
+              class="attachment-image" alt="宽屏图片">
+            <div class="image-overlay">🔍 点击查看</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="message-item">
+        <div class="avatar">SU</div>
+        <div class="message-content">
+          <div class="username">Super User</div>
+          <div class="message-text">这是一个高长图片的例子</div>
+          <div class="image-attachment" id="testImage3">
+            <img
+              src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYmczIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjAlIiB5Mj0iMTAwJSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM4MDgwZmY7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6I2ZmODA4MDtzdG9wLW9wYWNpdHk6MSIgLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjYmczKSIgLz4KICA8dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPumrmOmVv+WbvueJhzwvdGV4dD4KPC9zdmc+"
+              class="attachment-image" alt="高长图片">
+            <div class="image-overlay">🔍 点击查看</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Comparison -->
+    <div class="comparison-grid">
+      <div class="comparison-item">
+        <div class="comparison-label">微信风格 (200×150)</div>
+        <div
+          style="width: 200px; height: 150px; background: #e3f2fd; margin: 0 auto; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px;">
+          紧凑型</div>
+      </div>
+      <div class="comparison-item">
+        <div class="comparison-label">当前设置 (280×200)</div>
+        <div
+          style="width: 280px; height: 200px; background: #c8e6c9; margin: 0 auto; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px;">
+          平衡型</div>
+      </div>
+      <div class="comparison-item">
+        <div class="comparison-label">Discord风格 (360×270)</div>
+        <div
+          style="width: 360px; height: 270px; background: #ffcdd2; margin: 0 auto; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px;">
+          大型</div>
+      </div>
+    </div>
+
+    <!-- Recommendations -->
+    <div style="background: #f1f8e9; border: 1px solid #8bc34a; border-radius: 8px; padding: 16px; margin: 20px 0;">
+      <h3>💡 推荐设置</h3>
+      <div id="recommendations">
+        <p><strong>当前设置 (280×200px):</strong> 平衡了显示质量和空间利用，适合大多数聊天场景</p>
+        <p><strong>建议:</strong> 如果觉得图片太大，可以尝试 <button class="preset-btn"
+            onclick="applyPreset(240, 160, this)">240×160</button> 或 <button class="preset-btn"
+            onclick="applyPreset(220, 140, this)">220×140</button></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const widthSlider = document.getElementById('widthSlider');
+    const heightSlider = document.getElementById('heightSlider');
+    const widthValue = document.getElementById('widthValue');
+    const heightValue = document.getElementById('heightValue');
+
+    function updateImageSizes() {
+      const width = widthSlider.value;
+      const height = heightSlider.value;
+
+      widthValue.textContent = width;
+      heightValue.textContent = height;
+
+      const images = document.querySelectorAll('.image-attachment');
+      images.forEach(img => {
+        img.style.maxWidth = width + 'px';
+        img.style.maxHeight = height + 'px';
+      });
+
+      // Update info
+      document.getElementById('currentSize').textContent = `${width}×${height}px`;
+
+      // Update space usage
+      const spaceUsage = parseInt(width) * parseInt(height);
+      let usageText = '';
+      if (spaceUsage < 30000) usageText = '紧凑';
+      else if (spaceUsage < 50000) usageText = '中等';
+      else if (spaceUsage < 80000) usageText = '宽松';
+      else usageText = '大型';
+
+      document.getElementById('spaceUsage').textContent = usageText;
+
+      // Update recommendations
+      updateRecommendations(width, height);
+    }
+
+    function updateRecommendations(width, height) {
+      const area = parseInt(width) * parseInt(height);
+      let recommendation = '';
+
+      if (area < 25000) {
+        recommendation = '🎯 紧凑型设置 - 节省空间，适合移动端和消息密集的场景';
+      } else if (area < 40000) {
+        recommendation = '✅ 推荐设置 - 平衡显示质量和空间利用，适合桌面端聊天';
+      } else if (area < 70000) {
+        recommendation = '🖼️ 舒适型设置 - 图片显示更清晰，适合图片分享较多的场景';
+      } else {
+        recommendation = '⚠️ 大型设置 - 图片很大，可能占用过多聊天空间';
+      }
+
+      document.getElementById('recommendations').innerHTML = `
+                <p><strong>当前设置 (${width}×${height}px):</strong> ${recommendation}</p>
+                <p><strong>快速调整:</strong> 
+                    <button class="preset-btn" onclick="applyPreset(200, 150, this)">紧凑</button>
+                    <button class="preset-btn" onclick="applyPreset(240, 180, this)">平衡</button>
+                    <button class="preset-btn" onclick="applyPreset(280, 200, this)">当前</button>
+                    <button class="preset-btn" onclick="applyPreset(320, 240, this)">舒适</button>
+                </p>
+            `;
+    }
+
+    function applyPreset(width, height, button) {
+      widthSlider.value = width;
+      heightSlider.value = height;
+      updateImageSizes();
+
+      // Update active button
+      document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+      if (button) button.classList.add('active');
+    }
+
+    function updateObjectFit() {
+      const objectFit = document.querySelector('input[name="objectFit"]:checked').value;
+      document.querySelectorAll('.attachment-image').forEach(img => {
+        img.style.objectFit = objectFit;
+      });
+      document.getElementById('currentMode').textContent = objectFit;
+    }
+
+    function updateEffects() {
+      const showHover = document.getElementById('showHover').checked;
+      const showBorder = document.getElementById('showBorder').checked;
+      const showShadow = document.getElementById('showShadow').checked;
+
+      const style = document.createElement('style');
+      style.innerHTML = `
+                .image-attachment {
+                    border: ${showBorder ? '1px solid #e1e8ed' : 'none'} !important;
+                }
+                .image-attachment:hover {
+                    box-shadow: ${showShadow ? '0 8px 25px rgba(0, 0, 0, 0.15)' : 'none'} !important;
+                    transform: ${showHover ? 'translateY(-2px)' : 'none'} !important;
+                }
+            `;
+
+      // Remove old style
+      const oldStyle = document.getElementById('dynamicStyle');
+      if (oldStyle) oldStyle.remove();
+
+      style.id = 'dynamicStyle';
+      document.head.appendChild(style);
+    }
+
+    // Event listeners
+    widthSlider.addEventListener('input', updateImageSizes);
+    heightSlider.addEventListener('input', updateImageSizes);
+
+    document.querySelectorAll('input[name="objectFit"]').forEach(radio => {
+      radio.addEventListener('change', updateObjectFit);
+    });
+
+    document.getElementById('showHover').addEventListener('change', updateEffects);
+    document.getElementById('showBorder').addEventListener('change', updateEffects);
+    document.getElementById('showShadow').addEventListener('change', updateEffects);
+
+    // Initialize
+    updateImageSizes();
+    updateObjectFit();
+    updateEffects();
+
+    // Copy CSS function
+    function copyCSSToClipboard() {
+      const width = widthSlider.value;
+      const height = heightSlider.value;
+      const objectFit = document.querySelector('input[name="objectFit"]:checked').value;
+
+      const css = `/* 🎯 Optimized Image Thumbnail Size */
+.image-attachment {
+  max-width: ${width}px;
+  max-height: ${height}px;
+}
+
+.attachment-image {
+  max-height: ${height}px;
+  object-fit: ${objectFit};
+}`;
+
+      navigator.clipboard.writeText(css).then(() => {
+        alert('CSS代码已复制到剪贴板！');
+      });
+    }
+
+    // Add copy button
+    document.querySelector('.container').insertAdjacentHTML('beforeend',
+      '<div style="text-align: center; margin: 20px 0;"><button class="preset-btn" onclick="copyCSSToClipboard()" style="background: #28a745; padding: 12px 24px;">📋 复制优化后的CSS代码</button></div>'
+    );
+  </script>
+</body>
+
+</html>

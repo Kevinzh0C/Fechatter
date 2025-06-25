@@ -1,4 +1,4 @@
-import { ref, reactive, readonly } from 'vue';
+import { ref, readonly } from 'vue';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -35,7 +35,7 @@ export function useToast() {
     toasts.value.unshift(toast);
 
     // Auto-remove after duration
-    if (toast.duration > 0) {
+    if (toast.duration && toast.duration > 0) {
       setTimeout(() => {
         removeToast(id);
       }, toast.duration);
@@ -61,8 +61,8 @@ export function useToast() {
   };
 
   const error = (message: string, options: Omit<ToastOptions, 'type'> = {}): string => {
-    return addToast(message, { 
-      ...options, 
+    return addToast(message, {
+      ...options,
       type: 'error',
       duration: options.duration ?? 8000, // Errors stay longer
     });
@@ -76,6 +76,12 @@ export function useToast() {
     return addToast(message, { ...options, type: 'info' });
   };
 
+  // Legacy alias functions for compatibility
+  const notifySuccess = success;
+  const notifyError = error;
+  const notifyWarning = warning;
+  const notifyInfo = info;
+
   return {
     toasts: readonly(toasts),
     addToast,
@@ -85,5 +91,9 @@ export function useToast() {
     error,
     warning,
     info,
+    notifySuccess,
+    notifyError,
+    notifyWarning,
+    notifyInfo,
   };
 }

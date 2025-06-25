@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SSE Frontend Diagnostic</title>
+  <style>
+    body {
+      font-family: 'Monaco', 'Menlo', monospace;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      background: #2d2d2d;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 10px 0;
+      border-left: 4px solid #00d4aa;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .status {
+      padding: 10px;
+      border-radius: 4px;
+      margin: 5px 0;
+      font-weight: bold;
+    }
+
+    .success {
+      background: #2d5a27;
+      color: #90ee90;
+    }
+
+    .warning {
+      background: #5a4a27;
+      color: #ffa500;
+    }
+
+    .error {
+      background: #5a2727;
+      color: #ff6b6b;
+    }
+
+    .info {
+      background: #27395a;
+      color: #87ceeb;
+    }
+
+    button {
+      background: #00d4aa;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 5px;
+    }
+
+    button:hover {
+      background: #00b896;
+    }
+
+    .code {
+      background: #1e1e1e;
+      padding: 15px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
+      border: 1px solid #444;
+      font-size: 12px;
+    }
+
+    .steps {
+      counter-reset: step-counter;
+    }
+
+    .step {
+      counter-increment: step-counter;
+      margin: 10px 0;
+    }
+
+    .step::before {
+      content: counter(step-counter);
+      background: #00d4aa;
+      color: white;
+      border-radius: 50%;
+      width: 25px;
+      height: 25px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <h1>🔍 SSE Frontend Diagnostic</h1>
+    <p>Diagnose frontend SSE token and connection issues</p>
+    <p><strong>Backend Status:</strong> ✅ 100% Healthy (verified by curl)</p>
+  </div>
+
+  <div class="container">
+    <h2>🎯 Problem Analysis Based on Architecture</h2>
+    <div class="steps">
+      <div class="step">
+        <strong>Token Path Issue:</strong> Multiple token sources may be inconsistent
+        <div class="code">AuthStore.token ≠ tokenManager.getAccessToken() ≠ localStorage.auth_token</div>
+      </div>
+      <div class="step">
+        <strong>SSE Service Issue:</strong> Depends on window.tokenManager which may not be set
+        <div class="code">sse-minimal.js → window.tokenManager?.getAccessToken() → null</div>
+      </div>
+      <div class="step">
+        <strong>Event Type Mismatch:</strong> Frontend expects different events than backend sends
+        <div class="code">Expected: new_message, message_delivered | Actual: ping only</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <h2>🔧 Diagnostic Tests</h2>
+
+    <button onclick="runFullDiagnostic()">🚀 Run Full Diagnostic</button>
+    <button onclick="testTokenSources()">🎫 Test Token Sources</button>
+    <button onclick="testSSEConnection()">📡 Test SSE Connection</button>
+    <button onclick="fixTokenIssues()">🔧 Fix Token Issues</button>
+    <button onclick="clearResults()">🗑️ Clear Results</button>
+
+    <div id="results"></div>
+  </div>
+
+  <div class="container">
+    <h2>📊 Fix Strategy</h2>
+    <div class="status info">
+      Based on backend testing, the issue is likely token inconsistency in frontend systems.
+      We'll check all token sources and create a unified token access method.
+    </div>
+  </div>
+
+  <script>
+    function log(message, type = 'info') {
+      const resultsEl = document.getElementById('results');
+      const className = type === 'error' ? 'error' : type === 'warning' ? 'warning' : type === 'success' ? 'success' : 'info';
+      const icon = type === 'error' ? '❌' : type === 'warning' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
+      const timestamp = new Date().toLocaleTimeString();
+
+      resultsEl.innerHTML += `<div class="${className}">[${timestamp}] ${icon} ${message}</div>`;
+      resultsEl.scrollTop = resultsEl.scrollHeight;
+    }
+
+    async function runFullDiagnostic() {
+      log('🚀 Starting comprehensive SSE diagnostic...', 'info');
+
+      await testTokenSources();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      await testSSEServices();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      await testSSEConnection();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      log('📋 Full diagnostic completed!', 'success');
+    }
+
+    async function testTokenSources() {
+      log('🎫 Testing all token sources...', 'info');
+
+      // 1. localStorage sources
+      const tokens = {
+        'localStorage.auth_token': localStorage.getItem('auth_token'),
+        'localStorage.access_token': localStorage.getItem('access_token'),
+        'localStorage.fechatter_access_token': localStorage.getItem('fechatter_access_token'),
+        'localStorage.token': localStorage.getItem('token')
+      };
+
+      let validTokens = [];
+
+      for (const [source, token] of Object.entries(tokens)) {
+        if (token) {
+          log(`${source}: Found (${token.length} chars)`, 'success');
+          validTokens.push({ source, token });
+        } else {
+          log(`${source}: Not found`, 'warning');
+        }
+      }
+
+      // 2. Check window.tokenManager
+      try {
+        const tokenManager = window.tokenManager;
+        if (tokenManager) {
+          const token = tokenManager.getAccessToken();
+          log(`window.tokenManager: ${token ? 'Found (' + token.length + ' chars)' : 'No token'}`, token ? 'success' : 'warning');
+          if (token) validTokens.push({ source: 'window.tokenManager', token });
+        } else {
+          log('window.tokenManager: Not found', 'error');
+        }
+      } catch (e) {
+        log(`window.tokenManager: Error - ${e.message}`, 'error');
+      }
+
+      // 3. Check Pinia auth store
+      try {
+        if (window.__PINIA__ && window.__PINIA__.state && window.__PINIA__.state.value.auth) {
+          const authToken = window.__PINIA__.state.value.auth.token;
+          log(`Pinia authStore: ${authToken ? 'Found (' + authToken.length + ' chars)' : 'No token'}`, authToken ? 'success' : 'warning');
+          if (authToken) validTokens.push({ source: 'Pinia authStore', token: authToken });
+        } else {
+          log('Pinia authStore: Not accessible', 'warning');
+        }
+      } catch (e) {
+        log(`Pinia authStore: Error - ${e.message}`, 'warning');
+      }
+
+      // 4. Check auth service in localStorage
+      try {
+        const authData = localStorage.getItem('auth');
+        if (authData) {
+          const parsed = JSON.parse(authData);
+          const token = parsed.token || parsed.tokens?.accessToken;
+          log(`localStorage.auth object: ${token ? 'Found (' + token.length + ' chars)' : 'No token'}`, token ? 'success' : 'warning');
+          if (token) validTokens.push({ source: 'localStorage.auth', token });
+        }
+      } catch (e) {
+        log(`localStorage.auth: Error - ${e.message}`, 'warning');
+      }
+
+      // 5. Compare tokens for consistency
+      const uniqueTokens = [...new Set(validTokens.map(t => t.token))];
+
+      if (uniqueTokens.length === 0) {
+        log('🚨 CRITICAL: No valid tokens found anywhere!', 'error');
+      } else if (uniqueTokens.length === 1) {
+        log(`✅ TOKEN CONSISTENCY: All sources use the same token`, 'success');
+
+        // Validate token format
+        const token = uniqueTokens[0];
+        if (token.split('.').length === 3) {
+          log('✅ Token format: Valid JWT', 'success');
+
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const exp = payload.exp * 1000;
+            const now = Date.now();
+
+            if (exp > now) {
+              const minutes = Math.floor((exp - now) / 60000);
+              log(`✅ Token expiry: Valid for ${minutes} more minutes`, 'success');
+            } else {
+              log('❌ Token expiry: EXPIRED!', 'error');
+            }
+          } catch (e) {
+            log('⚠️ Token payload: Cannot decode', 'warning');
+          }
+        } else {
+          log('❌ Token format: Invalid JWT', 'error');
+        }
+      } else {
+        log(`🚨 TOKEN INCONSISTENCY: Found ${uniqueTokens.length} different tokens!`, 'error');
+        validTokens.forEach(({ source, token }, index) => {
+          log(`${source}: ${token.substring(0, 30)}...`, 'error');
+        });
+      }
+
+      return validTokens;
+    }
+
+    async function testSSEServices() {
+      log('📡 Testing SSE service accessibility...', 'info');
+
+      // Check if SSE services are available
+      const services = [
+        'window.realtimeCommunicationService',
+        'window.minimalSSE',
+        'window.sseService'
+      ];
+
+      for (const servicePath of services) {
+        try {
+          const service = eval(servicePath);
+          if (service) {
+            log(`${servicePath}: Available`, 'success');
+
+            // Check service methods
+            const methods = ['connect', 'getToken', 'getStatus', 'on'];
+            for (const method of methods) {
+              if (typeof service[method] === 'function') {
+                log(`  - ${method}(): Available`, 'success');
+              } else {
+                log(`  - ${method}(): Missing`, 'warning');
+              }
+            }
+
+            // Check connection status
+            if (service.getStatus) {
+              const status = service.getStatus();
+              log(`  - Connection status: ${JSON.stringify(status)}`, status.connected ? 'success' : 'warning');
+            }
+
+            // Check token access
+            if (service.getToken) {
+              const token = service.getToken();
+              log(`  - Token access: ${token ? 'Available (' + token.length + ' chars)' : 'No token'}`, token ? 'success' : 'warning');
+            }
+
+          } else {
+            log(`${servicePath}: Not found`, 'warning');
+          }
+        } catch (e) {
+          log(`${servicePath}: Error - ${e.message}`, 'error');
+        }
+      }
+    }
+
+    async function testSSEConnection() {
+      log('🔌 Testing SSE connection with available tokens...', 'info');
+
+      const validTokens = await testTokenSources();
+
+      if (validTokens.length === 0) {
+        log('Cannot test SSE: No tokens available', 'error');
+        return;
+      }
+
+      // Use the first valid token for testing
+      const { token } = validTokens[0];
+      log(`Using token from ${validTokens[0].source} for SSE test`, 'info');
+
+      try {
+        const sseUrl = `/events?access_token=${encodeURIComponent(token)}`;
+        log(`Testing SSE URL: ${sseUrl.substring(0, 50)}...`, 'info');
+
+        const eventSource = new EventSource(sseUrl);
+        let connectionTested = false;
+
+        const timeout = setTimeout(() => {
+          if (!connectionTested) {
+            eventSource.close();
+            log('SSE connection test: Timeout (10 seconds)', 'error');
+          }
+        }, 10000);
+
+        eventSource.onopen = () => {
+          connectionTested = true;
+          clearTimeout(timeout);
+          log('✅ SSE Connection: SUCCESSFUL!', 'success');
+          log(`ReadyState: ${eventSource.readyState} (OPEN)`, 'success');
+
+          // Monitor for events
+          let eventCount = 0;
+          const eventTimeout = setTimeout(() => {
+            eventSource.close();
+            log(`SSE Events: ${eventCount} events received in 15 seconds`, eventCount > 0 ? 'success' : 'warning');
+            if (eventCount === 0) {
+              log('This is normal if no other users are active or sending messages', 'info');
+            }
+          }, 15000);
+
+          eventSource.onmessage = (event) => {
+            eventCount++;
+            log(`SSE Event #${eventCount}: ${event.data.substring(0, 50)}...`, 'success');
+
+            if (event.data.includes('ping')) {
+              log('Received server ping - connection is healthy', 'success');
+            }
+          };
+        };
+
+        eventSource.onerror = (error) => {
+          connectionTested = true;
+          clearTimeout(timeout);
+          log(`❌ SSE Connection: FAILED`, 'error');
+          log(`ReadyState: ${eventSource.readyState}`, 'error');
+
+          if (eventSource.readyState === 0) {
+            log('Error: Connection never opened - check token validity', 'error');
+          } else if (eventSource.readyState === 2) {
+            log('Error: Connection was closed by server', 'error');
+          }
+
+          eventSource.close();
+        };
+
+      } catch (error) {
+        log(`SSE test error: ${error.message}`, 'error');
+      }
+    }
+
+    async function fixTokenIssues() {
+      log('🔧 Attempting to fix token inconsistency issues...', 'info');
+
+      const validTokens = await testTokenSources();
+
+      if (validTokens.length === 0) {
+        log('Cannot fix: No valid tokens found. Please log in first.', 'error');
+        return;
+      }
+
+      // Use the longest/most recent token as the primary
+      const primaryToken = validTokens.reduce((a, b) => a.token.length > b.token.length ? a : b);
+      log(`Using ${primaryToken.source} as primary token source`, 'info');
+
+      try {
+        // Sync all localStorage keys
+        localStorage.setItem('auth_token', primaryToken.token);
+        localStorage.setItem('access_token', primaryToken.token);
+        localStorage.setItem('fechatter_access_token', primaryToken.token);
+        log('✅ Synchronized all localStorage token keys', 'success');
+
+        // Try to set tokenManager
+        if (window.tokenManager && window.tokenManager.setTokens) {
+          await window.tokenManager.setTokens({
+            accessToken: primaryToken.token,
+            refreshToken: primaryToken.token,
+            expiresAt: Date.now() + (3600 * 1000),
+            issuedAt: Date.now()
+          });
+          log('✅ Updated window.tokenManager', 'success');
+        } else {
+          log('⚠️ window.tokenManager not available for update', 'warning');
+        }
+
+        // Try to update Pinia store
+        if (window.__PINIA__ && window.__PINIA__.state && window.__PINIA__.state.value.auth) {
+          window.__PINIA__.state.value.auth.token = primaryToken.token;
+          log('✅ Updated Pinia auth store', 'success');
+        } else {
+          log('⚠️ Pinia auth store not available for update', 'warning');
+        }
+
+        log('🎉 Token synchronization completed!', 'success');
+        log('Please test SSE connection again to verify the fix.', 'info');
+
+      } catch (error) {
+        log(`Fix failed: ${error.message}`, 'error');
+      }
+    }
+
+    function clearResults() {
+      document.getElementById('results').innerHTML = '';
+    }
+
+    // Auto-run basic diagnostic on page load
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        log('🚀 SSE Frontend Diagnostic loaded', 'info');
+        log('🔍 Based on architecture analysis - checking token consistency...', 'info');
+        testTokenSources();
+      }, 1000);
+    });
+  </script>
+</body>
+
+</html>

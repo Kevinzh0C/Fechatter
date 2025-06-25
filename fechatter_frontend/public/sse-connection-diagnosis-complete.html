@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚀 SSE Connection Complete Diagnosis</title>
+  <style>
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+
+    .header h1 {
+      color: #2c3e50;
+      margin: 0 0 10px 0;
+      font-size: 2.5em;
+      font-weight: 700;
+    }
+
+    .header p {
+      color: #7f8c8d;
+      font-size: 1.1em;
+      margin: 0;
+    }
+
+    .section {
+      margin-bottom: 25px;
+      padding: 20px;
+      border-radius: 12px;
+      border-left: 4px solid #3498db;
+      background: #f8f9fa;
+    }
+
+    .section h3 {
+      margin: 0 0 15px 0;
+      color: #2c3e50;
+      font-size: 1.3em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status {
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.9em;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .status.warning {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+    }
+
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .log-container {
+      background: #1e1e1e;
+      color: #f8f8f2;
+      padding: 20px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 15px;
+      border: 1px solid #333;
+    }
+
+    .log-entry {
+      margin-bottom: 5px;
+      padding: 3px 0;
+      border-bottom: 1px solid #333;
+    }
+
+    .log-entry.info {
+      color: #66d9ef;
+    }
+
+    .log-entry.success {
+      color: #a6e22e;
+    }
+
+    .log-entry.error {
+      color: #f92672;
+    }
+
+    .log-entry.warning {
+      color: #e6db74;
+    }
+
+    .metric {
+      display: inline-block;
+      background: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin: 5px;
+      border: 1px solid #e1e5e9;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .metric-label {
+      font-size: 0.8em;
+      color: #6c757d;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 5px;
+    }
+
+    .metric-value {
+      font-size: 1.2em;
+      font-weight: 700;
+      color: #495057;
+    }
+
+    .btn {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      margin: 5px;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      background: #0056b3;
+      transform: translateY(-1px);
+    }
+
+    .btn.success {
+      background: #28a745;
+    }
+
+    .btn.success:hover {
+      background: #1e7e34;
+    }
+
+    .btn.danger {
+      background: #dc3545;
+    }
+
+    .btn.danger:hover {
+      background: #c82333;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .connection-flow {
+      background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px 0;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: center;
+      margin: 10px 0;
+      font-weight: 600;
+    }
+
+    .flow-step .step-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      margin-right: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+
+    .test-results {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+
+    .auto-refresh {
+      text-align: center;
+      margin-top: 20px;
+      padding: 15px;
+      background: #e9ecef;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🚀 SSE Connection Complete Diagnosis</h1>
+      <p>Real-time monitoring of Fechatter SSE connection system</p>
+    </div>
+
+    <!-- Connection Overview -->
+    <div class="section">
+      <h3>🔗 Connection Overview</h3>
+      <div id="connectionOverview">
+        <div class="metric">
+          <div class="metric-label">SSE Status</div>
+          <div class="metric-value" id="sseStatus">Checking...</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">EventSource State</div>
+          <div class="metric-value" id="eventSourceState">Unknown</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Auth Status</div>
+          <div class="metric-value" id="authStatus">Checking...</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Token Present</div>
+          <div class="metric-value" id="tokenPresent">Checking...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Connection Flow Diagram -->
+    <div class="connection-flow">
+      <h3 style="margin-top: 0;">📊 Connection Flow Status</h3>
+      <div class="flow-step" id="step1">
+        <div class="step-icon">1</div>
+        <span>App Initialization → Store Setup</span>
+      </div>
+      <div class="flow-step" id="step2">
+        <div class="step-icon">2</div>
+        <span>Auth Check → Token Validation</span>
+      </div>
+      <div class="flow-step" id="step3">
+        <div class="step-icon">3</div>
+        <span>SSE Connect Call → minimalSSE.connect(token)</span>
+      </div>
+      <div class="flow-step" id="step4">
+        <div class="step-icon">4</div>
+        <span>EventSource Creation → new EventSource(url)</span>
+      </div>
+      <div class="flow-step" id="step5">
+        <div class="step-icon">5</div>
+        <span>Network Request → GET /events?access_token=xxx</span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Detailed Diagnostics -->
+      <div class="section">
+        <h3>🔍 Detailed Diagnostics</h3>
+        <div id="detailedDiagnostics">
+          <div class="test-results" id="diagnosticsResults"></div>
+        </div>
+        <button class="btn" onclick="runDeepDiagnostics()">🔬 Run Deep Diagnostics</button>
+        <button class="btn success" onclick="attemptSSEConnection()">🚀 Force SSE Connection</button>
+        <button class="btn danger" onclick="resetSSEConnection()">🔄 Reset SSE Connection</button>
+      </div>
+
+      <!-- Live Logs -->
+      <div class="section">
+        <h3>📋 Live Connection Logs</h3>
+        <div class="log-container" id="liveLogContainer"></div>
+        <button class="btn" onclick="clearLogs()">🗑️ Clear Logs</button>
+        <button class="btn" onclick="exportLogs()">📥 Export Logs</button>
+      </div>
+    </div>
+
+    <!-- Network Monitoring -->
+    <div class="section">
+      <h3>🌐 Network Monitoring</h3>
+      <div id="networkMonitoring">
+        <div class="metric">
+          <div class="metric-label">API Requests</div>
+          <div class="metric-value" id="apiRequestCount">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">SSE Requests</div>
+          <div class="metric-value" id="sseRequestCount">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Last Activity</div>
+          <div class="metric-value" id="lastActivity">None</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Auto Refresh -->
+    <div class="auto-refresh">
+      <label>
+        <input type="checkbox" id="autoRefresh" checked>
+        Auto-refresh every 2 seconds
+      </label>
+      <div style="margin-top: 10px;">
+        <button class="btn" onclick="refreshDiagnostics()">🔄 Refresh Now</button>
+        <button class="btn success" onclick="testSSEManually()">🧪 Manual SSE Test</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let logs = [];
+    let apiRequestCount = 0;
+    let sseRequestCount = 0;
+
+    // Initialize diagnostics
+    document.addEventListener('DOMContentLoaded', function () {
+      log('info', '🚀 SSE Connection Diagnosis Tool Initialized');
+      startDiagnostics();
+      setupNetworkMonitoring();
+
+      // Auto-refresh
+      setInterval(() => {
+        if (document.getElementById('autoRefresh').checked) {
+          refreshDiagnostics();
+        }
+      }, 2000);
+    });
+
+    function log(level, message) {
+      const timestamp = new Date().toLocaleTimeString();
+      const logEntry = {
+        timestamp,
+        level,
+        message
+      };
+      logs.push(logEntry);
+
+      const container = document.getElementById('liveLogContainer');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${level}`;
+      entry.textContent = `[${timestamp}] ${message}`;
+      container.appendChild(entry);
+      container.scrollTop = container.scrollHeight;
+
+      // Keep only last 100 logs
+      if (logs.length > 100) {
+        logs.shift();
+        container.removeChild(container.firstChild);
+      }
+    }
+
+    function startDiagnostics() {
+      log('info', '🔍 Starting comprehensive SSE diagnostics...');
+      refreshDiagnostics();
+    }
+
+    function refreshDiagnostics() {
+      checkSSEStatus();
+      checkAuthStatus();
+      checkEventSourceState();
+      updateConnectionFlow();
+    }
+
+    function checkSSEStatus() {
+      try {
+        const minimalSSE = window.minimalSSE || window.realtimeCommunicationService;
+        if (!minimalSSE) {
+          updateStatus('sseStatus', 'NOT FOUND', 'error');
+          log('error', '❌ minimalSSE service not found on window object');
+          return;
+        }
+
+        const status = minimalSSE.getStatus();
+        const isConnected = minimalSSE.connected || minimalSSE.isConnected;
+
+        if (isConnected) {
+          updateStatus('sseStatus', 'CONNECTED', 'success');
+          log('success', '✅ SSE service reports connected status');
+        } else {
+          updateStatus('sseStatus', 'DISCONNECTED', 'error');
+          log('warning', '⚠️ SSE service reports disconnected status');
+        }
+
+        log('info', `📊 SSE Status: ${JSON.stringify(status)}`);
+
+      } catch (error) {
+        updateStatus('sseStatus', 'ERROR', 'error');
+        log('error', `❌ Error checking SSE status: ${error.message}`);
+      }
+    }
+
+    function checkAuthStatus() {
+      try {
+        // Try different ways to access auth store
+        const authStore = window.__pinia_stores__?.auth?.() ||
+          window.pinia?.stores?.auth ||
+          window.authStore;
+
+        if (!authStore) {
+          updateStatus('authStatus', 'STORE NOT FOUND', 'error');
+          updateStatus('tokenPresent', 'UNKNOWN', 'warning');
+          log('error', '❌ Auth store not accessible');
+          return;
+        }
+
+        const isAuthenticated = authStore.isAuthenticated;
+        const token = authStore.token;
+
+        if (isAuthenticated) {
+          updateStatus('authStatus', 'AUTHENTICATED', 'success');
+          log('success', '✅ User is authenticated');
+        } else {
+          updateStatus('authStatus', 'NOT AUTHENTICATED', 'error');
+          log('warning', '⚠️ User is not authenticated');
+        }
+
+        if (token) {
+          updateStatus('tokenPresent', 'YES', 'success');
+          log('success', `✅ Token present: ${token.substring(0, 10)}...`);
+        } else {
+          updateStatus('tokenPresent', 'NO', 'error');
+          log('error', '❌ No token found');
+        }
+
+      } catch (error) {
+        updateStatus('authStatus', 'ERROR', 'error');
+        updateStatus('tokenPresent', 'ERROR', 'error');
+        log('error', `❌ Error checking auth status: ${error.message}`);
+      }
+    }
+
+    function checkEventSourceState() {
+      try {
+        const minimalSSE = window.minimalSSE || window.realtimeCommunicationService;
+        if (!minimalSSE) {
+          updateStatus('eventSourceState', 'SERVICE NOT FOUND', 'error');
+          return;
+        }
+
+        const eventSource = minimalSSE.eventSource;
+        if (!eventSource) {
+          updateStatus('eventSourceState', 'NOT CREATED', 'error');
+          log('error', '❌ CRITICAL: EventSource object was never created!');
+          return;
+        }
+
+        const readyState = eventSource.readyState;
+        const states = ['CONNECTING', 'OPEN', 'CLOSED'];
+        const stateName = states[readyState] || 'UNKNOWN';
+
+        if (readyState === 1) { // OPEN
+          updateStatus('eventSourceState', `${stateName} (${readyState})`, 'success');
+          log('success', `✅ EventSource is OPEN (readyState: ${readyState})`);
+        } else if (readyState === 0) { // CONNECTING
+          updateStatus('eventSourceState', `${stateName} (${readyState})`, 'warning');
+          log('warning', `⚠️ EventSource is CONNECTING (readyState: ${readyState})`);
+        } else { // CLOSED
+          updateStatus('eventSourceState', `${stateName} (${readyState})`, 'error');
+          log('error', `❌ EventSource is CLOSED (readyState: ${readyState})`);
+        }
+
+        // Log EventSource URL for debugging
+        if (eventSource.url) {
+          log('info', `🔗 EventSource URL: ${eventSource.url}`);
+        }
+
+      } catch (error) {
+        updateStatus('eventSourceState', 'ERROR', 'error');
+        log('error', `❌ Error checking EventSource state: ${error.message}`);
+      }
+    }
+
+    function updateConnectionFlow() {
+      // Reset all steps
+      for (let i = 1; i <= 5; i++) {
+        const step = document.getElementById(`step${i}`);
+        step.style.opacity = '0.5';
+        step.style.backgroundColor = 'rgba(255,255,255,0.1)';
+      }
+
+      // Light up completed steps
+      let completedSteps = 0;
+
+      // Step 1: Always completed if we're running
+      document.getElementById('step1').style.opacity = '1';
+      document.getElementById('step1').style.backgroundColor = 'rgba(46, 204, 113, 0.3)';
+      completedSteps = 1;
+
+      // Step 2: Auth check
+      const authStatus = document.getElementById('authStatus').textContent;
+      if (authStatus === 'AUTHENTICATED') {
+        document.getElementById('step2').style.opacity = '1';
+        document.getElementById('step2').style.backgroundColor = 'rgba(46, 204, 113, 0.3)';
+        completedSteps = 2;
+      }
+
+      // Step 3: SSE Connect call
+      const sseStatus = document.getElementById('sseStatus').textContent;
+      if (sseStatus !== 'NOT FOUND') {
+        document.getElementById('step3').style.opacity = '1';
+        document.getElementById('step3').style.backgroundColor = 'rgba(46, 204, 113, 0.3)';
+        completedSteps = 3;
+      }
+
+      // Step 4: EventSource creation
+      const eventSourceState = document.getElementById('eventSourceState').textContent;
+      if (!eventSourceState.includes('NOT CREATED') && !eventSourceState.includes('SERVICE NOT FOUND')) {
+        document.getElementById('step4').style.opacity = '1';
+        document.getElementById('step4').style.backgroundColor = 'rgba(46, 204, 113, 0.3)';
+        completedSteps = 4;
+      }
+
+      // Step 5: Network request (check for OPEN state)
+      if (eventSourceState.includes('OPEN')) {
+        document.getElementById('step5').style.opacity = '1';
+        document.getElementById('step5').style.backgroundColor = 'rgba(46, 204, 113, 0.3)';
+        completedSteps = 5;
+      }
+
+      log('info', `📊 Connection flow completed steps: ${completedSteps}/5`);
+    }
+
+    function updateStatus(elementId, text, type) {
+      const element = document.getElementById(elementId);
+      element.textContent = text;
+      element.className = `metric-value status ${type}`;
+    }
+
+    function runDeepDiagnostics() {
+      log('info', '🔬 Running deep diagnostics...');
+
+      const diagnosticsResults = document.getElementById('diagnosticsResults');
+      let results = '<h4>🔍 Deep Diagnostic Results:</h4>';
+
+      // Check window objects
+      results += '<h5>🪟 Window Objects:</h5>';
+      results += `<p>• minimalSSE: ${!!window.minimalSSE}</p>`;
+      results += `<p>• realtimeCommunicationService: ${!!window.realtimeCommunicationService}</p>`;
+      results += `<p>• pinia: ${!!window.pinia}</p>`;
+      results += `<p>• authStore access: ${!!window.__pinia_stores__}</p>`;
+
+      // Check imports and modules
+      results += '<h5>📦 Module Status:</h5>';
+      try {
+        const minimalSSE = window.minimalSSE || window.realtimeCommunicationService;
+        if (minimalSSE) {
+          results += `<p>• SSE Service Type: ${minimalSSE.constructor.name}</p>`;
+          results += `<p>• Connected: ${minimalSSE.connected || false}</p>`;
+          results += `<p>• Retry Count: ${minimalSSE.retryCount || 0}</p>`;
+          results += `<p>• EventSource: ${!!minimalSSE.eventSource}</p>`;
+
+          if (minimalSSE.eventSource) {
+            results += `<p>• EventSource URL: ${minimalSSE.eventSource.url || 'N/A'}</p>`;
+            results += `<p>• EventSource ReadyState: ${minimalSSE.eventSource.readyState}</p>`;
+          }
+        }
+      } catch (error) {
+        results += `<p style="color: red;">• Error accessing SSE service: ${error.message}</p>`;
+      }
+
+      // Check environment variables
+      results += '<h5>🌍 Environment:</h5>';
+      results += `<p>• Environment: ${window.location.protocol}//${window.location.host}</p>`;
+      results += `<p>• SSE URL: ${import.meta?.env?.VITE_SSE_URL || 'Not set'}</p>`;
+
+      diagnosticsResults.innerHTML = results;
+      log('success', '✅ Deep diagnostics completed');
+    }
+
+    function attemptSSEConnection() {
+      log('info', '🚀 Attempting to force SSE connection...');
+
+      try {
+        // Get auth store and token
+        const authStore = window.__pinia_stores__?.auth?.() ||
+          window.pinia?.stores?.auth ||
+          window.authStore;
+
+        if (!authStore) {
+          log('error', '❌ Cannot force connection: Auth store not accessible');
+          return;
+        }
+
+        const token = authStore.token;
+        if (!token) {
+          log('error', '❌ Cannot force connection: No token available');
+          return;
+        }
+
+        // Get SSE service
+        const minimalSSE = window.minimalSSE || window.realtimeCommunicationService;
+        if (!minimalSSE) {
+          log('error', '❌ Cannot force connection: SSE service not found');
+          return;
+        }
+
+        // Force disconnect first
+        log('info', '🔄 Disconnecting existing connection...');
+        minimalSSE.disconnect();
+
+        // Wait a moment and reconnect
+        setTimeout(() => {
+          log('info', '🔗 Attempting new connection...');
+          minimalSSE.connect(token);
+
+          // Check result after a moment
+          setTimeout(() => {
+            const status = minimalSSE.getStatus();
+            log('info', `📊 Force connection result: ${JSON.stringify(status)}`);
+            refreshDiagnostics();
+          }, 2000);
+        }, 1000);
+
+      } catch (error) {
+        log('error', `❌ Error forcing SSE connection: ${error.message}`);
+      }
+    }
+
+    function resetSSEConnection() {
+      log('info', '🔄 Resetting SSE connection...');
+
+      try {
+        const minimalSSE = window.minimalSSE || window.realtimeCommunicationService;
+        if (minimalSSE) {
+          minimalSSE.disconnect();
+          log('success', '✅ SSE connection reset');
+          setTimeout(refreshDiagnostics, 1000);
+        } else {
+          log('error', '❌ SSE service not found for reset');
+        }
+      } catch (error) {
+        log('error', `❌ Error resetting SSE connection: ${error.message}`);
+      }
+    }
+
+    function testSSEManually() {
+      log('info', '🧪 Starting manual SSE test...');
+
+      // Get token
+      const authStore = window.__pinia_stores__?.auth?.() ||
+        window.pinia?.stores?.auth ||
+        window.authStore;
+
+      if (!authStore || !authStore.token) {
+        log('error', '❌ Manual test failed: No auth token');
+        return;
+      }
+
+      const token = authStore.token;
+      const url = `/events?access_token=${token}`;
+
+      log('info', `🔗 Creating manual EventSource to: ${url}`);
+
+      const testEventSource = new EventSource(url);
+
+      testEventSource.onopen = function () {
+        log('success', '✅ Manual EventSource OPENED successfully!');
+        sseRequestCount++;
+        updateNetworkCounts();
+      };
+
+      testEventSource.onmessage = function (event) {
+        log('success', `📨 Manual EventSource received message: ${event.data.substring(0, 100)}...`);
+      };
+
+      testEventSource.onerror = function (error) {
+        log('error', `❌ Manual EventSource error: ${error}`);
+        testEventSource.close();
+      };
+
+      // Close test connection after 10 seconds
+      setTimeout(() => {
+        testEventSource.close();
+        log('info', '🔚 Manual EventSource test completed and closed');
+      }, 10000);
+    }
+
+    function setupNetworkMonitoring() {
+      // Monitor fetch requests
+      const originalFetch = window.fetch;
+      window.fetch = function (...args) {
+        const url = args[0];
+        if (typeof url === 'string') {
+          if (url.includes('/api/')) {
+            apiRequestCount++;
+            updateNetworkCounts();
+            log('info', `🌐 API Request: ${url.substring(0, 50)}...`);
+          } else if (url.includes('/events')) {
+            sseRequestCount++;
+            updateNetworkCounts();
+            log('success', `📡 SSE Request detected: ${url}`);
+          }
+        }
+        return originalFetch.apply(this, args);
+      };
+
+      log('info', '🔍 Network monitoring enabled');
+    }
+
+    function updateNetworkCounts() {
+      document.getElementById('apiRequestCount').textContent = apiRequestCount;
+      document.getElementById('sseRequestCount').textContent = sseRequestCount;
+      document.getElementById('lastActivity').textContent = new Date().toLocaleTimeString();
+    }
+
+    function clearLogs() {
+      logs = [];
+      document.getElementById('liveLogContainer').innerHTML = '';
+      log('info', '🗑️ Logs cleared');
+    }
+
+    function exportLogs() {
+      const logsText = logs.map(log => `[${log.timestamp}] [${log.level.toUpperCase()}] ${log.message}`).join('\n');
+      const blob = new Blob([logsText], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sse-diagnosis-${new Date().toISOString().slice(0, 19)}.log`;
+      a.click();
+      URL.revokeObjectURL(url);
+      log('success', '📥 Logs exported');
+    }
+  </script>
+</body>
+
+</html>

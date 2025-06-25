@@ -1,8 +1,8 @@
 <template>
-  <div class="group relative flex items-start px-4 py-2 transition-all duration-200 hover:bg-gray-50/50 rounded-lg mx-2"
+  <div class="group relative flex items-start py-2 px-4 transition-all duration-200 hover:bg-gray-50/50 message-item"
     :class="messageClasses" :data-message-id="message.id || message.temp_id" @contextmenu="handleRightClick"
     @click.right="handleRightClick" @mouseenter="handleShowFloatingToolbar" @mouseleave="handleHideFloatingToolbar"
-    ref="messageElement">
+    ref="messageElementRef">
     <!-- Debug Data Panel (Development Only) -->
     <div v-if="showDebugData && isDevelopment"
       class="absolute top-0 right-0 z-40 bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs shadow-lg max-w-md"
@@ -25,43 +25,35 @@
     </div>
 
     <!-- Avatar -->
-    <div class="relative mr-4 mt-1 flex-shrink-0">
+    <div class="relative mr-3 mt-0.5 flex-shrink-0">
       <button type="button"
-        class="flex h-10 w-10 items-center justify-center rounded-full text-white font-semibold text-sm shadow-lg ring-2 ring-white transition-all duration-200 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        class="flex h-9 w-9 items-center justify-center rounded-full text-white font-semibold text-sm shadow-sm ring-1 ring-gray-200 transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
         :style="{ background: avatarGradient }" @click="handleAvatarClick" @dblclick="toggleDebugData">
         <img v-if="senderAvatar" :src="senderAvatar" :alt="senderName" class="h-full w-full rounded-full object-cover"
           @error="onAvatarError" />
-        <span v-else class="text-white font-bold text-sm select-none">
+        <span v-else class="text-white font-bold text-xs select-none">
           {{ senderInitials }}
         </span>
       </button>
 
-      <!-- Debug Indicator -->
-      <div v-if="isDevelopment"
-        class="absolute -top-1 -right-1 bg-yellow-400 text-yellow-800 rounded-full w-4 h-4 flex items-center justify-center text-xs font-bold cursor-help"
-        :title="`调试模式 - 用户名源: ${userNameSource}`">
-        🔍
-      </div>
-
       <!-- Online Status Indicator -->
       <div v-if="senderOnlineStatus === 'online'"
-        class="absolute -bottom-0.5 -right-0.5 bg-green-400 rounded-full w-3 h-3 border-2 border-white">
+        class="absolute -bottom-0.5 -right-0.5 bg-green-400 rounded-full w-2.5 h-2.5 border-2 border-white">
       </div>
     </div>
 
-    <!-- Message Content -->
-    <div class="min-w-0 flex-1">
+    <!-- Message Content Container - 🎯 OPTIMIZED: Limited width for modern chat layout -->
+    <div class="min-w-0 flex-1 max-w-[calc(100%-4rem)]">
       <!-- Message Header -->
       <div class="flex items-baseline space-x-2 mb-1">
         <button type="button"
-          class="font-semibold text-gray-900 hover:text-blue-600 transition-colors duration-150 focus:outline-none focus:text-blue-600 text-base leading-5"
+          class="font-medium text-gray-700 hover:text-blue-600 transition-colors duration-150 focus:outline-none focus:text-blue-600 text-sm leading-4 username-button"
           @click="handleUsernameClick" :title="`原始数据: ${JSON.stringify({
             sender_name: message.sender_name,
             fullname: message.sender?.fullname,
             username: message.sender?.username
           })}`">
           {{ senderName }}
-          <span v-if="isDevelopment && userNameSource" class="text-xs text-gray-500 ml-1">({{ userNameSource }})</span>
         </button>
 
         <time
@@ -76,17 +68,27 @@
 
         <!-- Message Status -->
         <div v-if="isCurrentUserMessage" class="flex items-center ml-auto">
-          <CheckIcon v-if="message.status === 'sent'" class="h-4 w-4 text-green-500" title="Sent" />
-          <ClockIcon v-else-if="message.status === 'sending'" class="h-4 w-4 text-gray-400 animate-spin"
-            title="Sending..." />
-          <ExclamationTriangleIcon v-else-if="message.status === 'failed'" class="h-4 w-4 text-red-500"
-            title="Failed to send" />
+          <!-- ✅ Green checkmark: delivered or confirmed via SSE -->
+          <CheckIcon v-if="message.status === 'delivered' || message.status === 'read' || message.confirmed_via_sse"
+            class="h-4 w-4 text-green-500" title="已送达" />
+          <!-- ⏰ Blue clock: waiting for confirmation -->
+          <ClockIcon v-else-if="message.status === 'sending' || message.status === 'sent'"
+            class="h-4 w-4 text-blue-400 animate-pulse" title="等待送达确认..." />
+          <!-- ❌ Red error: failed messages with retry counter -->
+          <div v-else-if="message.status === 'failed' || message.status === 'timeout'"
+            class="flex items-center space-x-1 cursor-pointer hover:bg-red-50 rounded px-1 py-0.5 transition-colors"
+            @click="retryMessage" :title="getRetryTooltip()">
+            <ExclamationTriangleIcon class="h-4 w-4 text-red-500" />
+            <span v-if="message.retryAttempts > 0" class="text-xs text-red-600 font-medium">
+              {{ message.retryAttempts }}/{{ message.maxRetryAttempts || 3 }}
+            </span>
+          </div>
         </div>
       </div>
 
       <!-- Reply Reference -->
       <div v-if="message.reply_to"
-        class="mb-2 flex items-center space-x-2 rounded-lg bg-gray-50 p-2 text-sm cursor-pointer hover:bg-gray-100 transition-colors duration-150"
+        class="mb-2 flex items-center space-x-2 rounded-lg bg-gray-50 p-2 text-sm cursor-pointer hover:bg-gray-100 transition-colors duration-150 max-w-lg"
         @click="scrollToReplyMessage">
         <ArrowUturnLeftIcon class="h-4 w-4 text-gray-400" />
         <img v-if="replyToAvatar" :src="replyToAvatar" :alt="replyToUsername" class="h-4 w-4 rounded-full" />
@@ -94,48 +96,60 @@
         <span class="text-gray-500 truncate">{{ truncatedReplyContent }}</span>
       </div>
 
-      <!-- Message Body -->
-      <div class="space-y-2">
-        <!-- Text Content -->
-        <div v-if="message.content"
-          class="prose prose-sm max-w-none text-gray-900 prose-p:mb-2 prose-p:leading-relaxed prose-code:bg-gray-100 prose-code:rounded prose-code:px-1 prose-code:py-0.5 prose-pre:bg-gray-100 prose-pre:rounded-lg prose-pre:p-3 prose-pre:overflow-x-auto prose-headings:text-gray-900 prose-strong:text-gray-900"
-          v-html="renderedContent"></div>
+      <!-- 🎯 OPTIMIZED: Message Content with width constraints -->
+      <div class="message-content-wrapper max-w-3xl" @dblclick="startEdit">
+        <!-- ✨ 代码高亮加载状态 -->
+        <div v-if="isHighlightingCode" class="code-highlighting-indicator">
+          <div class="highlighting-spinner"></div>
+          <span>Highlighting code...</span>
+        </div>
 
-        <!-- File Attachments -->
-        <div v-if="message.files && message.files.length > 0" class="space-y-2">
-          <div v-for="file in message.files" :key="file.id || file.url"
-            class="rounded-lg border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:shadow-md">
-            <!-- Image Attachment -->
-            <div v-if="isImageFile(file)" class="relative">
-              <div v-if="!imageLoaded[file.id]" class="flex h-48 items-center justify-center bg-gray-100 rounded-lg">
-                <div class="animate-pulse">
-                  <PhotoIcon class="h-12 w-12 text-gray-400" />
-                </div>
+        <!-- ✨ 代码高亮错误状态 -->
+        <div v-else-if="highlightError" class="code-highlight-error">
+          <span>⚠️ Code highlighting failed: {{ highlightError }}</span>
+          <button @click="highlightCodeInContent" class="retry-highlight-btn">Retry</button>
+        </div>
+
+        <!-- ✨ 正常内容显示 -->
+        <div v-else class="content-wrapper" v-html="renderedContent"></div>
+
+        <!-- 🚀 CRITICAL FIX: File Attachments Display -->
+        <div v-if="message.files && message.files.length > 0" class="message-files">
+          <div v-for="file in message.files" :key="file.id || getFileUrl(file) || 'unknown'" class="file-attachment">
+            <!-- Image Preview -->
+            <div v-if="isImageFile(file)" class="image-attachment">
+              <!-- Secure Image Loading -->
+              <div v-if="loadingImages[file.id || getFileUrl(file)]" class="image-loading">
+                <div class="loading-spinner"></div>
+                <span class="loading-text">Loading...</span>
               </div>
-              <img v-show="imageLoaded[file.id]" :src="file.url || file.file_url" :alt="file.filename || file.file_name"
-                class="max-h-80 w-full rounded-lg object-cover cursor-pointer transition-transform duration-200"
-                @load="handleImageLoad(file.id)" @click="openImagePreview(file)" @error="handleImageError(file.id)" />
-              <div class="absolute bottom-2 left-2 rounded bg-black/70 px-2 py-1 text-xs text-white backdrop-blur-sm">
-                {{ file.filename || file.file_name }}
+              <div v-else-if="imageErrors[file.id || getFileUrl(file)]" class="image-error">
+                <div class="error-icon">📷</div>
+                <span class="error-text">Failed to load</span>
+              </div>
+              <img v-else :src="getSecureImageUrl(file)" :alt="getFileName(file)" class="attachment-image"
+                @load="onImageLoad(file)" @error="onImageError(file)" @click="openImagePreview(file)" loading="lazy" />
+              <div class="image-overlay">
+                <button @click.stop="downloadFile(file)" class="download-btn" title="Download">
+                  <ArrowDownTrayIcon class="h-4 w-4" />
+                </button>
               </div>
             </div>
 
-            <!-- Other File Types -->
-            <div v-else class="flex items-center space-x-3 p-3">
-              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-                <DocumentIcon class="h-6 w-6 text-blue-600" />
+            <!-- Generic File Preview -->
+            <div v-else class="generic-file-attachment">
+              <div class="file-icon">
+                <DocumentIcon class="h-6 w-6 text-gray-500" />
               </div>
-              <div class="flex-1 min-w-0">
-                <p class="font-medium text-gray-900 truncate">
-                  {{ file.filename || file.file_name }}
-                </p>
-                <p class="text-sm text-gray-500">
-                  {{ formatFileSize(file.size || file.file_size) }}
-                </p>
+              <div class="file-info">
+                <div class="file-name" :title="getFileName(file)">{{ getFileName(file) }}</div>
+                <div class="file-meta">
+                  <span v-if="file.file_size || file.size" class="file-size">{{ formatFileSize(file.file_size ||
+                    file.size) }}</span>
+                  <span v-if="getFileExtension(file)" class="file-ext">{{ getFileExtension(file) }}</span>
+                </div>
               </div>
-              <button type="button"
-                class="flex items-center justify-center h-8 w-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                @click="downloadFile(file)" title="Download file">
+              <button @click="downloadFile(file)" class="download-btn" title="Download">
                 <ArrowDownTrayIcon class="h-4 w-4" />
               </button>
             </div>
@@ -223,46 +237,14 @@
     </Teleport>
 
     <!-- Image Preview Modal -->
-    <TransitionRoot appear :show="showImagePreview" as="template">
-      <Dialog as="div" class="relative z-50" @close="closeImagePreview">
-        <TransitionChild as="template" enter="duration-300 ease-out" enter-from="opacity-0" enter-to="opacity-100"
-          leave="duration-200 ease-in" leave-from="opacity-100" leave-to="opacity-0">
-          <div class="fixed inset-0 bg-black/75 backdrop-blur-sm" />
-        </TransitionChild>
-
-        <div class="fixed inset-0 overflow-y-auto">
-          <div class="flex min-h-full items-center justify-center p-4 text-center">
-            <TransitionChild as="template" enter="duration-300 ease-out" enter-from="opacity-0 scale-95"
-              enter-to="opacity-100 scale-100" leave="duration-200 ease-in" leave-from="opacity-100 scale-100"
-              leave-to="opacity-0 scale-95">
-              <DialogPanel
-                class="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                <div class="flex items-center justify-between mb-4">
-                  <DialogTitle as="h3" class="text-lg font-medium leading-6 text-gray-900">
-                    {{ previewImageAlt }}
-                  </DialogTitle>
-                  <button type="button"
-                    class="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                    @click="closeImagePreview">
-                    <XMarkIcon class="h-6 w-6" />
-                  </button>
-                </div>
-
-                <div class="aspect-w-16 aspect-h-9">
-                  <img :src="previewImageSrc" :alt="previewImageAlt"
-                    class="max-h-[70vh] w-full object-contain rounded-lg" />
-                </div>
-              </DialogPanel>
-            </TransitionChild>
-          </div>
-        </div>
-      </Dialog>
-    </TransitionRoot>
+    <!-- Enhanced Image Modal -->
+    <EnhancedImageModal ref="imageModal" :images="previewImages" :initial-index="currentImageIndex"
+      @close="closeImagePreview" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useVirtualList } from '@vueuse/core'
@@ -295,6 +277,9 @@ import { formatTimestamp, formatFileSize } from '@/utils/formatters'
 import { renderMarkdown } from '@/utils/markdown'
 import { highlightCodeAsync } from '@/utils/codeHighlight'
 import FloatingMessageToolbar from '@/components/chat/FloatingMessageToolbar.vue'
+import api from '@/services/api'
+import EnhancedImageModal from '@/components/common/EnhancedImageModal.vue'
+import { getStandardFileUrl } from '@/utils/fileUrlHandler'
 
 // Props
 const props = defineProps({
@@ -330,10 +315,6 @@ const props = defineProps({
   isDevelopment: {
     type: Boolean,
     default: false
-  },
-  userNameSource: {
-    type: String,
-    default: null
   }
 })
 
@@ -353,6 +334,9 @@ const chatStore = useChatStore()
 
 // Reactive data
 const imageLoaded = ref({})
+const loadingImages = ref({})
+const imageErrors = ref({})
+const secureImageUrls = ref({})
 const showContextMenu = ref(false)
 const contextMenuPosition = ref({ x: 0, y: 0 })
 const showActions = ref(false)
@@ -361,10 +345,15 @@ const previewImageSrc = ref('')
 const previewImageAlt = ref('')
 const avatarError = ref(false)
 const showDebugData = ref(false)
-const messageElement = ref(null)
+const messageElementRef = ref(null)
 const showFloatingToolbar = ref(false)
 const floatingToolbar = ref(null)
 const toolbarHovered = ref(false)
+
+// ✨ Enhanced Image Modal State
+const imageModal = ref(null)
+const previewImages = ref([])
+const currentImageIndex = ref(0)
 
 // ✨ Enhanced Code Highlighting State
 const highlightedContent = ref('')
@@ -375,6 +364,93 @@ const highlightError = ref(null)
 const isDevelopment = computed(() => {
   return import.meta.env.DEV || import.meta.env.MODE === 'development'
 })
+
+// 🚀 CRITICAL FIX: Safe content extraction function for reuse
+const extractSafeMessageContent = () => {
+  const rawContent = props.message.content
+
+  // 🔍 DEBUG: 添加详细调试日志
+  console.group(`🔍 [DEBUG] extractSafeMessageContent for message ${props.message.id}`)
+  console.log('🔍 [DEBUG] Raw content:', rawContent)
+  console.log('🔍 [DEBUG] Raw content type:', typeof rawContent)
+  console.log('🔍 [DEBUG] Raw content constructor:', rawContent?.constructor?.name)
+  console.log('🔍 [DEBUG] Full message object:', props.message)
+
+  if (!rawContent) {
+    console.log('🔍 [DEBUG] No content found, returning empty string')
+    console.groupEnd()
+    return ''
+  }
+
+  // If it's already a string, check for object serialization issues
+  if (typeof rawContent === 'string') {
+    console.log('🔍 [DEBUG] Content is string, checking for [object Object]...')
+    if (rawContent.includes('[object Object]')) {
+      console.error('🚨 [DEBUG] FOUND [object Object] string in message content!')
+      console.log('🔍 [DEBUG] Full string content:', JSON.stringify(rawContent))
+      console.groupEnd()
+      return 'Message content error - please refresh'
+    }
+    console.log('✅ [DEBUG] String content is safe:', rawContent.substring(0, 100) + (rawContent.length > 100 ? '...' : ''))
+    console.groupEnd()
+    return rawContent
+  }
+
+  // If it's an object, extract content safely
+  if (typeof rawContent === 'object' && rawContent !== null) {
+    console.warn('⚠️ [DEBUG] Content is object, attempting safe extraction...')
+    console.log('🔍 [DEBUG] Object keys:', Object.keys(rawContent))
+    console.log('🔍 [DEBUG] Object values preview:', JSON.stringify(rawContent, null, 2).substring(0, 200))
+
+    // Try multiple extraction strategies
+    const strategies = [
+      { name: 'text', value: rawContent.text },
+      { name: 'content', value: rawContent.content },
+      { name: 'message', value: rawContent.message },
+      { name: 'body', value: rawContent.body },
+      { name: 'data', value: rawContent.data }
+    ]
+
+    console.log('🔍 [DEBUG] Trying extraction strategies:')
+    for (const strategy of strategies) {
+      console.log(`  - ${strategy.name}:`, strategy.value, typeof strategy.value)
+    }
+
+    const extracted = rawContent.text ||
+      rawContent.content ||
+      rawContent.message ||
+      rawContent.body ||
+      rawContent.data ||
+      // Handle array content
+      (Array.isArray(rawContent) ? rawContent.join(' ') : null)
+
+    if (extracted && typeof extracted === 'string') {
+      console.log('✅ [DEBUG] Successfully extracted string:', extracted.substring(0, 100) + (extracted.length > 100 ? '...' : ''))
+      console.groupEnd()
+      return extracted
+    }
+
+    console.warn('⚠️ [DEBUG] No string found in object, attempting JSON.stringify...')
+    // Last resort: safe JSON stringify
+    try {
+      const jsonResult = JSON.stringify(rawContent, null, 2)
+      console.log('✅ [DEBUG] JSON stringify successful:', jsonResult.substring(0, 100) + '...')
+      console.groupEnd()
+      return jsonResult
+    } catch (e) {
+      console.error('❌ [DEBUG] JSON stringify failed:', e)
+      console.groupEnd()
+      return `Complex object content - ID: ${props.message.id}`
+    }
+  }
+
+  // Convert any other type to string
+  console.log('🔍 [DEBUG] Converting other type to string:', typeof rawContent)
+  const result = String(rawContent)
+  console.log('🔍 [DEBUG] String conversion result:', result)
+  console.groupEnd()
+  return result
+}
 
 // Modern professional color palette
 const AVATAR_COLORS = [
@@ -404,48 +480,45 @@ const senderName = computed(() => {
   let name = 'Unknown User'
   let source = 'fallback'
 
+  // 🚀 CRITICAL FIX: Ensure all name sources are strings, not objects
+  const safeString = (value) => {
+    if (!value) return null
+    if (typeof value === 'string') return value
+    if (typeof value === 'object') {
+      // If it's an object, try to extract a meaningful string
+      return value.name || value.fullname || value.username || JSON.stringify(value)
+    }
+    return String(value)
+  }
+
   if (props.message.sender?.fullname) {
-    name = props.message.sender.fullname
+    name = safeString(props.message.sender.fullname)
     source = 'sender.fullname'
   } else if (props.message.sender_name) {
-    name = props.message.sender_name
+    name = safeString(props.message.sender_name)
     source = 'sender_name'
   } else if (props.message.sender?.username) {
-    name = props.message.sender.username
+    name = safeString(props.message.sender.username)
     source = 'sender.username'
   } else if (props.message.sender?.name) {
-    name = props.message.sender.name
+    name = safeString(props.message.sender.name)
     source = 'sender.name'
   }
 
-  // Log data transmission analysis in development
-  if (isDevelopment.value) {
-    console.log(`🔍 [${props.message.id}] Username源追踪:`, {
-      source,
-      value: name,
-      rawData: {
-        'sender.fullname': props.message.sender?.fullname,
-        'sender_name': props.message.sender_name,
-        'sender.username': props.message.sender?.username,
-        'sender.name': props.message.sender?.name,
-      },
-      fullMessage: props.message
-    })
+  // 🔧 FINAL SAFETY CHECK: Ensure result is always a string
+  if (typeof name !== 'string' || !name || name === 'null' || name === 'undefined') {
+    name = 'Unknown User'
+  }
+
+  // Simplified logging for development
+  if (isDevelopment.value && !name.startsWith('Unknown')) {
+    console.debug(`[Message ${props.message.id}] Username resolved:`, name)
   }
 
   return name
 })
 
-// Track username source for debugging
-const userNameSource = computed(() => {
-  if (!isDevelopment.value) return null
-
-  if (props.message.sender?.fullname) return 'fullname'
-  if (props.message.sender_name) return 'sender_name'
-  if (props.message.sender?.username) return 'username'
-  if (props.message.sender?.name) return 'name'
-  return 'unknown'
-})
+// Username source tracking removed for production
 
 const senderInitials = computed(() => {
   const name = senderName.value
@@ -536,16 +609,56 @@ const canDelete = computed(() => {
   return isCurrentUserMessage.value
 })
 
-const renderedContent = computed(() => {
-  if (!props.message.content) return ''
+// 🚀 NEW: Get retry tooltip based on message status and attempts
+const getRetryTooltip = () => {
+  if (!props.message) return ''
 
-  // 🎯 Use cached highlighted content if available
+  const attempts = props.message.retryAttempts || 0
+  const maxAttempts = props.message.maxRetryAttempts || 3
+
+  if (props.message.status === 'timeout') {
+    if (attempts >= maxAttempts) {
+      return `Message delivery timeout after ${attempts} attempts - click to retry manually`
+    } else {
+      return `SSE confirmation timeout (attempt ${attempts}/${maxAttempts}) - click to retry`
+    }
+  } else if (props.message.status === 'failed') {
+    if (attempts >= maxAttempts) {
+      return `Message sending failed after ${attempts} attempts - click to retry manually`
+    } else {
+      return `Message sending failed (attempt ${attempts}/${maxAttempts}) - click to retry`
+    }
+  }
+
+  return 'Click to retry message'
+}
+
+const renderedContent = computed(() => {
+  // 🚀 CRITICAL FIX: Use unified safe content extraction
+  const safeContent = extractSafeMessageContent()
+
+  // 🔍 DEBUG: 添加renderedContent调试
+  console.group(`🎨 [DEBUG] renderedContent for message ${props.message.id}`)
+  console.log('🔍 [DEBUG] Safe content from extraction:', safeContent)
+  console.log('🔍 [DEBUG] Safe content type:', typeof safeContent)
+  console.log('🔍 [DEBUG] Highlighted content available:', !!highlightedContent.value)
+
   if (highlightedContent.value) {
+    console.log('🔍 [DEBUG] Using cached highlighted content')
+    console.groupEnd()
     return highlightedContent.value
   }
 
-  // Fallback to basic markdown rendering
-  return renderMarkdown(props.message.content)
+  // 🔍 DEBUG: 检查markdown渲染前后的内容
+  console.log('🔍 [DEBUG] About to render markdown with content:', safeContent.substring(0, 200))
+
+  // Fallback to basic markdown rendering with safe string content
+  const markdownResult = renderMarkdown(safeContent)
+  console.log('🔍 [DEBUG] Markdown render result:', markdownResult.substring(0, 200))
+  console.log('🔍 [DEBUG] Does result contain [object Object]?', markdownResult.includes('[object Object]'))
+  console.groupEnd()
+
+  return markdownResult
 })
 
 const contextMenuStyle = computed(() => ({
@@ -713,29 +826,258 @@ const handleImageError = (fileId) => {
 }
 
 const openImagePreview = (file) => {
-  previewImageSrc.value = file.url || file.file_url
-  previewImageAlt.value = file.filename || file.file_name
-  showImagePreview.value = true
+  // 🖼️ Enhanced Image Modal: Prepare all images with multi-source loading strategy
+  const messageImages = (props.message.files || [])
+    .filter(f => isImageFile(f))
+    .map(f => {
+      // 🔧 CRITICAL FIX: Multi-source loading strategy
+      const secureUrl = getSecureImageUrl(f)
+      const apiUrl = getFileUrl(f)
+
+      return {
+        // 🌟 CRITICAL FIX: Always use API URL as primary - modal will handle authentication
+        url: apiUrl,
+        // 🔄 OPTIMIZATION: Provide secure URL if already cached for faster loading
+        secureUrl: secureUrl || null,
+        filename: getFileName(f),
+        size: f.file_size || f.size,
+        width: f.width,
+        height: f.height,
+        original: f
+      }
+    })
+    .filter(img => img.url) // Only include images with valid URLs
+
+  if (messageImages.length === 0) {
+    console.warn('No valid images found in message')
+    return
+  }
+
+  // Find the index of the clicked image
+  const clickedImageIndex = messageImages.findIndex(img => {
+    const clickedApiUrl = getFileUrl(file)
+    return img.url === clickedApiUrl
+  })
+
+  previewImages.value = messageImages
+  currentImageIndex.value = Math.max(0, clickedImageIndex)
+
+  if (import.meta.env.DEV) {
+    console.log('🖼️ [DiscordMessageItem] Opening modal with API URLs (modal handles auth):', {
+      totalImages: messageImages.length,
+      currentIndex: currentImageIndex.value,
+      currentImage: messageImages[currentImageIndex.value]
+    })
+  }
+
+  // Use the enhanced modal
+  if (imageModal.value) {
+    imageModal.value.open(currentImageIndex.value)
+  }
 }
 
 const closeImagePreview = () => {
+  if (imageModal.value) {
+    imageModal.value.close()
+  }
   showImagePreview.value = false
 }
 
-const isImageFile = (file) => {
-  const filename = file.filename || file.file_name || ''
-  const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']
-  return imageExts.some(ext => filename.toLowerCase().endsWith(ext))
+// 🚀 ENHANCED: File handling utilities using unified URL handler
+const getFileUrl = (file) => {
+  // 🔧 Use unified file URL handler to automatically handle all formats
+  return getStandardFileUrl(file, {
+    workspaceId: props.message?.workspace_id || props.workspaceId
+  })
 }
 
-const downloadFile = (file) => {
-  const url = file.url || file.file_url
-  const filename = file.filename || file.file_name
+// 🔐 SECURE: Authenticated image loading with blob URLs
+const getSecureImageUrl = (file) => {
+  // 🔧 CRITICAL FIX: Use processed URL as key to avoid original /download/ URLs
+  const apiUrl = getFileUrl(file)
+  const fileKey = file.id || apiUrl || 'unknown'
 
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
+  // Return cached secure URL if available
+  if (secureImageUrls.value[fileKey]) {
+    return secureImageUrls.value[fileKey]
+  }
+
+  if (!apiUrl || !apiUrl.startsWith('/api/')) {
+    // For non-API URLs, return as-is
+    return apiUrl
+  }
+
+  // Start loading if not already loading
+  if (!loadingImages.value[fileKey] && !imageErrors.value[fileKey]) {
+    loadSecureImage(file)
+  }
+
+  // Return processed API URL
+  return apiUrl
+}
+
+// 🔐 SECURE: Load image with authentication and create blob URL
+const loadSecureImage = async (file) => {
+  // 🔧 CRITICAL FIX: Use processed URL as key to match getSecureImageUrl
+  const apiUrl = getFileUrl(file)
+  const fileKey = file.id || apiUrl || 'unknown'
+
+  if (loadingImages.value[fileKey]) return
+
+  loadingImages.value[fileKey] = true
+  imageErrors.value[fileKey] = false
+
+  try {
+    const apiUrl = getFileUrl(file)
+
+    if (import.meta.env.DEV) {
+      console.log('🔐 [SecureImage] Loading authenticated image:', apiUrl)
+    }
+
+    // Remove /api/ prefix since api client adds it automatically
+    let apiPath = apiUrl
+    if (apiPath.startsWith('/api/')) {
+      apiPath = apiPath.substring(5)
+    }
+
+    // Use api client which automatically adds Authorization headers
+    const response = await api.get(apiPath, {
+      responseType: 'blob',
+      skipAuthRefresh: false
+    })
+
+    if (response.data) {
+      // Create object URL from blob
+      const blob = response.data
+      const objectUrl = URL.createObjectURL(blob)
+
+      secureImageUrls.value[fileKey] = objectUrl
+
+      if (import.meta.env.DEV) {
+        console.log('✅ [SecureImage] Image loaded successfully, created object URL')
+      }
+    } else {
+      throw new Error('No image data received')
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('❌ [SecureImage] Failed to load image:', error)
+    }
+
+    imageErrors.value[fileKey] = true
+  } finally {
+    loadingImages.value[fileKey] = false
+  }
+}
+
+const getFileName = (file) => {
+  return file.file_name || file.filename || file.name || 'Unknown file'
+}
+
+const getFileExtension = (file) => {
+  const fileName = getFileName(file)
+  const lastDot = fileName.lastIndexOf('.')
+  return lastDot > 0 ? fileName.substring(lastDot + 1).toUpperCase() : ''
+}
+
+const isImageFile = (file) => {
+  const mimeType = file.mime_type || file.type || ''
+  const fileName = getFileName(file)
+
+  return mimeType.startsWith('image/') ||
+    /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|heic|heif)$/i.test(fileName)
+}
+
+const onImageLoad = (file) => {
+  const fileName = getFileName(file)
+  imageLoaded.value[file.id || fileName] = true
+
+  if (import.meta.env.DEV) {
+    console.log('✅ Image loaded successfully:', fileName)
+  }
+}
+
+const onImageError = (file) => {
+  const fileName = getFileName(file)
+  imageLoaded.value[file.id || fileName] = false
+
+  console.error('❌ Failed to load image:', fileName, 'URL:', getFileUrl(file))
+}
+
+const downloadFile = async (file) => {
+  const fileName = getFileName(file)
+
+  try {
+    // 🔧 Enhanced Download: Handle both secure and direct URLs
+    let downloadUrl = getSecureImageUrl(file)
+
+    // If secure URL is not available (still loading), use direct API URL
+    if (!downloadUrl) {
+      downloadUrl = getFileUrl(file)
+    }
+
+    if (!downloadUrl) {
+      console.error('❌ No URL available for file download:', fileName)
+      return
+    }
+
+    // 🔐 For API URLs, download using authenticated fetch
+    if (downloadUrl.startsWith('/api/')) {
+      // Remove /api/ prefix since api client adds it automatically
+      let apiPath = downloadUrl
+      if (apiPath.startsWith('/api/')) {
+        apiPath = apiPath.substring(5)
+      }
+
+      // Use authenticated API client
+      const response = await api.get(apiPath, {
+        responseType: 'blob',
+        skipAuthRefresh: false
+      })
+
+      if (response.data) {
+        // Create blob URL and trigger download
+        const blob = response.data
+        const url = URL.createObjectURL(blob)
+
+        const link = document.createElement('a')
+        link.href = url
+        link.download = fileName
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+
+        // Clean up the blob URL
+        setTimeout(() => URL.revokeObjectURL(url), 1000)
+
+        if (import.meta.env.DEV) {
+          console.log('📥 Downloaded authenticated file:', fileName)
+        }
+      } else {
+        throw new Error('No file data received')
+      }
+    } else {
+      // 🔗 For direct URLs (blob URLs or external), use standard download
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.download = fileName
+      link.target = '_blank'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      if (import.meta.env.DEV) {
+        console.log('📥 Downloaded file:', fileName, 'from:', downloadUrl)
+      }
+    }
+  } catch (error) {
+    console.error('❌ Download failed for file:', fileName, error)
+
+    // Show user-friendly error message
+    if (typeof window !== 'undefined' && window.alert) {
+      alert(`Failed to download ${fileName}. Please try again.`)
+    }
+  }
 }
 
 const scrollToReplyMessage = () => {
@@ -853,8 +1195,9 @@ const translateMessage = () => {
 }
 
 const copyMessage = () => {
-  if (props.message.content) {
-    navigator.clipboard.writeText(props.message.content)
+  const safeContent = extractSafeMessageContent()
+  if (safeContent) {
+    navigator.clipboard.writeText(safeContent)
   }
   closeContextMenu()
 }
@@ -919,94 +1262,582 @@ const logMessageData = () => {
   closeContextMenu()
 }
 
-// ✨ Enhanced Code Highlighting Methods
+// ✨ Enhanced async code highlighting for messages
 const highlightCodeInContent = async () => {
-  if (!props.message.content || isHighlightingCode.value) return
+  // 🚀 CRITICAL FIX: Use safe content extraction
+  const safeContent = extractSafeMessageContent()
+  if (!safeContent) return
+
+  // Skip if already highlighting or already highlighted
+  if (isHighlightingCode.value || highlightedContent.value) return
+
+  // Check if content contains code blocks
+  const hasCodeBlocks = /```[\s\S]*?```/.test(safeContent)
+  if (!hasCodeBlocks) {
+    // Use basic markdown rendering for non-code content
+    highlightedContent.value = renderMarkdown(safeContent)
+    return
+  }
+
+  isHighlightingCode.value = true
+  highlightError.value = null
 
   try {
-    isHighlightingCode.value = true
-    highlightError.value = null
+    // Import highlighting utilities
+    const { highlightMarkdownCode } = await import('@/utils/codeHighlight')
 
-    // First render basic markdown
-    let content = renderMarkdown(props.message.content)
+    // First render markdown
+    const basicMarkdown = renderMarkdown(safeContent)
 
-    // Check if content contains code blocks
-    const hasCodeBlocks = /```[\s\S]*?```/g.test(props.message.content)
+    // Then apply code highlighting with light theme
+    const highlighted = await highlightMarkdownCode(safeContent, {
+      theme: 'light',
+      lineNumbers: false,
+      cache: true,
+      showHeader: true,
+      showCopy: true
+    })
 
-    if (hasCodeBlocks) {
-      // Apply async code highlighting
-      const { highlightMarkdownCode } = await import('@/utils/codeHighlight')
-
-      content = await highlightMarkdownCode(props.message.content, {
-        theme: 'dark', // TODO: Get from theme store
-        lineNumbers: true,
-        cache: true
-      })
-    }
-
-    highlightedContent.value = content
+    // Combine markdown with highlighted code
+    highlightedContent.value = highlighted
 
     if (import.meta.env.DEV) {
-      console.log(`✨ [${props.message.id}] Code highlighting completed`)
+      console.log(`✨ Message ${props.message.id} code highlighted successfully`)
     }
   } catch (error) {
-    highlightError.value = error
-    console.error('💥 Code highlighting failed:', error)
+    console.error('💥 Message code highlighting failed:', error)
+    highlightError.value = error.message
 
     // Fallback to basic markdown
-    highlightedContent.value = renderMarkdown(props.message.content)
+    highlightedContent.value = renderMarkdown(safeContent)
   } finally {
     isHighlightingCode.value = false
   }
 }
 
-// Lifecycle
-onMounted(async () => {
-  // 🔧 CRITICAL FIX: Mark message as displayed for MessageDisplayGuarantee
-  const messageId = props.message.id || props.message.temp_id
-  if (messageId && window.messageDisplayGuarantee) {
-    // Get the actual DOM element
-    const messageElement = document.querySelector(`[data-message-id="${messageId}"]`)
-    window.messageDisplayGuarantee.markMessageDisplayed(messageId, messageElement, props.chatId)
+// 🔄 Retry failed message
+const retryMessage = async () => {
+  if (!props.message || (props.message.status !== 'failed' && props.message.status !== 'timeout')) {
+    return
+  }
+
+  try {
+    // 使用chat store的重试机制
+    const chatStore = useChatStore()
+
+    if (typeof chatStore.retryMessage === 'function') {
+      await chatStore.retryMessage(props.message.id || props.message.temp_id)
+    } else if (typeof chatStore.sendMessage === 'function') {
+      // 备用方案：重新发送消息
+      const safeContent = extractSafeMessageContent()
+      await chatStore.sendMessage(props.message.chat_id, safeContent, {
+        files: props.message.files || [],
+        mentions: props.message.mentions || [],
+        replyTo: props.message.reply_to
+      })
+    }
 
     if (isDevelopment.value) {
-      console.log(`✅ [DiscordMessageItem] Marked message ${messageId} as displayed`)
+      console.log(`🔄 [DiscordMessageItem] Retrying message ${props.message.id}`)
+    }
+  } catch (error) {
+    console.error('❌ [DiscordMessageItem] Retry failed:', error)
+
+    // 显示错误通知
+    if (window.errorHandler?.showNotification) {
+      window.errorHandler.showNotification('error', 'Failed to retry message. Please try again.')
     }
   }
+}
 
-  // ✨ Initialize Code Highlighting
-  await highlightCodeInContent()
+// ✨ Watch for message content changes and re-highlight
+watch(() => extractSafeMessageContent(), (newContent, oldContent) => {
+  if (newContent !== oldContent) {
+    // Reset highlighting state when content changes
+    highlightedContent.value = ''
+    highlightError.value = null
 
-  // 监听点击外部关闭菜单
-  document.addEventListener('click', closeContextMenu)
+    // Re-highlight if needed
+    if (newContent && /```[\s\S]*?```/.test(newContent)) {
+      nextTick(() => {
+        highlightCodeInContent()
+      })
+    }
+  }
+}, { immediate: false })
 
-  // 监听ESC键关闭菜单
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && showContextMenu.value) {
-      closeContextMenu()
+// 🧹 CLEANUP: Clean up object URLs when component unmounts
+const cleanupObjectUrls = () => {
+  Object.values(secureImageUrls.value).forEach(url => {
+    if (url && url.startsWith('blob:')) {
+      URL.revokeObjectURL(url)
     }
   })
+  secureImageUrls.value = {}
 
-  // Show actions on hover
-  const element = document.querySelector(`[data-message-id="${props.message.id || props.message.temp_id}"]`)
-  if (element) {
-    element.addEventListener('mouseenter', () => { showActions.value = true })
-    element.addEventListener('mouseleave', () => { showActions.value = false })
+  if (import.meta.env.DEV) {
+    console.log('🧹 [SecureImage] Object URLs cleaned up')
   }
+}
 
-  // Auto-analyze data in development on mount
-  if (isDevelopment.value && (!props.message.sender?.fullname && !props.message.sender_name)) {
-    console.warn(`🚨 [${props.message.id}] 检测到数据传输断点 - 缺少用户名数据`)
-    setTimeout(() => logMessageData(), 100)
-  }
+// Lifecycle hooks
+onMounted(() => {
+  // 🚀 Auto-highlight code on component mount
+  nextTick(() => {
+    const safeContent = extractSafeMessageContent()
+    if (safeContent && /```[\s\S]*?```/.test(safeContent)) {
+      console.log('🎨 [MOUNTED] Auto-highlighting code for message', props.message.id)
+      highlightCodeInContent()
+    }
+  })
 })
 
 onUnmounted(() => {
-  document.removeEventListener('click', closeContextMenu)
-  document.removeEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && showContextMenu.value) {
-      closeContextMenu()
-    }
-  })
+  cleanupObjectUrls()
 })
+
 </script>
+
+<style scoped>
+/* 🎯 优化字体层次 - 让消息正文成为视觉焦点 */
+.message-content {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Text', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #1f2937;
+  letter-spacing: 0.01em;
+}
+
+/* 📏 OPTIMIZED: Modern chat message spacing */
+.message-item {
+  margin-bottom: 0.125rem;
+  /* Reduced spacing between consecutive messages */
+  border-radius: 0;
+  /* Remove individual message rounding for cleaner look */
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.message-item:hover {
+  background-color: rgba(243, 244, 246, 0.3) !important;
+  /* Subtle hover effect */
+}
+
+/* 🎯 OPTIMIZED: Message content wrapper for width constraints */
+.message-content-wrapper {
+  max-width: min(calc(100vw - 200px), 42rem);
+  /* Responsive max width, similar to Discord */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* 🔧 消息内容优化 - 增强可读性 */
+.content-wrapper {
+  color: #111827;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.5;
+  margin-top: 0.25rem;
+  /* Reduced spacing from username to content */
+}
+
+/* 🚀 CRITICAL FIX: File Attachments Styling */
+.message-files {
+  margin-top: 0.5rem;
+  /* Reduced from 0.75rem */
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  /* Reduced gap between files */
+}
+
+.file-attachment {
+  max-width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  transition: all 0.2s ease;
+  width: fit-content;
+  /* Prevent full-width stretching */
+}
+
+.file-attachment:hover {
+  border-color: #dee2e6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 📸 OPTIMIZED: Image Attachments - Modern Chat Standards */
+.image-attachment {
+  position: relative;
+  /* 🎯 Optimized thumbnail sizes for better chat experience */
+  max-width: 240px;
+  /* Reduced from 280px for better space utilization */
+  max-height: 180px;
+  /* Reduced from 300px */
+  overflow: hidden;
+  border-radius: 8px;
+  cursor: pointer;
+  /* 📱 Responsive design for different screen sizes */
+  width: fit-content;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 📐 Responsive breakpoints for different image sizes */
+@media (max-width: 768px) {
+  .image-attachment {
+    max-width: 200px;
+    max-height: 150px;
+  }
+
+  .message-content-wrapper {
+    max-width: calc(100vw - 120px);
+    /* Adjust for mobile */
+  }
+}
+
+@media (max-width: 480px) {
+  .image-attachment {
+    max-width: 180px;
+    max-height: 135px;
+  }
+
+  .message-content-wrapper {
+    max-width: calc(100vw - 100px);
+    /* Further adjust for small screens */
+  }
+}
+
+.attachment-image {
+  width: 100%;
+  height: auto;
+  /* 🎯 Smart sizing based on image dimensions */
+  max-height: 180px;
+  /* Matches container */
+  object-fit: contain;
+  /* Changed from cover to contain for better display */
+  transition: transform 0.2s ease;
+  /* 🔧 Ensure minimum readable size */
+  min-width: 120px;
+  min-height: 80px;
+}
+
+/* 🖼️ Special handling for different image ratios */
+.attachment-image[data-ratio="square"] {
+  max-width: 200px;
+  max-height: 200px;
+}
+
+.attachment-image[data-ratio="wide"] {
+  max-width: 240px;
+  max-height: 160px;
+}
+
+.attachment-image[data-ratio="tall"] {
+  max-width: 160px;
+  max-height: 180px;
+}
+
+.image-attachment:hover .attachment-image {
+  transform: scale(1.02);
+}
+
+.image-overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  /* 🎯 Better visual hierarchy */
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, transparent 50%);
+  border-radius: 0 8px 0 8px;
+}
+
+.image-attachment:hover .image-overlay {
+  opacity: 1;
+}
+
+.download-btn {
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
+}
+
+.download-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.05);
+}
+
+/* 📎 Generic File Attachments */
+.generic-file-attachment {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  gap: 12px;
+  max-width: 320px;
+  /* Consistent with image max-width */
+}
+
+/* 🔐 SECURE IMAGE LOADING STATES */
+.image-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  color: #6c757d;
+  /* 🎯 Consistent with optimized thumbnail size */
+  min-height: 120px;
+  max-width: 240px;
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #e9ecef;
+  border-top: 2px solid #6c757d;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 8px;
+}
+
+.loading-text {
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.image-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: #f8d7da;
+  border-radius: 8px;
+  color: #721c24;
+  /* 🎯 Consistent with optimized thumbnail size */
+  min-height: 120px;
+  max-width: 240px;
+}
+
+.error-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.error-text {
+  font-size: 14px;
+  color: #721c24;
+}
+
+/* 🎨 Enhanced hover effects for better UX */
+.image-attachment:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+/* 💡 Add click hint for images */
+.image-attachment::after {
+  content: "🔍 Click to view full size";
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(4px);
+}
+
+.image-attachment:hover::after {
+  opacity: 1;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 🎭 确保用户名更subtle */
+.username-button {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #6b7280 !important;
+  opacity: 0.85;
+  transition: all 0.2s ease;
+}
+
+.username-button:hover {
+  opacity: 1;
+  color: #3b82f6 !important;
+}
+
+/* ✨ 增强正文中的markdown元素 */
+.content-wrapper :deep(p) {
+  margin: 0.25rem 0;
+  /* Reduced paragraph spacing */
+  font-size: 15px;
+  font-weight: 400;
+  color: #111827;
+  line-height: 1.5;
+}
+
+.content-wrapper :deep(strong) {
+  font-weight: 600;
+  color: #000;
+}
+
+.content-wrapper :deep(em) {
+  font-style: italic;
+  color: #374151;
+}
+
+.content-wrapper :deep(a) {
+  color: #2563eb;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.content-wrapper :deep(a:hover) {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+/* 📝 内联代码优化 */
+.content-wrapper :deep(code:not(.hljs code)) {
+  background-color: #f3f4f6;
+  color: #1f2937;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* 🎯 时间戳subtle化 */
+time {
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  color: #9ca3af !important;
+}
+
+/* ✨ 代码高亮状态样式 - 浅色调主题 */
+.code-highlighting-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background-color: rgba(9, 105, 218, 0.1);
+  border: 1px solid rgba(9, 105, 218, 0.3);
+  border-radius: 6px;
+  color: #0969da;
+  font-size: 0.875rem;
+  margin: 0.5rem 0;
+}
+
+.highlighting-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(9, 105, 218, 0.2);
+  border-top: 2px solid #0969da;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.code-highlight-error {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background-color: rgba(209, 36, 47, 0.1);
+  border: 1px solid rgba(209, 36, 47, 0.3);
+  border-radius: 6px;
+  color: #d1242f;
+  font-size: 0.875rem;
+  margin: 0.5rem 0;
+}
+
+.retry-highlight-btn {
+  background-color: #d1242f;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.retry-highlight-btn:hover {
+  background-color: #b91c1c;
+}
+
+/* 🎯 生产级表情在消息中的1.5x显示 */
+.message-content-wrapper :deep(*) {
+  /* 匹配Unicode表情符号并放大 */
+  font-variant-emoji: emoji;
+}
+
+.message-content-wrapper :deep(.emoji),
+.message-content-wrapper :deep(span[data-emoji]),
+.message-content-wrapper :deep([class*="emoji"]) {
+  font-size: 1.5em !important;
+  line-height: 1.2 !important;
+  vertical-align: middle !important;
+  display: inline-block !important;
+  margin: 0 0.1em !important;
+}
+
+/* 🎯 自动检测文本中的表情符号 */
+.message-content-wrapper :deep(p),
+.message-content-wrapper :deep(span),
+.message-content-wrapper :deep(div) {
+  /* 增强表情符号渲染 */
+  font-feature-settings: "liga" 1, "calt" 1;
+  text-rendering: optimizeQuality;
+}
+
+/* 🎯 增强表情符号在不同内容类型中的显示 */
+.content-wrapper :deep(p),
+.content-wrapper :deep(span),
+.content-wrapper :deep(div) {
+  /* Unicode表情符号自动检测和放大 */
+  font-variant-emoji: text;
+  font-size: inherit;
+}
+
+/* 🎯 表情符号通用增强样式 */
+.content-wrapper :deep(p *),
+.content-wrapper :deep(span *),
+.content-wrapper :deep(div *) {
+  font-feature-settings: "liga" 1, "calt" 1, "kern" 1;
+}
+
+/* 🎯 确保表情符号在Markdown内容中也正确显示 */
+.markdown-content :deep(.emoji) {
+  font-size: 1.5em !important;
+  vertical-align: middle !important;
+  margin: 0 0.1em !important;
+}
+</style>

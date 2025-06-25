@@ -47,7 +47,6 @@ export function isDebugEnabled() {
 
 if (import.meta.env.DEV) {
   console.log('🎛️ Fechatter Static Configuration Loaded');
-if (import.meta.env.DEV) {
   console.log('Environment:', staticConfig.app.environment);
 }
 

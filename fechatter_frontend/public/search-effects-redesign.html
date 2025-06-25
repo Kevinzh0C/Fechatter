@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔍 Fechatter Search Effects Redesign</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(20px);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .title {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      opacity: 0.9;
+      font-size: 16px;
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    /* 🔍 Enhanced Search Interface */
+    .search-bar {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border-radius: 16px;
+      border: 1px solid rgba(0, 122, 255, 0.1);
+    }
+
+    .search-input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 2px solid rgba(0, 122, 255, 0.2);
+      border-radius: 10px;
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: #007aff;
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+    }
+
+    .search-nav {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .nav-btn {
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: rgba(0, 122, 255, 0.1);
+      border-radius: 8px;
+      color: #007aff;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .nav-btn:hover {
+      background: #007aff;
+      color: white;
+      transform: scale(1.05);
+    }
+
+    .search-counter {
+      padding: 8px 12px;
+      background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
+      color: white;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* 🎨 Message Display */
+    .messages {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+
+    .message {
+      padding: 20px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .message:last-child {
+      border-bottom: none;
+    }
+
+    .message-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+    }
+
+    .sender {
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .time {
+      font-size: 12px;
+      color: #64748b;
+      margin-left: auto;
+    }
+
+    .content {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #374151;
+    }
+
+    /* 🌟 Multi-Layer Highlight System */
+
+    /* Level 1: Basic Search Highlight */
+    .highlight-basic {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      color: #1e293b;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      box-shadow: 0 2px 4px rgba(251, 191, 36, 0.3);
+    }
+
+    /* Level 2: Current Focus Highlight */
+    .highlight-focus {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      box-shadow:
+        0 0 0 3px rgba(239, 68, 68, 0.2),
+        0 4px 12px rgba(239, 68, 68, 0.4);
+      animation: focusPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes focusPulse {
+
+      0%,
+      100% {
+        box-shadow:
+          0 0 0 3px rgba(239, 68, 68, 0.2),
+          0 4px 12px rgba(239, 68, 68, 0.4);
+      }
+
+      50% {
+        box-shadow:
+          0 0 0 6px rgba(239, 68, 68, 0.3),
+          0 8px 20px rgba(239, 68, 68, 0.5);
+      }
+    }
+
+    /* Level 3: Message Container Highlight */
+    .message-highlighted {
+      background: linear-gradient(135deg, rgba(0, 122, 255, 0.08) 0%, rgba(88, 101, 242, 0.06) 100%);
+      border: 2px solid rgba(0, 122, 255, 0.3);
+      border-radius: 12px;
+      box-shadow:
+        0 0 0 4px rgba(0, 122, 255, 0.1),
+        0 8px 32px rgba(0, 122, 255, 0.15);
+      transform: scale(1.02);
+    }
+
+    /* Level 4: Premium Flowing Beam */
+    .message-premium {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .message-premium::before {
+      content: '';
+      position: absolute;
+      top: -3px;
+      left: -3px;
+      right: -3px;
+      bottom: -3px;
+      border-radius: 15px;
+      background: linear-gradient(90deg,
+          transparent 0%,
+          transparent 20%,
+          rgba(0, 122, 255, 0.8) 25%,
+          rgba(64, 156, 255, 1) 30%,
+          rgba(100, 181, 255, 1) 35%,
+          rgba(64, 156, 255, 1) 40%,
+          rgba(0, 122, 255, 0.8) 45%,
+          transparent 50%,
+          transparent 100%);
+      background-size: 300% 100%;
+      animation: flowingBeam 3s linear infinite;
+      z-index: -1;
+    }
+
+    @keyframes flowingBeam {
+      0% {
+        background-position: -100% 0%;
+      }
+
+      100% {
+        background-position: 100% 0%;
+      }
+    }
+
+    /* Position Indicator */
+    .position-indicator {
+      position: absolute;
+      top: -12px;
+      right: 12px;
+      background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.4);
+      z-index: 10;
+    }
+
+    /* 🎮 Demo Controls */
+    .controls {
+      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+      border-radius: 16px;
+      padding: 25px;
+      margin-top: 30px;
+    }
+
+    .control-group {
+      margin-bottom: 20px;
+    }
+
+    .control-label {
+      font-weight: 600;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .control-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .demo-btn {
+      padding: 10px 20px;
+      background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .demo-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 122, 255, 0.3);
+    }
+
+    .demo-btn.secondary {
+      background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    }
+
+    .demo-btn.success {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    /* 📱 Responsive */
+    @media (max-width: 768px) {
+      .container {
+        margin: 10px;
+        border-radius: 16px;
+      }
+
+      .search-bar {
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .search-nav {
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 class="title">🔍 Search Effects Redesign</h1>
+      <p class="subtitle">Discord/Slack级别的搜索特效 - 业界最佳实践</p>
+    </div>
+
+    <div class="content">
+      <!-- Enhanced Search Bar -->
+      <div class="search-bar">
+        <input type="text" class="search-input" placeholder="Search with enhanced effects..." value="project updates">
+
+        <div class="search-nav">
+          <button class="nav-btn" onclick="navigate('prev')">‹</button>
+          <div class="search-counter">2 / 5</div>
+          <button class="nav-btn" onclick="navigate('next')">›</button>
+        </div>
+      </div>
+
+      <!-- Messages with Multi-Layer Highlighting -->
+      <div class="messages">
+        <!-- Standard Message -->
+        <div class="message">
+          <div class="message-header">
+            <div class="avatar">D1</div>
+            <div class="sender">Developer 1</div>
+            <div class="time">2:30 PM</div>
+          </div>
+          <div class="content">
+            Let's discuss the <span class="highlight-basic">project updates</span> for this week's sprint.
+          </div>
+        </div>
+
+        <!-- Current Focus Message -->
+        <div class="message message-highlighted message-premium">
+          <div class="position-indicator">🎯 Current (2/5)</div>
+          <div class="message-header">
+            <div class="avatar">D2</div>
+            <div class="sender">Developer 2</div>
+            <div class="time">3:15 PM</div>
+          </div>
+          <div class="content">
+            The <span class="highlight-focus">project updates</span> look great! We've made significant progress.
+          </div>
+        </div>
+
+        <!-- Another Match -->
+        <div class="message">
+          <div class="message-header">
+            <div class="avatar">D3</div>
+            <div class="sender">Developer 3</div>
+            <div class="time">4:20 PM</div>
+          </div>
+          <div class="content">
+            Can we schedule a meeting to review all <span class="highlight-basic">project updates</span>?
+          </div>
+        </div>
+      </div>
+
+      <!-- Demo Controls -->
+      <div class="controls">
+        <h3 style="margin-bottom: 20px;">🎮 Interactive Demo</h3>
+
+        <div class="control-group">
+          <label class="control-label">🌟 Highlight Styles</label>
+          <div class="control-buttons">
+            <button class="demo-btn" onclick="applyEffect('basic')">Basic Highlight</button>
+            <button class="demo-btn" onclick="applyEffect('focus')">Focus Highlight</button>
+            <button class="demo-btn success" onclick="applyEffect('premium')">Premium Beam</button>
+            <button class="demo-btn secondary" onclick="clearEffects()">Clear All</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">🎯 Navigation</label>
+          <div class="control-buttons">
+            <button class="demo-btn" onclick="navigate('prev')">← Previous</button>
+            <button class="demo-btn" onclick="navigate('next')">Next →</button>
+            <button class="demo-btn success" onclick="jumpToRandom()">Jump to Random</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentResult = 2;
+    const totalResults = 5;
+
+    function navigate(direction) {
+      if (direction === 'next' && currentResult < totalResults) {
+        currentResult++;
+      } else if (direction === 'prev' && currentResult > 1) {
+        currentResult--;
+      }
+
+      updateCounter();
+      highlightCurrentResult();
+      showFeedback(`Navigated to result ${currentResult}/${totalResults}`);
+    }
+
+    function updateCounter() {
+      document.querySelector('.search-counter').textContent = `${currentResult} / ${totalResults}`;
+    }
+
+    function highlightCurrentResult() {
+      const messages = document.querySelectorAll('.message');
+
+      // Clear all highlights
+      messages.forEach(msg => {
+        msg.classList.remove('message-highlighted', 'message-premium');
+        const indicator = msg.querySelector('.position-indicator');
+        if (indicator) indicator.remove();
+      });
+
+      // Highlight current result
+      const targetMessage = messages[currentResult - 1];
+      targetMessage.classList.add('message-highlighted', 'message-premium');
+
+      // Add position indicator
+      const indicator = document.createElement('div');
+      indicator.className = 'position-indicator';
+      indicator.textContent = `🎯 Current (${currentResult}/${totalResults})`;
+      targetMessage.appendChild(indicator);
+    }
+
+    function applyEffect(type) {
+      const messages = document.querySelectorAll('.message');
+      clearEffects();
+
+      switch (type) {
+        case 'basic':
+          messages[1].classList.add('message-highlighted');
+          break;
+        case 'focus':
+          messages[1].classList.add('message-highlighted', 'message-premium');
+          break;
+        case 'premium':
+          messages.forEach((msg, index) => {
+            if (index % 2 === 0) {
+              msg.classList.add('message-highlighted');
+            }
+            if (index === 1) {
+              msg.classList.add('message-premium');
+            }
+          });
+          break;
+      }
+
+      showFeedback(`Applied ${type} effect!`);
+    }
+
+    function clearEffects() {
+      const messages = document.querySelectorAll('.message');
+      messages.forEach(msg => {
+        msg.classList.remove('message-highlighted', 'message-premium');
+        const indicator = msg.querySelector('.position-indicator');
+        if (indicator) indicator.remove();
+      });
+    }
+
+    function jumpToRandom() {
+      currentResult = Math.floor(Math.random() * totalResults) + 1;
+      updateCounter();
+      highlightCurrentResult();
+      showFeedback(`Jumped to result ${currentResult}!`);
+    }
+
+    function showFeedback(message) {
+      const feedback = document.createElement('div');
+      feedback.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                font-weight: 600;
+                z-index: 1000;
+                animation: slideIn 0.3s ease-out;
+                box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+            `;
+
+      feedback.textContent = message;
+      document.body.appendChild(feedback);
+
+      setTimeout(() => {
+        feedback.style.animation = 'slideOut 0.3s ease-in forwards';
+        setTimeout(() => feedback.remove(), 300);
+      }, 2000);
+    }
+
+    // Add animations
+    const style = document.createElement('style');
+    style.textContent = `
+            @keyframes slideIn {
+                from { opacity: 0; transform: translateX(100%); }
+                to { opacity: 1; transform: translateX(0); }
+            }
+            @keyframes slideOut {
+                from { opacity: 1; transform: translateX(0); }
+                to { opacity: 0; transform: translateX(100%); }
+            }
+        `;
+    document.head.appendChild(style);
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        navigate('prev');
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        navigate('next');
+      }
+    });
+
+    // Initialize
+    setTimeout(() => {
+      showFeedback('🔍 Enhanced search demo ready!');
+      highlightCurrentResult();
+    }, 500);
+  </script>
+</body>
+
+</html>

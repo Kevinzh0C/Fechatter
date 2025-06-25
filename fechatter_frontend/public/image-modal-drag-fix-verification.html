@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎯 Image Modal Drag + Loading Fix Verification</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #2d3748;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    .fix-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .fix-card {
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .fix-card.loading {
+      border-color: #fbb6ce;
+      background: #fff5f5;
+    }
+
+    .fix-card.drag {
+      border-color: #bee3f8;
+      background: #ebf8ff;
+    }
+
+    .feature-list {
+      background: #f0fff4;
+      border: 1px solid #9ae6b4;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .code-block {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 14px;
+      margin: 10px 0;
+      overflow-x: auto;
+    }
+
+    .test-button {
+      background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin: 10px;
+    }
+
+    .test-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .success {
+      color: #38a169;
+      font-weight: bold;
+    }
+
+    .warning {
+      color: #d69e2e;
+      font-weight: bold;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      margin: 10px 0;
+      padding: 10px;
+      background: white;
+      border-radius: 8px;
+      border-left: 4px solid #3182ce;
+    }
+
+    .step-number {
+      background: #3182ce;
+      color: white;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin-right: 15px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎯 Image Modal Enhanced Verification</h1>
+      <p>图片modal拖动功能 + 加载修复验证工具</p>
+      <p style="font-size: 1.2em; margin-top: 20px;">✨ <strong>完整功能测试</strong></p>
+    </div>
+
+    <div class="content">
+      <!-- Fix Overview -->
+      <div class="fix-grid">
+        <div class="fix-card loading">
+          <h3>🔧 Loading Fix</h3>
+          <ul>
+            <li><span class="success">✅ 修复空字符串返回</span></li>
+            <li><span class="success">✅ 智能URL检测</span></li>
+            <li><span class="success">✅ 正确loading状态</span></li>
+            <li><span class="success">✅ 多源URL处理</span></li>
+          </ul>
+        </div>
+
+        <div class="fix-card drag">
+          <h3>🎮 Drag Enhancement</h3>
+          <ul>
+            <li><span class="success">✅ 移除缩放限制</span></li>
+            <li><span class="success">✅ 智能边界检测</span></li>
+            <li><span class="success">✅ 自动回弹功能</span></li>
+            <li><span class="success">✅ 触摸设备支持</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Enhanced Features -->
+      <div class="feature-list">
+        <h2>🚀 增强功能列表</h2>
+
+        <h3>图片加载优化：</h3>
+        <ul>
+          <li><strong>智能URL检测</strong>：自动识别blob/cached/API/direct URL类型</li>
+          <li><strong>避免双重认证</strong>：优先使用已认证的缓存URL</li>
+          <li><strong>正确状态管理</strong>：所有路径都正确设置loading=false</li>
+          <li><strong>错误恢复</strong>：认证失败时显示错误状态而不是无限loading</li>
+        </ul>
+
+        <h3>拖动功能增强：</h3>
+        <ul>
+          <li><strong>任意缩放拖动</strong>：移除了"只有放大才能拖动"的限制</li>
+          <li><strong>智能边界限制</strong>：防止图片拖得太远，但允许合理的溢出</li>
+          <li><strong>自动回弹</strong>：图片拖出可视区域时自动回到中心</li>
+          <li><strong>视觉反馈</strong>：拖动时光标变为grabbing，禁用文本选择</li>
+          <li><strong>触摸优化</strong>：移动设备拖动体验优化</li>
+        </ul>
+      </div>
+
+      <!-- Expected Console Output -->
+      <div style="background: #f7fafc; padding: 20px; border-radius: 12px; margin: 20px 0;">
+        <h3>📋 预期控制台输出</h3>
+        <div class="code-block">
+          🖼️ [EnhancedImageModal] Loading image: /api/files/2/...
+          ✅ [EnhancedImageModal] Using cached secure URL
+          ✅ [EnhancedImageModal] Image loaded successfully
+          🎯 [EnhancedImageModal] Snapped image back to center (拖动时)
+        </div>
+      </div>
+
+      <!-- Testing Instructions -->
+      <div style="background: #ebf8ff; padding: 20px; border-radius: 12px; margin: 20px 0;">
+        <h3>🧪 测试指南</h3>
+
+        <div class="step">
+          <div class="step-number">1</div>
+          <div>
+            <strong>基础加载测试</strong>
+            <br>访问 http://localhost:5173/chat/2，点击图片
+            <br><span class="success">预期：图片立即显示，不再显示"Loading image..."</span>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-number">2</div>
+          <div>
+            <strong>拖动功能测试</strong>
+            <br>在任何缩放级别下尝试拖动图片
+            <br><span class="success">预期：图片可以自由拖动</span>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-number">3</div>
+          <div>
+            <strong>边界回弹测试</strong>
+            <br>将图片拖出可视区域
+            <br><span class="success">预期：图片自动回弹到中心位置</span>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-number">4</div>
+          <div>
+            <strong>缩放+拖动测试</strong>
+            <br>放大图片后拖动，测试边界限制
+            <br><span class="success">预期：拖动受智能边界限制，但有合理溢出</span>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-number">5</div>
+          <div>
+            <strong>移动设备测试</strong>
+            <br>在移动设备或触摸屏上测试拖动
+            <br><span class="success">预期：触摸拖动流畅响应</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Technical Details -->
+      <div style="background: #f0fff4; padding: 20px; border-radius: 12px; margin: 20px 0;">
+        <h3>🔧 技术实现细节</h3>
+
+        <h4>加载修复架构：</h4>
+        <div class="code-block">
+          loadAuthenticatedImage() {
+          if (imageUrl.startsWith('blob:')) {
+          // 直接使用blob URL
+          authenticatedImageUrl.value = imageUrl
+          loading.value = false
+          } else if (currentImage.value.secureUrl) {
+          // 使用缓存的secure URL
+          authenticatedImageUrl.value = currentImage.value.secureUrl
+          loading.value = false
+          } else if (imageUrl.startsWith('/api/files/')) {
+          // 仅对API URL进行认证
+          const cachedUrl = await imageCacheService.getCachedImageUrl(imageUrl)
+          authenticatedImageUrl.value = cachedUrl
+          } else {
+          // 直接使用非API URL
+          authenticatedImageUrl.value = imageUrl
+          loading.value = false
+          }
+          }
+        </div>
+
+        <h4>拖动增强架构：</h4>
+        <div class="code-block">
+          Enhanced Drag Features:
+          • Remove zoom restriction: Allow dragging at any zoom level
+          • Smart boundaries: Calculate container vs image bounds
+          • Auto snap-back: Return to center if dragged too far
+          • Visual feedback: Cursor changes, disable text selection
+          • Touch optimization: Passive event handling for mobile
+          • Boundary margin: Allow 100px overflow for better UX
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="text-align: center; margin: 30px 0;">
+        <button class="test-button" onclick="window.open('http://localhost:5173/chat/2', '_blank')">
+          🚀 立即测试完整功能
+        </button>
+        <button class="test-button" onclick="showDragInstructions()">
+          🎮 拖动功能详解
+        </button>
+        <button class="test-button" onclick="showTroubleshooting()">
+          🔧 故障排除指南
+        </button>
+      </div>
+
+      <!-- Success Message -->
+      <div
+        style="text-align: center; padding: 20px; background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%); border-radius: 12px; margin: 20px 0;">
+        <h2 style="color: #38a169; margin: 0;">🎉 功能增强完成!</h2>
+        <p style="margin: 10px 0; font-size: 1.1em;">
+          图片modal现在具备完整的拖动功能和快速加载能力
+        </p>
+        <p style="color: #2d5016; font-weight: bold;">
+          从基础功能到高级交互 - 生产级用户体验 ✨
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showDragInstructions() {
+      const instructions = `
+🎮 拖动功能详细说明：
+
+1. 基础拖动：
+   - 在任何缩放级别下都可以拖动图片
+   - 支持鼠标拖动和触摸拖动
+
+2. 智能边界：
+   - 放大状态：根据图片大小智能限制拖动范围
+   - 正常状态：允许自由拖动
+   - 边界溢出：允许100px的溢出空间，提供更好的用户体验
+
+3. 自动回弹：
+   - 当图片被拖出可视区域时自动回到中心
+   - 保持50px的可见边距，防止完全看不见
+
+4. 视觉反馈：
+   - 拖动时光标变为"grabbing"
+   - 禁用文本选择，避免意外选择
+   - 拖动结束后恢复正常状态
+
+5. 性能优化：
+   - 使用requestAnimationFrame优化动画
+   - 触摸事件使用passive:false确保preventDefault生效
+   - 自动清理事件监听器防止内存泄漏
+
+测试方法：
+1. 点击并拖动图片到不同位置
+2. 缩放图片后测试边界限制
+3. 尝试将图片拖出屏幕测试回弹
+4. 在移动设备上测试触摸拖动
+            `;
+
+      alert(instructions);
+    }
+
+    function showTroubleshooting() {
+      const troubleshooting = `
+🔧 故障排除指南：
+
+如果图片仍然显示"Loading image..."：
+1. 检查控制台是否有JavaScript错误
+2. 确认authenticatedImageUrl是否正确设置
+3. 验证loading.value是否设置为false
+4. 清除浏览器缓存重试
+
+如果拖动功能不工作：
+1. 检查isDragging状态是否正确
+2. 确认事件监听器是否正确添加
+3. 验证position.value是否更新
+4. 检查CSS transform是否应用
+
+控制台调试命令：
+• 检查当前图片状态：console.log(document.querySelector('.main-image'))
+• 检查认证URL：console.log(authenticatedImageUrl.value)
+• 检查loading状态：console.log(loading.value)
+• 检查拖动状态：console.log(isDragging.value)
+
+常见问题：
+1. 图片不显示 → 检查URL和认证
+2. 拖动不流畅 → 检查transform CSS
+3. 无法拖动 → 确认事件监听器
+4. 拖动卡顿 → 检查边界计算逻辑
+
+如果问题持续，请检查浏览器开发者工具的Console和Network标签页。
+            `;
+
+      alert(troubleshooting);
+    }
+
+    // Auto-check after 2 seconds
+    setTimeout(() => {
+      console.log('🎯 Image Modal Enhanced - Ready for Testing');
+      console.log('Features: Smart Loading + Enhanced Dragging + Auto Snap-back');
+    }, 2000);
+  </script>
+</body>
+
+</html>

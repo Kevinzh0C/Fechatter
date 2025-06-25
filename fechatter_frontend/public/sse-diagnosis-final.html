@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚀 SSE Final Diagnosis</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    }
+
+    .alert {
+      background: linear-gradient(45deg, #ff6b6b, #feca57);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .status-item {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #3498db;
+    }
+
+    .status-label {
+      font-size: 0.9em;
+      color: #666;
+      margin-bottom: 5px;
+    }
+
+    .status-value {
+      font-size: 1.2em;
+      font-weight: bold;
+    }
+
+    .status-value.success {
+      color: #27ae60;
+    }
+
+    .status-value.error {
+      color: #e74c3c;
+    }
+
+    .status-value.warning {
+      color: #f39c12;
+    }
+
+    .btn {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+      font-weight: 600;
+    }
+
+    .btn:hover {
+      background: #2980b9;
+    }
+
+    .btn.success {
+      background: #27ae60;
+    }
+
+    .btn.danger {
+      background: #e74c3c;
+    }
+
+    .log-box {
+      background: #2c3e50;
+      color: #ecf0f1;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 13px;
+      max-height: 400px;
+      overflow-y: auto;
+      margin: 15px 0;
+    }
+
+    .log-entry {
+      margin: 3px 0;
+      padding: 2px 0;
+    }
+
+    .log-entry.success {
+      color: #2ecc71;
+    }
+
+    .log-entry.error {
+      color: #e74c3c;
+    }
+
+    .log-entry.warning {
+      color: #f1c40f;
+    }
+
+    .log-entry.info {
+      color: #3498db;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🚀 SSE Final Diagnosis</h1>
+
+    <div class="alert">
+      🚨 CRITICAL ISSUE: Proxy logs show ZERO /events requests<br>
+      This tool will identify exactly why EventSource is not being created
+    </div>
+
+    <div class="status-grid">
+      <div class="status-item">
+        <div class="status-label">SSE Service</div>
+        <div class="status-value" id="sseService">Checking...</div>
+      </div>
+      <div class="status-item">
+        <div class="status-label">Auth Status</div>
+        <div class="status-value" id="authStatus">Checking...</div>
+      </div>
+      <div class="status-item">
+        <div class="status-label">Token Present</div>
+        <div class="status-value" id="tokenStatus">Checking...</div>
+      </div>
+      <div class="status-item">
+        <div class="status-label">EventSource</div>
+        <div class="status-value" id="eventSourceStatus">Checking...</div>
+      </div>
+    </div>
+
+    <div>
+      <button class="btn" onclick="runFullDiagnosis()">🔍 Full Diagnosis</button>
+      <button class="btn success" onclick="forceSSEConnection()">🚀 Force SSE</button>
+      <button class="btn" onclick="testManualEventSource()">🧪 Manual Test</button>
+      <button class="btn danger" onclick="clearLog()">🗑️ Clear Log</button>
+    </div>
+
+    <div class="log-box" id="logBox"></div>
+
+    <div style="text-align: center; margin-top: 20px;">
+      <label>
+        <input type="checkbox" id="autoRefresh" checked>
+        Auto-refresh every 1 second
+      </label>
+    </div>
+  </div>
+
+  <script>
+    let logEntries = [];
+
+    function log(message, level = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const entry = `[${timestamp}] ${message}`;
+
+      logEntries.push({ timestamp, message, level });
+
+      const logBox = document.getElementById('logBox');
+      const div = document.createElement('div');
+      div.className = `log-entry ${level}`;
+      div.textContent = entry;
+      logBox.appendChild(div);
+      logBox.scrollTop = logBox.scrollHeight;
+
+      // Keep only last 50 entries
+      if (logEntries.length > 50) {
+        logEntries.shift();
+        logBox.removeChild(logBox.firstChild);
+      }
+
+      console.log(`[SSE-Diagnosis] ${entry}`);
+    }
+
+    function updateStatus(elementId, text, type) {
+      const element = document.getElementById(elementId);
+      element.textContent = text;
+      element.className = `status-value ${type}`;
+    }
+
+    function checkSSEService() {
+      const minimalSSE = window.minimalSSE || window.realtimeCommunicationService;
+      if (minimalSSE) {
+        updateStatus('sseService', 'FOUND', 'success');
+        log('✅ SSE service found on window object', 'success');
+        return minimalSSE;
+      } else {
+        updateStatus('sseService', 'NOT FOUND', 'error');
+        log('❌ SSE service NOT FOUND on window object', 'error');
+        return null;
+      }
+    }
+
+    function checkAuthStatus() {
+      try {
+        const authStore = window.__pinia_stores__?.auth?.() ||
+          window.pinia?.stores?.auth ||
+          window.authStore;
+
+        if (!authStore) {
+          updateStatus('authStatus', 'STORE NOT FOUND', 'error');
+          updateStatus('tokenStatus', 'UNKNOWN', 'warning');
+          log('❌ Auth store not accessible', 'error');
+          return { authenticated: false, token: null };
+        }
+
+        const authenticated = authStore.isAuthenticated;
+        const token = authStore.token;
+
+        updateStatus('authStatus', authenticated ? 'AUTHENTICATED' : 'NOT AUTH', authenticated ? 'success' : 'error');
+        updateStatus('tokenStatus', token ? 'PRESENT' : 'MISSING', token ? 'success' : 'error');
+
+        if (authenticated && token) {
+          log(`✅ Auth OK - Token: ${token.substring(0, 15)}...`, 'success');
+        } else {
+          log(`❌ Auth issue - Authenticated: ${authenticated}, Token: ${!!token}`, 'error');
+        }
+
+        return { authenticated, token };
+
+      } catch (error) {
+        updateStatus('authStatus', 'ERROR', 'error');
+        updateStatus('tokenStatus', 'ERROR', 'error');
+        log(`❌ Auth check error: ${error.message}`, 'error');
+        return { authenticated: false, token: null };
+      }
+    }
+
+    function checkEventSource(sseService) {
+      if (!sseService) {
+        updateStatus('eventSourceStatus', 'NO SERVICE', 'error');
+        return;
+      }
+
+      const eventSource = sseService.eventSource;
+      if (eventSource) {
+        const readyState = eventSource.readyState;
+        const states = ['CONNECTING', 'OPEN', 'CLOSED'];
+        const stateName = states[readyState] || 'UNKNOWN';
+
+        updateStatus('eventSourceStatus', `${stateName} (${readyState})`, readyState === 1 ? 'success' : readyState === 0 ? 'warning' : 'error');
+        log(`📡 EventSource exists - State: ${stateName} (${readyState})`, readyState === 1 ? 'success' : 'info');
+        log(`🔗 EventSource URL: ${eventSource.url}`, 'info');
+      } else {
+        updateStatus('eventSourceStatus', 'NOT CREATED', 'error');
+        log('❌ CRITICAL: EventSource object NOT CREATED!', 'error');
+        log('🔍 This explains why no /events requests appear in proxy logs', 'warning');
+      }
+    }
+
+    function runFullDiagnosis() {
+      log('🔍 Starting full SSE diagnosis...', 'info');
+
+      const sseService = checkSSEService();
+      const authInfo = checkAuthStatus();
+      checkEventSource(sseService);
+
+      // Analyze the problem
+      if (!sseService) {
+        log('🔧 ROOT CAUSE: SSE service not loaded or exposed', 'error');
+      } else if (!authInfo.authenticated || !authInfo.token) {
+        log('🔧 ROOT CAUSE: User not authenticated or no token', 'error');
+        log('💡 Solution: Login first, then SSE will connect automatically', 'warning');
+      } else if (!sseService.eventSource) {
+        log('🔧 ROOT CAUSE: connect() method not called or failed', 'error');
+        log('💡 Solution: Check main.js SSE initialization or force connection', 'warning');
+      } else {
+        log('✅ All components present - checking connection state...', 'success');
+      }
+
+      log('📊 Diagnosis complete', 'info');
+    }
+
+    function forceSSEConnection() {
+      log('🚀 Attempting to force SSE connection...', 'info');
+
+      const sseService = checkSSEService();
+      const authInfo = checkAuthStatus();
+
+      if (!sseService) {
+        log('❌ Cannot force connection: SSE service not found', 'error');
+        return;
+      }
+
+      if (!authInfo.token) {
+        log('❌ Cannot force connection: No auth token', 'error');
+        return;
+      }
+
+      try {
+        // Disconnect first
+        sseService.disconnect();
+        log('🔄 Disconnected existing connection', 'info');
+
+        // Wait and reconnect
+        setTimeout(() => {
+          log(`🔗 Calling connect() with token: ${authInfo.token.substring(0, 15)}...`, 'info');
+          sseService.connect(authInfo.token);
+
+          // Check result
+          setTimeout(() => {
+            const eventSource = sseService.eventSource;
+            if (eventSource) {
+              log('✅ SUCCESS: EventSource created!', 'success');
+              log(`🌐 URL: ${eventSource.url}`, 'info');
+              log(`📡 ReadyState: ${eventSource.readyState}`, 'info');
+            } else {
+              log('❌ FAILED: EventSource still not created', 'error');
+            }
+            runFullDiagnosis();
+          }, 2000);
+        }, 1000);
+
+      } catch (error) {
+        log(`❌ Force connection error: ${error.message}`, 'error');
+      }
+    }
+
+    function testManualEventSource() {
+      log('🧪 Testing manual EventSource creation...', 'info');
+
+      const authInfo = checkAuthStatus();
+      if (!authInfo.token) {
+        log('❌ Cannot test: No auth token', 'error');
+        return;
+      }
+
+      const url = `/events?access_token=${authInfo.token}`;
+      log(`🔗 Creating EventSource: ${url}`, 'info');
+
+      try {
+        const testES = new EventSource(url);
+
+        testES.onopen = function () {
+          log('✅ MANUAL TEST SUCCESS: EventSource opened!', 'success');
+          log('🌐 This proves the backend /events endpoint works', 'success');
+          log('🔧 Problem is in automatic SSE initialization', 'warning');
+        };
+
+        testES.onmessage = function (event) {
+          log(`📨 Manual EventSource received: ${event.data.substring(0, 50)}...`, 'success');
+        };
+
+        testES.onerror = function (error) {
+          log(`❌ Manual EventSource error: ${error}`, 'error');
+        };
+
+        // Cleanup after 10 seconds
+        setTimeout(() => {
+          testES.close();
+          log('🔚 Manual test completed and closed', 'info');
+        }, 10000);
+
+      } catch (error) {
+        log(`❌ Manual test failed: ${error.message}`, 'error');
+      }
+    }
+
+    function clearLog() {
+      logEntries = [];
+      document.getElementById('logBox').innerHTML = '';
+      log('🗑️ Log cleared', 'info');
+    }
+
+    // Auto-refresh functionality
+    function autoRefresh() {
+      if (document.getElementById('autoRefresh').checked) {
+        const sseService = checkSSEService();
+        checkAuthStatus();
+        checkEventSource(sseService);
+      }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function () {
+      log('🚀 SSE Final Diagnosis Tool Initialized', 'info');
+      runFullDiagnosis();
+
+      // Auto-refresh every second
+      setInterval(autoRefresh, 1000);
+    });
+  </script>
+</body>
+
+</html>

@@ -1,15 +1,6 @@
 <template>
-  <svg
-    :width="computedSize"
-    :height="computedSize"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-    :style="computedStyle"
-    :class="['fechatter-icon', className]"
-    aria-hidden="!title"
-    role="img"
-    @click="handleClick"
-  >
+  <svg :width="computedSize" :height="computedSize" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
+    :style="computedStyle" :class="['fechatter-icon', className]" :aria-hidden="!title" role="img" @click="handleClick">
     <title v-if="title">{{ title }}</title>
     <defs>
       <linearGradient id="messageBubbleGradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -17,13 +8,15 @@
         <stop offset="100%" :stop-color="actualEndColor" />
       </linearGradient>
     </defs>
-    <path d="M12 2C6.48 2 2 6.48 2 12c0 1.33.26 2.61.76 3.79.13.31.12.68-.04.98l-1.08 2.16c-.18.35-.13.78.12 1.09.25.31.65.46 1.04.39l3.02-.53c.2-.03.41-.01.6.07C7.92 20.6 9.91 21 12 21c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.74 0-3.41-.34-4.94-.96l-.71-.25-.73.13-1.76.31.35-.71.16-.33.08-.35c.17-.74.13-1.5-.11-2.21-.38-.92-.59-1.92-.59-2.96 0-4.42 3.58-8 8-8s8 3.58 8 8-3.58 8-8 8z" :fill="preserveGradient ? 'url(#messageBubbleGradient)' : actualStartColor" />
+    <path
+      d="M12 2C6.48 2 2 6.48 2 12c0 1.33.26 2.61.76 3.79.13.31.12.68-.04.98l-1.08 2.16c-.18.35-.13.78.12 1.09.25.31.65.46 1.04.39l3.02-.53c.2-.03.41-.01.6.07C7.92 20.6 9.91 21 12 21c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.74 0-3.41-.34-4.94-.96l-.71-.25-.73.13-1.76.31.35-.71.16-.33.08-.35c.17-.74.13-1.5-.11-2.21-.38-.92-.59-1.92-.59-2.96 0-4.42 3.58-8 8-8s8 3.58 8 8-3.58 8-8 8z"
+      :fill="preserveGradient ? 'url(#messageBubbleGradient)' : actualStartColor" />
   </svg>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import BaseIcon from './BaseIcon';
+import BaseIcon from './BaseIcon.vue';
 
 export default defineComponent({
   name: 'MessageBubble',

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Remote Server SSE Diagnostic</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .status-card { border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin: 10px 0; }
+        .status-online { background: #d4edda; color: #155724; }
+        .status-offline { background: #f8d7da; color: #721c24; }
+        .status-error { background: #fff3cd; color: #856404; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-primary { background: #007bff; color: white; }
+        .log-container { background: #1e1e1e; color: #00ff00; padding: 15px; height: 300px; overflow-y: auto; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Remote Server SSE Diagnostic</h1>
+    <h3>Backend vs Frontend Analysis - 45.77.178.85</h3>
+    
+    <div>
+        <button class="btn-primary" onclick="checkAllServices()">🚀 Check All Services</button>
+        <button class="btn-primary" onclick="testSSEEndpoint()">📡 Test SSE</button>
+        <button class="btn-primary" onclick="clearLogs()">🧹 Clear</button>
+    </div>
+
+    <div id="serviceStatus">
+        <div class="status-card">
+            <h4>🌐 Gateway (8080)</h4>
+            <div id="gatewayStatus">⏳ Not tested</div>
+        </div>
+        <div class="status-card">
+            <h4>📡 Notify/SSE (6687)</h4>
+            <div id="sseStatus">⏳ Not tested</div>
+        </div>
+        <div class="status-card">
+            <h4>💬 Chat (6688)</h4>
+            <div id="chatStatus">⏳ Not tested</div>
+        </div>
+    </div>
+
+    <div class="status-card">
+        <h3>🎯 Conclusion</h3>
+        <div id="conclusion">Run diagnostics to determine if issue is Frontend or Backend...</div>
+    </div>
+
+    <div class="log-container" id="logContainer">
+        ====== Remote Server SSE Diagnostic ======
+        Ready to analyze backend services...
+    </div>
+
+    <script>
+        const SERVER = 'http://45.77.178.85';
+        let results = { gateway: 'unknown', sse: 'unknown', chat: 'unknown' };
+
+        function log(msg, level = 'info') {
+            const time = new Date().toLocaleTimeString();
+            const colors = { info: '#00ff00', success: '#00ff00', warning: '#ffff00', error: '#ff4444' };
+            document.getElementById('logContainer').innerHTML += `<div style="color: ${colors[level]};">[${time}] ${msg}</div>`;
+            document.getElementById('logContainer').scrollTop = document.getElementById('logContainer').scrollHeight;
+        }
+
+        async function testGateway() {
+            log('�� Testing Gateway...', 'info');
+            try {
+                const response = await fetch(`${SERVER}:8080/health`, { signal: AbortSignal.timeout(5000) });
+                if (response.ok) {
+                    results.gateway = 'online';
+                    document.getElementById('gatewayStatus').innerHTML = '<span class="status-online">✅ Online</span>';
+                    log('✅ Gateway online', 'success');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                results.gateway = 'offline';
+                document.getElementById('gatewayStatus').innerHTML = '<span class="status-offline">❌ Offline</span>';
+                log(`❌ Gateway failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSSEEndpoint() {
+            log('📡 Testing SSE endpoint...', 'info');
+            const token = localStorage.getItem('auth_token') || localStorage.getItem('fechatter_auth');
+            
+            if (!token) {
+                log('❌ No token found', 'error');
+                return;
+            }
+
+            try {
+                const eventSource = new EventSource(`${SERVER}:8080/events?access_token=${encodeURIComponent(token)}`);
+                let opened = false;
+
+                eventSource.onopen = function() {
+                    opened = true;
+                    results.sse = 'working';
+                    document.getElementById('sseStatus').innerHTML = '<span class="status-online">✅ SSE Working</span>';
+                    log('✅ SSE connection opened!', 'success');
+                    setTimeout(() => eventSource.close(), 2000);
+                };
+
+                eventSource.onerror = function() {
+                    if (opened) {
+                        results.sse = 'server-error';
+                        document.getElementById('sseStatus').innerHTML = '<span class="status-error">⚠️ Server Issue</span>';
+                        log('🚨 SSE opens then fails - BACKEND ISSUE!', 'error');
+                    } else {
+                        results.sse = 'offline';
+                        document.getElementById('sseStatus').innerHTML = '<span class="status-offline">❌ Cannot Connect</span>';
+                        log('❌ SSE cannot connect', 'error');
+                    }
+                    eventSource.close();
+                };
+
+                setTimeout(() => { if (!opened) eventSource.close(); }, 5000);
+            } catch (error) {
+                log(`❌ SSE test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testChat() {
+            log('💬 Testing Chat service...', 'info');
+            try {
+                const response = await fetch(`${SERVER}:8080/api/health`, { signal: AbortSignal.timeout(5000) });
+                if (response.ok) {
+                    results.chat = 'online';
+                    document.getElementById('chatStatus').innerHTML = '<span class="status-online">✅ Online</span>';
+                    log('✅ Chat service online', 'success');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                results.chat = 'offline';
+                document.getElementById('chatStatus').innerHTML = '<span class="status-offline">❌ Offline</span>';
+                log(`❌ Chat failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkAllServices() {
+            log('🚀 Starting comprehensive check...', 'info');
+            await Promise.all([testGateway(), testChat()]);
+            if (results.gateway === 'online') await testSSEEndpoint();
+            analyzeResults();
+        }
+
+        function analyzeResults() {
+            let conclusion = '';
+            
+            if (results.gateway !== 'online') {
+                conclusion = '🚨 <strong>BACKEND ISSUE:</strong> Gateway is offline';
+            } else if (results.sse === 'server-error') {
+                conclusion = '🚨 <strong>BACKEND ISSUE:</strong> SSE connects then fails - server-side problem';
+            } else if (results.sse === 'working') {
+                conclusion = '🎯 <strong>FRONTEND ISSUE:</strong> Backend SSE working, check frontend implementation';
+            } else if (results.sse === 'offline') {
+                conclusion = '🚨 <strong>BACKEND ISSUE:</strong> SSE service not running';
+            } else {
+                conclusion = '⚠️ Mixed results - check individual services';
+            }
+
+            document.getElementById('conclusion').innerHTML = conclusion;
+            log(`🎯 Analysis: ${conclusion.replace(/<[^>]*>/g, '')}`, 'warning');
+        }
+
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = '====== Logs cleared ======';
+        }
+
+        log('🔧 Diagnostic tool ready', 'info');
+        log('🎯 Target server: 45.77.178.85', 'info');
+    </script>
+</body>
+</html>

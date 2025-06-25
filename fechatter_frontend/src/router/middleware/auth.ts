@@ -1,13 +1,13 @@
 import type { RouterMiddleware } from '../types';
 import { useAuthStore } from '../../stores/auth';
 
-export const authMiddleware: RouterMiddleware = async (to, from, next) => {
+export const authMiddleware: RouterMiddleware = async (to, _from, next) => {
   const authStore = useAuthStore();
-  
+
   // 初始化认证状态 (只执行一次)
   if (!authStore.isInitialized) {
     try {
-      await authStore.initializeAuth();
+      await authStore.initialize();
     } catch (error) {
       console.error('Auth initialization failed:', error);
     }

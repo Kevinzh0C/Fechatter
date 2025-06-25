@@ -66,15 +66,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import { useRouter } from 'vue-router';
+
 import { useAuthStore } from '@/stores/auth';
 import { useToast } from '@/composables/useToast';
 import UserService from '@/services/UserService';
-import ChangePasswordModal from '@/components/user/ChangePasswordModal.vue';
 import type { UserProfileResponse } from '@/types/api';
 import { useChatStore } from '@/stores/chat';
-import ChatService from '@/services/ChatService';
-import Avatar from '@/components/common/Avatar.vue';
 
 // Props
 interface Props {
@@ -94,7 +91,6 @@ const emit = defineEmits<{
 }>();
 
 // Composables
-const router = useRouter();
 const authStore = useAuthStore();
 const { success: notifySuccess, error: notifyError } = useToast();
 const chatStore = useChatStore();
@@ -104,7 +100,6 @@ const loading = ref(false);
 const error = ref('');
 const profile = ref<UserProfileResponse | null>(null);
 const startingDM = ref(false);
-const showChangePassword = ref(false);
 
 // 计算属性
 const isCurrentUser = computed(() => {
@@ -159,53 +154,7 @@ const getStatusText = (status: string): string => {
   }
 };
 
-const getTimezoneDisplay = (timezone: string): string => {
-  const timezoneMap: Record<string, string> = {
-    'Asia/Shanghai': '北京时间 (UTC+8)',
-    'Asia/Tokyo': '东京时间 (UTC+9)',
-    'America/New_York': '纽约时间 (UTC-5)',
-    'America/Los_Angeles': '洛杉矶时间 (UTC-8)',
-    'Europe/London': '伦敦时间 (UTC+0)',
-    'Europe/Paris': '巴黎时间 (UTC+1)',
-  };
-  return timezoneMap[timezone] || timezone;
-};
 
-const getLanguageDisplay = (language: string): string => {
-  const languageMap: Record<string, string> = {
-    'zh-CN': '简体中文',
-    'zh-TW': '繁體中文',
-    'en': 'English',
-    'ja': '日本語',
-    'ko': '한국어',
-  };
-  return languageMap[language] || language;
-};
-
-const formatLastActive = (dateString: string): string => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins} min ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-
-  return date.toLocaleDateString();
-};
-
-const formatJoinDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-};
 
 // 数据加载
 const loadUserProfile = async () => {
@@ -250,10 +199,7 @@ const handleOverlayClick = (event: Event) => {
   }
 };
 
-const handleAvatarError = (event: Event) => {
-  const img = event.target as HTMLImageElement;
-  img.style.display = 'none';
-};
+
 
 const startDirectMessage = async () => {
   if (!profile.value) return;
@@ -281,19 +227,7 @@ const startDirectMessage = async () => {
   }
 };
 
-const editProfile = () => {
-  emit('close');
-  router.push('/profile/edit');
-};
 
-const changePassword = () => {
-  showChangePassword.value = true;
-};
-
-const handlePasswordChanged = () => {
-  notifySuccess('密码修改成功');
-  showChangePassword.value = false;
-};
 
 // 监听props变化
 watch([() => props.userId, () => props.user], () => {

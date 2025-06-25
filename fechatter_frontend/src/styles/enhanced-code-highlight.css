@@ -1,0 +1,621 @@
+/* Enhanced Code Block Styles - 人体工学美学设计系统 */
+/* 基于认知负荷理论、色彩心理学、视觉层次和黄金比例 */
+
+/* =============================================================================
+   🧠 认知负荷优化 - 主容器设计
+   - 减少视觉干扰，专注内容阅读
+   - 优化信息架构，降低认知成本
+============================================================================= */
+
+.enhanced-code-container {
+  /* 🎯 黄金比例间距系统 */
+  margin: 1.618rem 0;
+  /* φ = 1.618 黄金比例 */
+
+  /* 🎨 人体工学色彩系统 - 减少眼疲劳 */
+  background: #fefefe;
+  /* 纯白偏暖 - 减少蓝光刺激 */
+
+  /* 📐 视觉层次 - 柔和边界 */
+  border-radius: 0.618rem;
+  /* φ/2.618 = 0.618 */
+  border: 1px solid #e8ecef;
+  /* 低对比度边框 */
+
+  /* 🌊 微妙阴影 - 增强深度感知 */
+  box-shadow:
+    0 0.125rem 0.5rem rgba(16, 24, 40, 0.04),
+    0 0.0625rem 0.125rem rgba(16, 24, 40, 0.02);
+
+  overflow: hidden;
+
+  /* 🔤 专业字体栈 - 优化代码可读性 */
+  font-family:
+    'JetBrains Mono',
+    'Fira Code',
+    'SF Mono',
+    'Monaco',
+    'Inconsolata',
+    'Roboto Mono',
+    'Source Code Pro',
+    'Consolas',
+    monospace;
+
+  /* ✨ 微交互动画 - 提升用户体验 */
+  transition: all 0.24s cubic-bezier(0.4, 0.0, 0.2, 1);
+  position: relative;
+}
+
+/* 🎯 悬停状态 - 焦点增强 */
+.enhanced-code-container:hover {
+  /* 🌟 柔和聚焦效果 */
+  box-shadow:
+    0 0.25rem 1rem rgba(16, 24, 40, 0.08),
+    0 0.125rem 0.25rem rgba(16, 24, 40, 0.04),
+    0 0 0 1px rgba(59, 130, 246, 0.08);
+  /* 蓝色聚焦环 */
+
+  /* 📈 微妙上升效果 */
+  transform: translateY(-0.0625rem);
+  /* 1px */
+}
+
+/* =============================================================================
+   🎭 语言指示器 - 视觉信息层次
+   - 清晰的语言标识
+   - 专业的色彩编码系统
+============================================================================= */
+
+.code-header-enhanced {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  /* 🎯 黄金比例内边距 */
+  padding: 0.786rem 1.272rem;
+  /* φ^0.5 = 0.786, φ/1.272 = 1.272 */
+
+  /* 🎨 认知友好的渐变背景 */
+  background: linear-gradient(135deg,
+      #fbfcfd 0%,
+      #f8fafc 50%,
+      #f1f5f9 100%);
+
+  border-bottom: 1px solid #e2e8f0;
+  min-height: 3.236rem;
+  /* φ² = 3.236 */
+}
+
+.code-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.786rem;
+  /* φ^0.5 */
+}
+
+.code-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* 🏷️ 语言标签 - 专业级设计 */
+.language-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  /* 🎯 人体工学尺寸 */
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+
+  /* 🎭 动态色彩系统 */
+  color: white;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  /* 13px - 最佳代码标签尺寸 */
+  line-height: 1.2;
+
+  /* ✨ 精致文字阴影 */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+
+  /* 📏 最小宽度保证 */
+  min-width: 7.5rem;
+  /* 120px / 16 = 7.5rem */
+
+  position: relative;
+  overflow: hidden;
+}
+
+/* 🌟 语言标签微光效果 */
+.language-indicator::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent);
+  transition: left 0.6s ease;
+}
+
+.language-indicator:hover::before {
+  left: 100%;
+}
+
+.language-icon {
+  font-size: 1.05rem;
+  line-height: 1;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
+}
+
+.language-name {
+  font-weight: 650;
+  /* 介于600和700之间的字重 */
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  /* 0.64px */
+}
+
+/* 📊 代码统计信息 */
+.code-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lines-count {
+  /* 🎨 低对比度信息标签 */
+  color: #64748b;
+  font-size: 0.75rem;
+  background: #f1f5f9;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-weight: 500;
+
+  /* 💎 微妙边框增强 */
+  border: 1px solid #e2e8f0;
+}
+
+/* =============================================================================
+   🔄 复制按钮 - 交互式设计
+   - 清晰的功能指示
+   - 优雅的状态反馈
+============================================================================= */
+
+.copy-button-enhanced {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+
+  /* 🎯 人体工学点击区域 */
+  padding: 0.5rem 0.75rem;
+  min-height: 2.25rem;
+  /* 36px - 最小可点击区域 */
+
+  /* 🎨 专业渐变设计 */
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+
+  /* 🔤 优化排版 */
+  font-size: 0.8125rem;
+  font-weight: 520;
+  /* 稍重于500的字重 */
+  line-height: 1.2;
+
+  /* 🖱️ 交互体验 */
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+
+  min-width: 5rem;
+  /* 80px */
+  justify-content: center;
+
+  /* 🌟 微妙光泽效果 */
+  box-shadow:
+    0 1px 2px rgba(79, 70, 229, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.copy-button-enhanced:hover {
+  /* 🎯 悬停状态优化 */
+  background: linear-gradient(135deg, #4338ca 0%, #5b21b6 100%);
+  transform: translateY(-0.0625rem);
+
+  box-shadow:
+    0 0.25rem 0.5rem rgba(79, 70, 229, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.copy-button-enhanced:active {
+  transform: translateY(0);
+  box-shadow:
+    0 0.125rem 0.25rem rgba(79, 70, 229, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* ✅ 成功状态 - 绿色系统 */
+.copy-button-enhanced.copied {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  animation: success-pulse 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+@keyframes success-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 0.5rem rgba(16, 185, 129, 0);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.copy-button-enhanced svg {
+  stroke-width: 2;
+  transition: transform 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.copy-button-enhanced:hover svg {
+  transform: scale(1.05);
+}
+
+/* =============================================================================
+   📝 代码内容区域 - 阅读体验优化
+   - 最佳对比度和可读性
+   - 舒适的行高和间距
+============================================================================= */
+
+.code-content-area {
+  position: relative;
+  overflow-x: auto;
+  background: #fefefe;
+  /* 微暖白色背景 */
+}
+
+/* 🔤 代码文本样式 - 认知工学优化 */
+.code-content-area .hljs {
+  /* 🎯 黄金比例内边距 */
+  padding: 1.272rem;
+  /* φ/1.272 */
+  margin: 0;
+
+  /* 📏 最佳阅读尺寸 */
+  font-size: 0.9375rem;
+  /* 15px - 代码最佳阅读尺寸 */
+  line-height: 1.6;
+  /* 黄金比例 φ */
+
+  /* 🔤 专业代码字体 */
+  font-family:
+    'JetBrains Mono',
+    'Fira Code',
+    'SF Mono',
+    'Monaco',
+    'Inconsolata',
+    'Roboto Mono',
+    'Source Code Pro',
+    'Consolas',
+    monospace;
+
+  /* 🎨 背景和前景色 */
+  background: transparent !important;
+  color: #1e293b;
+  /* 深灰蓝 - 减少对比度刺激 */
+
+  /* 📜 滚动优化 */
+  overflow-x: auto;
+  white-space: pre;
+  tab-size: 2;
+  /* 2空格缩进 - 现代标准 */
+
+  /* 🔤 字体渲染优化 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "liga" 1, "kern" 1;
+  /* 连字和字距调整 */
+}
+
+/* =============================================================================
+   🌈 语法高亮色彩系统 - 基于色彩心理学
+   - 减少眼疲劳的色彩搭配
+   - 增强代码语义的视觉区分
+============================================================================= */
+
+/* 💙 关键字 - 蓝色系 (信任、稳定) */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in,
+.hljs-name,
+.hljs-tag {
+  color: #2563eb;
+  /* 蓝色600 */
+  font-weight: 600;
+}
+
+/* 💚 字符串 - 绿色系 (自然、安全) */
+.hljs-string,
+.hljs-attr {
+  color: #059669;
+  /* 翠绿600 */
+}
+
+/* 🧡 注释 - 橙灰色系 (次要信息) */
+.hljs-comment,
+.hljs-quote {
+  color: #78716c;
+  /* 石灰600 */
+  font-style: italic;
+  opacity: 0.8;
+}
+
+/* 🔵 数字和字面量 - 靛蓝系 (精确、逻辑) */
+.hljs-number,
+.hljs-literal {
+  color: #4f46e5;
+  /* 靛蓝600 */
+  font-weight: 520;
+}
+
+/* 💜 类型和类名 - 紫色系 (抽象、概念) */
+.hljs-type,
+.hljs-class .hljs-title,
+.hljs-title.class_,
+.hljs-function .hljs-title,
+.hljs-title.function_ {
+  color: #7c3aed;
+  /* 紫罗兰600 */
+  font-weight: 600;
+}
+
+/* 🟠 变量和属性 - 琥珀色系 (动态、变化) */
+.hljs-variable,
+.hljs-property {
+  color: #d97706;
+  /* 琥珀600 */
+}
+
+/* ⚫ 操作符 - 深色系 (结构、框架) */
+.hljs-operator,
+.hljs-punctuation {
+  color: #374151;
+  /* 灰色700 */
+  font-weight: 520;
+}
+
+/* 🟣 正则表达式 - 特殊标记 */
+.hljs-regexp {
+  color: #be185d;
+  /* 粉色700 */
+  background: rgba(190, 24, 93, 0.05);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.1875rem;
+}
+
+/* 🟤 元数据和注解 - 棕色系 (说明、辅助) */
+.hljs-meta,
+.hljs-meta .hljs-keyword {
+  color: #92400e;
+  /* 琥珀800 */
+}
+
+/* =============================================================================
+   📱 内联代码 - 简洁设计
+   - 与正文的清晰区分
+   - 保持阅读流畅性
+============================================================================= */
+
+.inline-code {
+  /* 🎨 柔和背景 */
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.25rem;
+
+  /* 📏 舒适间距 */
+  padding: 0.125rem 0.375rem;
+
+  /* 🔤 优化字体 */
+  font-size: 0.9em;
+  font-family:
+    'JetBrains Mono',
+    'SF Mono',
+    'Monaco',
+    'Inconsolata',
+    monospace;
+  color: #1e293b;
+  font-weight: 520;
+
+  /* ✨ 微妙效果 */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+/* =============================================================================
+   📜 滚动条优化 - 精致交互
+   - 不干扰内容的滚动体验
+   - 与整体设计的一致性
+============================================================================= */
+
+.code-content-area .hljs::-webkit-scrollbar {
+  height: 0.5rem;
+}
+
+.code-content-area .hljs::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 0.25rem;
+}
+
+.code-content-area .hljs::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+  border-radius: 0.25rem;
+  border: 1px solid #e2e8f0;
+}
+
+.code-content-area .hljs::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+}
+
+/* =============================================================================
+   📱 响应式适配 - 多设备优化
+   - 保持在不同屏幕上的最佳体验
+   - 触摸友好的交互区域
+============================================================================= */
+
+@media (max-width: 768px) {
+  .enhanced-code-container {
+    margin: 1rem 0;
+    border-radius: 0.5rem;
+  }
+
+  .code-header-enhanced {
+    padding: 0.625rem 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    min-height: auto;
+  }
+
+  .code-header-right {
+    align-self: flex-end;
+  }
+
+  .language-indicator {
+    min-width: auto;
+  }
+
+  .code-content-area .hljs {
+    padding: 1rem;
+    font-size: 0.875rem;
+  }
+
+  .copy-button-enhanced {
+    min-height: 2.75rem;
+    /* 44px - 移动端最小点击区域 */
+  }
+}
+
+/* 🎭 Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .enhanced-code-container {
+    @apply bg-gray-800 border-gray-700;
+  }
+
+  .code-header-enhanced {
+    @apply bg-gray-700 border-gray-600;
+    background: linear-gradient(90deg, #374151 0%, #4b5563 100%);
+  }
+
+  .code-content-area {
+    background: #1f2937;
+  }
+
+  .code-content-area .hljs {
+    color: #e5e7eb;
+    background: transparent;
+  }
+
+  .copy-button-enhanced {
+    @apply bg-gray-600 hover:bg-gray-500 text-gray-200;
+  }
+
+  .code-meta {
+    @apply bg-gray-600 text-gray-300;
+  }
+}
+
+/* 🎯 Inline Code */
+.inline-code {
+  @apply bg-gray-100 text-gray-800 px-1 py-0.5 rounded text-sm;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 0.875em;
+  font-weight: 500;
+}
+
+@media (prefers-color-scheme: dark) {
+  .inline-code {
+    @apply bg-gray-700 text-gray-200;
+  }
+}
+
+/* 🎨 Animation Effects */
+.enhanced-code-container {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 🔍 Focus and Selection */
+.code-content-area .hljs:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.hljs ::selection {
+  background: rgba(59, 130, 246, 0.2);
+}
+
+/* 📋 Copy Success Animation */
+@keyframes copySuccess {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.copy-button-enhanced.copied {
+  animation: copySuccess 0.3s ease-in-out;
+}
+
+/* 🎯 Scrollbar Styling */
+.code-content-area .hljs::-webkit-scrollbar {
+  height: 8px;
+}
+
+.code-content-area .hljs::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.code-content-area .hljs::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.code-content-area .hljs::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* 🚀 Performance Optimizations */
+.enhanced-code-container {
+  contain: layout style paint;
+  will-change: auto;
+}
+
+.code-content-area .hljs {
+  contain: layout style;
+}

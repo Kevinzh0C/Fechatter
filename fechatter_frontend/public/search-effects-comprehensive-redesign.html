@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔍 Search Effects Comprehensive Redesign - Fechatter</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .demo-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(20px);
+      overflow: hidden;
+    }
+
+    .demo-header {
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .demo-title {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .demo-subtitle {
+      font-size: 16px;
+      opacity: 0.9;
+      font-weight: 400;
+    }
+
+    .demo-content {
+      padding: 40px;
+    }
+
+    /* 🎯 Enhanced Search Interface */
+    .search-interface {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 40px;
+      border: 1px solid rgba(0, 122, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    }
+
+    .search-controls {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+
+    .enhanced-search-input {
+      position: relative;
+      flex: 1;
+      min-width: 300px;
+    }
+
+    .search-input-field {
+      width: 100%;
+      padding: 16px 20px 16px 50px;
+      border: 2px solid rgba(0, 122, 255, 0.2);
+      border-radius: 12px;
+      font-size: 16px;
+      background: white;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    }
+
+    .search-input-field:focus {
+      outline: none;
+      border-color: #007aff;
+      box-shadow:
+        0 0 0 4px rgba(0, 122, 255, 0.1),
+        0 8px 24px rgba(0, 122, 255, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #64748b;
+      width: 20px;
+      height: 20px;
+    }
+
+    .search-navigation {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: white;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(0, 122, 255, 0.15);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .nav-button {
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: rgba(0, 122, 255, 0.1);
+      border-radius: 8px;
+      color: #007aff;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-button:hover {
+      background: #007aff;
+      color: white;
+      transform: scale(1.05);
+    }
+
+    .nav-button:disabled {
+      background: rgba(0, 0, 0, 0.05);
+      color: #94a3b8;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .search-counter {
+      padding: 8px 16px;
+      background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
+      color: white;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      min-width: 80px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+    }
+
+    .search-status {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 20px;
+    }
+
+    .status-badge {
+      padding: 4px 12px;
+      background: rgba(16, 185, 129, 0.1);
+      color: #059669;
+      border-radius: 20px;
+      font-weight: 500;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .search-time {
+      padding: 4px 12px;
+      background: rgba(245, 158, 11, 0.1);
+      color: #d97706;
+      border-radius: 20px;
+      font-weight: 500;
+      border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    /* 🎨 Message Display Area */
+    .messages-area {
+      background: white;
+      border-radius: 16px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    }
+
+    .message-item {
+      padding: 20px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      background: white;
+    }
+
+    .message-item:last-child {
+      border-bottom: none;
+    }
+
+    .message-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .message-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .message-meta {
+      flex: 1;
+    }
+
+    .message-sender {
+      font-weight: 600;
+      color: #1e293b;
+      font-size: 16px;
+    }
+
+    .message-time {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .message-content {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #374151;
+    }
+
+    /* 🌟 Revolutionary Multi-Layer Highlight System */
+
+    /* Level 1: Basic Search Term Highlighting */
+    .search-highlight-basic {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      color: #1e293b;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      box-shadow: 0 2px 4px rgba(251, 191, 36, 0.3);
+      border: 1px solid rgba(251, 191, 36, 0.4);
+      position: relative;
+      display: inline-block;
+    }
+
+    /* Level 2: Current Focus Highlight with Pulsing */
+    .search-highlight-focus {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      box-shadow:
+        0 0 0 3px rgba(239, 68, 68, 0.2),
+        0 4px 12px rgba(239, 68, 68, 0.4);
+      animation: focusHighlightPulse 2s ease-in-out infinite;
+      position: relative;
+      z-index: 10;
+    }
+
+    @keyframes focusHighlightPulse {
+
+      0%,
+      100% {
+        box-shadow:
+          0 0 0 3px rgba(239, 68, 68, 0.2),
+          0 4px 12px rgba(239, 68, 68, 0.4);
+      }
+
+      50% {
+        box-shadow:
+          0 0 0 6px rgba(239, 68, 68, 0.3),
+          0 8px 20px rgba(239, 68, 68, 0.5);
+      }
+    }
+
+    /* Level 3: Message Container Highlighting */
+    .message-highlight-container {
+      background: linear-gradient(135deg, rgba(0, 122, 255, 0.08) 0%, rgba(88, 101, 242, 0.06) 100%);
+      border: 2px solid rgba(0, 122, 255, 0.3);
+      border-radius: 12px;
+      box-shadow:
+        0 0 0 4px rgba(0, 122, 255, 0.1),
+        0 8px 32px rgba(0, 122, 255, 0.15);
+      transform: scale(1.02);
+      position: relative;
+      z-index: 5;
+    }
+
+    /* Level 4: Premium Flowing Beam Effect */
+    .message-highlight-premium {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .message-highlight-premium::before {
+      content: '';
+      position: absolute;
+      top: -3px;
+      left: -3px;
+      right: -3px;
+      bottom: -3px;
+      border-radius: 15px;
+      background: linear-gradient(90deg,
+          transparent 0%,
+          transparent 20%,
+          rgba(0, 122, 255, 0.8) 25%,
+          rgba(64, 156, 255, 1) 30%,
+          rgba(100, 181, 255, 1) 35%,
+          rgba(64, 156, 255, 1) 40%,
+          rgba(0, 122, 255, 0.8) 45%,
+          transparent 50%,
+          transparent 100%);
+      background-size: 300% 100%;
+      animation: premiumFlowingBeam 3s linear infinite;
+      z-index: -1;
+    }
+
+    @keyframes premiumFlowingBeam {
+      0% {
+        background-position: -100% 0%;
+      }
+
+      100% {
+        background-position: 100% 0%;
+      }
+    }
+
+    /* Level 5: Navigation Indicator */
+    .search-position-indicator {
+      position: absolute;
+      top: -12px;
+      right: 12px;
+      background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.4);
+      animation: indicatorEntrance 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+      z-index: 20;
+    }
+
+    @keyframes indicatorEntrance {
+      from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.8);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    /* 🎭 Advanced Micro-Interactions */
+    .message-item:hover {
+      background: rgba(248, 250, 252, 0.8);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .message-item:hover .message-avatar {
+      transform: scale(1.1);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    /* 🌊 Search Progress Animation */
+    .search-progress {
+      height: 3px;
+      background: rgba(0, 122, 255, 0.1);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .search-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #007aff 0%, #5856d6 100%);
+      border-radius: 2px;
+      animation: searchProgress 2s ease-in-out;
+    }
+
+    @keyframes searchProgress {
+      from {
+        width: 0%;
+      }
+
+      to {
+        width: 100%;
+      }
+    }
+
+    /* 🎮 Interactive Demo Controls */
+    .demo-controls {
+      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+      border-radius: 16px;
+      padding: 30px;
+      margin-top: 40px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .control-group {
+      margin-bottom: 25px;
+    }
+
+    .control-label {
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 12px;
+      display: block;
+      font-size: 16px;
+    }
+
+    .control-buttons {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .demo-button {
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+    }
+
+    .demo-button:hover {
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: 0 8px 24px rgba(0, 122, 255, 0.4);
+    }
+
+    .demo-button.secondary {
+      background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+      box-shadow: 0 4px 16px rgba(107, 114, 128, 0.3);
+    }
+
+    .demo-button.danger {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
+    }
+
+    .demo-button.success {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+    }
+
+    /* 📱 Mobile Responsive */
+    @media (max-width: 768px) {
+      .demo-container {
+        margin: 10px;
+        border-radius: 16px;
+      }
+
+      .demo-header {
+        padding: 20px;
+      }
+
+      .demo-title {
+        font-size: 24px;
+      }
+
+      .demo-content {
+        padding: 20px;
+      }
+
+      .search-controls {
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .enhanced-search-input {
+        min-width: auto;
+      }
+
+      .search-navigation {
+        justify-content: center;
+      }
+
+      .control-buttons {
+        justify-content: center;
+      }
+    }
+
+    /* 🎨 Dark Mode Support */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+      }
+
+      .demo-container {
+        background: rgba(30, 41, 59, 0.95);
+        color: #f1f5f9;
+      }
+
+      .search-interface,
+      .messages-area,
+      .demo-controls {
+        background: rgba(51, 65, 85, 0.8);
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+
+      .message-item {
+        background: transparent;
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+
+      .search-input-field {
+        background: rgba(51, 65, 85, 0.8);
+        border-color: rgba(255, 255, 255, 0.2);
+        color: #f1f5f9;
+      }
+    }
+
+    /* 🔧 Performance Optimizations */
+    .message-item,
+    .demo-button,
+    .search-input-field {
+      contain: layout style;
+      will-change: transform;
+    }
+
+    /* 🎯 Accessibility Enhancements */
+    .nav-button:focus,
+    .demo-button:focus,
+    .search-input-field:focus {
+      outline: 3px solid rgba(0, 122, 255, 0.5);
+      outline-offset: 2px;
+    }
+
+    /* 🎪 Success Indicators */
+    .search-success-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="demo-container">
+    <div class="demo-header">
+      <h1 class="demo-title">🔍 Search Effects Comprehensive Redesign</h1>
+      <p class="demo-subtitle">Discord/Slack/Notion级别的搜索特效 - 业界最佳实践</p>
+    </div>
+
+    <div class="demo-content">
+      <!-- Enhanced Search Interface -->
+      <div class="search-interface">
+        <h3 style="margin-bottom: 20px; color: #1e293b; font-size: 20px; font-weight: 600;">🎯 Enhanced Search Interface
+        </h3>
+
+        <!-- Search Progress Indicator -->
+        <div class="search-progress">
+          <div class="search-progress-bar" style="width: 75%;"></div>
+        </div>
+
+        <div class="search-controls">
+          <div class="enhanced-search-input">
+            <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+            <input type="text" class="search-input-field" placeholder="Search with enhanced effects..."
+              value="project updates">
+          </div>
+
+          <div class="search-navigation">
+            <button class="nav-button" title="Previous result">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+              </svg>
+            </button>
+            <div class="search-counter">2 / 5</div>
+            <button class="nav-button" title="Next result">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="search-status">
+          <div class="status-badge">✅ 5 results found</div>
+          <div class="search-time">⚡ 23ms</div>
+          <div class="search-success-badge">
+            <svg width="14" height="14" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd"
+                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                clip-rule="evenodd"></path>
+            </svg>
+            Smart search active
+          </div>
+        </div>
+      </div>
+
+      <!-- Messages Area with Multi-Layer Highlighting -->
+      <div class="messages-area">
+        <!-- Standard Message -->
+        <div class="message-item">
+          <div class="message-header">
+            <div class="message-avatar">D1</div>
+            <div class="message-meta">
+              <div class="message-sender">Developer 1</div>
+              <div class="message-time">Today at 2:30 PM</div>
+            </div>
+          </div>
+          <div class="message-content">
+            Let's discuss the <span class="search-highlight-basic">project updates</span> for this week's sprint.
+          </div>
+        </div>
+
+        <!-- Current Focus Message with Premium Effects -->
+        <div class="message-item message-highlight-container message-highlight-premium">
+          <div class="search-position-indicator">🎯 Current (2/5)</div>
+          <div class="message-header">
+            <div class="message-avatar">D2</div>
+            <div class="message-meta">
+              <div class="message-sender">Developer 2</div>
+              <div class="message-time">Today at 3:15 PM</div>
+            </div>
+          </div>
+          <div class="message-content">
+            The <span class="search-highlight-focus">project updates</span> look great! We've made significant progress
+            on the new features.
+          </div>
+        </div>
+
+        <!-- Another Match -->
+        <div class="message-item">
+          <div class="message-header">
+            <div class="message-avatar">D3</div>
+            <div class="message-meta">
+              <div class="message-sender">Developer 3</div>
+              <div class="message-time">Today at 4:20 PM</div>
+            </div>
+          </div>
+          <div class="message-content">
+            Can we schedule a meeting to review all <span class="search-highlight-basic">project updates</span> before
+            the deadline?
+          </div>
+        </div>
+
+        <!-- Message with file attachment -->
+        <div class="message-item">
+          <div class="message-header">
+            <div class="message-avatar">D4</div>
+            <div class="message-meta">
+              <div class="message-sender">Developer 4</div>
+              <div class="message-time">Yesterday at 5:45 PM</div>
+            </div>
+          </div>
+          <div class="message-content">
+            I've attached the latest <span class="search-highlight-basic">project updates</span> document for everyone
+            to review.
+            <div
+              style="margin-top: 12px; padding: 12px; background: rgba(0, 122, 255, 0.08); border-radius: 8px; border: 1px solid rgba(0, 122, 255, 0.15);">
+              📎 project-updates-v2.pdf
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Demo Controls -->
+      <div class="demo-controls">
+        <h3 style="margin-bottom: 25px; color: #1e293b; font-size: 20px; font-weight: 600;">🎮 Interactive Effects Demo
+        </h3>
+
+        <div class="control-group">
+          <label class="control-label">🌟 Highlight Styles</label>
+          <div class="control-buttons">
+            <button class="demo-button" onclick="applyHighlightStyle('basic')">Basic Highlight</button>
+            <button class="demo-button" onclick="applyHighlightStyle('focus')">Focus Highlight</button>
+            <button class="demo-button success" onclick="applyHighlightStyle('premium')">Premium Beam</button>
+            <button class="demo-button secondary" onclick="clearAllHighlights()">Clear All</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">🎯 Navigation Effects</label>
+          <div class="control-buttons">
+            <button class="demo-button" onclick="simulateNavigation('prev')">← Previous Result</button>
+            <button class="demo-button" onclick="simulateNavigation('next')">Next Result →</button>
+            <button class="demo-button success" onclick="simulateJumpTo()">Jump to Result</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">⚡ Performance Features</label>
+          <div class="control-buttons">
+            <button class="demo-button" onclick="simulateRealTimeSearch()">Real-time Search</button>
+            <button class="demo-button" onclick="simulateSmartSuggestions()">Smart Suggestions</button>
+            <button class="demo-button danger" onclick="simulateErrorState()">Error Handling</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 🎭 Interactive Demo Functions
+    function applyHighlightStyle(style) {
+      // Clear all existing highlights
+      clearAllHighlights();
+
+      const messages = document.querySelectorAll('.message-item');
+
+      switch (style) {
+        case 'basic':
+          messages[1].classList.add('message-highlight-container');
+          break;
+        case 'focus':
+          messages[1].classList.add('message-highlight-container', 'message-highlight-premium');
+          break;
+        case 'premium':
+          messages.forEach((msg, index) => {
+            if (index % 2 === 0) {
+              msg.classList.add('message-highlight-container');
+            }
+            if (index === 1) {
+              msg.classList.add('message-highlight-premium');
+            }
+          });
+          break;
+      }
+
+      // Show success feedback
+      showFeedback(`Applied ${style} highlight style!`, 'success');
+    }
+
+    function clearAllHighlights() {
+      const messages = document.querySelectorAll('.message-item');
+      messages.forEach(msg => {
+        msg.classList.remove('message-highlight-container', 'message-highlight-premium');
+      });
+      showFeedback('Cleared all highlights', 'info');
+    }
+
+    function simulateNavigation(direction) {
+      const counter = document.querySelector('.search-counter');
+      let [current, total] = counter.textContent.split(' / ').map(n => parseInt(n));
+
+      if (direction === 'next' && current < total) {
+        current++;
+      } else if (direction === 'prev' && current > 1) {
+        current--;
+      }
+
+      counter.textContent = `${current} / ${total}`;
+
+      // Simulate smooth scrolling animation
+      const targetMessage = document.querySelectorAll('.message-item')[current - 1];
+      targetMessage.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+
+      // Apply focus highlight
+      clearAllHighlights();
+      targetMessage.classList.add('message-highlight-container', 'message-highlight-premium');
+
+      showFeedback(`Navigated to result ${current}/${total}`, 'success');
+    }
+
+    function simulateJumpTo() {
+      const messages = document.querySelectorAll('.message-item');
+      const randomIndex = Math.floor(Math.random() * messages.length);
+
+      clearAllHighlights();
+      messages[randomIndex].classList.add('message-highlight-container', 'message-highlight-premium');
+      messages[randomIndex].scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+
+      showFeedback(`Jumped to message ${randomIndex + 1}`, 'success');
+    }
+
+    function simulateRealTimeSearch() {
+      const progressBar = document.querySelector('.search-progress-bar');
+      const counter = document.querySelector('.search-counter');
+
+      // Animate search progress
+      progressBar.style.width = '0%';
+      setTimeout(() => progressBar.style.width = '100%', 100);
+
+      // Update results counter
+      setTimeout(() => {
+        counter.textContent = `${Math.floor(Math.random() * 10) + 1} / ${Math.floor(Math.random() * 15) + 5}`;
+      }, 1000);
+
+      showFeedback('Real-time search simulation complete!', 'success');
+    }
+
+    function simulateSmartSuggestions() {
+      const suggestions = [
+        'Try: "meeting notes"',
+        'Try: "project files"',
+        'Try: "user feedback"',
+        'Try: "code review"'
+      ];
+
+      const randomSuggestion = suggestions[Math.floor(Math.random() * suggestions.length)];
+      showFeedback(`💡 Smart suggestion: ${randomSuggestion}`, 'info');
+    }
+
+    function simulateErrorState() {
+      const statusBadge = document.querySelector('.status-badge');
+      const originalText = statusBadge.textContent;
+
+      statusBadge.textContent = '❌ Search failed';
+      statusBadge.style.background = 'rgba(239, 68, 68, 0.1)';
+      statusBadge.style.color = '#dc2626';
+      statusBadge.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+
+      setTimeout(() => {
+        statusBadge.textContent = originalText;
+        statusBadge.style.background = 'rgba(16, 185, 129, 0.1)';
+        statusBadge.style.color = '#059669';
+        statusBadge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+      }, 2000);
+
+      showFeedback('Error handling simulation - auto-recovery in 2s', 'error');
+    }
+
+    function showFeedback(message, type) {
+      // Create feedback element
+      const feedback = document.createElement('div');
+      feedback.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                border-radius: 8px;
+                font-weight: 600;
+                font-size: 14px;
+                z-index: 1000;
+                animation: feedbackSlideIn 0.3s ease-out;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            `;
+
+      // Style based on type
+      switch (type) {
+        case 'success':
+          feedback.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+          feedback.style.color = 'white';
+          break;
+        case 'error':
+          feedback.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+          feedback.style.color = 'white';
+          break;
+        default:
+          feedback.style.background = 'linear-gradient(135deg, #007aff 0%, #5856d6 100%)';
+          feedback.style.color = 'white';
+      }
+
+      feedback.textContent = message;
+      document.body.appendChild(feedback);
+
+      // Auto remove
+      setTimeout(() => {
+        feedback.style.animation = 'feedbackSlideOut 0.3s ease-in forwards';
+        setTimeout(() => feedback.remove(), 300);
+      }, 3000);
+    }
+
+    // Add CSS for feedback animations
+    const style = document.createElement('style');
+    style.textContent = `
+            @keyframes feedbackSlideIn {
+                from {
+                    opacity: 0;
+                    transform: translateX(100%);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+            
+            @keyframes feedbackSlideOut {
+                from {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+                to {
+                    opacity: 0;
+                    transform: translateX(100%);
+                }
+            }
+        `;
+    document.head.appendChild(style);
+
+    // 🎯 Auto-demo on page load
+    setTimeout(() => {
+      showFeedback('🔍 Enhanced search effects demo ready!', 'success');
+    }, 1000);
+
+    // ⌨️ Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        simulateNavigation('prev');
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        simulateNavigation('next');
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        simulateJumpTo();
+      }
+    });
+  </script>
+</body>
+
+</html>

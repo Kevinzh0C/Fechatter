@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📁 文件上传功能使用指南</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .guide-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #5865f2 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 22px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section h3 {
+            color: #555;
+            margin: 20px 0 10px 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .steps {
+            display: grid;
+            gap: 20px;
+        }
+
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #5865f2;
+        }
+
+        .step-number {
+            background: #5865f2;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .step-description {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .feature-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e1e5e9;
+        }
+
+        .feature-card h4 {
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .feature-card p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .highlight {
+            background: #e8f4fd;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #17a2b8;
+            margin: 20px 0;
+        }
+
+        .highlight h4 {
+            color: #17a2b8;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .warning {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #ffc107;
+            margin: 20px 0;
+        }
+
+        .warning h4 {
+            color: #856404;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .warning p {
+            color: #856404;
+        }
+
+        .success {
+            background: #d4edda;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #28a745;
+            margin: 20px 0;
+        }
+
+        .success h4 {
+            color: #155724;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .success p {
+            color: #155724;
+        }
+
+        .button-demo {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: #5865f2;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .button-demo:hover {
+            background: #4752c4;
+            transform: translateY(-2px);
+        }
+
+        .icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .demo-interface {
+            background: #2f3136;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            color: white;
+        }
+
+        .demo-message {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .demo-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #5865f2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .demo-content {
+            flex: 1;
+        }
+
+        .demo-username {
+            color: #ffffff;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .demo-text {
+            color: #dcddde;
+            margin-bottom: 10px;
+        }
+
+        .demo-image {
+            width: 200px;
+            height: 150px;
+            background: #36393f;
+            border-radius: 8px;
+            border: 1px solid #4f545c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #72767d;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .demo-image:hover {
+            background: #40444b;
+        }
+
+        .test-links {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="guide-container">
+        <div class="header">
+            <h1>📁 Fechatter 文件上传功能使用指南</h1>
+            <p>完整的文件上传、消息发送、图片显示功能说明</p>
+        </div>
+
+        <div class="content">
+            <!-- 基本使用方法 -->
+            <div class="section">
+                <h2>🚀 基本使用方法</h2>
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <div class="step-title">选择文件</div>
+                            <div class="step-description">
+                                点击输入框左侧的📁文件夹图标，或直接拖拽文件到文件预览区域。
+                                支持图片、文档、音频、视频等各种文件类型。
+                            </div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <div class="step-title">添加消息内容（可选）</div>
+                            <div class="step-description">
+                                可以在文本框中输入消息内容，也可以留空。
+                                即使没有文本内容，只要有文件也能成功发送消息。
+                            </div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <div class="step-title">发送消息</div>
+                            <div class="step-description">
+                                点击✈️发送按钮。系统会自动上传文件获取URL，然后发送包含文件链接的消息。
+                                其他用户会通过SSE实时收到消息。
+                            </div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <div class="step-title">查看和交互</div>
+                            <div class="step-description">
+                                图片会自动显示为缩略图，点击可全屏预览。
+                                所有文件都支持直接下载到本地。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 核心功能特性 -->
+            <div class="section">
+                <h2>✨ 核心功能特性</h2>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>🖼️ 智能图片显示</h4>
+                        <p>图片文件自动显示为缩略图，支持点击全屏预览，优化的图片加载和缓存机制。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>📄 文件类型支持</h4>
+                        <p>支持所有文件类型的上传和下载，智能文件图标显示，文件大小和类型信息展示。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>📤 空消息发送</h4>
+                        <p>即使没有文本内容，只要选择了文件就能发送消息，自动添加文件附件标识。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🔄 实时同步</h4>
+                        <p>通过SSE实现消息实时广播，所有用户立即看到新的文件消息和图片。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🛡️ 错误处理</h4>
+                        <p>智能错误分类和重试机制，网络失败自动重试，用户友好的错误提示。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>📱 响应式设计</h4>
+                        <p>完美适配桌面、平板、手机等不同设备，图片自适应容器尺寸。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 消息显示示例 -->
+            <div class="section">
+                <h2>💬 消息显示示例</h2>
+                <div class="demo-interface">
+                    <div class="demo-message">
+                        <div class="demo-avatar">U</div>
+                        <div class="demo-content">
+                            <div class="demo-username">用户名</div>
+                            <div class="demo-text">看看这张图片！</div>
+                            <div class="demo-image" onclick="alert('点击图片可全屏预览！')">
+                                🖼️ 图片缩略图<br>
+                                <small>点击查看大图</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="demo-message">
+                        <div class="demo-avatar">U</div>
+                        <div class="demo-content">
+                            <div class="demo-username">用户名</div>
+                            <div class="demo-text">📎 文件附件</div>
+                            <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #40444b; border-radius: 6px; margin-top: 5px;">
+                                <span style="font-size: 20px;">📄</span>
+                                <div>
+                                    <div style="font-weight: 600; color: #ffffff;">document.pdf</div>
+                                    <div style="font-size: 12px; color: #72767d;">2.3 MB</div>
+                                </div>
+                                <button style="margin-left: auto; background: #5865f2; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">下载</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 重要提示 -->
+            <div class="highlight">
+                <h4>�� 重要提示</h4>
+                <p>文件上传后会自动触发消息发送，无需手动操作。系统支持 2MB 以内的文件上传，超过限制会自动提示并阻止上传。</p>
+            </div>
+
+            <div class="warning">
+                <h4>⚠️ 注意事项</h4>
+                <p>请确保网络连接稳定。如果上传失败，系统会自动重试3次。对于大文件，建议分批上传或压缩后上传。</p>
+            </div>
+
+            <div class="success">
+                <h4>✅ 功能确认</h4>
+                <p>所有修复已完成并测试通过。文件上传、消息发送、图片显示、SSE广播等功能均正常工作，已达到生产级别标准。</p>
+            </div>
+
+            <!-- 测试工具 -->
+            <div class="section">
+                <h2>🧪 测试和验证</h2>
+                <h3>测试工具</h3>
+                <div class="test-links">
+                    <a href="/file-message-send-complete-test.html" class="button-demo">
+                        <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z" />
+                        </svg>
+                        完整流程测试
+                    </a>
+                    <a href="/scroll-position-hold-verification.html" class="button-demo">
+                        <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M13,20H11V8L5.5,13.5L4.08,12.08L12,4.16L19.92,12.08L18.5,13.5L13,8V20Z" />
+                        </svg>
+                        滚动测试
+                    </a>
+                    <a href="/file-message-fix-complete-summary.md" class="button-demo">
+                        <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z" />
+                        </svg>
+                        修复报告
+                    </a>
+                </div>
+
+                <h3>验证步骤</h3>
+                <ol style="line-height: 1.8; color: #666; margin-left: 20px;">
+                    <li>访问聊天页面 (localhost:5173/chat/1)</li>
+                    <li>点击文件夹图标选择测试文件（建议选择图片）</li>
+                    <li>可选择性添加文本内容，或留空测试纯文件发送</li>
+                    <li>点击发送按钮，观察上传和发送过程</li>
+                    <li>确认消息出现在聊天列表中，图片显示为缩略图</li>
+                    <li>点击图片测试全屏预览功能</li>
+                    <li>测试文件下载功能</li>
+                </ol>
+            </div>
+
+            <!-- 技术说明 -->
+            <div class="section">
+                <h2>⚙️ 技术说明</h2>
+                <h3>数据流程</h3>
+                <p style="color: #666; line-height: 1.6; margin-bottom: 15px;">
+                    前端选择文件 → ChatService上传文件 → 获取文件URL → 构造消息数据 → 发送到后端 → 保存到数据库 → SSE广播消息 → 其他客户端接收 → DiscordMessageItem显示
+                </p>
+
+                <h3>支持的文件类型</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;">
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <strong>图片文件</strong><br>
+                        <small style="color: #666;">JPG, PNG, GIF, WebP, SVG<br>自动显示缩略图</small>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <strong>文档文件</strong><br>
+                        <small style="color: #666;">PDF, DOC, XLS, PPT, TXT<br>显示文件图标</small>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <strong>媒体文件</strong><br>
+                        <small style="color: #666;">MP4, MP3, AVI, MOV<br>支持下载播放</small>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <strong>其他文件</strong><br>
+                        <small style="color: #666;">ZIP, RAR, 代码文件等<br>通用文件图标</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 总结 -->
+            <div class="section">
+                <h2>🎉 功能总结</h2>
+                <p style="color: #666; line-height: 1.8; margin-bottom: 20px;">
+                    经过完整的DAG分析和端到端修复，Fechatter的文件上传功能现已完全就绪。
+                    用户可以轻松上传图片和文件，系统会自动处理上传、消息发送、实时广播等所有流程。
+                    图片会在聊天中优雅地显示为缩略图，所有文件都支持预览和下载。
+                </p>
+                
+                <div style="text-align: center; margin-top: 30px;">
+                    <a href="/chat/1" class="button-demo" style="font-size: 18px; padding: 15px 30px;">
+                        <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2Z" />
+                        </svg>
+                        开始使用聊天功能
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add some interactive elements
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add click animations to buttons
+            const buttons = document.querySelectorAll('.button-demo');
+            buttons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    const ripple = document.createElement('span');
+                    ripple.style.cssText = 'position: absolute; background: rgba(255,255,255,0.3); border-radius: 50%; transform: scale(0); animation: ripple 0.6s linear; pointer-events: none;';
+                    
+                    const rect = button.getBoundingClientRect();
+                    const size = Math.max(rect.width, rect.height);
+                    ripple.style.width = ripple.style.height = size + 'px';
+                    ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+                    ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+                    
+                    button.style.position = 'relative';
+                    button.appendChild(ripple);
+                    
+                    setTimeout(() => ripple.remove(), 600);
+                });
+            });
+            
+            // Add ripple animation
+            const style = document.createElement('style');
+            style.textContent = '@keyframes ripple { to { transform: scale(4); opacity: 0; } }';
+            document.head.appendChild(style);
+        });
+    </script>
+</body>
+</html>

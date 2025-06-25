@@ -1744,10 +1744,23 @@ class DOMSynchronizer {
     const elementRect = element.getBoundingClientRect()
     const containerRect = container.getBoundingClientRect()
 
-    return elementRect.top >= containerRect.top &&
-      elementRect.bottom <= containerRect.bottom &&
-      elementRect.left >= containerRect.left &&
-      elementRect.right <= containerRect.right
+    // 🔧 CRITICAL FIX: 更宽松的可见性检查 - 只要有部分可见就算可见
+    const isVerticallyVisible = elementRect.bottom > containerRect.top &&
+      elementRect.top < containerRect.bottom
+    const isHorizontallyVisible = elementRect.right > containerRect.left &&
+      elementRect.left < containerRect.right
+
+    // 🔧 ENHANCED: 至少需要25%的垂直可见度才算真正可见
+    const visibleHeight = Math.min(elementRect.bottom, containerRect.bottom) -
+      Math.max(elementRect.top, containerRect.top)
+    const elementHeight = elementRect.height
+    const visibilityRatio = elementHeight > 0 ? visibleHeight / elementHeight : 0
+
+    const isPartiallyVisible = isVerticallyVisible && isHorizontallyVisible && visibilityRatio > 0.25
+
+    console.log(`🔍 [Visibility] Element ${element.dataset?.messageId}: visible=${isPartiallyVisible}, ratio=${(visibilityRatio * 100).toFixed(1)}%`)
+
+    return isPartiallyVisible
   }
 
   async waitForDOMStability(timeout = 1000) {
@@ -2128,12 +2141,12 @@ export class PerfectNavigationController {
     }
   }
 
-  // 🚀 简化：蓝色脉冲光束高亮效果 - 仅边框转动
+  // 🚀 增强：蓝色脉冲光束高亮效果 - 更明显的特效
   applyBluePulseBeamHighlight(messageElement, options = {}) {
     // 移除旧的高亮类
     messageElement.classList.remove('message-navigation-highlight', 'message-navigation-pulse')
 
-    console.log(`🔵 [BlueBeam] 🚀 Applying simplified border rotation effect to message ${messageElement.dataset.messageId}`)
+    console.log(`🔵 [BlueBeam] 🚀 Applying enhanced border rotation effect to message ${messageElement.dataset.messageId}`)
 
     // 🚀 添加蓝色脉冲光束类（边框转动）
     messageElement.classList.add('blue-pulse-beam-highlight')
@@ -2148,16 +2161,29 @@ export class PerfectNavigationController {
       options.intensity === 'low' ? 'blue-beam-soft' : 'blue-beam-medium'
     messageElement.classList.add(intensityClass)
 
-    // 🚀 快速移除高亮
-    setTimeout(() => {
-      this.removeBlueBeamHighlight(messageElement)
-    }, options.duration)
+    // 🔵 ENHANCED: 增加更明显的视觉效果
+    messageElement.style.transform = 'scale(1.02)'
+    messageElement.style.transition = 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)'
+    messageElement.style.zIndex = '100'
+    messageElement.style.position = 'relative'
 
-    console.log(`🔵 [BlueBeam] ✅ Simplified border rotation applied with ${speedClass}, ${intensityClass}`)
+    // 🔵 ENHANCED: 增加背景高亮
+    const originalBackground = messageElement.style.background
+    messageElement.style.background = 'linear-gradient(135deg, rgba(0, 122, 255, 0.08) 0%, rgba(64, 156, 255, 0.05) 100%)'
+    messageElement.style.boxShadow = '0 0 30px rgba(0, 122, 255, 0.2), 0 8px 32px rgba(0, 122, 255, 0.15)'
+
+    // 🚀 增强持续时间（从2秒增加到6秒）
+    const duration = options.duration || 6000
+
+    setTimeout(() => {
+      this.removeBlueBeamHighlight(messageElement, originalBackground)
+    }, duration)
+
+    console.log(`🔵 [BlueBeam] ✅ Enhanced border rotation applied with ${speedClass}, ${intensityClass}, duration: ${duration}ms`)
   }
 
-  // 🚀 简化：移除蓝色光束高亮
-  removeBlueBeamHighlight(messageElement) {
+  // 🚀 增强：移除蓝色光束高亮
+  removeBlueBeamHighlight(messageElement, originalBackground = '') {
     messageElement.classList.remove(
       'blue-pulse-beam-highlight',
       'blue-beam-fast',
@@ -2168,7 +2194,14 @@ export class PerfectNavigationController {
       'blue-beam-soft'
     )
 
-    console.log(`🔵 [BlueBeam] 🚀 Simplified border rotation removed from message ${messageElement.dataset.messageId}`)
+    // 🔵 ENHANCED: 平滑恢复原始样式
+    messageElement.style.transform = 'scale(1)'
+    messageElement.style.zIndex = ''
+    messageElement.style.position = ''
+    messageElement.style.background = originalBackground
+    messageElement.style.boxShadow = ''
+
+    console.log(`🔵 [BlueBeam] 🚀 Enhanced border rotation removed from message ${messageElement.dataset.messageId}`)
   }
 
   applyNavigationHighlight(messageElement, options) {

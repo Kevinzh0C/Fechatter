@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test Fix</title></head>
+<body>
+<h1>Testing fileUrlHandler Fix</h1>
+<div id="result"></div>
+<script type="module">
+try {
+  const module = await import('/src/utils/fileUrlHandler.js');
+  document.getElementById('result').innerHTML = '<p style="color:green">✅ SUCCESS: fileUrlHandler imported!</p>';
+  const test = module.getStandardFileUrl('test.png', {workspaceId: 2});
+  document.getElementById('result').innerHTML += '<p style="color:green">✅ Function works: ' + test + '</p>';
+} catch (e) {
+  document.getElementById('result').innerHTML = '<p style="color:red">❌ ERROR: ' + e.message + '</p>';
+}
+</script>
+</body>
+</html>

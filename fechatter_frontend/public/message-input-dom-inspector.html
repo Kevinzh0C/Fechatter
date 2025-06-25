@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MessageInput DOM Inspector</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 20px;
+      background: #f5f5f5;
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 400px;
+      z-index: 10000;
+      background: white;
+      border: 2px solid #007bff;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .status {
+      padding: 8px;
+      border-radius: 4px;
+      margin: 8px 0;
+      font-weight: bold;
+      font-size: 12px;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .status.warning {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+
+    .details {
+      font-family: monospace;
+      background: #f8f9fa;
+      padding: 8px;
+      border-radius: 4px;
+      margin: 8px 0;
+      white-space: pre-wrap;
+      font-size: 11px;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+
+    .test-button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 3px;
+      font-size: 12px;
+    }
+
+    .test-button:hover {
+      background: #0056b3;
+    }
+
+    .highlight {
+      background: yellow;
+      border: 2px solid red;
+      transition: all 0.3s ease;
+    }
+
+    h3 {
+      margin: 10px 0 5px 0;
+      font-size: 14px;
+      color: #333;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 5px;
+      right: 10px;
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+  <button class="close-btn" onclick="document.body.style.display='none'">×</button>
+  <h3>🔍 MessageInput DOM Inspector</h3>
+
+  <div>
+    <button class="test-button" onclick="runFullInspection()">🔍 Full Inspection</button>
+    <button class="test-button" onclick="highlightElements()">🎯 Highlight Elements</button>
+    <button class="test-button" onclick="checkCSS()">🎨 Check CSS</button>
+    <button class="test-button" onclick="fixVisibility()">🔧 Try Fix</button>
+  </div>
+
+  <div id="results"></div>
+
+  <script>
+    let highlightedElements = [];
+
+    function updateResults(content) {
+      document.getElementById('results').innerHTML = content;
+    }
+
+    function createStatus(type, message) {
+      return `<div class="status ${type}">${message}</div>`;
+    }
+
+    function createDetails(content) {
+      return `<div class="details">${content}</div>`;
+    }
+
+    function runFullInspection() {
+      console.log('🔍 Starting MessageInput DOM inspection...');
+
+      let results = '<h3>🔍 DOM Inspection Results</h3>';
+
+      // 1. Check for MessageInput containers
+      const messageInputSelectors = [
+        '.message-input',
+        '[class*="message-input"]',
+        '.input-container',
+        '[class*="input-container"]',
+        'div[class*="MessageInput"]',
+        'textarea[placeholder*="message"]',
+        'textarea[placeholder*="Type"]'
+      ];
+
+      let foundElements = [];
+      messageInputSelectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        if (elements.length > 0) {
+          foundElements.push({
+            selector: selector,
+            count: elements.length,
+            elements: Array.from(elements)
+          });
+        }
+      });
+
+      if (foundElements.length === 0) {
+        results += createStatus('error', '❌ No MessageInput elements found');
+        results += createDetails('Searched selectors:\n' + messageInputSelectors.join('\n'));
+      } else {
+        results += createStatus('success', `✅ Found ${foundElements.length} MessageInput element types`);
+
+        foundElements.forEach(found => {
+          results += createStatus('success', `Found: ${found.selector} (${found.count} elements)`);
+
+          found.elements.forEach((element, index) => {
+            const rect = element.getBoundingClientRect();
+            const computedStyle = window.getComputedStyle(element);
+            const isVisible = rect.width > 0 && rect.height > 0 &&
+              computedStyle.display !== 'none' &&
+              computedStyle.visibility !== 'hidden';
+
+            let elementInfo = `Element ${index + 1}:
+  Tag: ${element.tagName}
+  Classes: ${element.className || 'none'}
+  Visible: ${isVisible ? 'YES ✅' : 'NO ❌'}
+  Dimensions: ${rect.width}×${rect.height}
+  Position: ${rect.left}, ${rect.top}
+  Display: ${computedStyle.display}
+  Visibility: ${computedStyle.visibility}
+  Z-index: ${computedStyle.zIndex}
+  Parent: ${element.parentElement ? element.parentElement.tagName + '.' + element.parentElement.className : 'none'}`;
+
+            results += createDetails(elementInfo);
+          });
+        });
+      }
+
+      // 2. Check Chat.vue container
+      const chatContainer = document.querySelector('.chat-view-container, .chat-content-container, [class*="chat"]');
+      if (chatContainer) {
+        results += createStatus('success', '✅ Chat container found');
+        const rect = chatContainer.getBoundingClientRect();
+        results += createDetails(`Chat container:
+  Tag: ${chatContainer.tagName}
+  Classes: ${chatContainer.className}
+  Dimensions: ${rect.width}×${rect.height}
+  Children: ${chatContainer.children.length}`);
+      } else {
+        results += createStatus('warning', '⚠️ Chat container not found');
+      }
+
+      // 3. Check for Vue app
+      const vueApp = document.querySelector('#app');
+      if (vueApp) {
+        results += createStatus('success', '✅ Vue app container found');
+        results += createDetails(`Vue app children: ${vueApp.children.length}`);
+      }
+
+      // 4. Check for CSS compilation errors
+      const styleSheets = Array.from(document.styleSheets);
+      let cssErrors = [];
+      styleSheets.forEach((sheet, index) => {
+        try {
+          if (sheet.href && sheet.href.includes('MessageInput')) {
+            results += createStatus('success', `✅ MessageInput CSS loaded: ${sheet.href}`);
+          }
+        } catch (e) {
+          cssErrors.push(`Stylesheet ${index}: ${e.message}`);
+        }
+      });
+
+      if (cssErrors.length > 0) {
+        results += createStatus('error', '❌ CSS errors detected');
+        results += createDetails('CSS Errors:\n' + cssErrors.join('\n'));
+      }
+
+      updateResults(results);
+    }
+
+    function highlightElements() {
+      console.log('🎯 Highlighting MessageInput elements...');
+
+      // Remove previous highlights
+      highlightedElements.forEach(el => {
+        el.classList.remove('highlight');
+        el.style.outline = '';
+      });
+      highlightedElements = [];
+
+      const selectors = [
+        '.message-input',
+        '[class*="message-input"]',
+        '.input-container',
+        'textarea',
+        '[class*="MessageInput"]'
+      ];
+
+      let foundCount = 0;
+      selectors.forEach((selector, index) => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(element => {
+          element.style.outline = `3px solid hsl(${index * 60}, 70%, 50%)`;
+          element.style.outlineOffset = '2px';
+          highlightedElements.push(element);
+          foundCount++;
+        });
+      });
+
+      let results = createStatus('success', `🎯 Highlighted ${foundCount} elements`);
+      if (foundCount === 0) {
+        results = createStatus('error', '❌ No elements to highlight');
+      }
+
+      updateResults(results);
+
+      // Auto-remove highlights after 5 seconds
+      setTimeout(() => {
+        highlightedElements.forEach(el => {
+          el.style.outline = '';
+        });
+        highlightedElements = [];
+      }, 5000);
+    }
+
+    function checkCSS() {
+      console.log('🎨 Checking CSS compilation...');
+
+      let results = '<h3>🎨 CSS Analysis</h3>';
+
+      // Check if CSS is loaded
+      const styleTags = document.querySelectorAll('style[data-vite-dev-id*="MessageInput"], style[data-vite-dev-id*="message-input"]');
+      const linkTags = document.querySelectorAll('link[href*="MessageInput"], link[href*="message-input"]');
+
+      if (styleTags.length > 0 || linkTags.length > 0) {
+        results += createStatus('success', `✅ MessageInput CSS detected (${styleTags.length} style tags, ${linkTags.length} link tags)`);
+
+        // Check specific CSS rules
+        const testElement = document.createElement('div');
+        testElement.className = 'message-input';
+        document.body.appendChild(testElement);
+
+        const computedStyle = window.getComputedStyle(testElement);
+        results += createDetails(`Test .message-input styles:
+  display: ${computedStyle.display}
+  position: ${computedStyle.position}
+  visibility: ${computedStyle.visibility}
+  background: ${computedStyle.backgroundColor}
+  border: ${computedStyle.border}`);
+
+        document.body.removeChild(testElement);
+      } else {
+        results += createStatus('error', '❌ MessageInput CSS not found');
+      }
+
+      // Check for PostCSS errors in console
+      const hasConsoleErrors = window.performance &&
+        window.performance.getEntries &&
+        window.performance.getEntries().some(entry =>
+          entry.name && entry.name.includes('css') && entry.transferSize === 0
+        );
+
+      if (hasConsoleErrors) {
+        results += createStatus('error', '❌ Possible CSS loading errors detected');
+      } else {
+        results += createStatus('success', '✅ No obvious CSS loading errors');
+      }
+
+      updateResults(results);
+    }
+
+    function fixVisibility() {
+      console.log('🔧 Attempting to fix MessageInput visibility...');
+
+      let results = '<h3>🔧 Fix Attempts</h3>';
+      let fixCount = 0;
+
+      // Find potential MessageInput elements
+      const selectors = [
+        '.message-input',
+        '[class*="message-input"]',
+        '.input-container',
+        '[class*="input-container"]'
+      ];
+
+      selectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(element => {
+          const computedStyle = window.getComputedStyle(element);
+
+          // Fix common visibility issues
+          if (computedStyle.display === 'none') {
+            element.style.display = 'flex';
+            results += createStatus('success', `✅ Fixed display: none on ${selector}`);
+            fixCount++;
+          }
+
+          if (computedStyle.visibility === 'hidden') {
+            element.style.visibility = 'visible';
+            results += createStatus('success', `✅ Fixed visibility: hidden on ${selector}`);
+            fixCount++;
+          }
+
+          if (parseFloat(computedStyle.opacity) < 0.1) {
+            element.style.opacity = '1';
+            results += createStatus('success', `✅ Fixed opacity on ${selector}`);
+            fixCount++;
+          }
+
+          // Ensure proper positioning
+          if (computedStyle.position === 'absolute') {
+            const rect = element.getBoundingClientRect();
+            if (rect.top < 0 || rect.left < 0 || rect.top > window.innerHeight) {
+              element.style.position = 'relative';
+              element.style.bottom = 'auto';
+              element.style.right = 'auto';
+              results += createStatus('success', `✅ Fixed positioning on ${selector}`);
+              fixCount++;
+            }
+          }
+        });
+      });
+
+      if (fixCount === 0) {
+        results += createStatus('warning', '⚠️ No obvious issues found to fix');
+        results += createDetails('Possible causes:\n- Component not rendered\n- CSS not loaded\n- Wrong selector\n- Complex layout issue');
+      } else {
+        results += createStatus('success', `✅ Applied ${fixCount} fixes`);
+      }
+
+      updateResults(results);
+    }
+
+    // Auto-run inspection when loaded
+    setTimeout(() => {
+      if (window.location.pathname.includes('/chat')) {
+        runFullInspection();
+      } else {
+        updateResults(createStatus('warning', '⚠️ Please navigate to a chat page to inspect MessageInput'));
+      }
+    }, 1000);
+
+    // Monitor for dynamic changes
+    const observer = new MutationObserver((mutations) => {
+      const hasNewElements = mutations.some(mutation =>
+        Array.from(mutation.addedNodes).some(node =>
+          node.nodeType === 1 && (
+            node.matches && node.matches('[class*="message-input"], [class*="input-container"]') ||
+            node.querySelector && node.querySelector('[class*="message-input"], [class*="input-container"]')
+          )
+        )
+      );
+
+      if (hasNewElements) {
+        setTimeout(runFullInspection, 500);
+      }
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+
+    console.log('🔍 MessageInput DOM Inspector loaded');
+    console.log('Available functions: runFullInspection(), highlightElements(), checkCSS(), fixVisibility()');
+  </script>
+</body>
+
+</html>

@@ -29,6 +29,8 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue';
+
 // Debug panel removed for production
 
 // 检测布局稳定性
@@ -43,9 +45,11 @@ const detectLayoutShifts = () => {
           sources: entry.sources,
           lastInputTime: entry.lastInputTime
         });
+      }
     });
 
     observer.observe({ entryTypes: ['layout-shift'] });
+  }
 };
 
 onMounted(() => {
@@ -184,6 +188,7 @@ onMounted(() => {
   .chat-main-stable {
     grid-column: 1;
   }
+}
 
 /* 🔧 强制GPU加速，减少重排 */
 .chat-grid-layout,
@@ -213,12 +218,14 @@ onMounted(() => {
   .debug-toggle-btn:hover {
     transform: none;
   }
+}
 
 /* 🔧 高对比度模式下的稳定性 */
 @media (prefers-contrast: high) {
   .debug-toggle-btn {
     border-width: 3px;
   }
+}
 
 /* 🔧 打印时的布局稳定性 */
 @media print {
@@ -236,4 +243,5 @@ onMounted(() => {
   .debug-toggle-btn {
     display: none;
   }
+}
 </style>

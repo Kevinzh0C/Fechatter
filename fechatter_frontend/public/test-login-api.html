@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔐 Test Login & File API</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f8f9fa;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .test-section {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px 0;
+      border-left: 4px solid #007bff;
+    }
+
+    .test-btn {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 8px;
+      font-size: 14px;
+    }
+
+    .test-btn:hover {
+      background: #0056b3;
+    }
+
+    .test-btn:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+
+    .result {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px 0;
+      font-family: monospace;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .error {
+      background: #f8d7da;
+      border-color: #f5c6cb;
+      color: #721c24;
+    }
+
+    .success {
+      background: #d4edda;
+      border-color: #c3e6cb;
+      color: #155724;
+    }
+
+    .warning {
+      background: #fff3cd;
+      border-color: #ffeaa7;
+      color: #856404;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-left: 8px;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .status.pending {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔐 Login & File API Test Suite</h1>
+    <p>Comprehensive testing for authentication and file download with credentials: <code>super@test.com</code> /
+      <code>password</code></p>
+
+    <div class="test-section">
+      <h3>📡 API Endpoints Test</h3>
+      <button class="test-btn" onclick="testEndpoints()">Test All Endpoints</button>
+      <button class="test-btn" onclick="testLogin()">Test Login Only</button>
+      <button class="test-btn" onclick="testFileWithToken()" id="fileTestBtn" disabled>Test File Download</button>
+    </div>
+
+    <div class="test-section">
+      <h3>🔧 Development Server Info</h3>
+      <p>Base URL: <code id="baseUrl">http://localhost:5173</code></p>
+      <p>Current Token: <code id="currentToken">None</code></p>
+      <button class="test-btn" onclick="clearToken()">Clear Token</button>
+    </div>
+
+    <div id="results"></div>
+  </div>
+
+  <script>
+    let currentToken = null;
+    const baseUrl = window.location.origin;
+    const resultsDiv = document.getElementById('results');
+
+    document.getElementById('baseUrl').textContent = baseUrl;
+
+    function addResult(title, content, type = 'info') {
+      const div = document.createElement('div');
+      const statusClass = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+      const timestamp = new Date().toLocaleTimeString();
+
+      div.innerHTML = `
+                <h4>${title} <span class="status ${type}">${type.toUpperCase()}</span> <small>${timestamp}</small></h4>
+                <div class="result ${statusClass}">${content}</div>
+            `;
+      resultsDiv.appendChild(div);
+      div.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function updateToken(token) {
+      currentToken = token;
+      document.getElementById('currentToken').textContent = token ? token.substring(0, 30) + '...' : 'None';
+      document.getElementById('fileTestBtn').disabled = !token;
+    }
+
+    function clearToken() {
+      updateToken(null);
+      addResult('🧹 Token Cleared', 'Authentication token has been cleared', 'warning');
+    }
+
+    async function testEndpoints() {
+      addResult('🚀 Starting Full API Test Suite', 'Testing all endpoints in sequence...', 'pending');
+
+      // Test 1: Health check
+      await testHealthCheck();
+
+      // Test 2: Login
+      const loginSuccess = await testLogin();
+
+      // Test 3: File download (if login successful)
+      if (loginSuccess && currentToken) {
+        await testFileWithToken();
+      }
+
+      addResult('✅ Full Test Suite Complete', 'All tests have been executed. Check individual results above.', 'success');
+    }
+
+    async function testHealthCheck() {
+      try {
+        addResult('🏥 Testing Health Check', 'Checking if server is responding...', 'pending');
+
+        const response = await fetch(`${baseUrl}/health`);
+        const result = `Status: ${response.status} ${response.statusText}
+Headers: ${JSON.stringify([...response.headers.entries()], null, 2)}`;
+
+        if (response.ok) {
+          addResult('🏥 Health Check', result, 'success');
+        } else {
+          addResult('🏥 Health Check', result, 'warning');
+        }
+      } catch (error) {
+        addResult('🏥 Health Check', `Network Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function testLogin() {
+      try {
+        addResult('🔐 Testing Login', 'Attempting login with provided credentials...', 'pending');
+
+        const loginData = {
+          email: 'super@test.com',
+          password: 'password'
+        };
+
+        const response = await fetch(`${baseUrl}/api/signin`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(loginData)
+        });
+
+        const responseHeaders = [...response.headers.entries()];
+        let responseBody;
+
+        try {
+          responseBody = await response.json();
+        } catch {
+          responseBody = await response.text();
+        }
+
+        const result = `Request:
+POST ${baseUrl}/api/signin
+Headers: Content-Type: application/json
+Body: ${JSON.stringify(loginData, null, 2)}
+
+Response:
+Status: ${response.status} ${response.statusText}
+Headers: ${JSON.stringify(responseHeaders, null, 2)}
+Body: ${typeof responseBody === 'object' ? JSON.stringify(responseBody, null, 2) : responseBody}`;
+
+        if (response.ok && responseBody.token) {
+          updateToken(responseBody.token);
+          addResult('🔐 Login Test', result + '\n\n✅ Login successful! Token acquired.', 'success');
+          return true;
+        } else {
+          addResult('🔐 Login Test', result + '\n\n❌ Login failed!', 'error');
+          return false;
+        }
+
+      } catch (error) {
+        addResult('🔐 Login Test', `Network Error: ${error.message}\nStack: ${error.stack}`, 'error');
+        return false;
+      }
+    }
+
+    async function testFileWithToken() {
+      if (!currentToken) {
+        addResult('📁 File Download Test', 'No authentication token available. Please login first.', 'error');
+        return;
+      }
+
+      try {
+        addResult('📁 Testing File Download', 'Testing authenticated file download...', 'pending');
+
+        const testFiles = [
+          '60c155658fcb1ef14145b5c9e359a571c504b8e1a7449d9965f720d3c1eebb68.png',
+          'test.png',
+          'nonexistent.jpg'
+        ];
+
+        for (const filename of testFiles) {
+          const fileUrl = `${baseUrl}/api/files/download/${filename}`;
+
+          try {
+            const response = await fetch(fileUrl, {
+              headers: {
+                'Authorization': `Bearer ${currentToken}`,
+                'Accept': '*/*'
+              }
+            });
+
+            const contentType = response.headers.get('content-type');
+            const contentLength = response.headers.get('content-length');
+
+            let responseInfo;
+            if (response.ok) {
+              responseInfo = `✅ SUCCESS - File download successful
+Content-Type: ${contentType}
+Content-Length: ${contentLength} bytes`;
+            } else {
+              const errorBody = await response.text();
+              responseInfo = `❌ FAILED - ${response.status} ${response.statusText}
+Content-Type: ${contentType}
+Error: ${errorBody}`;
+            }
+
+            const result = `Testing: ${filename}
+URL: ${fileUrl}
+Headers: Authorization: Bearer ${currentToken.substring(0, 20)}...
+
+${responseInfo}`;
+
+            addResult(`📁 File: ${filename}`, result, response.ok ? 'success' : 'error');
+
+          } catch (fileError) {
+            addResult(`📁 File: ${filename}`, `Network Error: ${fileError.message}`, 'error');
+          }
+        }
+
+      } catch (error) {
+        addResult('📁 File Download Test', `Test Error: ${error.message}`, 'error');
+      }
+    }
+
+    // Test different authentication methods
+    async function testAuthMethods() {
+      addResult('🔑 Testing Authentication Methods', 'Testing various auth header formats...', 'pending');
+
+      const authTests = [
+        { name: 'Bearer Token', header: `Bearer ${currentToken}` },
+        { name: 'Direct Token', header: currentToken },
+        { name: 'Basic Auth', header: `Basic ${btoa('super@test.com:password')}` }
+      ];
+
+      for (const test of authTests) {
+        try {
+          const response = await fetch(`${baseUrl}/api/files/download/test.png`, {
+            headers: {
+              'Authorization': test.header
+            }
+          });
+
+          const result = `${test.name}: ${response.status} ${response.statusText}`;
+          addResult(`🔑 Auth: ${test.name}`, result, response.ok ? 'success' : 'error');
+        } catch (error) {
+          addResult(`🔑 Auth: ${test.name}`, `Error: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    // Auto-run basic tests on page load
+    setTimeout(() => {
+      testHealthCheck();
+    }, 1000);
+  </script>
+</body>
+
+</html>

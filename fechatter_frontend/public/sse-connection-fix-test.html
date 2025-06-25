@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔧 SSE Connection Fix Verification</title>
+  <style>
+    body {
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      color: white;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 15px;
+      padding: 30px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .title {
+      text-align: center;
+      color: #4CAF50;
+      font-size: 2.2em;
+      margin-bottom: 30px;
+    }
+
+    .test-section {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .status-connecting {
+      background-color: #FF9800;
+    }
+
+    .status-open {
+      background-color: #4CAF50;
+    }
+
+    .status-closed {
+      background-color: #F44336;
+    }
+
+    .log-area {
+      background: rgba(0, 0, 0, 0.6);
+      padding: 15px;
+      border-radius: 8px;
+      min-height: 200px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      margin-top: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .log-entry {
+      margin-bottom: 5px;
+      padding: 2px 0;
+    }
+
+    .log-success {
+      color: #4CAF50;
+    }
+
+    .log-error {
+      color: #F44336;
+    }
+
+    .log-warning {
+      color: #FF9800;
+    }
+
+    .log-info {
+      color: #2196F3;
+    }
+
+    .button {
+      background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 5px;
+      transition: all 0.3s ease;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .metric-card {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .metric-value {
+      font-size: 1.5em;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .metric-label {
+      font-size: 0.9em;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1 class="title">🔧 SSE Connection Fix Verification</h1>
+
+    <div class="test-section">
+      <h3>🔗 Connection Status</h3>
+      <div id="connection-status">
+        <span class="status-indicator status-closed"></span>
+        <span id="status-text">Not Connected</span>
+      </div>
+      <p><strong>ReadyState:</strong> <span id="ready-state">—</span></p>
+      <p><strong>URL:</strong> <span id="connection-url">—</span></p>
+      <p><strong>Duration:</strong> <span id="connection-duration">—</span></p>
+
+      <button class="button" onclick="testSSEConnection()">🚀 Test SSE Connection</button>
+      <button class="button" onclick="closeConnection()">🛑 Close Connection</button>
+      <button class="button" onclick="clearLogs()">🧹 Clear Logs</button>
+    </div>
+
+    <div class="metrics">
+      <div class="metric-card">
+        <div class="metric-value" id="connection-attempts">0</div>
+        <div class="metric-label">Connection Attempts</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="successful-connections">0</div>
+        <div class="metric-label">Successful Connections</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="events-received">0</div>
+        <div class="metric-label">Events Received</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="connection-failures">0</div>
+        <div class="metric-label">Connection Failures</div>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h3>📋 Real-time Logs</h3>
+      <div id="log-area" class="log-area"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>🧪 Expected Results After Fix</h3>
+      <ul>
+        <li>✅ EventSource should transition: ReadyState 0 → 1 (within 2-3 seconds)</li>
+        <li>✅ Status should change: "Connecting" → "Connected"</li>
+        <li>✅ Should receive ping events from server</li>
+        <li>✅ Connection should remain stable (no immediate disconnects)</li>
+        <li>✅ No "STILL CONNECTING" errors after 3 seconds</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    let eventSource = null;
+    let startTime = null;
+    let connectionAttempts = 0;
+    let successfulConnections = 0;
+    let eventsReceived = 0;
+    let connectionFailures = 0;
+    let durationInterval = null;
+
+    function log(message, type = 'info') {
+      const logArea = document.getElementById('log-area');
+      const timestamp = new Date().toLocaleTimeString();
+      const logEntry = document.createElement('div');
+      logEntry.className = `log-entry log-${type}`;
+      logEntry.innerHTML = `[${timestamp}] ${message}`;
+      logArea.appendChild(logEntry);
+      logArea.scrollTop = logArea.scrollHeight;
+    }
+
+    function updateMetrics() {
+      document.getElementById('connection-attempts').textContent = connectionAttempts;
+      document.getElementById('successful-connections').textContent = successfulConnections;
+      document.getElementById('events-received').textContent = eventsReceived;
+      document.getElementById('connection-failures').textContent = connectionFailures;
+    }
+
+    function updateConnectionStatus(status, readyState, url = '') {
+      const statusElement = document.getElementById('status-text');
+      const indicator = document.querySelector('.status-indicator');
+      const readyStateElement = document.getElementById('ready-state');
+      const urlElement = document.getElementById('connection-url');
+
+      statusElement.textContent = status;
+      readyStateElement.textContent = readyState;
+      urlElement.textContent = url;
+
+      // Update indicator color
+      indicator.className = 'status-indicator';
+      if (readyState === 0) {
+        indicator.classList.add('status-connecting');
+      } else if (readyState === 1) {
+        indicator.classList.add('status-open');
+      } else {
+        indicator.classList.add('status-closed');
+      }
+    }
+
+    function updateDuration() {
+      if (startTime) {
+        const duration = Math.floor((Date.now() - startTime) / 1000);
+        document.getElementById('connection-duration').textContent = `${duration}s`;
+      }
+    }
+
+    function testSSEConnection() {
+      if (eventSource) {
+        log('Closing existing connection...', 'warning');
+        eventSource.close();
+      }
+
+      connectionAttempts++;
+      startTime = Date.now();
+
+      // Use a mock token or get from localStorage
+      const token = localStorage.getItem('auth_token') || 'mock-token-for-testing';
+      const url = `/events?access_token=${token}`;
+
+      log(`🚀 Creating EventSource with URL: ${url}`, 'info');
+      log(`🔍 Connection attempt #${connectionAttempts}`, 'info');
+
+      try {
+        eventSource = new EventSource(url);
+        updateConnectionStatus('Connecting...', 0, url);
+
+        // Start duration tracking
+        durationInterval = setInterval(updateDuration, 1000);
+
+        eventSource.onopen = function (event) {
+          log('✅ SSE Connection OPENED successfully!', 'success');
+          log(`📡 ReadyState: ${eventSource.readyState}`, 'success');
+          log(`🌐 URL: ${eventSource.url}`, 'info');
+
+          successfulConnections++;
+          updateConnectionStatus('Connected', 1, eventSource.url);
+          updateMetrics();
+        };
+
+        eventSource.onmessage = function (event) {
+          eventsReceived++;
+          log(`📨 Message received: ${event.data}`, 'success');
+          updateMetrics();
+        };
+
+        eventSource.onerror = function (event) {
+          log(`❌ SSE Error occurred`, 'error');
+          log(`🔍 ReadyState at error: ${eventSource ? eventSource.readyState : 'null'}`, 'error');
+          log(`🔍 Event type: ${event.type}`, 'error');
+
+          if (eventSource.readyState === 0) {
+            log(`⚠️ Still in CONNECTING state - connection failed to establish`, 'warning');
+            connectionFailures++;
+          } else if (eventSource.readyState === 2) {
+            log(`🔄 Connection closed - this is normal for reconnection`, 'warning');
+          }
+
+          updateConnectionStatus('Error/Disconnected', eventSource ? eventSource.readyState : 'null');
+          updateMetrics();
+        };
+
+        // Monitor connection establishment
+        setTimeout(() => {
+          if (eventSource && eventSource.readyState === 0) {
+            log(`⚠️ WARNING: Still CONNECTING after 1 second (ReadyState: 0)`, 'warning');
+          }
+        }, 1000);
+
+        setTimeout(() => {
+          if (eventSource && eventSource.readyState === 0) {
+            log(`❌ FAILURE: Still CONNECTING after 3 seconds - connection failed!`, 'error');
+            connectionFailures++;
+            updateMetrics();
+          }
+        }, 3000);
+
+        setTimeout(() => {
+          if (eventSource && eventSource.readyState === 1) {
+            log(`🎉 SUCCESS: Connection stable for 5 seconds!`, 'success');
+          }
+        }, 5000);
+
+      } catch (error) {
+        log(`💥 Exception creating EventSource: ${error.message}`, 'error');
+        connectionFailures++;
+        updateConnectionStatus('Failed', 'error');
+        updateMetrics();
+      }
+    }
+
+    function closeConnection() {
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+        log('🛑 Connection closed manually', 'warning');
+        updateConnectionStatus('Closed', 2);
+
+        if (durationInterval) {
+          clearInterval(durationInterval);
+          durationInterval = null;
+        }
+      }
+    }
+
+    function clearLogs() {
+      document.getElementById('log-area').innerHTML = '';
+      log('🧹 Logs cleared', 'info');
+    }
+
+    // Initialize
+    updateMetrics();
+    log('🔧 SSE Connection Fix Test Tool Ready', 'info');
+    log('💡 Click "Test SSE Connection" to verify the fix', 'info');
+    log('🎯 Expected: ReadyState should change from 0 to 1 within 3 seconds', 'info');
+  </script>
+</body>
+
+</html>

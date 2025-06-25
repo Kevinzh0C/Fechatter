@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔍 File Preview Debug Verification</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .test-section {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+      border-left: 4px solid #3182ce;
+    }
+
+    .step {
+      background: white;
+      margin: 10px 0;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 3px solid #38b2ac;
+    }
+
+    .expected-result {
+      background: #c6f6d5;
+      border: 1px solid #48bb78;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 15px 0;
+    }
+
+    .debug-info {
+      background: #fef5e7;
+      border: 1px solid #ed8936;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 15px 0;
+    }
+
+    .code-block {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9em;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+
+    .highlight {
+      background: #fef5e7;
+      padding: 2px 6px;
+      border-radius: 3px;
+      color: #744210;
+      font-weight: 500;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔍 File Preview Debug Verification</h1>
+      <p>验证文件预览缩略图修复效果</p>
+    </div>
+
+    <div class="test-section">
+      <h3>🧪 测试步骤</h3>
+      <div class="step">
+        <strong>步骤1:</strong> 打开 Fechatter 开发环境 (localhost:5173)
+      </div>
+      <div class="step">
+        <strong>步骤2:</strong> 进入任意聊天界面
+      </div>
+      <div class="step">
+        <strong>步骤3:</strong> 点击文件上传按钮 (📁)
+      </div>
+      <div class="step">
+        <strong>步骤4:</strong> 选择一个图片文件 (.jpg, .png, .gif等)
+      </div>
+      <div class="step">
+        <strong>步骤5:</strong> 观察界面变化和调试信息
+      </div>
+    </div>
+
+    <div class="expected-result">
+      <h3>✅ 预期结果</h3>
+      <h4>🔍 应该看到调试信息框：</h4>
+      <div class="code-block">
+        🔍 Debug Info:
+        formatMode: file
+        selectedFile: your-image.jpg
+        showFilePreview: true
+        Condition (!selectedFile): false
+        Should show FilePreview: true</div>
+
+      <h4>🖼️ 应该看到 FilePreview 组件：</h4>
+      <ul>
+        <li>文件缩略图立即显示</li>
+        <li>文件名、大小、类型信息</li>
+        <li>"Upload to Remote" 按钮</li>
+        <li>"Replace File" 和 "Remove" 按钮</li>
+      </ul>
+    </div>
+
+    <div class="debug-info">
+      <h3>🐛 如果仍然有问题，检查：</h3>
+
+      <h4>1. 控制台日志</h4>
+      <div class="code-block">
+        🔍 [DEBUG] handleFileSelect triggered
+        🔍 [DEBUG] newSelectedFile: File {name: "image.jpg", size: 123456, type: "image/jpeg"}
+        🔍 [DEBUG] After state update:
+        - selectedFile.value: File {name: "image.jpg"}
+        - showFilePreview.value: true
+        - formatMode.value: file</div>
+
+      <h4>2. 可能的问题和解决方案</h4>
+      <ul>
+        <li><strong>selectedFile 仍然为 null:</strong> 检查文件选择事件是否正确触发</li>
+        <li><strong>formatMode 不是 'file':</strong> 检查状态更新逻辑</li>
+        <li><strong>FilePreview 组件未显示:</strong> 检查组件导入和模板条件</li>
+        <li><strong>Vue prop 错误:</strong> 检查控制台是否有 prop 相关错误</li>
+      </ul>
+
+      <h4>3. 实时调试命令</h4>
+      <div class="code-block">
+        // 在浏览器控制台中运行
+        // 检查 MessageInput 组件状态
+        const messageInput = document.querySelector('.message-input');
+        if (messageInput && messageInput.__vueParentComponent) {
+        const vm = messageInput.__vueParentComponent.proxy;
+        console.log('selectedFile:', vm.selectedFile);
+        console.log('formatMode:', vm.formatMode);
+        console.log('showFilePreview:', vm.showFilePreview);
+        }</div>
+    </div>
+
+    <div class="test-section">
+      <h3>📊 修复内容总结</h3>
+
+      <h4>🔧 代码修复</h4>
+      <ul>
+        <li>✅ 添加详细的 DEBUG 日志到 handleFileSelect</li>
+        <li>✅ 在模板中添加调试信息显示</li>
+        <li>✅ 改进条件逻辑：`v-else` → `v-else-if="selectedFile"`</li>
+        <li>✅ 添加错误状态检测和显示</li>
+      </ul>
+
+      <h4>🎯 DAG 流程确认</h4>
+      <div class="code-block">
+        1. 用户点击文件按钮 ✅
+        2. triggerFileUpload() → fileInput.click() ✅
+        3. 用户选择文件 ✅
+        4. handleFileSelect(event) 触发 ✅
+        5. selectedFile.value = newFile ⚠️ (需要验证)
+        6. formatMode.value = 'file' ⚠️ (需要验证)
+        7. 模板条件 v-else-if="selectedFile" ⚠️ (需要验证)
+        8. FilePreview 组件渲染 ⚠️ (需要验证)
+        9. 缩略图显示 ⚠️ (需要验证)</div>
+    </div>
+
+    <div class="expected-result">
+      <h3>🎉 成功标志</h3>
+      <p><strong>当看到以下内容时，说明修复成功：</strong></p>
+      <ul>
+        <li>🔍 调试信息框显示正确的状态值</li>
+        <li>🖼️ 图片文件立即显示缩略图</li>
+        <li>📁 非图片文件显示文件类型图标</li>
+        <li>🔄 "Upload to Remote" 按钮可点击</li>
+        <li>🚫 控制台没有 Vue 错误</li>
+      </ul>
+    </div>
+
+    <div class="test-section">
+      <h3>🔄 下一步</h3>
+      <p>如果问题仍然存在，请：</p>
+      <ol>
+        <li>截图显示调试信息框的内容</li>
+        <li>复制控制台中的完整 DEBUG 日志</li>
+        <li>提供具体的错误信息</li>
+      </ol>
+      <p>这样我们就能精确定位问题所在的 DAG 节点。</p>
+    </div>
+  </div>
+</body>
+
+</html>

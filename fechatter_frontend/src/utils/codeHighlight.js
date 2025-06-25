@@ -1,373 +1,615 @@
-// Code highlighting utilities using Shiki
-import {
-  parseCodeBlockMeta,
-  resolveLanguage,
-  themes,
-  clearHighlightCache
-} from '../plugins/shiki.js';
+/**
+ * Enhanced Code Highlighting Service with Light Theme
+ * Migrated from Shiki to highlight.js for better performance and browser compatibility
+ */
 
-// Import async version for internal use
-import { highlightCode as highlightCodeAsync } from '../plugins/shiki.js';
+import hljs from 'highlight.js'
+// Import highlight.js CSS theme (backup for CSS loading)
+import 'highlight.js/styles/github.css'
 
-// Export utilities
-export { clearHighlightCache, highlightCodeAsync };
+// 支持的编程语言配置
+const SUPPORTED_LANGUAGES = {
+  javascript: { name: 'JavaScript', aliases: ['js'] },
+  typescript: { name: 'TypeScript', aliases: ['ts'] },
+  python: { name: 'Python', aliases: ['py'] },
+  java: { name: 'Java', aliases: [] },
+  cpp: { name: 'C++', aliases: ['c++', 'cxx'] },
+  c: { name: 'C', aliases: [] },
+  csharp: { name: 'C#', aliases: ['cs'] },
+  php: { name: 'PHP', aliases: [] },
+  ruby: { name: 'Ruby', aliases: ['rb'] },
+  go: { name: 'Go', aliases: ['golang'] },
+  rust: { name: 'Rust', aliases: ['rs'] },
+  swift: { name: 'Swift', aliases: [] },
+  kotlin: { name: 'Kotlin', aliases: ['kt'] },
+  scala: { name: 'Scala', aliases: [] },
+  shell: { name: 'Shell', aliases: ['bash', 'sh', 'zsh'] },
+  sql: { name: 'SQL', aliases: [] },
+  json: { name: 'JSON', aliases: [] },
+  xml: { name: 'XML', aliases: [] },
+  html: { name: 'HTML', aliases: [] },
+  css: { name: 'CSS', aliases: [] },
+  yaml: { name: 'YAML', aliases: ['yml'] },
+  markdown: { name: 'Markdown', aliases: ['md'] },
+  dockerfile: { name: 'Dockerfile', aliases: [] },
+  nginx: { name: 'Nginx', aliases: [] },
+  apache: { name: 'Apache', aliases: [] }
+}
 
-// Regular expression to match code blocks
-const CODE_BLOCK_REGEX = /```(\w+)?(\s+[^\n]+)?\n([\s\S]*?)```/g;
-const INLINE_CODE_REGEX = /`([^`]+)`/g;
+// 缓存已高亮的代码
+const highlightCache = new Map()
 
-// ✨ Enhanced markdown code highlighting for Discord messages
-export async function highlightMarkdownCode(markdown, options = {}) {
-  const {
-    theme = 'dark',
-    lineNumbers = true,
-    cache = true
-  } = options;
+/**
+ * 获取语言的标准化名称
+ */
+function normalizeLanguage(lang) {
+  if (!lang) return 'plaintext'
 
-  if (!markdown || typeof markdown !== 'string') {
-    return markdown;
+  const normalized = lang.toLowerCase()
+
+  // 直接匹配
+  if (SUPPORTED_LANGUAGES[normalized]) {
+    return normalized
+  }
+
+  // 别名匹配
+  for (const [key, config] of Object.entries(SUPPORTED_LANGUAGES)) {
+    if (config.aliases.includes(normalized)) {
+      return key
+    }
+  }
+
+  return 'plaintext'
+}
+
+/**
+ * 安全的缓存键生成函数 - 支持Unicode字符
+ */
+function getCacheKey(code, language, options = {}) {
+  try {
+    const key = JSON.stringify({ code, language, options });
+
+    // 方案1: 使用 encodeURIComponent + btoa (安全但较长)
+    // return btoa(encodeURIComponent(key)).replace(/[+/=]/g, '');
+
+    // 方案2: 使用简单哈希算法 (更快，更可靠)
+    return hashString(key);
+  } catch (error) {
+    // 如果所有方法都失败，使用时间戳作为fallback
+    console.warn('Cache key generation failed, using timestamp fallback:', error);
+    return `fallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+}
+
+/**
+ * 简单字符串哈希函数 - 支持所有Unicode字符
+ */
+function hashString(str) {
+  let hash = 0;
+  if (str.length === 0) return hash.toString(36);
+
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // 转换为32位整数
+  }
+
+  // 转换为正数并使用36进制表示（更短）
+  return Math.abs(hash).toString(36);
+}
+
+/**
+ * 创建增强的代码块包装器 - 精美容器 + 彩色高亮
+ */
+function createCodeWrapper(highlightedCode, language, options = {}) {
+  const languageConfig = SUPPORTED_LANGUAGES[language];
+  const displayName = languageConfig?.name || language.toUpperCase();
+
+  const showHeader = options.showHeader !== false;
+  const showCopy = options.showCopy !== false;
+  const showLineNumbers = options.showLineNumbers || false;
+
+  // 语言特定的图标和颜色
+  const languageInfo = getLanguageInfo(language);
+
+  if (!showHeader) {
+    return `<div class="enhanced-code-container">
+      <div class="code-content-area">
+        <pre class="hljs language-${language} ${showLineNumbers ? 'with-line-numbers' : ''}">${highlightedCode}</pre>
+      </div>
+    </div>`;
+  }
+
+  return `<div class="enhanced-code-container" data-language="${language}">
+    <div class="code-header-enhanced">
+      <div class="code-header-left">
+        <div class="language-indicator" style="background-color: ${languageInfo.color};">
+          <span class="language-icon">${languageInfo.icon}</span>
+          <span class="language-name">${displayName}</span>
+        </div>
+        <div class="code-meta">
+          <span class="lines-count">${getLineCount(highlightedCode)} lines</span>
+        </div>
+      </div>
+      <div class="code-header-right">
+        ${showCopy ? `<button class="copy-button-enhanced" onclick="copyCodeToClipboard(this)" title="Copy code">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
+          </svg>
+          <span class="copy-text">Copy</span>
+        </button>` : ''}
+      </div>
+    </div>
+    <div class="code-content-area">
+      <pre class="hljs language-${language} ${showLineNumbers ? 'with-line-numbers' : ''}">${highlightedCode}</pre>
+    </div>
+  </div>`;
+}
+
+/**
+ * 获取编程语言的图标和颜色信息
+ */
+function getLanguageInfo(language) {
+  const languageStyles = {
+    javascript: { icon: '⚡', color: '#f7df1e' },
+    typescript: { icon: '🔷', color: '#3178c6' },
+    python: { icon: '🐍', color: '#3776ab' },
+    java: { icon: '☕', color: '#ed8b00' },
+    cpp: { icon: '⚙️', color: '#00599c' },
+    c: { icon: '🔧', color: '#a8b9cc' },
+    csharp: { icon: '💜', color: '#239120' },
+    php: { icon: '🐘', color: '#777bb4' },
+    ruby: { icon: '💎', color: '#cc342d' },
+    go: { icon: '🚀', color: '#00add8' },
+    rust: { icon: '🦀', color: '#dea584' },
+    swift: { icon: '🦉', color: '#fa7343' },
+    kotlin: { icon: '🎯', color: '#7f52ff' },
+    scala: { icon: '🔺', color: '#dc322f' },
+    shell: { icon: '📟', color: '#89e051' },
+    sql: { icon: '🗄️', color: '#336791' },
+    json: { icon: '📋', color: '#292929' },
+    xml: { icon: '📄', color: '#0060ac' },
+    html: { icon: '🌐', color: '#e34f26' },
+    css: { icon: '🎨', color: '#1572b6' },
+    yaml: { icon: '📝', color: '#cb171e' },
+    markdown: { icon: '📖', color: '#083fa1' },
+    dockerfile: { icon: '🐳', color: '#384d54' },
+    nginx: { icon: '🔧', color: '#009639' },
+    apache: { icon: '🪶', color: '#d22128' },
+    plaintext: { icon: '📝', color: '#6b7280' }
+  };
+
+  return languageStyles[language] || languageStyles.plaintext;
+}
+
+/**
+ * 计算代码行数
+ */
+function getLineCount(code) {
+  return (code.match(/\n/g) || []).length + 1;
+}
+
+/**
+ * 添加行号支持
+ */
+function addLineNumbers(code) {
+  const lines = code.split('\n')
+  return lines.map((line, index) => {
+    const lineNumber = index + 1
+    return `<span class="line-number">${lineNumber}</span><span class="line-content">${line}</span>`
+  }).join('\n')
+}
+
+/**
+ * 主要的代码高亮函数 - 支持Unicode字符
+ */
+export async function highlightCodeAsync(code, language = 'plaintext', options = {}) {
+  try {
+    if (!code || typeof code !== 'string') {
+      throw new Error('Invalid code input');
+    }
+
+    const normalizedLang = normalizeLanguage(language);
+
+    // 安全生成缓存键 - 现在支持Unicode字符
+    let cacheKey;
+    try {
+      cacheKey = getCacheKey(code, normalizedLang, options);
+    } catch (cacheKeyError) {
+      console.warn('Failed to generate cache key, proceeding without cache:', cacheKeyError);
+      cacheKey = null;
+    }
+
+    // 检查缓存（如果缓存键生成成功）
+    if (cacheKey && highlightCache.has(cacheKey)) {
+      return highlightCache.get(cacheKey);
+    }
+
+    let highlightedCode;
+
+    if (normalizedLang === 'plaintext') {
+      // 纯文本，安全转义HTML字符（包括Unicode）
+      highlightedCode = code
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    } else {
+      try {
+        // 使用highlight.js进行语法高亮
+        const result = hljs.highlight(code, { language: normalizedLang });
+        highlightedCode = result.value;
+      } catch (hlError) {
+        console.warn(`Highlight.js failed for language ${normalizedLang}:`, hlError);
+        // Fallback到纯文本处理
+        highlightedCode = code
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+    }
+
+    // 添加行号（如果需要）
+    if (options.showLineNumbers) {
+      try {
+        highlightedCode = addLineNumbers(highlightedCode);
+      } catch (lineNumberError) {
+        console.warn('Failed to add line numbers:', lineNumberError);
+        // 继续而不添加行号
+      }
+    }
+
+    // 创建包装器
+    const wrappedCode = createCodeWrapper(highlightedCode, normalizedLang, options);
+
+    // 安全缓存结果
+    if (cacheKey) {
+      try {
+        if (highlightCache.size > 100) {
+          // 清理最老的缓存项
+          const firstKey = highlightCache.keys().next().value;
+          highlightCache.delete(firstKey);
+        }
+        highlightCache.set(cacheKey, wrappedCode);
+      } catch (cacheError) {
+        console.warn('Failed to cache result:', cacheError);
+        // 缓存失败不影响功能
+      }
+    }
+
+    return wrappedCode;
+
+  } catch (error) {
+    console.warn('Code highlighting failed:', error);
+
+    // 错误回退：返回安全的纯文本块
+    const escapedCode = (code || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+    return `<div class="code-block-wrapper">
+      <div class="code-block-header">
+        <span class="code-language">Text</span>
+        <span style="color: #d1242f; font-size: 0.75rem;">Highlighting failed</span>
+      </div>
+      <pre class="hljs">${escapedCode}</pre>
+    </div>`;
+  }
+}
+
+/**
+ * 同步版本的代码高亮函数（向后兼容）
+ */
+export function highlightCode(code, language = 'plaintext', options = {}) {
+  try {
+    if (!code || typeof code !== 'string') {
+      return code
+    }
+
+    const normalizedLang = normalizeLanguage(language)
+
+    let highlightedCode
+
+    if (normalizedLang === 'plaintext') {
+      highlightedCode = code
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+    } else {
+      const result = hljs.highlight(code, { language: normalizedLang })
+      highlightedCode = result.value
+    }
+
+    if (options.showLineNumbers) {
+      highlightedCode = addLineNumbers(highlightedCode)
+    }
+
+    return createCodeWrapper(highlightedCode, normalizedLang, options)
+
+  } catch (error) {
+    console.warn('Sync code highlighting failed:', error)
+    return `<pre class="hljs">${code}</pre>`
+  }
+}
+
+/**
+ * 高亮消息内容中的代码块
+ */
+export function highlightCodeInContent(content) {
+  if (!content) return content
+
+  // 匹配代码块 ```language\ncode\n```
+  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g
+
+  return content.replace(codeBlockRegex, (match, language, code) => {
+    try {
+      return highlightCode(code.trim(), language || 'plaintext', {
+        showHeader: true,
+        showCopy: true
+      })
+    } catch (error) {
+      console.warn('Code block highlighting failed:', error)
+      return match // 返回原始内容
+    }
+  })
+}
+
+/**
+ * 获取支持的语言列表
+ */
+export function getSupportedLanguages() {
+  return Object.entries(SUPPORTED_LANGUAGES).map(([key, config]) => ({
+    value: key,
+    label: config.name,
+    aliases: config.aliases
+  }))
+}
+
+/**
+ * 检测代码语言
+ */
+export function detectLanguage(code) {
+  if (!code || typeof code !== 'string') {
+    return 'plaintext'
   }
 
   try {
-    // Process code blocks
-    const codeBlocks = [];
+    const result = hljs.highlightAuto(code)
+    return result.language || 'plaintext'
+  } catch (error) {
+    console.warn('Language detection failed:', error)
+    return 'plaintext'
+  }
+}
+
+/**
+ * 清理高亮缓存
+ */
+export function clearHighlightCache() {
+  highlightCache.clear()
+}
+
+/**
+ * 获取缓存统计信息
+ */
+export function getCacheStats() {
+  return {
+    size: highlightCache.size,
+    maxSize: 100
+  }
+}
+
+// 全局函数：复制代码到剪贴板（增强版）
+window.copyCodeToClipboard = function (button) {
+  const codeContainer = button.closest('.enhanced-code-container') || button.closest('.code-block-wrapper');
+  const codeBlock = codeContainer.querySelector('.hljs');
+  const code = codeBlock.textContent || codeBlock.innerText;
+
+  navigator.clipboard.writeText(code).then(() => {
+    const copyText = button.querySelector('.copy-text');
+    const originalText = copyText ? copyText.textContent : button.textContent;
+
+    if (copyText) {
+      copyText.textContent = 'Copied!';
+    } else {
+      button.textContent = 'Copied!';
+    }
+
+    button.classList.add('copied');
+
+    setTimeout(() => {
+      if (copyText) {
+        copyText.textContent = originalText;
+      } else {
+        button.textContent = originalText;
+      }
+      button.classList.remove('copied');
+    }, 2000);
+  }).catch(err => {
+    console.error('Failed to copy code:', err);
+    const copyText = button.querySelector('.copy-text');
+
+    if (copyText) {
+      copyText.textContent = 'Copy failed';
+    } else {
+      button.textContent = 'Copy failed';
+    }
+
+    setTimeout(() => {
+      if (copyText) {
+        copyText.textContent = 'Copy';
+      } else {
+        button.textContent = 'Copy';
+      }
+    }, 2000);
+  });
+}
+
+/**
+ * 高亮Markdown内容中的代码块 - 专为消息显示优化，支持Unicode字符
+ */
+export async function highlightMarkdownCode(markdown, options = {}) {
+  if (!markdown || typeof markdown !== 'string') {
+    return markdown || '';
+  }
+
+  try {
+    // 预检查：确保输入是有效的字符串
+    if (typeof markdown !== 'string') {
+      console.warn('highlightMarkdownCode: Invalid input type, expected string');
+      return String(markdown || '');
+    }
+
+    // 匹配所有代码块 ```language\ncode\n```
+    const codeBlockRegex = /```(\w+)?\n?([\s\S]*?)\n?```/g;
+
+    let result = markdown;
     let match;
+    const replacements = [];
+    let processedBlocks = 0;
 
-    // Reset regex lastIndex
-    CODE_BLOCK_REGEX.lastIndex = 0;
+    // 收集所有需要替换的代码块
+    while ((match = codeBlockRegex.exec(markdown)) !== null) {
+      const [fullMatch, language, code] = match;
+      const lang = normalizeLanguage(language || 'plaintext');
+      processedBlocks++;
 
-    // Extract all code blocks first
-    while ((match = CODE_BLOCK_REGEX.exec(markdown)) !== null) {
-      codeBlocks.push({
-        fullMatch: match[0],
-        lang: match[1] || 'plaintext',
-        meta: match[2] || '',
-        code: match[3] || '',
-        index: match.index
-      });
-    }
-
-    if (codeBlocks.length === 0) {
-      return markdown; // No code blocks to process
-    }
-
-    // Highlight all code blocks in parallel
-    const highlightedBlocks = await Promise.all(
-      codeBlocks.map(async (block) => {
-        const metadata = parseCodeBlockMeta(block.meta);
-        const html = await highlightCodeAsync(block.code, block.lang, {
-          theme,
-          lineNumbers: metadata.showLineNumbers !== false && lineNumbers,
-          highlightLines: metadata.highlightLines,
-          title: metadata.title,
-          startLine: metadata.startLine,
-          cache
+      try {
+        // 高亮代码块 - 使用安全的缓存键生成
+        const highlightedBlock = await highlightCodeAsync(code.trim(), lang, {
+          showHeader: options.showHeader !== false,
+          showCopy: options.showCopy !== false,
+          showLineNumbers: options.lineNumbers || false,
+          theme: options.theme || 'light' // 默认使用浅色主题
         });
 
-        return {
-          ...block,
-          html
-        };
-      })
-    );
+        replacements.push({
+          original: fullMatch,
+          replacement: highlightedBlock
+        });
 
-    // Replace code blocks with highlighted HTML (reverse order to maintain indices)
-    let result = markdown;
-    for (let i = highlightedBlocks.length - 1; i >= 0; i--) {
-      const block = highlightedBlocks[i];
-      result =
-        result.slice(0, block.index) +
-        block.html +
-        result.slice(block.index + block.fullMatch.length);
+        if (import.meta.env.DEV) {
+          console.log(`✅ Code block ${processedBlocks} highlighted successfully (${lang})`);
+        }
+      } catch (blockError) {
+        console.warn(`Failed to highlight code block ${processedBlocks} in language ${lang}:`, blockError);
+
+        // 创建一个简单的代码块作为fallback
+        const fallbackBlock = `
+<div class="code-block-wrapper">
+  <div class="code-block-header">
+    <span class="code-language">${lang.toUpperCase()}</span>
+    <span style="color: #d1242f; font-size: 0.75rem;">Highlighting failed</span>
+  </div>
+  <pre class="hljs">${code.trim()
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')}</pre>
+</div>`.trim();
+
+        replacements.push({
+          original: fullMatch,
+          replacement: fallbackBlock
+        });
+      }
     }
 
-    if (import.meta.env.DEV) {
-      console.log(`✨ Highlighted ${codeBlocks.length} code blocks`);
+    // 应用所有替换
+    replacements.forEach(({ original, replacement }) => {
+      result = result.replace(original, replacement);
+    });
+
+    // 处理内联代码 `code` - 安全地处理Unicode字符
+    const inlineCodeRegex = /`([^`\n]+)`/g;
+    result = result.replace(inlineCodeRegex, (match, code) => {
+      try {
+        // 转义HTML字符
+        const escapedCode = code
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+
+        return `<code class="inline-code">${escapedCode}</code>`;
+      } catch (inlineError) {
+        console.warn('Failed to process inline code:', inlineError);
+        return match; // 返回原始内容
+      }
+    });
+
+    // 缓存结果 - 使用新的安全缓存键生成
+    if (options.cache !== false) {
+      try {
+        const cacheKey = getCacheKey(markdown, 'markdown', options);
+        if (highlightCache.size < 50) { // 限制Markdown缓存大小
+          highlightCache.set(cacheKey, result);
+        }
+      } catch (cacheError) {
+        console.warn('Failed to cache markdown result:', cacheError);
+        // 缓存失败不影响功能，继续执行
+      }
+    }
+
+    if (import.meta.env.DEV && processedBlocks > 0) {
+      console.log(`✨ Markdown processing completed: ${processedBlocks} code blocks processed`);
     }
 
     return result;
+
   } catch (error) {
-    console.error('💥 Markdown code highlighting failed:', error);
-    return markdown; // Return original on error
+    console.error('Markdown code highlighting failed:', error);
+
+    // 错误回退：至少处理内联代码
+    try {
+      const inlineCodeRegex = /`([^`\n]+)`/g;
+      return markdown.replace(inlineCodeRegex, (match, code) => {
+        try {
+          const escapedCode = code
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
+          return `<code class="inline-code">${escapedCode}</code>`;
+        } catch (escapeError) {
+          console.warn('Failed to escape inline code:', escapeError);
+          return match;
+        }
+      });
+    } catch (fallbackError) {
+      console.error('Fallback markdown processing also failed:', fallbackError);
+      return markdown; // 返回原始内容
+    }
   }
 }
 
-// Highlight a single code block
-export async function highlightSingleCodeBlock(code, lang, meta = '', options = {}) {
-  const metadata = parseCodeBlockMeta(meta);
-  const resolvedLang = resolveLanguage(lang);
+/**
+ * 处理消息内容中的Markdown和代码高亮（别名函数，向后兼容）
+ */
+export const processMarkdownWithHighlight = highlightMarkdownCode;
 
-  return highlightCodeAsync(code, resolvedLang, {
-    ...options,
-    ...metadata
-  });
+// 默认导出
+export default {
+  highlightCodeAsync,
+  highlightCode,
+  highlightCodeInContent,
+  highlightMarkdownCode,
+  processMarkdownWithHighlight,
+  getSupportedLanguages,
+  detectLanguage,
+  clearHighlightCache,
+  getCacheStats
 }
-
-// ✨ Smart code detection for automatic highlighting
-export function hasCodeBlocks(content) {
-  if (!content) return false;
-  return CODE_BLOCK_REGEX.test(content);
-}
-
-export function hasInlineCode(content) {
-  if (!content) return false;
-  return INLINE_CODE_REGEX.test(content);
-}
-
-export function hasAnyCode(content) {
-  return hasCodeBlocks(content) || hasInlineCode(content);
-}
-
-// Generate static CSS for highlighted code
-export function generateHighlightStyles(theme = 'dark') {
-  const isDark = theme === 'dark';
-
-  return `
-    /* Code block wrapper */
-    .code-block-wrapper {
-      position: relative;
-      margin: 1rem 0;
-      border-radius: 0.5rem;
-      overflow: hidden;
-      background-color: ${isDark ? '#282c34' : '#fafafa'};
-      box-shadow: 0 2px 4px rgba(0, 0, 0, ${isDark ? '0.2' : '0.1'});
-      font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
-    }
-
-    /* Code title */
-    .code-title {
-      padding: 0.5rem 1rem;
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: ${isDark ? '#abb2bf' : '#666'};
-      background-color: ${isDark ? '#21252b' : '#f0f0f0'};
-      border-bottom: 1px solid ${isDark ? '#3e4451' : '#e0e0e0'};
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    /* Pre and code elements */
-    .shiki {
-      margin: 0;
-      padding: 1rem;
-      overflow-x: auto;
-      font-size: 0.875rem;
-      line-height: 1.5;
-      max-height: 400px;
-    }
-
-    .shiki code {
-      display: block;
-      width: fit-content;
-      min-width: 100%;
-      font-family: inherit;
-    }
-
-    /* Line styling */
-    .line {
-      display: table-row;
-    }
-
-    .line-number {
-      display: table-cell;
-      padding-right: 1rem;
-      text-align: right;
-      color: ${isDark ? '#5c6370' : '#999'};
-      user-select: none;
-      width: 1%;
-      white-space: nowrap;
-    }
-
-    .line-content {
-      display: table-cell;
-      padding-left: 0.5rem;
-    }
-
-    /* Highlighted lines */
-    .line-content.highlighted {
-      background-color: ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'};
-      display: inline-block;
-      width: 100%;
-      margin: 0 -1rem;
-      padding: 0 1rem;
-    }
-
-    /* Inline code */
-    code:not(.shiki code) {
-      padding: 0.125rem 0.25rem;
-      font-size: 0.875em;
-      color: ${isDark ? '#e06c75' : '#d14'};
-      background-color: ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'};
-      border-radius: 0.25rem;
-      font-family: 'Consolas', 'Monaco', 'Andale Mono', monospace;
-    }
-
-    /* Copy button */
-    .code-copy-button {
-      padding: 0.25rem 0.5rem;
-      font-size: 0.75rem;
-      color: ${isDark ? '#abb2bf' : '#666'};
-      background-color: transparent;
-      border: 1px solid ${isDark ? '#3e4451' : '#e0e0e0'};
-      border-radius: 0.25rem;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .code-copy-button:hover {
-      color: ${isDark ? '#fff' : '#000'};
-      background-color: ${isDark ? '#3e4451' : '#e0e0e0'};
-    }
-
-    /* Scrollbar styling */
-    .shiki::-webkit-scrollbar {
-      height: 8px;
-    }
-
-    .shiki::-webkit-scrollbar-track {
-      background: ${isDark ? '#282c34' : '#fafafa'};
-    }
-
-    .shiki::-webkit-scrollbar-thumb {
-      background: ${isDark ? '#5c6370' : '#ccc'};
-      border-radius: 4px;
-    }
-
-    .shiki::-webkit-scrollbar-thumb:hover {
-      background: ${isDark ? '#abb2bf' : '#999'};
-    }
-
-    /* Language badge */
-    .code-block-wrapper::after {
-      content: attr(data-lang);
-      position: absolute;
-      top: 0.5rem;
-      right: 0.5rem;
-      padding: 0.125rem 0.5rem;
-      font-size: 0.75rem;
-      color: ${isDark ? '#5c6370' : '#999'};
-      background-color: ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'};
-      border-radius: 0.25rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      pointer-events: none;
-      font-family: inherit;
-    }
-
-    /* Loading states */
-    .loading-code {
-      background-color: ${isDark ? '#21252b' : '#f5f5f5'};
-      color: ${isDark ? '#5c6370' : '#999'};
-      margin: 0;
-      padding: 1rem;
-      border-radius: 0.5rem;
-    }
-
-    /* Error states */
-    .code-error {
-      background-color: ${isDark ? '#2d1b1b' : '#fef2f2'};
-      border: 1px solid ${isDark ? '#5c2626' : '#fecaca'};
-      color: ${isDark ? '#f87171' : '#dc2626'};
-      padding: 1rem;
-      border-radius: 0.5rem;
-      margin: 1rem 0;
-    }
-  `;
-}
-
-// Markdown processor with syntax highlighting
-export async function processMarkdownWithHighlight(markdown, options = {}) {
-  const {
-    theme = 'dark',
-    lineNumbers = true,
-    cache = true,
-    processInlineCode = true
-  } = options;
-
-  // Highlight code blocks
-  let processed = await highlightMarkdownCode(markdown, {
-    theme,
-    lineNumbers,
-    cache
-  });
-
-  // Process inline code if enabled
-  if (processInlineCode) {
-    processed = processed.replace(INLINE_CODE_REGEX, (match, code) => {
-      return `<code class="inline-code">${escapeHtml(code)}</code>`;
-    });
-  }
-
-  return processed;
-}
-
-// Escape HTML entities
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-// Theme switcher utility
-export async function switchTheme(theme) {
-  // Clear cache to force re-highlighting with new theme
-  clearHighlightCache();
-
-  // Return new styles
-  return generateHighlightStyles(theme);
-}
-
-// Get available themes
-export function getAvailableThemes() {
-  return Object.keys(themes);
-}
-
-// Simple HTML escape for sync version
-function simpleEscapeHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-// Synchronous version for computed properties - DEPRECATED
-export function highlightCodeSync(content) {
-  console.warn('⚠️ highlightCodeSync is deprecated. Use async version instead.');
-  // Simple fallback for immediate rendering
-  return content.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
-    return `<pre class="loading-code"><code class="language-${lang || 'text'}">${simpleEscapeHtml(code)}</code></pre>`;
-  });
-}
-
-// Also export as highlightCode for compatibility - DEPRECATED
-export function highlightCode(content) {
-  console.warn('⚠️ highlightCode (sync) is deprecated. Use highlightCodeAsync instead.');
-  return highlightCodeSync(content);
-}
-
-// ✨ Enhanced async code highlighting for messages
-export async function highlightMessageContent(content, options = {}) {
-  if (!content || !hasAnyCode(content)) {
-    return content; // No code to highlight
-  }
-
-  const {
-    theme = 'dark',
-    lineNumbers = true,
-    cache = true
-  } = options;
-
-  try {
-    // Process markdown with code highlighting
-    const { renderMarkdown } = await import('./markdown.js');
-    let html = renderMarkdown(content);
-
-    // Apply code highlighting to any remaining code blocks
-    html = await highlightMarkdownCode(html, { theme, lineNumbers, cache });
-
-    return html;
-  } catch (error) {
-    console.error('💥 Message content highlighting failed:', error);
-    return content;
-  }
-}
-
-// highlightCodeAsync is already available from the local import above

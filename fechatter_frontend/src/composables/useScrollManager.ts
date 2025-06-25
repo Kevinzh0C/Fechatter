@@ -3,7 +3,7 @@
  * Handles scroll behavior and position management
  */
 
-import { ref, nextTick, onMounted, onUnmounted, computed } from 'vue'
+import { ref, nextTick, onUnmounted, computed } from 'vue'
 import { useViewportStore } from '@/stores/viewport'
 import { debounce } from '@/utils/helpers'
 import type { ScrollPosition } from '@/types/message'
@@ -33,7 +33,7 @@ export function useScrollManager(chatId: number) {
   }
 
   // 🔥 NEW: Enhanced scroll handler with auto load more
-  const handleScroll = debounce((event?: Event) => {
+  const handleScroll = debounce((_event?: Event) => {
     if (!scrollContainer.value || isAutoScrolling.value) return
 
     const position: ScrollPosition = {

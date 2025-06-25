@@ -25,8 +25,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue'
-import type { Message, MessageListProps, MessageListEmits, ScrollPosition } from '@/types/message'
+import { ref, computed } from 'vue'
+import type { Message, ScrollPosition } from '@/types/message'
 
 // 🧹 MINIMAL: Only essential props preserved
 interface Props {
@@ -45,7 +45,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 // 🧹 CLEARED: All message display logic removed
-const emit = defineEmits<{
+defineEmits<{
   'user-profile-opened': [userId: number]
   'dm-created': [chatId: number]
   'load-more': []

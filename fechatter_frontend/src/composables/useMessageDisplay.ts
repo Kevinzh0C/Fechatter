@@ -3,13 +3,12 @@
  * Encapsulates message display logic with clean API
  */
 
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useMessagesStore } from '@/stores/messages'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+
 import { useViewportStore } from '@/stores/viewport'
-import type { Message, MessageVisibility } from '@/types/message'
+import type { MessageVisibility } from '@/types/message'
 
 export function useMessageDisplay(chatId: number) {
-  const messagesStore = useMessagesStore()
   const viewportStore = useViewportStore()
 
   // Local state
@@ -75,7 +74,7 @@ export function useMessageDisplay(chatId: number) {
     }
 
     observer.value = new IntersectionObserver((entries) => {
-      const updates = checkVisibility(entries)
+      checkVisibility(entries)
       // Emit visibility changes if needed
     }, options)
 

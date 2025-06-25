@@ -14,8 +14,7 @@ import type {
   PaginatedResponse,
   PaginationParams,
   ApiResponse,
-  UploadedFile,
-  FileUploadResponse
+  UploadedFile
 } from '@/types/api';
 
 class ChatService {
@@ -260,7 +259,7 @@ class ChatService {
       }
 
       // 2. 整理文件URL - 支持已上传的URL和新上传的文件
-      const newFileUrls = uploadedFiles.map(f => f.url || f.file_url); // 支持两种格式
+      const newFileUrls = uploadedFiles.map(f => f.url || (f as any).file_url); // 支持两种格式
       const existingFileUrls = messageData.files?.filter(f => typeof f === 'string') as string[] || [];
       const allFileUrls = [...existingFileUrls, ...newFileUrls];
 
@@ -315,17 +314,17 @@ class ChatService {
 
       throw new Error(errorMessage);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(`❌ [ChatService] Send message failed for chat ${chatId}:`, error);
 
       // 增强错误处理，提供用户友好的错误信息
-      if (error.response?.status === 401) {
+      if (error?.response?.status === 401) {
         throw new Error('Authentication failed. Please login again.');
-      } else if (error.response?.status === 403) {
+      } else if (error?.response?.status === 403) {
         throw new Error('You do not have permission to send messages in this chat.');
-      } else if (error.response?.status === 413) {
+      } else if (error?.response?.status === 413) {
         throw new Error('Message or files are too large. Please reduce the size and try again.');
-      } else if (error.response?.status === 422) {
+      } else if (error?.response?.status === 422) {
         throw new Error('Invalid message format. Please check your content and try again.');
       }
 
@@ -334,10 +333,15 @@ class ChatService {
   }
 
   /**
-   * 生成幂等性密钥
+   * 生成幂等性密钥 - 使用标准UUID v4格式
    */
   private generateIdempotencyKey(): string {
-    // Generate a valid UUID v4
+    // 🔧 CRITICAL FIX: Use crypto.randomUUID() for standard UUID format
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+
+    // 🔧 Fallback for older browsers - ensure standard UUID v4 format
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
       const r = Math.random() * 16 | 0;
       const v = c == 'x' ? r : (r & 0x3 | 0x8);
@@ -687,59 +691,38 @@ class ChatService {
   }
 
   /**
-   * 上传文件 - 增强版带重试机制和网络诊断
+   */
+  /**
    */
   async uploadFile(file: File, onProgress?: (progress: number) => void): Promise<UploadedFile> {
-    const formData = new FormData();
-    formData.append('file', file);
+    // Import auto-inference system
+    const { ResponseAdapter, RequestConfigInferrer } = await import("../utils/TypeInference");
 
-    // 🔧 Upload configuration
-    const uploadConfig = {
-      maxRetries: 3,
-      retryDelay: 1000, // Start with 1 second
-      timeout: 30000,
-      maxFileSize: 2 * 1024 * 1024 // 2MB
-    };
+    // Auto-infer optimal upload configuration based on file
+    const config = RequestConfigInferrer.inferUploadConfig(file);
 
-    // 🔧 Pre-upload validation
-    if (file.size > uploadConfig.maxFileSize) {
+    // Validate file size
+    if (file.size > 2 * 1024 * 1024) {
       throw new Error(`File size ${Math.round(file.size / 1024 / 1024 * 100) / 100}MB exceeds 2MB limit`);
     }
 
-    // 🔧 Network diagnostic function
-    const checkNetworkHealth = async (): Promise<boolean> => {
+    // Prepare FormData (browser auto-sets Content-Type with boundary)
+    const formData = new FormData();
+    formData.append("file", file);
+
+    // Auto-infer headers (never include Content-Type for FormData!)
+    const headers = RequestConfigInferrer.inferHeaders(formData);
+
+    // Enhanced retry logic with exponential backoff
+    for (let attempt = 1; attempt <= config.maxRetries; attempt++) {
       try {
-        // 🔧 CRITICAL FIX: Use direct fetch to avoid /api prefix
-        // Health check should access infrastructure endpoint directly
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        if (import.meta.env.DEV) {
+          console.log(`📤 [Smart Upload] Attempt ${attempt}/${config.maxRetries} for ${file.name}`);
+        }
 
-        const response = await fetch('/health', {
-          method: 'GET',
-          signal: controller.signal,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-
-        clearTimeout(timeoutId);
-        return response.status === 200;
-      } catch (error: any) {
-        console.warn('🔍 Network health check failed:', error.message);
-        return false;
-      }
-    };
-
-    // 🔧 Enhanced retry logic with exponential backoff
-    for (let attempt = 1; attempt <= uploadConfig.maxRetries; attempt++) {
-      try {
-        console.log(`📤 Upload attempt ${attempt}/${uploadConfig.maxRetries} for ${file.name}`);
-
-        const response = await api.post('/files/single', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-          timeout: uploadConfig.timeout,
+        const response = await api.post("/files/single", formData, {
+          headers, // Auto-inferred (empty for FormData)
+          timeout: config.timeout,
           onUploadProgress: (progressEvent) => {
             if (onProgress && progressEvent.total) {
               const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -748,192 +731,67 @@ class ChatService {
           },
         });
 
-        // 🔧 ENHANCED: 处理后端返回的数据结构 - 增强版带详细诊断
-        if (response.data) {
+        // 🎯 SMART RESPONSE PARSING: Auto-adapt to any backend format
+        try {
+          const uploadedFile = ResponseAdapter.parseUploadResponse(response.data, file);
+
           if (import.meta.env.DEV) {
-            console.log('🔍 [ChatService] Upload response analysis:', {
-              hasData: !!response.data,
-              hasSuccess: 'success' in response.data,
-              successValue: response.data.success,
-              hasDataField: 'data' in response.data,
-              dataFieldValue: response.data.data,
-              hasError: 'error' in response.data,
-              fullResponse: response.data
-            });
+            console.log(`✅ [Smart Upload] Success: ${file.name} -> ${uploadedFile.url}`);
           }
 
-          // 🔧 CRITICAL FIX: 更宽松的响应格式检查
-          // 检查标准格式: { success: true, data: {...} }
-          if (response.data.success && response.data.data) {
-            const uploadData = response.data.data;
-            console.log(`✅ Upload successful: ${file.name} -> ${uploadData.url}`);
-
-            // 转换为前端期望的 UploadedFile 格式
-            return {
-              id: uploadData.id,
-              filename: uploadData.filename,
-              url: uploadData.url,
-              mime_type: uploadData.mime_type,
-              size: uploadData.size,
-              created_at: uploadData.created_at
-            };
+          return uploadedFile;
+        } catch (parseError) {
+          if (import.meta.env.DEV) {
+            console.error("❌ [Smart Upload] Response parsing failed:", parseError);
+            console.log("📊 Raw response:", response.data);
           }
-
-          // 🔧 COMPATIBILITY FIX: 检查直接返回格式 (兼容不同后端版本)
-          else if (response.data.file_url && response.data.file_name) {
-            if (import.meta.env.DEV) {
-              console.warn('⚠️ [ChatService] Non-standard response format detected, using compatibility mode');
-              console.log('📊 [ChatService] Direct format response:', response.data);
-            }
-
-            const uploadData = response.data;
-            return {
-              id: uploadData.id || Date.now(),
-              filename: uploadData.file_name,  // 使用 file_name
-              url: uploadData.file_url,        // 使用 file_url
-              mime_type: uploadData.mime_type || uploadData.file_type || 'application/octet-stream',
-              size: uploadData.file_size || file.size,  // 使用 file_size
-              created_at: uploadData.created_at || uploadData.upload_time || new Date().toISOString()
-            };
-          }
-
-          // 🔧 BACKWARD COMPATIBILITY: 支持旧的字段名格式
-          else if (response.data.url && response.data.filename) {
-            if (import.meta.env.DEV) {
-              console.warn('⚠️ [ChatService] Legacy response format detected');
-              console.log('📊 [ChatService] Legacy format response:', response.data);
-            }
-
-            const uploadData = response.data;
-            return {
-              id: uploadData.id || Date.now(),
-              filename: uploadData.filename,
-              url: uploadData.url,
-              mime_type: uploadData.mime_type || uploadData.type || 'application/octet-stream',
-              size: uploadData.size || file.size,
-              created_at: uploadData.created_at || new Date().toISOString()
-            };
-          }
-
-          // 🔧 ERROR ANALYSIS: 详细的错误分析和建议
-          else {
-            const errorDetails = {
-              responseStructure: Object.keys(response.data),
-              hasSuccess: 'success' in response.data,
-              successValue: response.data.success,
-              hasData: 'data' in response.data,
-              dataValue: response.data.data,
-              hasError: 'error' in response.data,
-              errorValue: response.data.error,
-              suggestion: 'Check backend response format'
-            };
-
-            if (import.meta.env.DEV) {
-              console.error('❌ [ChatService] Upload response format analysis:', errorDetails);
-            }
-
-            // 构建详细的错误信息
-            let detailedError = response.data.error?.message || 'File upload failed';
-
-            if (import.meta.env.DEV) {
-              detailedError += ` (Response analysis: ${JSON.stringify(errorDetails)})`;
-            }
-
-            throw new Error(detailedError);
-          }
+          throw parseError;
         }
 
-        // 🔧 FALLBACK: 如果完全没有response.data
-        else {
-          const noDataError = new Error('Server returned no data');
-          if (import.meta.env.DEV) {
-            console.error('❌ [ChatService] No response.data received:', response);
-          }
-          throw noDataError;
-        }
       } catch (error: any) {
-        console.error(`❌ Upload attempt ${attempt} failed for ${file.name}:`, error);
+        if (import.meta.env.DEV) {
+          console.error(`❌ [Smart Upload] Attempt ${attempt} failed:`, error.message);
+        }
 
-        // 🔧 ENHANCED: 详细的错误类型识别
+        // Smart error handling
         if (error.response) {
           const status = error.response.status;
 
-          // 🔧 明确处理认证错误
-          if (status === 401) {
-            const authError = new Error(
-              'Authentication required. Please login first to upload files.'
-            );
-            (authError as any).code = 'AUTH_REQUIRED';
-            (authError as any).status = 401;
-            throw authError;
-          }
-
-          // 🔧 明确处理其他HTTP错误
-          if (status === 403) {
-            throw new Error('You do not have permission to upload files.');
-          }
-
-          if (status === 413) {
-            throw new Error('File size exceeds server limit.');
-          }
-
-          if (status === 422) {
-            const validationError = new Error(
-              error.response.data?.error?.message || 'File validation failed.'
-            );
-            (validationError as any).validationErrors = error.response.data?.error?.validation_errors;
-            throw validationError;
-          }
-
-          // Don't retry on client errors (4xx) except for specific cases
+          // Do not retry on client errors (except 429)
           if (status >= 400 && status < 500 && status !== 429) {
             throw this.handleError(error);
           }
 
-          // Retry on server errors (5xx) and rate limiting (429)
-          if (attempt < uploadConfig.maxRetries && (status >= 500 || status === 429)) {
-            const delay = uploadConfig.retryDelay * Math.pow(2, attempt - 1);
-            console.log(`⏱️ Retrying in ${delay}ms... (Server error ${status})`);
+          // Retry on server errors and rate limiting
+          if (attempt < config.maxRetries && (status >= 500 || status === 429)) {
+            const delay = config.retryDelay * Math.pow(2, attempt - 1);
+            if (import.meta.env.DEV) {
+              console.log(`⏱️ [Smart Upload] Retrying in ${delay}ms... (${status} error)`);
+            }
             await new Promise(resolve => setTimeout(resolve, delay));
             continue;
           }
         }
 
-        // 🔧 Network error handling with diagnostics
-        if (!error.response) {
-          const isNetworkHealthy = await checkNetworkHealth();
-
-          if (!isNetworkHealthy) {
-            console.warn(`🔍 Network diagnostic: API server appears to be down`);
-
-            // 🔧 Progressive retry strategy
-            if (attempt < uploadConfig.maxRetries) {
-              const delay = uploadConfig.retryDelay * Math.pow(2, attempt - 1); // Exponential backoff
-              console.log(`⏱️ Retrying in ${delay}ms... (Network issue detected)`);
-              await new Promise(resolve => setTimeout(resolve, delay));
-              continue;
-            } else {
-              // 🔧 Enhanced error message for network issues
-              const networkError = new Error(
-                `File upload failed: Unable to connect to server after ${uploadConfig.maxRetries} attempts. ` +
-                `Please check your internet connection or try again later.`
-              );
-              (networkError as any).code = 'NETWORK_ERROR';
-              (networkError as any).attempts = attempt;
-              throw networkError;
-            }
+        // Network errors - try with health check
+        if (!error.response && attempt < config.maxRetries) {
+          const delay = config.retryDelay * Math.pow(2, attempt - 1);
+          if (import.meta.env.DEV) {
+            console.log(`⏱️ [Smart Upload] Retrying in ${delay}ms... (Network error)`);
           }
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
         }
 
         // Final attempt failed
-        if (attempt === uploadConfig.maxRetries) {
+        if (attempt === config.maxRetries) {
           throw this.handleError(error);
         }
       }
     }
 
-    // This should never be reached, but TypeScript requires it
-    throw new Error('Upload failed after all retry attempts');
+    // This should never be reached
+    throw new Error("Upload failed after all retry attempts");
   }
 }
 

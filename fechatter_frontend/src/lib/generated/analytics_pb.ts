@@ -1,5 +1,5 @@
 // Auto-generated protobuf types for analytics
-// Generated on: 2025-06-23T22:26:27.787Z
+// Generated on: 2025-06-25T15:47:11.981Z
 // Source: /Users/zhangkaiqi/Rust/Fechatter/fechatter_frontend/src/protos/analytics.proto
 
 import * as protobuf from 'protobufjs';
@@ -646,7 +646,7 @@ export function encodeAnalyticsEvent(event: IAnalyticsEvent): Uint8Array {
 }
 
 export function decodeAnalyticsEvent(buffer: Uint8Array): IAnalyticsEvent {
-  return AnalyticsEvent.decode(buffer);
+  return AnalyticsEvent.decode(buffer) as any;
 }
 
 export function encodeBatchRequest(request: IBatchRecordEventsRequest): Uint8Array {
@@ -655,5 +655,5 @@ export function encodeBatchRequest(request: IBatchRecordEventsRequest): Uint8Arr
 }
 
 export function decodeBatchRequest(buffer: Uint8Array): IBatchRecordEventsRequest {
-  return BatchRecordEventsRequest.decode(buffer);
+  return BatchRecordEventsRequest.decode(buffer) as any;
 }

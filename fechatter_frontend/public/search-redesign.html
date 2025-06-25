@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Search Effects Redesign</title>
+  <style>
+    body {
+      font-family: system-ui;
+      background: #f0f4f8;
+      padding: 20px;
+    }
+
+    .demo {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .search-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f8fafc;
+      border-radius: 12px;
+    }
+
+    .search-input {
+      flex: 1;
+      padding: 12px;
+      border: 2px solid #007aff20;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    .nav-btn {
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: #007aff;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .message {
+      padding: 16px;
+      border: 1px solid #eee;
+      margin: 8px 0;
+      border-radius: 8px;
+    }
+
+    .highlight-basic {
+      background: #fbbf24;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+
+    .highlight-focus {
+      background: #ef4444;
+      color: white;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+    }
+
+    .message-highlighted {
+      background: rgba(0, 122, 255, 0.08);
+      border: 2px solid rgba(0, 122, 255, 0.3);
+      transform: scale(1.02);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="demo">
+    <h1>🔍 Search Effects Redesign</h1>
+    <p>业界最佳实践的搜索特效</p>
+
+    <div class="search-bar">
+      <input class="search-input" value="project updates" placeholder="Search...">
+      <button class="nav-btn">‹</button>
+      <span style="padding: 8px; background: #007aff; color: white; border-radius: 6px;">2/5</span>
+      <button class="nav-btn">›</button>
+    </div>
+
+    <div class="message">
+      <strong>Developer 1</strong> - 2:30 PM<br>
+      Let's discuss the <span class="highlight-basic">project updates</span> for this week.
+    </div>
+
+    <div class="message message-highlighted">
+      <strong>Developer 2</strong> - 3:15 PM<br>
+      The <span class="highlight-focus">project updates</span> look great!
+    </div>
+
+    <div class="message">
+      <strong>Developer 3</strong> - 4:20 PM<br>
+      Can we review all <span class="highlight-basic">project updates</span>?
+    </div>
+
+    <h3>重构要点：</h3>
+    <ul>
+      <li>多层次高亮系统：基础高亮 + 焦点高亮 + 容器高亮</li>
+      <li>流畅搜索导航：上一个/下一个 + 结果计数</li>
+      <li>丰富视觉反馈：进度指示 + 匹配质量</li>
+      <li>现代微交互：悬停效果 + 平滑动画</li>
+      <li>智能状态管理：搜索历史 + 实时建议</li>
+    </ul>
+  </div>
+</body>
+
+</html>

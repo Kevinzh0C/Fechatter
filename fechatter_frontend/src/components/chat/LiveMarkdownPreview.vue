@@ -1,35 +1,40 @@
 <template>
+  <!-- @ts-nocheck -->
   <div class="live-markdown-preview" :class="{ 'is-loading': isLoading, 'has-error': error }">
     <!-- 预览头部 -->
     <div class="preview-header">
       <div class="preview-title">
         <svg class="preview-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-          <path d="M14.85 3H1.15C.52 3 0 3.52 0 4.15v7.69C0 12.48.52 13 1.15 13h13.69c.64 0 1.15-.52 1.15-1.15v-7.7C16 3.52 15.48 3 14.85 3z"/>
+          <path
+            d="M14.85 3H1.15C.52 3 0 3.52 0 4.15v7.69C0 12.48.52 13 1.15 13h13.69c.64 0 1.15-.52 1.15-1.15v-7.7C16 3.52 15.48 3 14.85 3z" />
         </svg>
         <span>Live Preview</span>
         <div v-if="isLoading" class="loading-spinner"></div>
       </div>
-      
+
       <div class="preview-controls">
         <!-- 主题切换 -->
-        <button @click="toggleTheme" class="control-btn" :title="`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`">
+        <button @click="toggleTheme" class="control-btn"
+          :title="`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`">
           <svg v-if="theme === 'dark'" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
+            <path d="M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
           </svg>
           <svg v-else width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"/>
+            <path
+              d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z" />
           </svg>
         </button>
 
         <!-- 同步滚动 -->
         <button @click="toggleSyncScroll" class="control-btn" :class="{ active: syncScroll }" title="Sync scroll">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M2 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H4z"/>
-            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+            <path
+              d="M2 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H4z" />
+            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
           </svg>
         </button>
 
-        <!-- 性能指标 */
+        <!-- 性能指标 -->
         <div v-if="showMetrics && metrics" class="metrics-display" title="Render time">
           <span class="metric-value">{{ metrics.renderTime }}ms</span>
         </div>
@@ -47,7 +52,8 @@
       <!-- 错误状态 -->
       <div v-else-if="error" class="error-state">
         <svg class="error-icon" width="24" height="24" viewBox="0 0 16 16" fill="currentColor">
-          <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
+          <path
+            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z" />
         </svg>
         <span class="error-message">Preview failed to render</span>
         <button @click="retryRender" class="retry-btn">Retry</button>
@@ -56,16 +62,16 @@
       <!-- 空状态 -->
       <div v-else-if="!content.trim()" class="empty-state">
         <svg class="empty-icon" width="48" height="48" viewBox="0 0 16 16" fill="currentColor">
-          <path d="M14.5 3a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h13zm-13-1A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2h-13z"/>
-          <path d="M3 5.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zM3 8a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 8zm0 2.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/>
+          <path
+            d="M14.5 3a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h13zm-13-1A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2h-13z" />
+          <path
+            d="M3 5.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zM3 8a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 8zm0 2.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z" />
         </svg>
         <span class="empty-message">Start typing to see preview...</span>
       </div>
 
       <!-- 渲染内容 -->
-      <div v-else class="rendered-content" 
-           :class="`theme-${theme}`"
-           v-html="renderedContent">
+      <div v-else class="rendered-content" :class="`theme-${theme}`" v-html="renderedContent">
       </div>
     </div>
 
@@ -76,7 +82,7 @@
         <span v-if="lineCount" class="line-count">{{ lineCount }} lines</span>
         <span v-if="charCount" class="char-count">{{ charCount }} chars</span>
       </div>
-      
+
       <div class="status-right">
         <span v-if="cacheHitRate !== null" class="cache-info" title="Cache hit rate">
           Cache: {{ Math.round(cacheHitRate * 100) }}%
@@ -184,7 +190,7 @@ const renderPreview = async (immediate = false) => {
     try {
       // Update engine theme
       unifiedMarkdownEngine.updateConfig({ theme: props.theme });
-      
+
       // Render content
       const html = await unifiedMarkdownEngine.renderPreview(props.content, {
         theme: props.theme,
@@ -236,23 +242,23 @@ const toggleSyncScroll = () => {
 
 const handleScroll = (event) => {
   if (!props.syncScroll || isScrolling) return;
-  
+
   const element = event.target;
   const scrollRatio = element.scrollTop / (element.scrollHeight - element.clientHeight);
-  
+
   emit('scroll', { scrollRatio, direction: 'preview' });
 };
 
 // External scroll sync
 const syncScrollPosition = (scrollRatio) => {
   if (!props.syncScroll || !previewContentRef.value) return;
-  
+
   isScrolling = true;
-  
+
   const element = previewContentRef.value;
   const maxScroll = element.scrollHeight - element.clientHeight;
   element.scrollTop = maxScroll * scrollRatio;
-  
+
   nextTick(() => {
     isScrolling = false;
   });
@@ -400,8 +406,13 @@ defineExpose({
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .error-icon {
@@ -551,20 +562,20 @@ defineExpose({
   .preview-header {
     padding: 8px 12px;
   }
-  
+
   .preview-content {
     padding: 12px;
   }
-  
+
   .preview-status {
     padding: 6px 12px;
     flex-direction: column;
     gap: 4px;
   }
-  
+
   .status-left,
   .status-right {
     gap: 8px;
   }
 }
-</style> 
+</style>

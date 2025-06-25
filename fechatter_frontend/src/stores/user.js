@@ -10,7 +10,10 @@ export const useUserStore = defineStore('user', {
     hasFetchedAllUsers: false,
     users: [],
     lastFetch: 0,
-    fetchPromise: null
+    fetchPromise: null,
+    initializationAttempts: 0,
+    maxInitializationAttempts: 3,
+    initializationInProgress: false
   }),
 
   actions: {
@@ -18,13 +21,11 @@ export const useUserStore = defineStore('user', {
      * Fetch all users in the workspace, ensuring it only runs once.
      */
     async fetchWorkspaceUsers() {
-      // If a fetch is already in progress, return the existing promise
       if (this.loading && this.fetchPromise) {
         return this.fetchPromise;
       }
 
       const now = Date.now();
-      // Only fetch if cache is empty or older than 5 minutes
       if (this.workspaceUsers.length > 0 && (now - this.lastFetch < 300000)) {
         return this.workspaceUsers;
       }
@@ -37,12 +38,19 @@ export const useUserStore = defineStore('user', {
           this.userCache.clear();
           users.forEach(user => this.userCache.set(user.id, user));
           this.lastFetch = Date.now();
+          this.hasFetchedAllUsers = true;
+          this.error = null;
+
+          if (import.meta.env.DEV) {
+            console.log(`✅ [UserStore] Successfully fetched ${users.length} workspace users`);
+          }
+
           return users;
         } catch (error) {
+          this.error = error.message;
           if (import.meta.env.DEV) {
             console.error('[UserStore] Failed to fetch users:', error);
           }
-          // Return empty array on failure but still resolve the promise
           return [];
         } finally {
           this.loading = false;
@@ -52,14 +60,60 @@ export const useUserStore = defineStore('user', {
       return this.fetchPromise;
     },
 
+    async initializeWithRetry() {
+      if (this.initializationInProgress) {
+        return false;
+      }
+
+      this.initializationInProgress = true;
+
+      try {
+        while (this.initializationAttempts < this.maxInitializationAttempts) {
+          this.initializationAttempts++;
+
+          if (import.meta.env.DEV) {
+            console.log(`🔄 [UserStore] Initialization attempt ${this.initializationAttempts}/${this.maxInitializationAttempts}`);
+          }
+
+          try {
+            const users = await this.fetchWorkspaceUsers();
+            if (users && users.length > 0) {
+              if (import.meta.env.DEV) {
+                console.log(`✅ [UserStore] Initialization successful on attempt ${this.initializationAttempts}`);
+              }
+              return true;
+            }
+          } catch (error) {
+            if (import.meta.env.DEV) {
+              console.warn(`⚠️ [UserStore] Attempt ${this.initializationAttempts} failed:`, error.message);
+            }
+          }
+
+          if (this.initializationAttempts < this.maxInitializationAttempts) {
+            const delay = Math.min(1000 * Math.pow(2, this.initializationAttempts - 1), 5000);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        }
+
+        if (import.meta.env.DEV) {
+          console.warn(`❌ [UserStore] All ${this.maxInitializationAttempts} initialization attempts failed`);
+        }
+        return false;
+      } finally {
+        this.initializationInProgress = false;
+      }
+    },
+
+    async forceRefresh() {
+      this.lastFetch = 0;
+      this.initializationAttempts = 0;
+      return this.fetchWorkspaceUsers();
+    },
+
     clearError() {
       this.error = null;
     },
 
-    /**
-     * Fetch users by their IDs.
-     * @param {number[]} userIds - An array of user IDs to fetch.
-     */
     async fetchUsersByIds(userIds) {
       if (!userIds || userIds.length === 0) {
         return;
@@ -75,6 +129,31 @@ export const useUserStore = defineStore('user', {
         }
       }
     },
+
+    addUserToCache(user) {
+      if (user && user.id) {
+        this.userCache.set(user.id, user);
+
+        const existingUser = this.workspaceUsers.find(u => u.id === user.id);
+        if (!existingUser) {
+          this.workspaceUsers.push(user);
+        }
+      }
+    },
+
+    getDiagnostics() {
+      return {
+        workspaceUsersCount: this.workspaceUsers.length,
+        cacheSize: this.userCache.size,
+        loading: this.loading,
+        error: this.error,
+        hasFetchedAllUsers: this.hasFetchedAllUsers,
+        lastFetch: this.lastFetch,
+        lastFetchAge: this.lastFetch ? Date.now() - this.lastFetch : null,
+        initializationAttempts: this.initializationAttempts,
+        initializationInProgress: this.initializationInProgress
+      };
+    }
   },
 
   getters: {
@@ -84,11 +163,6 @@ export const useUserStore = defineStore('user', {
       return state.workspaceUsers.filter(user => !excludeIds.includes(user.id));
     },
 
-    /**
-     * Check if a user exists in the store or cache.
-     * @param {object} state - The store's state.
-     * @returns {function(number): boolean} A function that takes a user ID and returns a boolean.
-     */
     hasUser: (state) => (userId) => {
       return state.userCache.has(userId);
     },
@@ -96,5 +170,22 @@ export const useUserStore = defineStore('user', {
     getUserById: (state) => (userId) => {
       return state.userCache.get(userId);
     },
+
+    getUserByIdWithFallback: (state) => (userId) => {
+      let user = state.userCache.get(userId);
+
+      if (!user) {
+        user = state.workspaceUsers.find(u => u.id === userId);
+        if (user) {
+          state.userCache.set(userId, user);
+        }
+      }
+
+      return user;
+    },
+
+    isReady: (state) => {
+      return state.hasFetchedAllUsers && state.workspaceUsers.length > 0;
+    }
   }
 }); 

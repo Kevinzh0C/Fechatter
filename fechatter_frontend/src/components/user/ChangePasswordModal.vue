@@ -16,7 +16,9 @@
         <!-- 错误提示 -->
         <div v-if="error" class="error-alert">
           <svg class="error-icon" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+            <path fill-rule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+              clip-rule="evenodd" />
           </svg>
           <span>{{ error }}</span>
         </div>
@@ -27,27 +29,20 @@
           <div class="form-group">
             <label for="currentPassword" class="form-label">当前密码 *</label>
             <div class="password-input-container">
-              <input
-                id="currentPassword"
-                v-model="formData.currentPassword"
-                :type="showCurrentPassword ? 'text' : 'password'"
-                class="form-input"
-                :class="{ 'form-input-error': validationErrors.currentPassword }"
-                placeholder="请输入当前密码"
-                autocomplete="current-password"
-                required
-              />
-              <button
-                type="button"
-                @click="showCurrentPassword = !showCurrentPassword"
-                class="password-toggle-btn"
-              >
+              <input id="currentPassword" v-model="formData.currentPassword"
+                :type="showCurrentPassword ? 'text' : 'password'" class="form-input"
+                :class="{ 'form-input-error': validationErrors.currentPassword }" placeholder="请输入当前密码"
+                autocomplete="current-password" required />
+              <button type="button" @click="showCurrentPassword = !showCurrentPassword" class="password-toggle-btn">
                 <svg v-if="showCurrentPassword" class="eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464M9.878 9.878l4.242 4.242m0 0L18.536 15.536M14.12 14.12l4.242 4.242" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464M9.878 9.878l4.242 4.242m0 0L18.536 15.536M14.12 14.12l4.242 4.242" />
                 </svg>
                 <svg v-else class="eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
               </button>
             </div>
@@ -60,43 +55,32 @@
           <div class="form-group">
             <label for="newPassword" class="form-label">新密码 *</label>
             <div class="password-input-container">
-              <input
-                id="newPassword"
-                v-model="formData.newPassword"
-                :type="showNewPassword ? 'text' : 'password'"
-                class="form-input"
-                :class="{ 'form-input-error': validationErrors.newPassword }"
-                placeholder="请输入新密码"
-                autocomplete="new-password"
-                required
-              />
-              <button
-                type="button"
-                @click="showNewPassword = !showNewPassword"
-                class="password-toggle-btn"
-              >
+              <input id="newPassword" v-model="formData.newPassword" :type="showNewPassword ? 'text' : 'password'"
+                class="form-input" :class="{ 'form-input-error': validationErrors.newPassword }" placeholder="请输入新密码"
+                autocomplete="new-password" required />
+              <button type="button" @click="showNewPassword = !showNewPassword" class="password-toggle-btn">
                 <svg v-if="showNewPassword" class="eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464M9.878 9.878l4.242 4.242m0 0L18.536 15.536M14.12 14.12l4.242 4.242" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464M9.878 9.878l4.242 4.242m0 0L18.536 15.536M14.12 14.12l4.242 4.242" />
                 </svg>
                 <svg v-else class="eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
               </button>
             </div>
             <span v-if="validationErrors.newPassword" class="form-error">
               {{ validationErrors.newPassword }}
             </span>
-            
+
             <!-- 密码强度指示器 -->
             <div v-if="formData.newPassword" class="password-strength">
               <div class="strength-label">密码强度:</div>
               <div class="strength-bar">
-                <div 
-                  class="strength-fill"
-                  :class="passwordStrengthClass"
-                  :style="{ width: passwordStrengthPercent + '%' }"
-                />
+                <div class="strength-fill" :class="passwordStrengthClass"
+                  :style="{ width: passwordStrengthPercent + '%' }" />
               </div>
               <div class="strength-text" :class="passwordStrengthClass">
                 {{ passwordStrengthText }}
@@ -108,27 +92,20 @@
           <div class="form-group">
             <label for="confirmPassword" class="form-label">确认新密码 *</label>
             <div class="password-input-container">
-              <input
-                id="confirmPassword"
-                v-model="formData.confirmPassword"
-                :type="showConfirmPassword ? 'text' : 'password'"
-                class="form-input"
-                :class="{ 'form-input-error': validationErrors.confirmPassword }"
-                placeholder="请再次输入新密码"
-                autocomplete="new-password"
-                required
-              />
-              <button
-                type="button"
-                @click="showConfirmPassword = !showConfirmPassword"
-                class="password-toggle-btn"
-              >
+              <input id="confirmPassword" v-model="formData.confirmPassword"
+                :type="showConfirmPassword ? 'text' : 'password'" class="form-input"
+                :class="{ 'form-input-error': validationErrors.confirmPassword }" placeholder="请再次输入新密码"
+                autocomplete="new-password" required />
+              <button type="button" @click="showConfirmPassword = !showConfirmPassword" class="password-toggle-btn">
                 <svg v-if="showConfirmPassword" class="eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464M9.878 9.878l4.242 4.242m0 0L18.536 15.536M14.12 14.12l4.242 4.242" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464M9.878 9.878l4.242 4.242m0 0L18.536 15.536M14.12 14.12l4.242 4.242" />
                 </svg>
                 <svg v-else class="eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
               </button>
             </div>
@@ -143,31 +120,41 @@
             <ul class="requirements-list">
               <li :class="{ 'requirement-met': hasMinLength }">
                 <svg class="requirement-icon" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                  <path fill-rule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clip-rule="evenodd" />
                 </svg>
                 至少8个字符
               </li>
               <li :class="{ 'requirement-met': hasUppercase }">
                 <svg class="requirement-icon" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                  <path fill-rule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clip-rule="evenodd" />
                 </svg>
                 包含大写字母
               </li>
               <li :class="{ 'requirement-met': hasLowercase }">
                 <svg class="requirement-icon" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                  <path fill-rule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clip-rule="evenodd" />
                 </svg>
                 包含小写字母
               </li>
               <li :class="{ 'requirement-met': hasNumber }">
                 <svg class="requirement-icon" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                  <path fill-rule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clip-rule="evenodd" />
                 </svg>
                 包含数字
               </li>
               <li :class="{ 'requirement-met': hasSpecialChar }">
                 <svg class="requirement-icon" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                  <path fill-rule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clip-rule="evenodd" />
                 </svg>
                 包含特殊字符
               </li>
@@ -178,20 +165,11 @@
 
       <!-- 模态框底部 -->
       <div class="modal-footer">
-        <button
-          type="button"
-          @click="close"
-          class="btn btn-secondary"
-          :disabled="loading"
-        >
+        <button type="button" @click="close" class="btn btn-secondary" :disabled="loading">
           取消
         </button>
-        
-        <button
-          @click="handleSubmit"
-          class="btn btn-primary"
-          :disabled="loading || !isFormValid"
-        >
+
+        <button @click="handleSubmit" class="btn btn-primary" :disabled="loading || !isFormValid">
           <span v-if="loading" class="loading-spinner" />
           {{ loading ? '修改中...' : '修改密码' }}
         </button>
@@ -210,7 +188,7 @@ interface Props {
   isOpen: boolean;
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 
 // Emits
 const emit = defineEmits<{
@@ -271,10 +249,10 @@ const passwordStrengthText = computed(() => {
 // 表单验证
 const isFormValid = computed(() => {
   return formData.currentPassword.trim() !== '' &&
-         formData.newPassword.trim() !== '' &&
-         formData.confirmPassword.trim() !== '' &&
-         formData.newPassword === formData.confirmPassword &&
-         passwordStrength.value >= 3; // 至少中等强度
+    formData.newPassword.trim() !== '' &&
+    formData.confirmPassword.trim() !== '' &&
+    formData.newPassword === formData.confirmPassword &&
+    passwordStrength.value >= 3; // 至少中等强度
 });
 
 // 验证表单
@@ -331,7 +309,7 @@ const handleSubmit = async () => {
 
     await UserService.changePassword(formData.currentPassword, formData.newPassword);
 
-    notifySuccess('密码修改成功', '您的密码已经成功修改');
+    notifySuccess('密码修改成功');
     emit('success');
     close();
 
@@ -350,12 +328,12 @@ const close = () => {
   formData.newPassword = '';
   formData.confirmPassword = '';
   error.value = '';
-  
+
   // 重置密码显示状态
   showCurrentPassword.value = false;
   showNewPassword.value = false;
   showConfirmPassword.value = false;
-  
+
   // 清除验证错误
   Object.keys(validationErrors).forEach(key => {
     delete validationErrors[key];
@@ -706,18 +684,18 @@ watch([() => formData.currentPassword, () => formData.newPassword, () => formDat
     border-radius: 0;
     max-height: 100vh;
   }
-  
+
   .modal-header,
   .modal-content,
   .modal-footer {
     padding-left: 16px;
     padding-right: 16px;
   }
-  
+
   .modal-footer {
     flex-direction: column;
   }
-  
+
   .btn {
     width: 100%;
   }

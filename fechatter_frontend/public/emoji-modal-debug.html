@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emoji Modal Debug Tool</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #1a1a1a;
+      color: #ffffff;
+      padding: 20px;
+    }
+
+    .debug-panel {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .debug-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      color: #4CAF50;
+    }
+
+    .test-item {
+      background: #333;
+      border: 1px solid #555;
+      border-radius: 6px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+
+    .test-label {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #81C784;
+    }
+
+    .test-description {
+      color: #ccc;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    .test-button {
+      background: #2196F3;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    .test-button:hover {
+      background: #1976D2;
+    }
+
+    .test-result {
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .result-success {
+      background: #1B5E20;
+      color: #C8E6C9;
+    }
+
+    .result-error {
+      background: #B71C1C;
+      color: #FFCDD2;
+    }
+
+    .result-warning {
+      background: #E65100;
+      color: #FFE0B2;
+    }
+
+    .live-test {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 15px;
+      min-width: 200px;
+    }
+
+    .emoji-test-modal {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      background: rgba(0, 0, 0, 0.5) !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      z-index: 999999 !important;
+      backdrop-filter: blur(4px);
+    }
+
+    .emoji-test-content {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 12px;
+      width: 400px;
+      max-height: 500px;
+      padding: 20px;
+      color: #fff;
+    }
+
+    .emoji-grid {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 4px;
+      margin-top: 15px;
+    }
+
+    .emoji-item {
+      background: none;
+      border: none;
+      font-size: 24px;
+      padding: 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .emoji-item:hover {
+      background: #444;
+      transform: scale(1.1);
+    }
+
+    .z-index-layers {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+    }
+
+    .layer {
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      border: 2px solid;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+
+    .layer-1 {
+      z-index: 1000;
+      background: rgba(255, 0, 0, 0.3);
+      border-color: red;
+    }
+
+    .layer-2 {
+      z-index: 5000;
+      background: rgba(0, 255, 0, 0.3);
+      border-color: green;
+      top: 20px;
+      left: 20px;
+    }
+
+    .layer-3 {
+      z-index: 10000;
+      background: rgba(0, 0, 255, 0.3);
+      border-color: blue;
+      top: 40px;
+      left: 40px;
+    }
+
+    .layer-4 {
+      z-index: 999999;
+      background: rgba(255, 255, 0, 0.3);
+      border-color: yellow;
+      top: 60px;
+      left: 60px;
+    }
+
+    .log-output {
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>🎭 Emoji Modal Debug Tool</h1>
+  <p>Debug tool for testing emoji modal functionality and z-index issues</p>
+
+  <div class="debug-panel">
+    <div class="debug-title">🔍 Emoji Modal Tests</div>
+
+    <div class="test-item">
+      <div class="test-label">1. Basic Modal Display</div>
+      <div class="test-description">Test if emoji modal displays correctly with maximum z-index</div>
+      <button class="test-button" onclick="testBasicModal()">Show Test Modal</button>
+      <div id="basic-modal-result" class="test-result" style="display:none;"></div>
+    </div>
+
+    <div class="test-item">
+      <div class="test-label">2. Z-Index Layer Test</div>
+      <div class="test-description">Show layered elements to test z-index hierarchy</div>
+      <button class="test-button" onclick="showZIndexLayers()">Show Z-Index Layers</button>
+      <button class="test-button" onclick="hideZIndexLayers()">Hide Layers</button>
+      <div id="zindex-result" class="test-result" style="display:none;"></div>
+    </div>
+
+    <div class="test-item">
+      <div class="test-label">3. String indexOf Error Test</div>
+      <div class="test-description">Test string operations that might cause indexOf errors</div>
+      <button class="test-button" onclick="testIndexOfErrors()">Test String Operations</button>
+      <div id="indexof-result" class="test-result" style="display:none;"></div>
+    </div>
+
+    <div class="test-item">
+      <div class="test-label">4. MessageInput Integration Test</div>
+      <div class="test-description">Test emoji functionality in actual MessageInput component</div>
+      <button class="test-button" onclick="testMessageInputIntegration()">Test Integration</button>
+      <div id="integration-result" class="test-result" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- Z-Index Test Layers -->
+  <div class="z-index-layers" id="zIndexLayers">
+    <div class="layer layer-1">1000</div>
+    <div class="layer layer-2">5000</div>
+    <div class="layer layer-3">10000</div>
+    <div class="layer layer-4">999999</div>
+  </div>
+
+  <!-- Live Test Panel -->
+  <div class="live-test">
+    <div class="debug-title">🚀 Live Test</div>
+    <button class="test-button" onclick="openMessageInputTest()">Open MessageInput</button>
+    <div class="log-output" id="liveLog">Waiting for tests...</div>
+  </div>
+
+  <!-- Test Modal -->
+  <div id="testModal" class="emoji-test-modal" style="display: none;">
+    <div class="emoji-test-content">
+      <h3>Test Emoji Modal (z-index: 999999)</h3>
+      <p>This modal should appear on top of everything else.</p>
+      <div class="emoji-grid">
+        <button class="emoji-item">😀</button>
+        <button class="emoji-item">😍</button>
+        <button class="emoji-item">🤔</button>
+        <button class="emoji-item">👍</button>
+        <button class="emoji-item">🔥</button>
+        <button class="emoji-item">💯</button>
+        <button class="emoji-item">🎉</button>
+        <button class="emoji-item">❤️</button>
+      </div>
+      <br>
+      <button class="test-button" onclick="closeTestModal()">Close</button>
+    </div>
+  </div>
+
+  <script>
+    // Test Functions
+    function testBasicModal() {
+      const modal = document.getElementById('testModal');
+      const result = document.getElementById('basic-modal-result');
+
+      modal.style.display = 'flex';
+
+      setTimeout(() => {
+        const computedStyle = window.getComputedStyle(modal);
+        const zIndex = computedStyle.zIndex;
+        const position = computedStyle.position;
+        const display = computedStyle.display;
+
+        result.style.display = 'block';
+        result.className = 'test-result result-success';
+        result.textContent = `✅ Modal displayed - z-index: ${zIndex}, position: ${position}, display: ${display}`;
+
+        log(`Modal test: z-index=${zIndex}, position=${position}, display=${display}`);
+      }, 100);
+    }
+
+    function closeTestModal() {
+      document.getElementById('testModal').style.display = 'none';
+    }
+
+    function showZIndexLayers() {
+      const layers = document.getElementById('zIndexLayers');
+      layers.style.display = 'block';
+
+      const result = document.getElementById('zindex-result');
+      result.style.display = 'block';
+      result.className = 'test-result result-success';
+      result.textContent = '✅ Z-index layers displayed. Yellow layer (999999) should be on top.';
+
+      log('Z-index layers displayed');
+    }
+
+    function hideZIndexLayers() {
+      document.getElementById('zIndexLayers').style.display = 'none';
+      log('Z-index layers hidden');
+    }
+
+    function testIndexOfErrors() {
+      const result = document.getElementById('indexof-result');
+      let errors = [];
+
+      // Test cases that might cause indexOf errors
+      const testCases = [
+        { value: null, desc: 'null value' },
+        { value: undefined, desc: 'undefined value' },
+        { value: 123, desc: 'number value' },
+        { value: {}, desc: 'object value' },
+        { value: [], desc: 'array value' },
+        { value: '', desc: 'empty string' },
+        { value: 'test', desc: 'normal string' }
+      ];
+
+      testCases.forEach(testCase => {
+        try {
+          const safeValue = (testCase.value || '').toString().toLowerCase();
+          const indexResult = safeValue.indexOf('test');
+          log(`✅ Safe indexOf test for ${testCase.desc}: "${safeValue}" -> ${indexResult}`);
+        } catch (error) {
+          errors.push(`${testCase.desc}: ${error.message}`);
+          log(`❌ Error with ${testCase.desc}: ${error.message}`);
+        }
+      });
+
+      result.style.display = 'block';
+      if (errors.length === 0) {
+        result.className = 'test-result result-success';
+        result.textContent = '✅ All string operations safe. No indexOf errors detected.';
+      } else {
+        result.className = 'test-result result-error';
+        result.textContent = `❌ Errors found: ${errors.join(', ')}`;
+      }
+    }
+
+    function testMessageInputIntegration() {
+      const result = document.getElementById('integration-result');
+      result.style.display = 'block';
+      result.className = 'test-result result-warning';
+      result.textContent = '⚠️ Open browser console and check for emoji-related errors in the actual MessageInput component.';
+
+      log('Integration test: Check main application for emoji functionality');
+    }
+
+    function openMessageInputTest() {
+      window.open('http://localhost:5173', '_blank');
+      log('Opened MessageInput test in new window');
+    }
+
+    function log(message) {
+      const logOutput = document.getElementById('liveLog');
+      const timestamp = new Date().toLocaleTimeString();
+      logOutput.textContent += `[${timestamp}] ${message}\n`;
+      logOutput.scrollTop = logOutput.scrollHeight;
+    }
+
+    // Auto-run basic tests
+    window.addEventListener('load', () => {
+      log('🎭 Emoji Modal Debug Tool loaded');
+      log('Ready for testing...');
+    });
+
+    // Listen for console messages
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+    const originalConsoleWarn = console.warn;
+
+    console.log = function (...args) {
+      if (args[0] && args[0].includes('🎭') || args[0].includes('😊') || args[0].includes('🔍')) {
+        log(`Console: ${args.join(' ')}`);
+      }
+      originalConsoleLog.apply(console, args);
+    };
+
+    console.error = function (...args) {
+      if (args[0] && (args[0].includes('emoji') || args[0].includes('indexOf'))) {
+        log(`❌ Console Error: ${args.join(' ')}`);
+      }
+      originalConsoleError.apply(console, args);
+    };
+
+    console.warn = function (...args) {
+      if (args[0] && args[0].includes('emoji')) {
+        log(`⚠️ Console Warning: ${args.join(' ')}`);
+      }
+      originalConsoleWarn.apply(console, args);
+    };
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html><head><title>图片尺寸对比</title><style>
+body{font-family:sans-serif;padding:20px;background:#f5f5f5}
+.container{max-width:800px;margin:0 auto;background:white;padding:20px;border-radius:8px}
+.size-demo{display:flex;flex-wrap:wrap;gap:20px;margin:20px 0}
+.demo-item{text-align:center;padding:16px;background:#f8f9fa;border-radius:8px}
+.demo-box{margin:10px auto;border:2px solid #007bff;border-radius:8px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:12px}
+</style></head><body>
+<div class="container">
+<h1>📐 Fechatter 图片缩略图尺寸对比</h1>
+<div class="size-demo">
+<div class="demo-item">
+<h3>紧凑型</h3>
+<div class="demo-box" style="width:200px;height:150px">200×150px</div>
+<p>移动端友好</p>
+</div>
+<div class="demo-item">
+<h3>平衡型</h3>
+<div class="demo-box" style="width:220px;height:165px">220×165px</div>
+<p>微信风格</p>
+</div>
+<div class="demo-item">
+<h3>当前设置</h3>
+<div class="demo-box" style="width:240px;height:180px">240×180px</div>
+<p><strong>推荐使用</strong></p>
+</div>
+<div class="demo-item">
+<h3>舒适型</h3>
+<div class="demo-box" style="width:260px;height:195px">260×195px</div>
+<p>Discord风格</p>
+</div>
+</div>
+<h2>🔧 如需调整，复制以下CSS到DiscordMessageItem.vue:</h2>
+<pre style="background:#f8f9fa;padding:16px;border-radius:8px;overflow-x:auto">
+/* 选择你喜欢的尺寸: */
+
+/* 紧凑型 - 适合移动端 */
+.image-attachment { max-width: 200px; max-height: 150px; }
+.attachment-image { max-height: 150px; }
+
+/* 平衡型 - 微信风格 */
+.image-attachment { max-width: 220px; max-height: 165px; }
+.attachment-image { max-height: 165px; }
+
+/* 当前设置 - 推荐 */
+.image-attachment { max-width: 240px; max-height: 180px; }
+.attachment-image { max-height: 180px; }
+
+/* 舒适型 - Discord风格 */
+.image-attachment { max-width: 260px; max-height: 195px; }
+.attachment-image { max-height: 195px; }
+</pre>
+</div>
+</body></html>

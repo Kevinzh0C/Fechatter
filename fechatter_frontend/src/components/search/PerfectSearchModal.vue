@@ -1442,13 +1442,24 @@ const scrollToMessageSafely = (messageElement) => {
       const indicator = el.querySelector('.blue-beam-indicator')
       if (scanner) scanner.remove()
       if (indicator) indicator.remove()
+      // 清除内联样式
+      el.style.transform = ''
+      el.style.background = ''
+      el.style.boxShadow = ''
+      el.style.zIndex = ''
+      el.style.position = ''
     })
 
-    // 🔵 使用蓝色脉冲光束高亮 - 替代传统高亮
-    console.log(`🔵 [BlueBeam] 🚀 Applying blue pulse beam effect to message ${messageElement.dataset.messageId}`)
+    // 🌊 ENHANCED: 使用新的边框流动光束高亮 
+    console.log(`🌊 [FlowingBeam] 🚀 Applying enhanced flowing beam effect to message ${messageElement.dataset.messageId}`)
 
-    // 🔵 简化：仅添加边框转动蓝色光束
-    messageElement.classList.add('blue-pulse-beam-highlight', 'blue-beam-fast', 'blue-beam-intense')
+    // 🌊 流动光束：添加边框内流动的光束效果（非脉冲）
+    messageElement.classList.add('blue-pulse-beam-highlight', 'blue-beam-intense')
+
+    // 🌊 ENHANCED: 增加更明显的视觉效果
+    messageElement.style.transform = 'scale(1.03)'
+    messageElement.style.zIndex = '100'
+    messageElement.style.position = 'relative'
 
     // 计算最佳滚动位置
     const rect = messageElement.getBoundingClientRect()
@@ -1472,7 +1483,7 @@ const scrollToMessageSafely = (messageElement) => {
     const scrollContainer = messageElement.closest('.simple-message-list, .messages-container')
     if (scrollContainer) {
       const onScrollEnd = () => {
-        console.log(`✅ [PerfectSearch] 🎯 DAG-Scroll: Scroll completed, message highlighted with blue pulse beam`)
+        console.log(`✅ [PerfectSearch] 🎯 DAG-Scroll: Scroll completed, message highlighted with enhanced flowing beam`)
         scrollContainer.removeEventListener('scrollend', onScrollEnd)
       }
 
@@ -1482,16 +1493,21 @@ const scrollToMessageSafely = (messageElement) => {
       setTimeout(onScrollEnd, 1000)
     }
 
-    // 🔵 蓝色光束清理 - 延迟移除高亮
+    // 🌊 ENHANCED: 流动光束清理 - 延长持续时间到8秒
     setTimeout(() => {
-      // 移除蓝色光束类
-      messageElement.classList.remove('blue-pulse-beam-highlight', 'blue-beam-fast', 'blue-beam-intense')
+      // 移除流动光束类
+      messageElement.classList.remove('blue-pulse-beam-highlight', 'blue-beam-intense')
 
-      console.log(`🔵 [BlueBeam] 🚀 Simplified border rotation removed from message ${messageElement.dataset.messageId}`)
-      console.log(`🔄 [PerfectSearch] 🎯 DAG-Scroll: Blue pulse beam highlight removed after 4 seconds`)
-    }, 4000)
+      // 平滑恢复原始样式
+      messageElement.style.transform = 'scale(1)'
+      messageElement.style.zIndex = ''
+      messageElement.style.position = ''
 
-    return { success: true, scrolled: true, effect: 'blue_pulse_beam' }
+      console.log(`🌊 [FlowingBeam] 🚀 Enhanced flowing beam removed from message ${messageElement.dataset.messageId}`)
+      console.log(`🔄 [PerfectSearch] 🎯 DAG-Scroll: Enhanced flowing beam highlight removed after 8 seconds`)
+    }, 8000) // 🌊 从4秒增加到8秒
+
+    return { success: true, scrolled: true, effect: 'enhanced_flowing_beam' }
 
   } catch (error) {
     console.error(`❌ [PerfectSearch] 🎯 DAG-Scroll: Scroll to message failed:`, error)

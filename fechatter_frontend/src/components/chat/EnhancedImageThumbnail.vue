@@ -1,9 +1,6 @@
 <template>
-  <div class="enhanced-image-thumbnail" 
-    :class="thumbnailClasses"
-    :style="containerStyle"
-    @click="openFullView">
-    
+  <div class="enhanced-image-thumbnail" :class="thumbnailClasses" :style="containerStyle" @click="openFullView">
+
     <!-- Loading State -->
     <div v-if="loading" class="thumbnail-loading">
       <div class="loading-spinner"></div>
@@ -13,7 +10,8 @@
     <!-- Error State -->
     <div v-else-if="error" class="thumbnail-error">
       <svg class="error-icon" width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M21,5c0-1.11-0.89-2-2-2H5C3.89,3,3,3.89,3,5v14c0,1.11,0.89,2,2,2h14c1.11,0,2-0.89,2-2V5z M12,17 l-3.5-4.5l-2.5,3.01L8.5,13l3.5,4.5l2.5-3.01L19,19H5L12,17z"/>
+        <path
+          d="M21,5c0-1.11-0.89-2-2-2H5C3.89,3,3,3.89,3,5v14c0,1.11,0.89,2,2,2h14c1.11,0,2-0.89,2-2V5z M12,17 l-3.5-4.5l-2.5,3.01L8.5,13l3.5,4.5l2.5-3.01L19,19H5L12,17z" />
       </svg>
       <span class="error-text">Failed to load image</span>
       <button @click.stop="retry" class="retry-btn">Retry</button>
@@ -21,17 +19,9 @@
 
     <!-- Image Display -->
     <div v-else class="thumbnail-wrapper" :style="wrapperStyle">
-      <img 
-        :src="thumbnailSrc" 
-        :alt="alt"
-        class="thumbnail-image"
-        :style="imageStyle"
-        @load="onImageLoad"
-        @error="onImageError"
-        loading="lazy"
-        decoding="async"
-      />
-      
+      <img :src="thumbnailSrc" :alt="alt" class="thumbnail-image" :style="imageStyle" @load="onImageLoad"
+        @error="onImageError" loading="lazy" decoding="async" />
+
       <!-- Image Overlay -->
       <div class="thumbnail-overlay">
         <!-- File Info -->
@@ -39,17 +29,17 @@
           <span class="file-name">{{ displayFileName }}</span>
           <span class="file-size">{{ formattedSize }}</span>
         </div>
-        
+
         <!-- Action Buttons -->
         <div class="overlay-actions">
           <button @click.stop="download" class="action-btn" title="Download">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19,9h-4V3H9v6H5l7,7L19,9z M5,18v2h14v-2H5z"/>
+              <path d="M19,9h-4V3H9v6H5l7,7L19,9z M5,18v2h14v-2H5z" />
             </svg>
           </button>
           <button @click.stop="openFullView" class="action-btn" title="View full size">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M7,14H5v5h5v-2H7V14z M5,10h2V7h3V5H5V10z M17,17h-3v2h5v-5h-2V17z M14,5v2h3v3h2V5H14z"/>
+              <path d="M7,14H5v5h5v-2H7V14z M5,10h2V7h3V5H5V10z M17,17h-3v2h5v-5h-2V17z M14,5v2h3v3h2V5H14z" />
             </svg>
           </button>
         </div>
@@ -69,15 +59,11 @@
       <Transition name="modal">
         <div v-if="showFullView" class="full-view-modal" @click="closeFullView">
           <div class="modal-content" @click.stop>
-            <img 
-              :src="fullImageSrc" 
-              :alt="alt"
-              class="full-image"
-              :style="fullImageStyle"
-            />
+            <img :src="fullImageSrc" :alt="alt" class="full-image" :style="fullImageStyle" />
             <button @click="closeFullView" class="close-btn">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19,6.41L17.59,5 12,10.59 6.41,5 5,6.41 10.59,12 5,17.59 6.41,19 12,13.41 17.59,19 19,17.59 13.41,12Z"/>
+                <path
+                  d="M19,6.41L17.59,5 12,10.59 6.41,5 5,6.41 10.59,12 5,17.59 6.41,19 12,13.41 17.59,19 19,17.59 13.41,12Z" />
               </svg>
             </button>
           </div>
@@ -89,6 +75,8 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { getStandardFileUrl } from '@/utils/fileUrlHandler';
+import { useAuthStore } from '@/stores/auth';
 
 const props = defineProps({
   file: {
@@ -123,6 +111,9 @@ const props = defineProps({
 
 const emit = defineEmits(['open', 'download', 'load', 'error']);
 
+// Get auth store for workspace ID
+const authStore = useAuthStore();
+
 // State
 const loading = ref(true);
 const error = ref(false);
@@ -131,29 +122,37 @@ const loadingProgress = ref(0);
 const naturalWidth = ref(0);
 const naturalHeight = ref(0);
 
+// 🔧 CRITICAL FIX: Use unified file URL handler for correct test.rest format
+const getCorrectFileUrl = (file) => {
+  return getStandardFileUrl(file, {
+    workspaceId: authStore.user?.workspace_id || 2
+  });
+};
+
 // Computed properties
 const thumbnailSrc = computed(() => {
   // If backend supports thumbnail generation
   if (props.file.thumbnail_url) {
     return props.file.thumbnail_url;
   }
-  
-  // Otherwise use original with query params for optimization
-  const url = props.file.file_url || props.file.url;
-  if (!url) return '';
-  
-  // Add optimization parameters if backend supports it
-  // const params = new URLSearchParams();
-  // params.append('w', props.maxWidth);
-  // params.append('h', props.maxHeight);
-  // params.append('q', props.thumbnailQuality * 100);
-  // return `${url}${url.includes('?') ? '&' : '?'}${params.toString()}`;
-  
-  return url;
+
+  // 🔧 CRITICAL FIX: Use unified URL handler instead of direct file properties
+  const correctUrl = getCorrectFileUrl(props.file);
+  if (!correctUrl) {
+    console.error('❌ [EnhancedImageThumbnail] No valid URL for file:', props.file);
+    return '';
+  }
+
+  if (import.meta.env.DEV) {
+    console.log('🖼️ [EnhancedImageThumbnail] Generated URL:', correctUrl);
+  }
+
+  return correctUrl;
 });
 
 const fullImageSrc = computed(() => {
-  return props.file.file_url || props.file.url || '';
+  // 🔧 CRITICAL FIX: Use unified URL handler for full image as well
+  return getCorrectFileUrl(props.file) || '';
 });
 
 const displayFileName = computed(() => {
@@ -177,12 +176,12 @@ const formattedSize = computed(() => {
 const formatBadge = computed(() => {
   const mimeType = props.file.mime_type || props.file.type || '';
   const ext = (props.file.file_name || props.file.filename || '').split('.').pop()?.toUpperCase();
-  
+
   if (mimeType.includes('gif')) return 'GIF';
   if (mimeType.includes('webp')) return 'WEBP';
   if (mimeType.includes('svg')) return 'SVG';
   if (ext === 'HEIC' || ext === 'HEIF') return ext;
-  
+
   return '';
 });
 
@@ -208,30 +207,30 @@ const containerStyle = computed(() => {
       position: 'relative'
     };
   }
-  
+
   if (!naturalWidth.value || !naturalHeight.value) {
     return {
       maxWidth: `${props.maxWidth}px`,
       maxHeight: `${props.maxHeight}px`
     };
   }
-  
+
   // Calculate optimal dimensions while maintaining aspect ratio
   const aspectRatio = naturalWidth.value / naturalHeight.value;
   let width = naturalWidth.value;
   let height = naturalHeight.value;
-  
+
   // Scale down if necessary
   if (width > props.maxWidth) {
     width = props.maxWidth;
     height = width / aspectRatio;
   }
-  
+
   if (height > props.maxHeight) {
     height = props.maxHeight;
     width = height * aspectRatio;
   }
-  
+
   return {
     width: `${Math.round(width)}px`,
     height: `${Math.round(height)}px`
@@ -268,24 +267,24 @@ const imageStyle = computed(() => {
 
 const fullImageStyle = computed(() => {
   if (!naturalWidth.value || !naturalHeight.value) return {};
-  
+
   const viewportWidth = window.innerWidth * 0.9;
   const viewportHeight = window.innerHeight * 0.9;
   const aspectRatio = naturalWidth.value / naturalHeight.value;
-  
+
   let width = naturalWidth.value;
   let height = naturalHeight.value;
-  
+
   if (width > viewportWidth) {
     width = viewportWidth;
     height = width / aspectRatio;
   }
-  
+
   if (height > viewportHeight) {
     height = viewportHeight;
     width = height * aspectRatio;
   }
-  
+
   return {
     maxWidth: `${width}px`,
     maxHeight: `${height}px`
@@ -325,14 +324,60 @@ const closeFullView = () => {
   showFullView.value = false;
 };
 
-const download = () => {
-  const link = document.createElement('a');
-  link.href = fullImageSrc.value;
-  link.download = props.file.file_name || props.file.filename || 'image';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  emit('download', props.file);
+const download = async () => {
+  const fileName = props.file.file_name || props.file.filename || 'image';
+
+  try {
+    const fileUrl = getCorrectFileUrl(props.file);
+    if (!fileUrl) {
+      console.error('❌ No URL available for download:', fileName);
+      return;
+    }
+
+    // 🔐 For API URLs, use authenticated download
+    if (fileUrl.startsWith('/api/')) {
+      // Import api client dynamically to avoid circular dependencies
+      const { default: api } = await import('@/services/api');
+
+      // Remove /api/ prefix since api client adds it automatically
+      const apiPath = fileUrl.substring(5);
+
+      const response = await api.get(apiPath, {
+        responseType: 'blob',
+        skipAuthRefresh: false
+      });
+
+      if (response.data) {
+        const blob = response.data;
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Clean up blob URL
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+        console.log('✅ [EnhancedImageThumbnail] Downloaded:', fileName);
+      }
+    } else {
+      // 🔗 For direct URLs, use standard download
+      const link = document.createElement('a');
+      link.href = fileUrl;
+      link.download = fileName;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    emit('download', props.file);
+  } catch (error) {
+    console.error('❌ [EnhancedImageThumbnail] Download failed:', error);
+  }
 };
 
 // Simulate loading progress for better UX
@@ -407,7 +452,9 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-text {
@@ -473,12 +520,10 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0) 50%,
-    rgba(0, 0, 0, 0.7) 100%
-  );
+  background: linear-gradient(to bottom,
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0) 50%,
+      rgba(0, 0, 0, 0.7) 100%);
   opacity: 0;
   transition: opacity 0.2s ease;
   display: flex;
@@ -636,7 +681,7 @@ onUnmounted(() => {
   .enhanced-image-thumbnail {
     background: var(--bg-secondary, #374151);
   }
-  
+
   .thumbnail-loading,
   .thumbnail-error {
     color: var(--text-muted, #9ca3af);
@@ -648,14 +693,14 @@ onUnmounted(() => {
   .mode-inline {
     max-width: 100%;
   }
-  
+
   .overlay-info {
     font-size: 12px;
   }
-  
+
   .action-btn {
     width: 32px;
     height: 32px;
   }
 }
-</style> 
+</style>
