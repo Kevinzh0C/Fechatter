@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔧 Download URL Fix Verification</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .test-case {
+      margin: 16px 0;
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border-left: 4px solid #6c757d;
+    }
+
+    .test-case.success {
+      border-left-color: #28a745;
+      background: #d4edda;
+    }
+
+    .test-case.error {
+      border-left-color: #dc3545;
+      background: #f8d7da;
+    }
+
+    .url-comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 12px 0;
+    }
+
+    .url-box {
+      padding: 12px;
+      border-radius: 6px;
+      font-family: Monaco, Consolas, monospace;
+      font-size: 12px;
+      word-break: break-all;
+    }
+
+    .url-input {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+    }
+
+    .url-output {
+      background: #d1ecf1;
+      border: 1px solid #b7e4c7;
+    }
+
+    .status {
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      margin: 8px 0;
+    }
+
+    .status.fixed {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .file-structure {
+      background: #e9ecef;
+      padding: 16px;
+      border-radius: 8px;
+      margin: 16px 0;
+      font-family: Monaco, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .hash-breakdown {
+      background: #fff3cd;
+      padding: 12px;
+      border-radius: 6px;
+      margin: 8px 0;
+      font-family: Monaco, Consolas, monospace;
+      font-size: 11px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔧 Download URL Fix Verification</h1>
+    <p>验证错误的 <code>/download/</code> 格式是否被正确修复为 <code>/{hash1}/{hash2}/</code> 格式</p>
+
+    <div class="file-structure">
+      <h3>📁 实际服务器文件存储结构</h3>
+      <div>/app/data/60c/155/658fcb1ef14145b5c9e359a571c504b8e1a7449d9965f720d3c1eebb68.png</div>
+      <div>/app/data/5ec/998/139f87f169452f5e2c26a66f3060005cbd1a3b93598f367ead9d05dbb3.webp</div>
+      <div>/app/data/497/790/947d4666760ce38f3c00e852c71fdb66cae849bae8e9ede352719e1581.png</div>
+    </div>
+
+    <div id="test-results"></div>
+
+    <button onclick="runTestSuite()"
+      style="padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 16px;">
+      🧪 运行测试套件
+    </button>
+  </div>
+
+  <script>
+    // 🔧 模拟文件URL处理器（简化版本）
+    function getStandardFileUrl(fileInput, workspaceId = 2) {
+      const url = typeof fileInput === 'string' ? fileInput : fileInput?.file_url || fileInput?.url;
+
+      if (!url) return null;
+
+      // 处理 /api/files/download/ 格式错误
+      if (url.includes('/api/files/') && url.includes('/download/')) {
+        const filename = url.split('/download/')[1];
+        if (filename && filename.length >= 10) {
+          const hash1 = filename.substring(0, 3);
+          const hash2 = filename.substring(3, 6);
+          return `/files/${workspaceId}/${hash1}/${hash2}/${filename}`;
+        }
+      }
+
+      // 处理 /files/download/ 格式错误
+      if (url.includes('/files/download/')) {
+        const filename = url.split('/download/')[1];
+        if (filename && filename.length >= 10) {
+          const hash1 = filename.substring(0, 3);
+          const hash2 = filename.substring(3, 6);
+          return `/files/${workspaceId}/${hash1}/${hash2}/${filename}`;
+        }
+      }
+
+      return url;
+    }
+
+    function runTestSuite() {
+      const resultsDiv = document.getElementById('test-results');
+      resultsDiv.innerHTML = '<h3>🧪 测试结果</h3>';
+
+      const testCases = [
+        {
+          name: '错误的 /api/files/download/ 格式 (WebP)',
+          input: '/api/files/2/download/5ec998139f87f169452f5e2c26a66f3060005cbd1a3b93598f367ead9d05dbb3.webp',
+          expected: '/files/2/5ec/998/5ec998139f87f169452f5e2c26a66f3060005cbd1a3b93598f367ead9d05dbb3.webp',
+          serverFile: '/app/data/5ec/998/139f87f169452f5e2c26a66f3060005cbd1a3b93598f367ead9d05dbb3.webp'
+        },
+        {
+          name: '正确的 /api/files/{hash1}/{hash2}/ 格式 (PNG)',
+          input: '/api/files/2/60c/155/60c155658fcb1ef14145b5c9e359a571c504b8e1a7449d9965f720d3c1eebb68.png',
+          expected: '/api/files/2/60c/155/60c155658fcb1ef14145b5c9e359a571c504b8e1a7449d9965f720d3c1eebb68.png',
+          serverFile: '/app/data/60c/155/658fcb1ef14145b5c9e359a571c504b8e1a7449d9965f720d3c1eebb68.png'
+        },
+        {
+          name: '错误的 /files/download/ 格式 (PNG)',
+          input: '/files/download/497790947d4666760ce38f3c00e852c71fdb66cae849bae8e9ede352719e1581.png',
+          expected: '/files/2/497/790/497790947d4666760ce38f3c00e852c71fdb66cae849bae8e9ede352719e1581.png',
+          serverFile: '/app/data/497/790/947d4666760ce38f3c00e852c71fdb66cae849bae8e9ede352719e1581.png'
+        }
+      ];
+
+      testCases.forEach((testCase, index) => {
+        const result = getStandardFileUrl(testCase.input);
+        const isFixed = result === testCase.expected;
+
+        const testDiv = document.createElement('div');
+        testDiv.className = `test-case ${isFixed ? 'success' : 'error'}`;
+
+        // Hash breakdown
+        const filename = testCase.input.split('/').pop();
+        const hash1 = filename.substring(0, 3);
+        const hash2 = filename.substring(3, 6);
+
+        testDiv.innerHTML = `
+                    <h4>测试 ${index + 1}: ${testCase.name}</h4>
+                    
+                    <div class="hash-breakdown">
+                        <strong>文件名解析:</strong><br>
+                        完整文件名: ${filename}<br>
+                        Hash1 (前3位): ${hash1}<br>
+                        Hash2 (4-6位): ${hash2}<br>
+                    </div>
+                    
+                    <div class="url-comparison">
+                        <div>
+                            <strong>输入 URL:</strong>
+                            <div class="url-box url-input">${testCase.input}</div>
+                        </div>
+                        <div>
+                            <strong>修复后 URL:</strong>
+                            <div class="url-box url-output">${result || '❌ 处理失败'}</div>
+                        </div>
+                    </div>
+                    
+                    <div><strong>期望 URL:</strong> <code>${testCase.expected}</code></div>
+                    <div><strong>服务器文件:</strong> <code>${testCase.serverFile}</code></div>
+                    
+                    <div class="status ${isFixed ? 'fixed' : 'error'}">
+                        ${isFixed ? '✅ 修复成功 - URL格式正确' : `❌ 修复失败 - 期望: ${testCase.expected}, 实际: ${result}`}
+                    </div>
+                `;
+
+        resultsDiv.appendChild(testDiv);
+      });
+
+      // 总结
+      const successCount = testCases.filter(tc => getStandardFileUrl(tc.input) === tc.expected).length;
+      const summaryDiv = document.createElement('div');
+      summaryDiv.className = `test-case ${successCount === testCases.length ? 'success' : 'error'}`;
+      summaryDiv.innerHTML = `
+                <h4>📊 测试总结</h4>
+                <p>成功: ${successCount}/${testCases.length} 个测试用例</p>
+                <p>修复率: ${Math.round(successCount / testCases.length * 100)}%</p>
+                ${successCount === testCases.length ?
+          '<p><strong>🎉 所有下载URL格式错误已修复！</strong></p>' :
+          '<p><strong>⚠️ 仍有URL格式需要修复</strong></p>'
+        }
+            `;
+      resultsDiv.appendChild(summaryDiv);
+    }
+
+    // 页面加载后自动运行测试
+    window.addEventListener('load', runTestSuite);
+  </script>
+</body>
+
+</html>

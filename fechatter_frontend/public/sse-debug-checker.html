@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔍 SSE Debug Checker</title>
+  <style>
+    body {
+      font-family: 'Monaco', 'Menlo', monospace;
+      margin: 0;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #ffffff;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #2d3748;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #4a5568;
+    }
+
+    .control-panel {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-family: inherit;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+      background: #3182ce;
+      color: white;
+    }
+
+    .btn-success {
+      background: #38a169;
+      color: white;
+    }
+
+    .btn-warning {
+      background: #d69e2e;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #e53e3e;
+      color: white;
+    }
+
+    .btn:hover {
+      opacity: 0.8;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .status-card {
+      background: #4a5568;
+      border-radius: 8px;
+      padding: 20px;
+      border-left: 4px solid #3182ce;
+    }
+
+    .status-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      color: #e2e8f0;
+    }
+
+    .status-item {
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .status-label {
+      color: #a0aec0;
+    }
+
+    .status-value {
+      color: #48bb78;
+      font-weight: bold;
+    }
+
+    .status-value.error {
+      color: #f56565;
+    }
+
+    .status-value.warning {
+      color: #ed8936;
+    }
+
+    .log-container {
+      background: #1a202c;
+      border-radius: 8px;
+      padding: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-size: 14px;
+      border: 1px solid #2d3748;
+    }
+
+    .log-entry {
+      margin-bottom: 8px;
+      padding: 8px;
+      border-radius: 4px;
+      white-space: pre-wrap;
+    }
+
+    .log-info {
+      color: #63b3ed;
+    }
+
+    .log-success {
+      color: #68d391;
+    }
+
+    .log-warning {
+      color: #fbb03b;
+    }
+
+    .log-error {
+      color: #f687b3;
+    }
+
+    .log-sse {
+      color: #b794f6;
+      background: rgba(183, 148, 246, 0.1);
+      border-left: 3px solid #b794f6;
+      padding-left: 12px;
+    }
+
+    .highlight {
+      background: rgba(56, 161, 105, 0.2);
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔍 SSE Debug Checker</h1>
+      <p>精确诊断前端SSE连接和事件接收状态</p>
+    </div>
+
+    <div class="control-panel">
+      <button class="btn btn-primary" onclick="startDebugMode()">🚀 开始调试</button>
+      <button class="btn btn-success" onclick="testSSEConnection()">🔗 测试SSE连接</button>
+      <button class="btn btn-warning" onclick="sendTestMessage()">📨 发送测试消息</button>
+      <button class="btn btn-danger" onclick="clearDebugLog()">🗑️ 清空日志</button>
+    </div>
+
+    <div class="status-grid">
+      <div class="status-card">
+        <div class="status-title">🌐 连接状态</div>
+        <div class="status-item">
+          <span class="status-label">SSE连接:</span>
+          <span class="status-value" id="sseConnectionStatus">未连接</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">连接时长:</span>
+          <span class="status-value" id="connectionDuration">0s</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">重连次数:</span>
+          <span class="status-value" id="reconnectCount">0</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">ReadyState:</span>
+          <span class="status-value" id="readyState">-</span>
+        </div>
+      </div>
+
+      <div class="status-card">
+        <div class="status-title">📊 事件统计</div>
+        <div class="status-item">
+          <span class="status-label">总事件:</span>
+          <span class="status-value" id="totalEvents">0</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">消息事件:</span>
+          <span class="status-value" id="messageEvents">0</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">确认事件:</span>
+          <span class="status-value" id="deliveryEvents">0</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">未知事件:</span>
+          <span class="status-value" id="unknownEvents">0</span>
+        </div>
+      </div>
+
+      <div class="status-card">
+        <div class="status-title">🔐 认证状态</div>
+        <div class="status-item">
+          <span class="status-label">Token:</span>
+          <span class="status-value" id="tokenStatus">检查中...</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">用户ID:</span>
+          <span class="status-value" id="userIdStatus">-</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">工作区:</span>
+          <span class="status-value" id="workspaceStatus">-</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">SSE URL:</span>
+          <span class="status-value" id="sseUrlStatus">-</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-card">
+      <div class="status-title">📝 调试日志</div>
+      <div class="log-container" id="debugLog"></div>
+    </div>
+  </div>
+
+  <script>
+    let eventSource = null;
+    let connectionStartTime = null;
+    let reconnectCount = 0;
+    let totalEvents = 0;
+    let messageEvents = 0;
+    let deliveryEvents = 0;
+    let unknownEvents = 0;
+    let statusUpdateInterval = null;
+
+    // 获取认证信息
+    function getAuthInfo() {
+      const token = localStorage.getItem('auth_token') ||
+        localStorage.getItem('fechatter_auth_token');
+
+      let userInfo = null;
+      try {
+        const authUser = localStorage.getItem('auth_user');
+        userInfo = authUser ? JSON.parse(authUser) : null;
+      } catch (error) {
+        console.error('Failed to parse user info:', error);
+      }
+
+      return { token, userInfo };
+    }
+
+    // 日志记录
+    function log(message, type = 'info', highlight = false) {
+      const timestamp = new Date().toLocaleTimeString();
+      const logContainer = document.getElementById('debugLog');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+
+      let content = `[${timestamp}] ${message}`;
+      if (highlight) {
+        content = content.replace(new RegExp(highlight, 'gi'), `<span class="highlight">${highlight}</span>`);
+      }
+
+      entry.innerHTML = content;
+      logContainer.appendChild(entry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+
+      // 同时输出到控制台
+      console.log(`[SSE Debug] ${message}`);
+    }
+
+    // 更新状态显示
+    function updateStatus() {
+      // 连接状态
+      if (eventSource) {
+        const states = ['CONNECTING', 'OPEN', 'CLOSED'];
+        document.getElementById('readyState').textContent = states[eventSource.readyState] || 'UNKNOWN';
+
+        if (eventSource.readyState === EventSource.OPEN) {
+          document.getElementById('sseConnectionStatus').textContent = '已连接';
+          document.getElementById('sseConnectionStatus').className = 'status-value';
+        } else {
+          document.getElementById('sseConnectionStatus').textContent = '连接中/断开';
+          document.getElementById('sseConnectionStatus').className = 'status-value warning';
+        }
+      } else {
+        document.getElementById('sseConnectionStatus').textContent = '未连接';
+        document.getElementById('sseConnectionStatus').className = 'status-value error';
+        document.getElementById('readyState').textContent = '-';
+      }
+
+      // 连接时长
+      if (connectionStartTime) {
+        const duration = Math.floor((Date.now() - connectionStartTime) / 1000);
+        document.getElementById('connectionDuration').textContent = `${duration}s`;
+      }
+
+      // 统计
+      document.getElementById('reconnectCount').textContent = reconnectCount;
+      document.getElementById('totalEvents').textContent = totalEvents;
+      document.getElementById('messageEvents').textContent = messageEvents;
+      document.getElementById('deliveryEvents').textContent = deliveryEvents;
+      document.getElementById('unknownEvents').textContent = unknownEvents;
+    }
+
+    // 检查认证状态
+    function checkAuthStatus() {
+      const { token, userInfo } = getAuthInfo();
+
+      if (token) {
+        document.getElementById('tokenStatus').textContent = '✅ 有效';
+        document.getElementById('tokenStatus').className = 'status-value';
+
+        const tokenPreview = token.substring(0, 20) + '...';
+        log(`Token: ${tokenPreview}`, 'info');
+      } else {
+        document.getElementById('tokenStatus').textContent = '❌ 缺失';
+        document.getElementById('tokenStatus').className = 'status-value error';
+        log('❌ 未找到认证Token', 'error');
+      }
+
+      if (userInfo) {
+        document.getElementById('userIdStatus').textContent = userInfo.id || '-';
+        document.getElementById('workspaceStatus').textContent = userInfo.workspace_id || '-';
+        log(`用户信息: ID=${userInfo.id}, 工作区=${userInfo.workspace_id}, 姓名=${userInfo.fullname}`, 'info');
+      } else {
+        document.getElementById('userIdStatus').textContent = '❌ 未知';
+        document.getElementById('workspaceStatus').textContent = '❌ 未知';
+        log('❌ 未找到用户信息', 'error');
+      }
+
+      if (token) {
+        const sseUrl = `/events?access_token=${token.substring(0, 20)}...`;
+        document.getElementById('sseUrlStatus').textContent = sseUrl;
+      }
+
+      return { token, userInfo };
+    }
+
+    // 测试SSE连接
+    function testSSEConnection() {
+      const { token } = getAuthInfo();
+      if (!token) {
+        log('❌ 无法测试SSE连接：缺少Token', 'error');
+        return;
+      }
+
+      if (eventSource) {
+        log('⚠️ 关闭现有SSE连接', 'warning');
+        eventSource.close();
+        eventSource = null;
+      }
+
+      const sseUrl = `/events?access_token=${token}`;
+      log(`🔗 测试SSE连接: ${sseUrl.substring(0, 50)}...`, 'info');
+
+      connectionStartTime = Date.now();
+      eventSource = new EventSource(sseUrl);
+
+      eventSource.onopen = function (event) {
+        log('✅ SSE连接成功建立', 'success');
+      };
+
+      eventSource.onmessage = function (event) {
+        totalEvents++;
+        log(`📨 [SSE事件] 收到消息: ${event.data}`, 'sse', 'new_message');
+
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.type === 'new_message' || data.type === 'NewMessage') {
+            messageEvents++;
+            log(`📧 [消息事件] ID=${data.id}, Chat=${data.chat_id}, Content="${data.content}"`, 'success');
+          } else if (data.type === 'message_delivered' || data.type === 'MessageDelivered') {
+            deliveryEvents++;
+            log(`✅ [确认事件] MessageID=${data.message_id}, Timestamp=${data.timestamp}`, 'success');
+          } else {
+            unknownEvents++;
+            log(`❓ [未知事件] Type=${data.type}`, 'warning');
+          }
+
+        } catch (error) {
+          log(`❌ SSE数据解析失败: ${error.message}`, 'error');
+        }
+
+        updateStatus();
+      };
+
+      eventSource.onerror = function (event) {
+        log(`❌ SSE连接错误: ReadyState=${eventSource?.readyState}`, 'error');
+
+        if (eventSource?.readyState === EventSource.CLOSED) {
+          reconnectCount++;
+          log(`🔄 SSE连接已关闭，重连次数: ${reconnectCount}`, 'warning');
+        }
+
+        updateStatus();
+      };
+    }
+
+    // 发送测试消息
+    async function sendTestMessage() {
+      const { token } = getAuthInfo();
+      if (!token) {
+        log('❌ 无法发送测试消息：缺少Token', 'error');
+        return;
+      }
+
+      const testContent = `SSE调试测试 - ${new Date().toLocaleTimeString()}`;
+
+      try {
+        log(`📤 发送测试消息到Chat 2: "${testContent}"`, 'info');
+
+        // 生成UUID
+        const generateUUID = () => {
+          if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            return crypto.randomUUID();
+          }
+          return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            const r = Math.random() * 16 | 0;
+            const v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+          });
+        };
+
+        const response = await fetch('/api/chat/2/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            content: testContent,
+            idempotency_key: generateUUID()
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const messageId = result.data?.id || result.id;
+          log(`✅ 测试消息发送成功: ID=${messageId}`, 'success');
+          log(`⏰ 等待SSE确认事件（应在2-5秒内收到）...`, 'info');
+
+          // 15秒后检查是否收到SSE事件
+          setTimeout(() => {
+            log(`⏰ 15秒检查: 消息${messageId}是否收到SSE确认？`, 'warning');
+          }, 15000);
+
+        } else {
+          const errorText = await response.text();
+          log(`❌ 测试消息发送失败: ${response.status} - ${errorText}`, 'error');
+        }
+
+      } catch (error) {
+        log(`❌ 发送测试消息出错: ${error.message}`, 'error');
+      }
+    }
+
+    // 开始调试模式
+    function startDebugMode() {
+      log('🚀 开始SSE调试模式', 'success');
+
+      // 检查认证状态
+      checkAuthStatus();
+
+      // 建立SSE连接
+      testSSEConnection();
+
+      // 启动状态更新
+      if (statusUpdateInterval) {
+        clearInterval(statusUpdateInterval);
+      }
+      statusUpdateInterval = setInterval(updateStatus, 1000);
+
+      log('📊 状态监控已启动，每秒更新一次', 'info');
+    }
+
+    // 清空日志
+    function clearDebugLog() {
+      document.getElementById('debugLog').innerHTML = '';
+
+      // 重置统计
+      totalEvents = 0;
+      messageEvents = 0;
+      deliveryEvents = 0;
+      unknownEvents = 0;
+      updateStatus();
+    }
+
+    // 页面加载时初始化
+    window.addEventListener('load', () => {
+      log('🔍 SSE调试工具已加载', 'info');
+      checkAuthStatus();
+      updateStatus();
+    });
+
+    // 页面卸载时清理
+    window.addEventListener('beforeunload', () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+      if (statusUpdateInterval) {
+        clearInterval(statusUpdateInterval);
+      }
+    });
+  </script>
+</body>
+
+</html>

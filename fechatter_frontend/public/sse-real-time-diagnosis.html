@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚀 SSE Real-Time Diagnosis</title>
+  <style>
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+
+    .header h1 {
+      color: #2c3e50;
+      margin: 0 0 10px 0;
+      font-size: 2.5em;
+      font-weight: 700;
+    }
+
+    .critical-alert {
+      background: linear-gradient(45deg, #ff6b6b, #feca57);
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px 0;
+      text-align: center;
+      font-weight: bold;
+      font-size: 1.1em;
+    }
+
+    .section {
+      margin-bottom: 25px;
+      padding: 20px;
+      border-radius: 12px;
+      border-left: 4px solid #3498db;
+      background: #f8f9fa;
+    }
+
+    .status {
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.9em;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .status.warning {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .metric {
+      display: inline-block;
+      background: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin: 5px;
+      border: 1px solid #e1e5e9;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .metric-label {
+      font-size: 0.8em;
+      color: #6c757d;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 5px;
+    }
+
+    .metric-value {
+      font-size: 1.2em;
+      font-weight: 700;
+      color: #495057;
+    }
+
+    .btn {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      margin: 5px;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      background: #0056b3;
+      transform: translateY(-1px);
+    }
+
+    .log-container {
+      background: #1e1e1e;
+      color: #f8f8f2;
+      padding: 20px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 15px;
+    }
+
+    .log-entry {
+      margin-bottom: 5px;
+      padding: 3px 0;
+    }
+
+    .log-entry.success {
+      color: #a6e22e;
+    }
+
+    .log-entry.error {
+      color: #f92672;
+    }
+
+    .log-entry.warning {
+      color: #e6db74;
+    }
+
+    .log-entry.info {
+      color: #66d9ef;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🚀 SSE Real-Time Diagnosis</h1>
+      <p>Critical SSE Connection Analysis Tool</p>
+    </div>
+
+    <div class="critical-alert" id="criticalAlert">
+      🚨 CRITICAL: From proxy logs - Zero /events requests detected!<br>
+      EventSource is NOT being created despite SSE service reporting "connected"
+    </div>
+
+    <!-- Quick Status -->
+    <div class="section">
+      <h3>⚡ Quick Status Check</h3>
+      <div id="quickStatus">
+        <div class="metric">
+          <div class="metric-label">SSE Connection</div>
+          <div class="metric-value" id="sseConnected">Checking...</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">EventSource Object</div>
+          <div class="metric-value" id="eventSourceExists">Checking...</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Network Requests</div>
+          <div class="metric-value" id="networkRequests">0 /events</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Auth Token</div>
+          <div class="metric-value" id="authToken">Checking...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Root Cause Analysis -->
+    <div class="section">
+      <h3>🔍 Root Cause Analysis</h3>
+      <div id="rootCauseAnalysis"></div>
+      <button class="btn" onclick="runRootCauseAnalysis()">🔬 Analyze Root Cause</button>
+      <button class="btn" onclick="forceEventSourceCreation()">🚀 Force EventSource Creation</button>
+    </div>
+
+    <!-- Live Debug Console -->
+    <div class="section">
+      <h3>📋 Live Debug Console</h3>
+      <div class="log-container" id="debugConsole"></div>
+      <button class="btn" onclick="testDirectEventSource()">🧪 Test Direct EventSource</button>
+      <button class="btn" onclick="interceptNetworkRequests()">🕵️ Intercept Network</button>
+    </div>
+
+    <!-- Actions -->
+    <div class="section">
+      <h3>🛠️ Fix Actions</h3>
+      <button class="btn" onclick="fullSSEReset()">🔄 Full SSE Reset</button>
+      <button class="btn" onclick="debugSSEFlow()">🔍 Debug SSE Flow</button>
+      <button class="btn" onclick="monitorConnectCalls()">👀 Monitor Connect() Calls</button>
+    </div>
+  </div>
+
+  <script>
+    let debugLogs = [];
+    let networkIntercepted = false;
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function () {
+      debugLog('🚀 SSE Real-Time Diagnosis Tool Initialized');
+      startRealTimeDiagnostics();
+
+      // Auto-refresh every 1 second
+      setInterval(() => {
+        quickStatusCheck();
+      }, 1000);
+    });
+
+    function debugLog(message, level = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const logEntry = `[${timestamp}] ${message}`;
+      debugLogs.push({ timestamp, message, level });
+
+      const container = document.getElementById('debugConsole');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${level}`;
+      entry.textContent = logEntry;
+      container.appendChild(entry);
+      container.scrollTop = container.scrollHeight;
+
+      // Console log too
+      console.log(`[SSE-Diagnosis] ${logEntry}`);
+    }
+
+    function startRealTimeDiagnostics() {
+      debugLog('🔍 Starting real-time SSE diagnostics...');
+      quickStatusCheck();
+      interceptNetworkRequests();
+      monitorConnectCalls();
+    }
+
+    function quickStatusCheck() {
+      // Check SSE connection
+      try {
+        const minimalSSE = window.minimalSSE || window.realtimeCommunicationService;
+        if (minimalSSE) {
+          const connected = minimalSSE.connected || minimalSSE.isConnected;
+          updateQuickStatus('sseConnected', connected ? 'CONNECTED' : 'DISCONNECTED', connected ? 'success' : 'error');
+
+          // Check EventSource object
+          const eventSource = minimalSSE.eventSource;
+          if (eventSource) {
+            updateQuickStatus('eventSourceExists', `EXISTS (${eventSource.readyState})`, 'success');
+          } else {
+            updateQuickStatus('eventSourceExists', 'NOT CREATED', 'error');
+          }
+        } else {
+          updateQuickStatus('sseConnected', 'SERVICE NOT FOUND', 'error');
+          updateQuickStatus('eventSourceExists', 'SERVICE NOT FOUND', 'error');
+        }
+      } catch (error) {
+        updateQuickStatus('sseConnected', 'ERROR', 'error');
+        updateQuickStatus('eventSourceExists', 'ERROR', 'error');
+      }
+
+      // Check auth token
+      try {
+        const authStore = window.__pinia_stores__?.auth?.() ||
+          window.pinia?.stores?.auth ||
+          window.authStore;
+
+        if (authStore && authStore.token) {
+          updateQuickStatus('authToken', 'PRESENT', 'success');
+        } else {
+          updateQuickStatus('authToken', 'MISSING', 'error');
+        }
+      } catch (error) {
+        updateQuickStatus('authToken', 'ERROR', 'error');
+      }
+    }
+
+    function updateQuickStatus(elementId, text, type) {
+      const element = document.getElementById(elementId);
+      if (element) {
+        element.textContent = text;
+        element.className = `metric-value status ${type}`;
+      }
+    }
+
+    function runRootCauseAnalysis() {
+      debugLog('🔬 Running comprehensive root cause analysis...');
+
+      const analysisDiv = document.getElementById('rootCauseAnalysis');
+      let analysis = '<h4>🔍 Root Cause Analysis Results:</h4>';
+
+      try {
+        const minimalSSE = window.minimalSSE || window.realtimeCommunicationService;
+
+        // Test 1: Service availability
+        analysis += '<h5>1️⃣ Service Availability:</h5>';
+        if (!minimalSSE) {
+          analysis += '<p style="color: red;">❌ CRITICAL: minimalSSE service not found on window object</p>';
+          analysis += '<p>🔧 Fix: Check if sse-minimal.js is properly loaded and exported</p>';
+        } else {
+          analysis += '<p style="color: green;">✅ minimalSSE service found</p>';
+        }
+
+        // Test 2: Connect method analysis
+        analysis += '<h5>2️⃣ Connect Method Analysis:</h5>';
+        if (minimalSSE) {
+          analysis += `<p>• connect method type: ${typeof minimalSSE.connect}</p>`;
+          analysis += `<p>• connected status: ${minimalSSE.connected}</p>`;
+          analysis += `<p>• retry count: ${minimalSSE.retryCount || 0}</p>`;
+          analysis += `<p>• last token: ${minimalSSE.lastToken ? 'Present' : 'Missing'}</p>`;
+
+          // Test 3: EventSource creation
+          analysis += '<h5>3️⃣ EventSource Creation:</h5>';
+          if (minimalSSE.eventSource) {
+            analysis += `<p style="color: green;">✅ EventSource object exists</p>`;
+            analysis += `<p>• URL: ${minimalSSE.eventSource.url}</p>`;
+            analysis += `<p>• ReadyState: ${minimalSSE.eventSource.readyState}</p>`;
+          } else {
+            analysis += '<p style="color: red;">❌ CRITICAL: EventSource object not created</p>';
+            analysis += '<p>🔧 This is why no /events requests are appearing in proxy logs</p>';
+          }
+        }
+
+        // Test 4: Auth token analysis
+        analysis += '<h5>4️⃣ Authentication Token Analysis:</h5>';
+        const authStore = window.__pinia_stores__?.auth?.() ||
+          window.pinia?.stores?.auth ||
+          window.authStore;
+
+        if (authStore) {
+          analysis += `<p>• isAuthenticated: ${authStore.isAuthenticated}</p>`;
+          analysis += `<p>• token present: ${!!authStore.token}</p>`;
+          if (authStore.token) {
+            analysis += `<p>• token preview: ${authStore.token.substring(0, 20)}...</p>`;
+          }
+        } else {
+          analysis += '<p style="color: red;">❌ Auth store not accessible</p>';
+        }
+
+        // Test 5: Connection call trace
+        analysis += '<h5>5️⃣ Connection Call Trace:</h5>';
+        analysis += '<p>🔍 Checking if connect() was ever called from main.js...</p>';
+
+        // Test the actual connection process
+        if (minimalSSE && authStore && authStore.token) {
+          analysis += '<p>🧪 All prerequisites met for SSE connection</p>';
+          analysis += '<p>🔧 Recommend: Force EventSource creation test</p>';
+        } else {
+          analysis += '<p style="color: red;">❌ Prerequisites not met for SSE connection</p>';
+        }
+
+      } catch (error) {
+        analysis += `<p style="color: red;">❌ Analysis error: ${error.message}</p>`;
+      }
+
+      analysisDiv.innerHTML = analysis;
+      debugLog('✅ Root cause analysis completed');
+    }
+
+    function forceEventSourceCreation() {
+      debugLog('🚀 Attempting to force EventSource creation...');
+
+      try {
+        // Get token
+        const authStore = window.__pinia_stores__?.auth?.() ||
+          window.pinia?.stores?.auth ||
+          window.authStore;
+
+        if (!authStore || !authStore.token) {
+          debugLog('❌ Cannot force creation: No auth token', 'error');
+          return;
+        }
+
+        const token = authStore.token;
+        const url = `/events?access_token=${token}`;
+
+        debugLog(`🔗 Creating EventSource manually: ${url}`, 'info');
+
+        // Create EventSource directly
+        const eventSource = new EventSource(url);
+
+        eventSource.onopen = function () {
+          debugLog('✅ MANUAL EventSource OPENED! Network request successful!', 'success');
+          updateQuickStatus('networkRequests', '1 /events SUCCESS', 'success');
+        };
+
+        eventSource.onmessage = function (event) {
+          debugLog(`📨 Received SSE message: ${event.data}`, 'success');
+        };
+
+        eventSource.onerror = function (error) {
+          debugLog(`❌ EventSource error: ${error}`, 'error');
+        };
+
+        // Store reference for cleanup
+        window.testEventSource = eventSource;
+
+        // Close after 10 seconds
+        setTimeout(() => {
+          eventSource.close();
+          debugLog('🔚 Manual EventSource test closed', 'info');
+        }, 10000);
+
+      } catch (error) {
+        debugLog(`❌ Force creation failed: ${error.message}`, 'error');
+      }
+    }
+
+    function testDirectEventSource() {
+      debugLog('🧪 Testing direct EventSource creation...', 'info');
+      forceEventSourceCreation();
+    }
+
+    function interceptNetworkRequests() {
+      if (networkIntercepted) return;
+
+      debugLog('🕵️ Intercepting network requests...', 'info');
+
+      // Intercept fetch
+      const originalFetch = window.fetch;
+      window.fetch = function (...args) {
+        const url = args[0];
+        if (typeof url === 'string' && url.includes('/events')) {
+          debugLog(`🌐 INTERCEPTED: fetch to ${url}`, 'success');
+          updateQuickStatus('networkRequests', 'FETCH /events', 'success');
+        }
+        return originalFetch.apply(this, args);
+      };
+
+      // Intercept EventSource constructor
+      const OriginalEventSource = window.EventSource;
+      window.EventSource = function (...args) {
+        const url = args[0];
+        debugLog(`🚀 INTERCEPTED: new EventSource('${url}')`, 'success');
+        updateQuickStatus('networkRequests', 'EventSource created', 'success');
+        return new OriginalEventSource(...args);
+      };
+
+      networkIntercepted = true;
+      debugLog('✅ Network interception active', 'success');
+    }
+
+    function monitorConnectCalls() {
+      debugLog('👀 Monitoring SSE connect() calls...', 'info');
+
+      try {
+        const minimalSSE = window.minimalSSE || window.realtimeCommunicationService;
+        if (!minimalSSE) {
+          debugLog('❌ Cannot monitor: SSE service not found', 'error');
+          return;
+        }
+
+        // Wrap the connect method
+        const originalConnect = minimalSSE.connect;
+        minimalSSE.connect = function (token) {
+          debugLog(`🔗 INTERCEPTED: connect() called with token: ${token ? token.substring(0, 10) + '...' : 'null'}`, 'success');
+
+          const result = originalConnect.call(this, token);
+
+          // Check EventSource creation after connect call
+          setTimeout(() => {
+            if (this.eventSource) {
+              debugLog('✅ EventSource created successfully after connect()', 'success');
+            } else {
+              debugLog('❌ CRITICAL: connect() called but EventSource not created!', 'error');
+            }
+          }, 100);
+
+          return result;
+        };
+
+        debugLog('✅ Connect() monitoring active', 'success');
+
+      } catch (error) {
+        debugLog(`❌ Monitor setup failed: ${error.message}`, 'error');
+      }
+    }
+
+    function fullSSEReset() {
+      debugLog('🔄 Performing full SSE reset...', 'warning');
+
+      try {
+        const minimalSSE = window.minimalSSE || window.realtimeCommunicationService;
+        if (minimalSSE) {
+          // Disconnect
+          minimalSSE.disconnect();
+          debugLog('📡 SSE disconnected', 'info');
+
+          // Wait and reconnect
+          setTimeout(() => {
+            const authStore = window.__pinia_stores__?.auth?.() ||
+              window.pinia?.stores?.auth ||
+              window.authStore;
+
+            if (authStore && authStore.token) {
+              minimalSSE.connect(authStore.token);
+              debugLog('🔗 SSE reconnection attempted', 'info');
+            } else {
+              debugLog('❌ Cannot reconnect: No auth token', 'error');
+            }
+          }, 2000);
+        }
+      } catch (error) {
+        debugLog(`❌ Reset failed: ${error.message}`, 'error');
+      }
+    }
+
+    function debugSSEFlow() {
+      debugLog('🔍 Debugging complete SSE flow...', 'info');
+
+      // Step by step debugging
+      debugLog('Step 1: Checking window.minimalSSE...', 'info');
+      const minimalSSE = window.minimalSSE || window.realtimeCommunicationService;
+      debugLog(`Result: ${!!minimalSSE}`, minimalSSE ? 'success' : 'error');
+
+      if (minimalSSE) {
+        debugLog('Step 2: Checking connect method...', 'info');
+        debugLog(`Result: ${typeof minimalSSE.connect}`, 'info');
+
+        debugLog('Step 3: Checking current state...', 'info');
+        debugLog(`Connected: ${minimalSSE.connected}`, 'info');
+        debugLog(`EventSource: ${!!minimalSSE.eventSource}`, 'info');
+        debugLog(`Retry count: ${minimalSSE.retryCount}`, 'info');
+
+        if (minimalSSE.eventSource) {
+          debugLog(`EventSource URL: ${minimalSSE.eventSource.url}`, 'info');
+          debugLog(`EventSource readyState: ${minimalSSE.eventSource.readyState}`, 'info');
+        }
+      }
+
+      debugLog('Step 4: Checking auth store...', 'info');
+      const authStore = window.__pinia_stores__?.auth?.() ||
+        window.pinia?.stores?.auth ||
+        window.authStore;
+      debugLog(`Auth store found: ${!!authStore}`, authStore ? 'success' : 'error');
+
+      if (authStore) {
+        debugLog(`Authenticated: ${authStore.isAuthenticated}`, 'info');
+        debugLog(`Token present: ${!!authStore.token}`, 'info');
+      }
+    }
+  </script>
+</body>
+
+</html>

@@ -15,13 +15,8 @@
       <div class="modal-content">
         <!-- 聊天类型选择 -->
         <div class="chat-type-tabs">
-          <button 
-            v-for="type in chatTypes" 
-            :key="type.key"
-            @click="selectedType = type.key"
-            class="chat-type-tab"
-            :class="{ 'active': selectedType === type.key }"
-          >
+          <button v-for="type in chatTypes" :key="type.key" @click="selectedType = type.key" class="chat-type-tab"
+            :class="{ 'active': selectedType === type.key }">
             <svg class="tab-icon" fill="currentColor" viewBox="0 0 20 20">
               <path :d="type.icon" />
             </svg>
@@ -32,7 +27,9 @@
         <!-- 错误提示 -->
         <div v-if="error" class="error-alert">
           <svg class="error-icon" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+            <path fill-rule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+              clip-rule="evenodd" />
           </svg>
           <span>{{ error }}</span>
         </div>
@@ -44,15 +41,9 @@
             <label for="chatName" class="form-label">
               {{ selectedType === 'channel' ? '频道名称' : '群组名称' }} *
             </label>
-            <input
-              id="chatName"
-              v-model="formData.name"
-              type="text"
-              class="form-input"
+            <input id="chatName" v-model="formData.name" type="text" class="form-input"
               :class="{ 'form-input-error': validationErrors.name }"
-              :placeholder="selectedType === 'channel' ? '例如：general' : '例如：项目讨论组'"
-              required
-            />
+              :placeholder="selectedType === 'channel' ? '例如：general' : '例如：项目讨论组'" required />
             <span v-if="validationErrors.name" class="form-error">
               {{ validationErrors.name }}
             </span>
@@ -61,24 +52,14 @@
           <!-- 聊天描述 -->
           <div v-if="selectedType !== 'direct'" class="form-group">
             <label for="chatDescription" class="form-label">描述</label>
-            <textarea
-              id="chatDescription"
-              v-model="formData.description"
-              class="form-textarea"
-              rows="3"
-              :placeholder="selectedType === 'channel' ? '这个频道是用来...' : '这个群组用于...'"
-            />
+            <textarea id="chatDescription" v-model="formData.description" class="form-textarea" rows="3"
+              :placeholder="selectedType === 'channel' ? '这个频道是用来...' : '这个群组用于...'" />
           </div>
 
           <!-- 私密性设置 -->
           <div v-if="selectedType === 'channel'" class="form-group">
             <div class="checkbox-group">
-              <input
-                id="isPrivate"
-                v-model="formData.is_public"
-                type="checkbox"
-                class="form-checkbox"
-              />
+              <input id="isPrivate" v-model="formData.is_public" type="checkbox" class="form-checkbox" />
               <label for="isPrivate" class="checkbox-label">
                 <span class="checkbox-text">公开频道</span>
                 <span class="checkbox-description">
@@ -94,37 +75,23 @@
               {{ selectedType === 'direct' ? '选择聊天对象' : '添加成员' }}
               {{ selectedType === 'direct' ? '*' : '' }}
             </label>
-            
+
             <!-- 用户搜索 -->
             <div class="user-search">
-              <input
-                v-model="userSearchQuery"
-                type="text"
-                class="form-input"
-                placeholder="搜索用户..."
-                @input="searchUsers"
-              />
+              <input v-model="userSearchQuery" type="text" class="form-input" placeholder="搜索用户..."
+                @input="searchUsers" />
               <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
 
             <!-- 搜索结果 -->
             <div v-if="filteredUsers.length > 0" class="user-search-results">
-              <div 
-                v-for="user in filteredUsers" 
-                :key="user.id"
-                @click="toggleUserSelection(user)"
-                class="user-search-item"
-                :class="{ 'selected': isUserSelected(user.id) }"
-              >
+              <div v-for="user in filteredUsers" :key="user.id" @click="toggleUserSelection(user)"
+                class="user-search-item" :class="{ 'selected': isUserSelected(user.id) }">
                 <div class="user-avatar">
-                  <img 
-                    v-if="user.avatar_url" 
-                    :src="user.avatar_url" 
-                    :alt="user.fullname"
-                    class="avatar-image"
-                  />
+                  <img v-if="user.avatar_url" :src="user.avatar_url" :alt="user.fullname" class="avatar-image" />
                   <span v-else class="avatar-initials">
                     {{ getUserInitials(user.fullname) }}
                   </span>
@@ -135,7 +102,9 @@
                 </div>
                 <div v-if="isUserSelected(user.id)" class="selection-indicator">
                   <svg class="check-icon" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    <path fill-rule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clip-rule="evenodd" />
                   </svg>
                 </div>
               </div>
@@ -145,18 +114,13 @@
             <div v-if="selectedUsers.length > 0" class="selected-users">
               <div class="selected-users-label">已选择的用户:</div>
               <div class="selected-users-list">
-                <div 
-                  v-for="user in selectedUsers" 
-                  :key="user.id"
-                  class="selected-user-tag"
-                >
+                <div v-for="user in selectedUsers" :key="user.id" class="selected-user-tag">
                   {{ user.fullname }}
-                  <button 
-                    @click="removeUserSelection(user.id)"
-                    class="remove-user-btn"
-                  >
+                  <button @click="removeUserSelection(user.id)" class="remove-user-btn">
                     <svg class="remove-icon" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                      <path fill-rule="evenodd"
+                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        clip-rule="evenodd" />
                     </svg>
                   </button>
                 </div>
@@ -172,20 +136,11 @@
 
       <!-- 模态框底部 -->
       <div class="modal-footer">
-        <button
-          type="button"
-          @click="close"
-          class="btn btn-secondary"
-          :disabled="loading"
-        >
+        <button type="button" @click="close" class="btn btn-secondary" :disabled="loading">
           取消
         </button>
-        
-        <button
-          @click="handleSubmit"
-          class="btn btn-primary"
-          :disabled="loading || !isFormValid"
-        >
+
+        <button @click="handleSubmit" class="btn btn-primary" :disabled="loading || !isFormValid">
           <span v-if="loading" class="loading-spinner" />
           {{ loading ? '创建中...' : getCreateButtonText() }}
         </button>
@@ -207,7 +162,7 @@ interface Props {
   isOpen: boolean;
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 
 // Emits
 const emit = defineEmits<{
@@ -261,9 +216,9 @@ const filteredUsers = computed(() => {
   if (!userSearchQuery.value.trim()) {
     return availableUsers.value.slice(0, 10); // 显示前10个用户
   }
-  
+
   const query = userSearchQuery.value.toLowerCase();
-  return availableUsers.value.filter(user => 
+  return availableUsers.value.filter(user =>
     user.fullname.toLowerCase().includes(query) ||
     user.email.toLowerCase().includes(query)
   ).slice(0, 10);
@@ -273,11 +228,11 @@ const isFormValid = computed(() => {
   if (selectedType.value === 'direct') {
     return selectedUsers.value.length === 1;
   }
-  
+
   if (selectedType.value === 'channel' || selectedType.value === 'group') {
     return formData.name.trim().length > 0;
   }
-  
+
   return false;
 });
 
@@ -312,7 +267,7 @@ const isUserSelected = (userId: number): boolean => {
 // 用户操作
 const toggleUserSelection = (user: UserProfileResponse) => {
   const index = selectedUsers.value.findIndex(u => u.id === user.id);
-  
+
   if (index >= 0) {
     selectedUsers.value.splice(index, 1);
   } else {
@@ -322,6 +277,7 @@ const toggleUserSelection = (user: UserProfileResponse) => {
     } else {
       selectedUsers.value.push(user);
     }
+  }
 };
 
 const removeUserSelection = (userId: number) => {
@@ -334,7 +290,7 @@ const removeUserSelection = (userId: number) => {
 // 搜索用户
 const searchUsers = async () => {
   if (!userSearchQuery.value.trim()) return;
-  
+
   try {
     const results = await UserService.searchUsers(userSearchQuery.value, 10);
     // 过滤掉当前用户
@@ -395,19 +351,15 @@ const handleSubmit = async () => {
     // 创建频道或群组
     chatData = {
       name: formData.name.trim(),
-      chat_type: selectedType.value,
-      is_public: selectedType.value === 'channel' ? formData.is_public : false,
+      chat_type: selectedType.value === 'channel' ? 'PrivateChannel' : 'Group',
       description: formData.description.trim() || undefined,
-      member_ids: selectedUsers.value.map(user => user.id)
+      members: selectedUsers.value.map(user => user.id)
     };
 
     const chat = await ChatService.createChat(chatData);
-    
-    notifySuccess(
-      `${selectedType.value === 'channel' ? '频道' : '群组'}创建成功`,
-      `"${chat.name}" 已创建`
-    );
-    
+
+    notifySuccess(`${selectedType.value === 'channel' ? '频道' : '群组'}创建成功: "${chat.name}"`);
+
     emit('created', chat);
     close();
 
@@ -428,7 +380,7 @@ const close = () => {
   selectedUsers.value = [];
   userSearchQuery.value = '';
   error.value = '';
-  
+
   // 清除验证错误
   Object.keys(validationErrors).forEach(key => {
     delete validationErrors[key];
@@ -452,7 +404,7 @@ watch(selectedType, () => {
   formData.is_public = true;
   selectedUsers.value = [];
   error.value = '';
-  
+
   // 清除验证错误
   Object.keys(validationErrors).forEach(key => {
     delete validationErrors[key];
@@ -620,7 +572,8 @@ onMounted(() => {
   margin-bottom: 6px;
 }
 
-.form-input, .form-textarea {
+.form-input,
+.form-textarea {
   width: 100%;
   padding: 12px;
   border: 1px solid #d1d5db;
@@ -629,7 +582,8 @@ onMounted(() => {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.form-input:focus, .form-textarea:focus {
+.form-input:focus,
+.form-textarea:focus {
   outline: none;
   border-color: #6366f1;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
@@ -883,6 +837,7 @@ onMounted(() => {
   to {
     transform: rotate(360deg);
   }
+}
 
 /* 响应式设计 */
 @media (max-width: 768px) {
@@ -892,23 +847,24 @@ onMounted(() => {
     border-radius: 0;
     max-height: 100vh;
   }
-  
+
   .modal-header,
   .modal-content,
   .modal-footer {
     padding-left: 16px;
     padding-right: 16px;
   }
-  
+
   .chat-type-tabs {
     flex-direction: column;
   }
-  
+
   .modal-footer {
     flex-direction: column;
   }
-  
+
   .btn {
     width: 100%;
   }
+}
 </style>

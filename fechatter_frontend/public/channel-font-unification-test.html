@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎨 频道标题字体统一化验证工具</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 30px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .test-section {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .test-title {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      color: #ffd93d;
+      font-weight: 600;
+    }
+
+    /* 统一频道字体样式 */
+    .channel-title-unified {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Sans CN', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.4;
+      letter-spacing: 0.01em;
+      font-feature-settings: 'liga' 1, 'kern' 1;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+
+    .channel-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      margin: 4px 0;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      transition: all 0.2s ease;
+    }
+
+    .channel-item:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateX(5px);
+    }
+
+    .channel-icon {
+      width: 16px;
+      height: 16px;
+      margin-right: 8px;
+      opacity: 0.7;
+    }
+
+    .button {
+      background: linear-gradient(45deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      margin: 10px 5px;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .channel-title-unified.large {
+      font-size: 18px;
+      font-weight: 900;
+      margin: 0;
+    }
+
+    .chat-header-demo {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin: 10px 0;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .chat-title-demo {
+      display: flex;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .channel-prefix {
+      font-size: 16px;
+      margin-right: 6px;
+      color: #616061;
+    }
+
+    .chat-description-demo {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Sans CN', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 13px;
+      color: #616061;
+      letter-spacing: 0.01em;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎨 频道标题字体统一化验证</h1>
+      <p>验证多语言频道标题的字体显示效果</p>
+    </div>
+
+    <div class="test-section">
+      <div class="test-title">📋 统一字体样式测试</div>
+      <div class="channel-item">
+        <span class="channel-icon">#</span>
+        <span class="channel-title-unified">会议安排讨论组</span>
+      </div>
+      <div class="channel-item">
+        <span class="channel-icon">#</span>
+        <span class="channel-title-unified">Admin User</span>
+      </div>
+      <div class="channel-item">
+        <span class="channel-icon">#</span>
+        <span class="channel-title-unified">Employee 2</span>
+      </div>
+      <div class="channel-item">
+        <span class="channel-icon">#</span>
+        <span class="channel-title-unified">公司公告板</span>
+      </div>
+      <div class="channel-item">
+        <span class="channel-icon">#</span>
+        <span class="channel-title-unified">开发团队内部讨论</span>
+      </div>
+      <div class="channel-item">
+        <span class="channel-icon">#</span>
+        <span class="channel-title-unified">日本市场チャンネル</span>
+      </div>
+      <div class="channel-item">
+        <span class="channel-icon">#</span>
+        <span class="channel-title-unified">European Market Channel</span>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <div class="test-title">🗨️ Chat.vue 聊天标题测试</div>
+      <div class="chat-header-demo">
+        <div class="chat-title-demo">
+          <span class="channel-prefix">#</span>
+          <h1 class="chat-title-unified large">开发团队内部讨论</h1>
+        </div>
+        <div class="chat-description-demo">Chat channel</div>
+      </div>
+      <div class="chat-header-demo">
+        <div class="chat-title-demo">
+          <span class="channel-prefix">#</span>
+          <h1 class="chat-title-unified large">日本市場チャンネル</h1>
+        </div>
+        <div class="chat-description-demo">マーケティング専用チャンネル</div>
+      </div>
+      <div class="chat-header-demo">
+        <div class="chat-title-demo">
+          <span class="channel-prefix">#</span>
+          <h1 class="chat-title-unified large">European Market Channel</h1>
+        </div>
+        <div class="chat-description-demo">European expansion discussion</div>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 30px;">
+      <button class="button" onclick="window.location.href='http://localhost:5173'">
+        🚀 返回 Fechatter 应用
+      </button>
+    </div>
+  </div>
+</body>
+
+</html>

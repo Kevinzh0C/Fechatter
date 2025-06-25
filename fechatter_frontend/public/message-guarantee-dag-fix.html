@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🛡️ Message Display Guarantee DAG Fix</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0;
+      padding: 20px;
+      color: #2d3748;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: #1a202c;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 2.5rem;
+    }
+
+    .dag-section {
+      background: #f7fafc;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-left: 4px solid #4299e1;
+    }
+
+    .error-section {
+      border-left-color: #f56565;
+      background: #fed7d7;
+    }
+
+    .fix-section {
+      border-left-color: #48bb78;
+      background: #c6f6d5;
+    }
+
+    .step {
+      margin: 10px 0;
+      padding: 12px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .step-title {
+      font-weight: 600;
+      color: #2d3748;
+    }
+
+    .step-desc {
+      color: #4a5568;
+      font-size: 0.9rem;
+      margin-top: 4px;
+    }
+
+    button {
+      background: #4299e1;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 5px;
+      font-weight: 600;
+    }
+
+    button:hover {
+      background: #3182ce;
+    }
+
+    .success {
+      background: #48bb78;
+    }
+
+    .success:hover {
+      background: #38a169;
+    }
+
+    #log {
+      background: #1a202c;
+      color: #e2e8f0;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: monospace;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🛡️ Message Display Guarantee DAG Analysis & Fix</h1>
+
+    <div class="dag-section">
+      <h3>🔍 Problem DAG Flow</h3>
+      <div class="step">
+        <div class="step-title">1. handleChannelSelected → navigateToChat → loadMessagesForChat</div>
+        <div class="step-desc">✅ Flow works correctly, messages are fetched</div>
+      </div>
+      <div class="step">
+        <div class="step-title">2. fetchMessages → startMessageTracking</div>
+        <div class="step-desc">✅ Tracking context created with messageIds</div>
+      </div>
+      <div class="step">
+        <div class="step-title">3. DiscordMessageItem.vue → onMounted → markMessageDisplayed</div>
+        <div class="step-desc">❌ FAILING: DOM element query returns null</div>
+      </div>
+      <div class="step">
+        <div class="step-title">4. verifyDisplayCompletion → ALL 12 messages missing</div>
+        <div class="step-desc">❌ CRITICAL: 100% failure indicates system issue</div>
+      </div>
+    </div>
+
+    <div class="dag-section error-section">
+      <h3>🚨 Root Cause Analysis</h3>
+      <div class="step">
+        <div class="step-title">Primary Issue: DOM Query Timing</div>
+        <div class="step-desc">document.querySelector in onMounted executes before DOM is fully rendered</div>
+      </div>
+      <div class="step">
+        <div class="step-title">Secondary Issue: No Fallback Registration</div>
+        <div class="step-desc">No backup mechanism when individual message registration fails</div>
+      </div>
+      <div class="step">
+        <div class="step-title">Timing Issue: Vue Lifecycle vs DOM Readiness</div>
+        <div class="step-desc">onMounted ≠ DOM element availability with data-message-id</div>
+      </div>
+    </div>
+
+    <div class="dag-section fix-section">
+      <h3>🎯 Production Fix Strategy</h3>
+      <div class="step">
+        <div class="step-title">Fix 1: Template Ref Instead of DOM Query</div>
+        <div class="step-desc">Use Vue template ref for direct element access</div>
+      </div>
+      <div class="step">
+        <div class="step-title">Fix 2: Progressive Registration</div>
+        <div class="step-desc">Add registration in DiscordMessageList.vue as fallback</div>
+      </div>
+      <div class="step">
+        <div class="step-title">Fix 3: Enhanced Timing</div>
+        <div class="step-desc">nextTick + requestAnimationFrame for proper DOM timing</div>
+      </div>
+    </div>
+
+    <div>
+      <h3>🔧 Diagnostic Actions</h3>
+      <button onclick="runDiagnostics()">🔍 Run Diagnostics</button>
+      <button onclick="checkTracking()">🛡️ Check Tracking</button>
+      <button onclick="manualRegister()" class="success">🔧 Manual Register</button>
+      <button onclick="forceReset()">🔄 Reset System</button>
+    </div>
+
+    <div id="log"></div>
+  </div>
+
+  <script>
+    function log(message, type = 'info') {
+      const logEl = document.getElementById('log');
+      const timestamp = new Date().toLocaleTimeString();
+      const colors = {
+        info: '#90cdf4',
+        success: '#9ae6b4',
+        error: '#feb2b2',
+        warn: '#f6e05e'
+      };
+      logEl.innerHTML += `<div style="color: ${colors[type]}">[${timestamp}] ${message}</div>`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function runDiagnostics() {
+      log('🔍 Running comprehensive diagnostics...', 'info');
+
+      // Check MessageDisplayGuarantee
+      if (window.messageDisplayGuarantee) {
+        const metrics = window.messageDisplayGuarantee.getMetrics();
+        log(`✅ MessageDisplayGuarantee: ${metrics.activeTracking} active contexts`, 'success');
+
+        const contexts = Array.from(window.messageDisplayGuarantee.verificationQueue.entries());
+        contexts.forEach(([id, ctx]) => {
+          log(`🔍 Context ${id}: ${ctx.displayedIds.size}/${ctx.messageIds.size} displayed`, 'warn');
+        });
+      } else {
+        log('❌ MessageDisplayGuarantee not available', 'error');
+      }
+
+      // Check DOM elements
+      const elements = document.querySelectorAll('[data-message-id]');
+      log(`🔍 Found ${elements.length} message elements in DOM`, 'info');
+
+      // Check containers
+      const containers = document.querySelectorAll('.discord-message-list, .messages-container');
+      log(`🔍 Found ${containers.length} message containers`, 'info');
+    }
+
+    function checkTracking() {
+      log('🛡️ Checking message tracking system...', 'info');
+
+      if (window.debugMessageGuarantee) {
+        window.debugMessageGuarantee();
+        log('✅ Debug info printed to console', 'success');
+      }
+
+      const elements = document.querySelectorAll('[data-message-id]');
+      elements.forEach(el => {
+        const id = el.getAttribute('data-message-id');
+        const visible = el.offsetParent !== null;
+        log(`Message ${id}: ${visible ? 'visible' : 'hidden'}`, visible ? 'success' : 'warn');
+      });
+    }
+
+    function manualRegister() {
+      log('🔧 Attempting manual message registration...', 'info');
+
+      if (!window.messageDisplayGuarantee) {
+        log('❌ MessageDisplayGuarantee not available', 'error');
+        return;
+      }
+
+      const elements = document.querySelectorAll('[data-message-id]');
+      const chatId = window.location.pathname.match(/\/chat\/(\d+)/)?.[1];
+
+      if (!chatId) {
+        log('❌ Cannot determine chat ID from URL', 'error');
+        return;
+      }
+
+      let registered = 0;
+      elements.forEach(el => {
+        const messageId = el.getAttribute('data-message-id');
+        if (messageId && el.offsetParent !== null) {
+          try {
+            window.messageDisplayGuarantee.markMessageDisplayed(
+              parseInt(messageId),
+              el,
+              parseInt(chatId)
+            );
+            registered++;
+            log(`✅ Registered message ${messageId}`, 'success');
+          } catch (error) {
+            log(`❌ Failed to register ${messageId}: ${error.message}`, 'error');
+          }
+        }
+      });
+
+      log(`🎯 Manual registration complete: ${registered} messages`, 'success');
+    }
+
+    function forceReset() {
+      log('🔄 Force resetting message display system...', 'warn');
+
+      if (window.messageDisplayGuarantee) {
+        window.messageDisplayGuarantee.verificationQueue.clear();
+        log('✅ Cleared all tracking contexts', 'success');
+      }
+
+      if (window.unifiedMessageService) {
+        const chatId = window.location.pathname.match(/\/chat\/(\d+)/)?.[1];
+        if (chatId) {
+          window.unifiedMessageService.clearMessagesForChat(chatId);
+          log(`✅ Cleared messages for chat ${chatId}`, 'success');
+        }
+      }
+
+      log('🎯 Reset complete. Consider refreshing the page.', 'success');
+    }
+
+    // Auto-run diagnostics on load
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(runDiagnostics, 1000);
+    });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🛡️ Message Display Guarantee DAG Analysis</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #2d3748;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      color: white;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .header p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    .analysis-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .analysis-card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(10px);
+    }
+
+    .dag-flow {
+      grid-column: 1 / -1;
+      background: linear-gradient(145deg, #f8fafc, #e2e8f0);
+    }
+
+    .flow-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #2d3748;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+      padding: 12px;
+      background: white;
+      border-radius: 8px;
+      border-left: 4px solid #4299e1;
+      transition: all 0.3s ease;
+    }
+
+    .flow-step:hover {
+      transform: translateX(4px);
+      box-shadow: 0 4px 12px rgba(66, 153, 225, 0.15);
+    }
+
+    .flow-step.error {
+      border-left-color: #f56565;
+      background: #fed7d7;
+    }
+
+    .flow-step.success {
+      border-left-color: #48bb78;
+      background: #c6f6d5;
+    }
+
+    .flow-step.warning {
+      border-left-color: #ed8936;
+      background: #feebc8;
+    }
+
+    .step-number {
+      background: #4299e1;
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-right: 12px;
+      flex-shrink: 0;
+    }
+
+    .error .step-number {
+      background: #f56565;
+    }
+
+    .success .step-number {
+      background: #48bb78;
+    }
+
+    .warning .step-number {
+      background: #ed8936;
+    }
+
+    .step-content {
+      flex: 1;
+    }
+
+    .step-title {
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 4px;
+    }
+
+    .step-desc {
+      color: #4a5568;
+      font-size: 0.9rem;
+    }
+
+    .diagnostics-section {
+      grid-column: 1 / -1;
+      background: linear-gradient(145deg, #1a202c, #2d3748);
+      color: white;
+    }
+
+    .diagnostics-section .flow-title {
+      color: white;
+    }
+
+    .diagnostics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .diagnostic-item {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .diagnostic-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #90cdf4;
+    }
+
+    .diagnostic-value {
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 0.9rem;
+    }
+
+    .btn-primary {
+      background: #4299e1;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #3182ce;
+      transform: translateY(-2px);
+    }
+
+    .btn-success {
+      background: #48bb78;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #38a169;
+      transform: translateY(-2px);
+    }
+
+    .btn-warning {
+      background: #ed8936;
+      color: white;
+    }
+
+    .btn-warning:hover {
+      background: #dd6b20;
+      transform: translateY(-2px);
+    }
+
+    .btn-danger {
+      background: #f56565;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #e53e3e;
+      transform: translateY(-2px);
+    }
+
+    .log-output {
+      background: #1a202c;
+      color: #e2e8f0;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 0.85rem;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 16px;
+      border: 1px solid #4a5568;
+    }
+
+    .log-entry {
+      margin-bottom: 4px;
+      word-break: break-all;
+    }
+
+    .log-error {
+      color: #feb2b2;
+    }
+
+    .log-warn {
+      color: #f6e05e;
+    }
+
+    .log-info {
+      color: #90cdf4;
+    }
+
+    .log-success {
+      color: #9ae6b4;
+    }
+
+    .fix-strategy {
+      grid-column: 1 / -1;
+      background: linear-gradient(145deg, #276749, #2f855a);
+      color: white;
+    }
+
+    .fix-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .fix-step {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .fix-step-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #9ae6b4;
+    }
+
+    .fix-step-desc {
+      font-size: 0.9rem;
+      opacity: 0.9;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🛡️ Message Display Guarantee DAG Analysis</h1>
+      <p>Complete system-wide analysis and resolution strategy for message display failures</p>
+    </div>
+
+    <div class="analysis-grid">
+      <!-- DAG Flow Analysis -->
+      <div class="analysis-card dag-flow">
+        <div class="flow-title">
+          🔍 Complete DAG Flow Analysis
+        </div>
+
+        <div class="flow-step success">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-title">handleChannelSelected @ Chat.vue:234</div>
+            <div class="step-desc">User navigates to chat → triggers navigateToChat</div>
+          </div>
+        </div>
+
+        <div class="flow-step success">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-title">navigateToChat @ chat.js:785</div>
+            <div class="step-desc">Chat store navigation → calls loadMessagesForChat</div>
+          </div>
+        </div>
+
+        <div class="flow-step success">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <div class="step-title">loadMessagesForChat @ UnifiedMessageService.js:284</div>
+            <div class="step-desc">Service layer coordination → delegates to fetchMessages</div>
+          </div>
+        </div>
+
+        <div class="flow-step warning">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <div class="step-title">fetchMessages @ UnifiedMessageService.js:171</div>
+            <div class="step-desc">⚠️ API call + tracking initialization → potential async race condition</div>
+          </div>
+        </div>
+
+        <div class="flow-step error">
+          <div class="step-number">5</div>
+          <div class="step-content">
+            <div class="step-title">startMessageTracking @ MessageDisplayGuarantee.js:227</div>
+            <div class="step-desc">❌ Creates tracking context but no messages get marked as displayed</div>
+          </div>
+        </div>
+
+        <div class="flow-step error">
+          <div class="step-number">6</div>
+          <div class="step-content">
+            <div class="step-title">verifyDisplayCompletion @ MessageDisplayGuarantee.js:553</div>
+            <div class="step-desc">❌ After 2s timeout → detects ALL 12 messages missing</div>
+          </div>
+        </div>
+
+        <div class="flow-step error">
+          <div class="step-number">7</div>
+          <div class="step-content">
+            <div class="step-title">attemptRecovery → reportFailure</div>
+            <div class="step-desc">❌ Recovery fails → CRITICAL ERROR logged</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Root Cause Analysis -->
+      <div class="analysis-card">
+        <div class="flow-title">
+          🔬 Root Cause Analysis
+        </div>
+
+        <div class="diagnostic-item">
+          <div class="diagnostic-title">Primary Issue</div>
+          <div class="diagnostic-value">DiscordMessageItem.vue markMessageDisplayed not being called</div>
+        </div>
+
+        <div class="diagnostic-item">
+          <div class="diagnostic-title">Evidence</div>
+          <div class="diagnostic-value">All 12 messages missing = 100% failure rate = system issue</div>
+        </div>
+
+        <div class="diagnostic-item">
+          <div class="diagnostic-title">DOM Query Problem</div>
+          <div class="diagnostic-value">document.querySelector in onMounted happens too early</div>
+        </div>
+
+        <div class="diagnostic-item">
+          <div class="diagnostic-title">Timing Issue</div>
+          <div class="diagnostic-value">Vue component mount ≠ DOM element availability</div>
+        </div>
+      </div>
+
+      <!-- Current Status -->
+      <div class="analysis-card">
+        <div class="flow-title">
+          📊 Current System Status
+        </div>
+
+        <div class="diagnostic-item">
+          <div class="diagnostic-title">Message Success Rate</div>
+          <div class="diagnostic-value">0% (0/12 messages displayed)</div>
+        </div>
+
+        <div class="diagnostic-item">
+          <div class="diagnostic-title">Tracking Context</div>
+          <div class="diagnostic-value">unified_1_1750752151482 (active)</div>
+        </div>
+
+        <div class="diagnostic-item">
+          <div class="diagnostic-title">Retry Attempts</div>
+          <div class="diagnostic-value">2/2 (exhausted)</div>
+        </div>
+
+        <div class="diagnostic-item">
+          <div class="diagnostic-title">Time Taken</div>
+          <div class="diagnostic-value">12.595 seconds (timeout)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Diagnostics Section -->
+    <div class="analysis-grid">
+      <div class="analysis-card diagnostics-section">
+        <div class="flow-title">
+          🔧 Real-time Diagnostics
+        </div>
+
+        <div class="diagnostics-grid">
+          <div class="diagnostic-item">
+            <div class="diagnostic-title">MessageDisplayGuarantee Status</div>
+            <div class="diagnostic-value" id="guarantee-status">Checking...</div>
+          </div>
+
+          <div class="diagnostic-item">
+            <div class="diagnostic-title">Active Tracking Contexts</div>
+            <div class="diagnostic-value" id="active-contexts">Checking...</div>
+          </div>
+
+          <div class="diagnostic-item">
+            <div class="diagnostic-title">DOM Message Elements</div>
+            <div class="diagnostic-value" id="dom-elements">Checking...</div>
+          </div>
+
+          <div class="diagnostic-item">
+            <div class="diagnostic-title">Chat ID Consistency</div>
+            <div class="diagnostic-value" id="chat-consistency">Checking...</div>
+          </div>
+        </div>
+
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="runDiagnostics()">🔍 Run Full Diagnostics</button>
+          <button class="btn btn-warning" onclick="debugMessageTracking()">🛠️ Debug Tracking</button>
+          <button class="btn btn-success" onclick="attemptManualFix()">🔧 Manual Fix</button>
+          <button class="btn btn-danger" onclick="forceReset()">🔄 Force Reset</button>
+        </div>
+
+        <div class="log-output" id="diagnostic-log">
+          <div class="log-entry log-info">🛡️ [Diagnostic Tool] Ready for analysis...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fix Strategy -->
+    <div class="analysis-grid">
+      <div class="analysis-card fix-strategy">
+        <div class="flow-title">
+          🎯 Production-Grade Fix Strategy
+        </div>
+
+        <div class="fix-steps">
+          <div class="fix-step">
+            <div class="fix-step-title">Fix 1: DOM Reference Correction</div>
+            <div class="fix-step-desc">
+              Replace document.querySelector with template ref in DiscordMessageItem.vue.
+              Use nextTick + requestAnimationFrame for proper DOM timing.
+            </div>
+          </div>
+
+          <div class="fix-step">
+            <div class="fix-step-title">Fix 2: Registration Fallback</div>
+            <div class="fix-step-desc">
+              Add manual message registration in DiscordMessageList.vue as backup.
+              Implement progressive discovery for missed registrations.
+            </div>
+          </div>
+
+          <div class="fix-step">
+            <div class="fix-step-title">Fix 3: Timing Optimization</div>
+            <div class="fix-step-desc">
+              Reduce verification timeout from 2000ms to 800ms.
+              Add progressive verification checkpoints.
+            </div>
+          </div>
+
+          <div class="fix-step">
+            <div class="fix-step-title">Fix 4: Recovery Enhancement</div>
+            <div class="fix-step-desc">
+              Implement DOM query recovery mechanism.
+              Add viewport-aware registration detection.
+            </div>
+          </div>
+        </div>
+
+        <div class="action-buttons">
+          <button class="btn btn-success" onclick="applyFix1()">Apply Fix 1</button>
+          <button class="btn btn-success" onclick="applyFix2()">Apply Fix 2</button>
+          <button class="btn btn-success" onclick="applyFix3()">Apply Fix 3</button>
+          <button class="btn btn-success" onclick="applyAllFixes()">🚀 Apply All Fixes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let diagnosticInterval;
+
+    function log(message, type = 'info') {
+      const logOutput = document.getElementById('diagnostic-log');
+      const timestamp = new Date().toLocaleTimeString();
+      const logEntry = document.createElement('div');
+      logEntry.className = `log-entry log-${type}`;
+      logEntry.textContent = `[${timestamp}] ${message}`;
+      logOutput.appendChild(logEntry);
+      logOutput.scrollTop = logOutput.scrollHeight;
+    }
+
+    function runDiagnostics() {
+      log('🔍 Starting comprehensive diagnostics...', 'info');
+
+      // Check MessageDisplayGuarantee
+      if (typeof window.messageDisplayGuarantee !== 'undefined') {
+        const guarantee = window.messageDisplayGuarantee;
+        const metrics = guarantee.getMetrics();
+
+        document.getElementById('guarantee-status').textContent =
+          `Active (${metrics.activeTracking} contexts)`;
+
+        log(`✅ MessageDisplayGuarantee: ${metrics.activeTracking} active contexts`, 'success');
+        log(`📊 Display success rate: ${metrics.successRate}%`, 'info');
+
+        // Check active contexts
+        const contexts = Array.from(guarantee.verificationQueue.entries());
+        document.getElementById('active-contexts').textContent =
+          contexts.length > 0 ? `${contexts.length} active` : 'None';
+
+        contexts.forEach(([trackingId, context]) => {
+          log(`🔍 Context ${trackingId}: ${context.displayedIds.size}/${context.messageIds.size} messages`, 'warn');
+        });
+
+      } else {
+        document.getElementById('guarantee-status').textContent = 'NOT AVAILABLE';
+        log('❌ MessageDisplayGuarantee not available', 'error');
+      }
+
+      // Check DOM elements
+      const messageElements = document.querySelectorAll('[data-message-id]');
+      document.getElementById('dom-elements').textContent =
+        `${messageElements.length} found`;
+
+      log(`🔍 Found ${messageElements.length} message elements in DOM`, 'info');
+
+      // Check chat consistency
+      const chatElements = document.querySelectorAll('.discord-message-list, .messages-container');
+      document.getElementById('chat-consistency').textContent =
+        chatElements.length > 0 ? 'OK' : 'Missing containers';
+
+      if (chatElements.length === 0) {
+        log('❌ No message containers found in DOM', 'error');
+      } else {
+        log(`✅ Found ${chatElements.length} message containers`, 'success');
+      }
+
+      log('🎯 Diagnostics complete. Ready for fix application.', 'success');
+    }
+
+    function debugMessageTracking() {
+      log('🛠️ Starting message tracking debug...', 'info');
+
+      if (typeof window.debugMessageGuarantee === 'function') {
+        window.debugMessageGuarantee();
+        log('✅ Called debug function - check console for details', 'success');
+      } else {
+        log('❌ Debug function not available', 'error');
+      }
+
+      // Manual element check
+      const messageElements = document.querySelectorAll('[data-message-id]');
+      messageElements.forEach((el, index) => {
+        const messageId = el.getAttribute('data-message-id');
+        const isVisible = el.offsetParent !== null;
+        log(`Message ${messageId}: ${isVisible ? 'visible' : 'hidden'}`, isVisible ? 'success' : 'warn');
+      });
+    }
+
+    function attemptManualFix() {
+      log('🔧 Attempting manual fix...', 'info');
+
+      // Manual registration of visible messages
+      const messageElements = document.querySelectorAll('[data-message-id]');
+      let registered = 0;
+
+      messageElements.forEach(el => {
+        const messageId = el.getAttribute('data-message-id');
+        if (messageId && window.messageDisplayGuarantee && el.offsetParent !== null) {
+          try {
+            // Extract chat ID from URL or current context
+            const chatId = window.location.pathname.match(/\/chat\/(\d+)/)?.[1];
+            if (chatId) {
+              window.messageDisplayGuarantee.markMessageDisplayed(
+                parseInt(messageId),
+                el,
+                parseInt(chatId)
+              );
+              registered++;
+              log(`✅ Manually registered message ${messageId}`, 'success');
+            }
+          } catch (error) {
+            log(`❌ Failed to register message ${messageId}: ${error.message}`, 'error');
+          }
+        }
+      });
+
+      log(`🎯 Manual fix complete: ${registered} messages registered`, 'success');
+    }
+
+    function forceReset() {
+      log('🔄 Force resetting message display system...', 'warn');
+
+      if (window.messageDisplayGuarantee) {
+        // Clear all tracking contexts
+        window.messageDisplayGuarantee.verificationQueue.clear();
+        log('✅ Cleared all tracking contexts', 'success');
+      }
+
+      if (window.unifiedMessageService) {
+        // Force refresh messages
+        const chatId = window.location.pathname.match(/\/chat\/(\d+)/)?.[1];
+        if (chatId) {
+          window.unifiedMessageService.clearMessagesForChat(chatId);
+          log(`✅ Cleared messages for chat ${chatId}`, 'success');
+        }
+      }
+
+      log('🎯 Force reset complete. Refresh page to reload messages.', 'success');
+    }
+
+    function applyFix1() {
+      log('🔧 Fix 1: DOM Reference Correction needs code changes', 'warn');
+      log('📝 Apply this fix in DiscordMessageItem.vue component', 'info');
+    }
+
+    function applyFix2() {
+      log('🔧 Fix 2: Registration Fallback needs code changes', 'warn');
+      log('📝 Apply this fix in DiscordMessageList.vue component', 'info');
+    }
+
+    function applyFix3() {
+      log('🔧 Fix 3: Timing Optimization needs code changes', 'warn');
+      log('📝 Apply this fix in MessageDisplayGuarantee.js', 'info');
+    }
+
+    function applyAllFixes() {
+      log('🚀 All fixes require code changes to be applied', 'warn');
+      log('📋 Please implement the fixes shown in the strategy section', 'info');
+    }
+
+    // Auto-refresh diagnostics
+    function startAutoRefresh() {
+      diagnosticInterval = setInterval(runDiagnostics, 5000);
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      runDiagnostics();
+      startAutoRefresh();
+    });
+  </script>
+</body>
+
+</html>

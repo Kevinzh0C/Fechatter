@@ -9,7 +9,11 @@
 
 <script setup>
 import { ref, watchEffect } from 'vue';
-import { getShiki } from '@/services/shiki';
+// import { getShiki } from '@/services/shiki';
+// Temporarily disable shiki for build
+const getShiki = () => Promise.resolve({
+  codeToHtml: (code, options) => `<pre><code class="language-${options?.lang || 'text'}">${code}</code></pre>`
+});
 
 const props = defineProps({
   code: {

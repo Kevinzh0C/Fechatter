@@ -334,11 +334,32 @@ export const useAuthStore = defineStore('auth', {
         localStorage.setItem('auth_token', tokens.accessToken);
         localStorage.setItem('auth_user', JSON.stringify(user));
 
-        // 🔧 ENHANCED: Brief stabilization to ensure all writes complete
+        // 🔧 NEW: CRITICAL STATE SYNC - Force authStateManager to refresh and verify
+        // Wait for localStorage writes to complete with multiple sync points
         await new Promise(resolve => {
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-              setTimeout(resolve, 50);
+              setTimeout(() => {
+                // Force authStateManager to re-read from localStorage
+                const authState = authStateManager.getAuthState();
+
+                if (import.meta.env.DEV) {
+                  console.log('🔍 [AUTH] Forced state sync check:', {
+                    tokenExists: !!authState.token,
+                    userExists: !!authState.user,
+                    isAuthenticated: authState.isAuthenticated,
+                    userId: authState.user?.id,
+                    tokenPreview: authState.token?.substring(0, 20) + '...'
+                  });
+                }
+
+                // If still not working, this indicates a serious problem
+                if (!authState.isAuthenticated) {
+                  console.error('❌ [AUTH] CRITICAL: AuthStateManager still reports not authenticated after forced sync');
+                }
+
+                resolve();
+              }, 100); // Increased wait time for stability
             });
           });
         });

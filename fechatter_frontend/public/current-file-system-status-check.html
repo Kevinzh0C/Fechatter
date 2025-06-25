@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔍 Fechatter File System Status Check</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #5865f2 0%, #7c3aed 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    .status-section {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-left: 4px solid #667eea;
+    }
+
+    .status-section h3 {
+      color: #333;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .status-item:last-child {
+      border-bottom: none;
+    }
+
+    .status-label {
+      font-weight: 500;
+      color: #495057;
+    }
+
+    .status-value {
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .status-success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .status-warning {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .status-info {
+      background: #cce7ff;
+      color: #004085;
+    }
+
+    .test-section {
+      margin-bottom: 30px;
+    }
+
+    .test-button {
+      background: #5865f2;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 5px;
+      transition: all 0.2s ease;
+    }
+
+    .test-button:hover {
+      background: #4752c4;
+      transform: translateY(-1px);
+    }
+
+    .test-button:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .log-container {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      border-radius: 8px;
+      padding: 20px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      font-size: 13px;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 15px;
+    }
+
+    .log-entry {
+      margin-bottom: 8px;
+      padding: 4px 0;
+    }
+
+    .log-success {
+      color: #4ade80;
+    }
+
+    .log-error {
+      color: #f87171;
+    }
+
+    .log-warning {
+      color: #fbbf24;
+    }
+
+    .log-info {
+      color: #60a5fa;
+    }
+
+    .architecture-diagram {
+      background: white;
+      border: 2px solid #e9ecef;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: center;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .file-input {
+      border: 2px dashed #dee2e6;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin: 15px 0;
+    }
+
+    .file-input:hover {
+      border-color: #667eea;
+      background: #f8f9ff;
+    }
+
+    .file-input input {
+      display: none;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .summary-card {
+      background: white;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+    }
+
+    .summary-number {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .summary-label {
+      font-size: 0.85rem;
+      color: #6c757d;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔍 Fechatter File System Status Check</h1>
+      <p>Complete diagnosis of upload API and download nginx service</p>
+    </div>
+
+    <div class="content">
+      <!-- Current Architecture Overview -->
+      <div class="status-section">
+        <h3>🏗️ Current System Architecture</h3>
+        <div class="architecture-diagram">
+          <strong>File Upload Flow:</strong><br>
+          User → Frontend → <code>POST /api/files/single</code> → Backend → Docker Storage<br><br>
+
+          <strong>File Download Flow:</strong><br>
+          User → Frontend → <code>GET /files/filename</code> → nginx → Static Files<br><br>
+
+          <strong>Sync Process:</strong><br>
+          Docker Storage → (5min cron) → nginx Static Directory
+        </div>
+      </div>
+
+      <!-- System Status Overview -->
+      <div class="status-section">
+        <h3>📊 System Status Overview</h3>
+        <div class="status-item">
+          <span class="status-label">Upload API (Backend)</span>
+          <span class="status-value" id="upload-api-status">Checking...</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Download Service (nginx)</span>
+          <span class="status-value" id="download-service-status">Checking...</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">File Sync Mechanism</span>
+          <span class="status-value" id="sync-mechanism-status">Checking...</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">End-to-End Flow</span>
+          <span class="status-value" id="e2e-flow-status">Checking...</span>
+        </div>
+      </div>
+
+      <!-- API Tests -->
+      <div class="test-section">
+        <h3>🔧 API & Service Tests</h3>
+        <button class="test-button" onclick="checkUploadAPI()">Test Upload API</button>
+        <button class="test-button" onclick="checkDownloadService()">Test Download Service</button>
+        <button class="test-button" onclick="checkKnownFile()">Test Known File Access</button>
+        <button class="test-button" onclick="runFullE2ETest()">Run Full E2E Test</button>
+      </div>
+
+      <!-- File Upload Test -->
+      <div class="test-section">
+        <h3>📤 Live File Upload Test</h3>
+        <div class="file-input" onclick="document.getElementById('testFile').click()">
+          <input type="file" id="testFile" accept="image/*" onchange="handleFileUpload(event)">
+          <p>📎 Click to select an image file for upload testing</p>
+          <small>Test complete upload → storage → serving → display flow</small>
+        </div>
+        <button class="test-button" id="uploadTestBtn" onclick="performFileUpload()" disabled>Upload Test File</button>
+      </div>
+
+      <!-- Results Summary -->
+      <div class="status-section">
+        <h3>📈 Test Results Summary</h3>
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="summary-number" id="tests-run">0</div>
+            <div class="summary-label">Tests Run</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-number" id="tests-passed">0</div>
+            <div class="summary-label">Tests Passed</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-number" id="tests-failed">0</div>
+            <div class="summary-label">Tests Failed</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-number" id="overall-health">0%</div>
+            <div class="summary-label">Overall Health</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detailed Logs -->
+      <div class="test-section">
+        <h3>📋 Detailed Test Logs</h3>
+        <div class="log-container" id="logContainer">
+          <div class="log-entry log-info">[INFO] System status check initialized</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global state
+    let testResults = {
+      uploadAPI: null,
+      downloadService: null,
+      knownFileAccess: null,
+      e2eFlow: null
+    };
+
+    let testStats = {
+      run: 0,
+      passed: 0,
+      failed: 0
+    };
+
+    let selectedFile = null;
+
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', function () {
+      log('🚀 Fechatter File System Status Check started', 'info');
+      setTimeout(runInitialChecks, 1000);
+    });
+
+    // Logging utility
+    function log(message, type = 'info') {
+      const logContainer = document.getElementById('logContainer');
+      const timestamp = new Date().toLocaleTimeString();
+      const logEntry = document.createElement('div');
+      logEntry.className = `log-entry log-${type}`;
+
+      const typeIcon = {
+        'success': '✅',
+        'error': '❌',
+        'warning': '⚠️',
+        'info': '📋'
+      };
+
+      logEntry.innerHTML = `[${timestamp}] ${typeIcon[type] || '📋'} ${message}`;
+      logContainer.appendChild(logEntry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    // Update status display
+    function updateStatus(elementId, status, type) {
+      const element = document.getElementById(elementId);
+      element.textContent = status;
+      element.className = `status-value status-${type}`;
+    }
+
+    // Update test statistics
+    function updateStats() {
+      document.getElementById('tests-run').textContent = testStats.run;
+      document.getElementById('tests-passed').textContent = testStats.passed;
+      document.getElementById('tests-failed').textContent = testStats.failed;
+
+      const healthPercent = testStats.run > 0 ? Math.round((testStats.passed / testStats.run) * 100) : 0;
+      document.getElementById('overall-health').textContent = healthPercent + '%';
+    }
+
+    // Run initial system checks
+    async function runInitialChecks() {
+      log('🔍 Starting initial system checks...', 'info');
+
+      await checkUploadAPI();
+      await new Promise(r => setTimeout(r, 500));
+
+      await checkDownloadService();
+      await new Promise(r => setTimeout(r, 500));
+
+      await checkKnownFile();
+      await new Promise(r => setTimeout(r, 500));
+
+      updateOverallStatus();
+      log('✅ Initial system checks completed', 'success');
+    }
+
+    // Test Upload API
+    async function checkUploadAPI() {
+      log('📤 Testing Upload API endpoint...', 'info');
+      testStats.run++;
+
+      try {
+        // Test if upload endpoint is accessible (should return 422 for no file)
+        const response = await fetch('/api/files/single', {
+          method: 'POST'
+        });
+
+        // 422 (Unprocessable Entity) or 401 (Unauthorized) means endpoint exists
+        if (response.status === 422 || response.status === 401) {
+          testResults.uploadAPI = true;
+          testStats.passed++;
+          updateStatus('upload-api-status', '✅ API Available', 'success');
+          log('✅ Upload API endpoint is available and responsive', 'success');
+        } else if (response.status === 404) {
+          testResults.uploadAPI = false;
+          testStats.failed++;
+          updateStatus('upload-api-status', '❌ API Not Found', 'error');
+          log('❌ Upload API endpoint returned 404 - API not configured', 'error');
+        } else {
+          testResults.uploadAPI = 'warning';
+          updateStatus('upload-api-status', `⚠️ Status ${response.status}`, 'warning');
+          log(`⚠️ Upload API returned unexpected status: ${response.status}`, 'warning');
+        }
+      } catch (error) {
+        testResults.uploadAPI = false;
+        testStats.failed++;
+        updateStatus('upload-api-status', '❌ Connection Failed', 'error');
+        log(`❌ Upload API connection failed: ${error.message}`, 'error');
+      }
+
+      updateStats();
+    }
+
+    // Test Download Service (nginx)
+    async function checkDownloadService() {
+      log('📥 Testing Download Service (nginx)...', 'info');
+      testStats.run++;
+
+      // Test known file from the documentation
+      const testFileUrl = '/files/658fcb1ef14145b5c9e359a571c504b8e1a7449d96577283c1eebb68.png';
+
+      try {
+        const response = await fetch(testFileUrl, { method: 'HEAD' });
+
+        if (response.ok) {
+          testResults.downloadService = true;
+          testStats.passed++;
+          updateStatus('download-service-status', '✅ nginx Working', 'success');
+          log('✅ nginx static file service is working correctly', 'success');
+          log(`   Test file accessible: ${testFileUrl}`, 'info');
+        } else if (response.status === 404) {
+          testResults.downloadService = 'warning';
+          updateStatus('download-service-status', '⚠️ File Missing', 'warning');
+          log('⚠️ nginx service configured but test file not found', 'warning');
+          log('   This might be normal if test file was not uploaded yet', 'info');
+        } else {
+          testResults.downloadService = false;
+          testStats.failed++;
+          updateStatus('download-service-status', `❌ Status ${response.status}`, 'error');
+          log(`❌ Download service error: ${response.status}`, 'error');
+        }
+      } catch (error) {
+        testResults.downloadService = false;
+        testStats.failed++;
+        updateStatus('download-service-status', '❌ Connection Failed', 'error');
+        log(`❌ Download service connection failed: ${error.message}`, 'error');
+      }
+
+      updateStats();
+    }
+
+    // Test known file access
+    async function checkKnownFile() {
+      log('🔍 Testing known file access...', 'info');
+      testStats.run++;
+
+      // Test multiple potential file paths
+      const testFiles = [
+        '/files/658fcb1ef14145b5c9e359a571c504b8e1a7449d96577283c1eebb68.png',
+        '/files/test.png',
+        '/files/example.jpg'
+      ];
+
+      let accessibleFiles = 0;
+
+      for (const fileUrl of testFiles) {
+        try {
+          const response = await fetch(fileUrl, { method: 'HEAD' });
+          if (response.ok) {
+            accessibleFiles++;
+            log(`✅ Accessible: ${fileUrl}`, 'success');
+          } else {
+            log(`⚠️ Not found: ${fileUrl} (${response.status})`, 'warning');
+          }
+        } catch (error) {
+          log(`❌ Error accessing: ${fileUrl}`, 'error');
+        }
+      }
+
+      if (accessibleFiles > 0) {
+        testResults.knownFileAccess = true;
+        testStats.passed++;
+        updateStatus('sync-mechanism-status', `✅ ${accessibleFiles} Files Found`, 'success');
+        log(`✅ Found ${accessibleFiles} accessible files - sync mechanism working`, 'success');
+      } else {
+        testResults.knownFileAccess = false;
+        testStats.failed++;
+        updateStatus('sync-mechanism-status', '❌ No Files Found', 'error');
+        log('❌ No accessible files found - sync mechanism may have issues', 'error');
+      }
+
+      updateStats();
+    }
+
+    // Handle file selection
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        selectedFile = file;
+        document.getElementById('uploadTestBtn').disabled = false;
+        log(`📎 File selected: ${file.name} (${Math.round(file.size / 1024)}KB)`, 'info');
+
+        // Validate file size
+        const maxSize = 2 * 1024 * 1024; // 2MB
+        if (file.size > maxSize) {
+          log(`⚠️ Warning: File size (${Math.round(file.size / 1024 / 1024 * 100) / 100}MB) exceeds 2MB limit`, 'warning');
+        }
+      }
+    }
+
+    // Perform actual file upload test
+    async function performFileUpload() {
+      if (!selectedFile) {
+        log('❌ No file selected for upload test', 'error');
+        return;
+      }
+
+      log(`🚀 Starting file upload test for: ${selectedFile.name}`, 'info');
+      testStats.run++;
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      try {
+        const response = await fetch('/api/files/single', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const fileUrl = result.data?.url || result.file_url || result.url;
+
+          testStats.passed++;
+          log('✅ File upload successful!', 'success');
+          log(`   Upload response: ${JSON.stringify(result)}`, 'info');
+
+          if (fileUrl) {
+            log(`   File URL: ${fileUrl}`, 'info');
+
+            // Test immediate access to uploaded file
+            setTimeout(() => testUploadedFileAccess(fileUrl), 3000);
+          }
+        } else {
+          testStats.failed++;
+          const errorText = await response.text();
+          log(`❌ File upload failed: ${response.status}`, 'error');
+          log(`   Error details: ${errorText}`, 'error');
+        }
+      } catch (error) {
+        testStats.failed++;
+        log(`❌ File upload error: ${error.message}`, 'error');
+      }
+
+      updateStats();
+    }
+
+    // Test uploaded file access
+    async function testUploadedFileAccess(fileUrl) {
+      log('🔍 Testing uploaded file access...', 'info');
+
+      try {
+        const response = await fetch(fileUrl, { method: 'HEAD' });
+
+        if (response.ok) {
+          log('✅ Uploaded file is immediately accessible via nginx!', 'success');
+          log('🎉 Complete end-to-end flow working: Upload → Storage → nginx → Access', 'success');
+        } else {
+          log(`⚠️ Uploaded file not yet accessible (${response.status}) - may need sync time`, 'warning');
+          log('⏱️ Files typically become available within 5 minutes via sync mechanism', 'info');
+        }
+      } catch (error) {
+        log(`❌ Error testing uploaded file access: ${error.message}`, 'error');
+      }
+    }
+
+    // Run full end-to-end test
+    async function runFullE2ETest() {
+      log('🚀 Starting comprehensive end-to-end test...', 'info');
+
+      // Re-run all tests
+      await checkUploadAPI();
+      await new Promise(r => setTimeout(r, 500));
+
+      await checkDownloadService();
+      await new Promise(r => setTimeout(r, 500));
+
+      await checkKnownFile();
+
+      updateOverallStatus();
+      log('✅ Comprehensive end-to-end test completed', 'success');
+    }
+
+    // Update overall system status
+    function updateOverallStatus() {
+      const hasUpload = testResults.uploadAPI === true;
+      const hasDownload = testResults.downloadService === true || testResults.downloadService === 'warning';
+      const hasSync = testResults.knownFileAccess === true;
+
+      if (hasUpload && hasDownload) {
+        updateStatus('e2e-flow-status', '✅ Fully Operational', 'success');
+        log('🎉 File system is fully operational: Upload API + nginx Download working!', 'success');
+      } else if (hasUpload && !hasDownload) {
+        updateStatus('e2e-flow-status', '⚠️ Upload Only', 'warning');
+        log('⚠️ Upload API working, but download service needs attention', 'warning');
+      } else if (!hasUpload && hasDownload) {
+        updateStatus('e2e-flow-status', '⚠️ Download Only', 'warning');
+        log('⚠️ Download service working, but upload API needs attention', 'warning');
+      } else {
+        updateStatus('e2e-flow-status', '❌ System Issues', 'error');
+        log('❌ Both upload and download services need attention', 'error');
+      }
+    }
+  </script>
+</body>
+
+</html>

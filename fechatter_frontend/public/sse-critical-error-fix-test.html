@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SSE Critical Error Fix Test</title>
+  <style>
+    body {
+      font-family: 'Monaco', monospace;
+      background: #1a1a2e;
+      color: #eee;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: #16213e;
+      border-radius: 10px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .title {
+      text-align: center;
+      color: #4CAF50;
+      font-size: 2.2em;
+      margin-bottom: 30px;
+    }
+
+    .test-button {
+      background: #4CAF50;
+      border: none;
+      color: white;
+      padding: 15px 30px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px;
+      transition: background 0.3s;
+    }
+
+    .test-button:hover {
+      background: #45a049;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+
+    .status.success {
+      background: #4CAF50;
+    }
+
+    .status.error {
+      background: #f44336;
+    }
+
+    .status.warning {
+      background: #ff9800;
+    }
+
+    .log-output {
+      background: #0d1421;
+      color: #00ff00;
+      padding: 20px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      max-height: 500px;
+      overflow-y: auto;
+      margin: 20px 0;
+      white-space: pre-wrap;
+    }
+
+    .metric {
+      display: inline-block;
+      background: #2d3748;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 10px;
+      text-align: center;
+      min-width: 120px;
+    }
+
+    .metric-value {
+      font-size: 2em;
+      font-weight: bold;
+      color: #4CAF50;
+    }
+
+    .section {
+      margin: 30px 0;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      border-left: 4px solid #4CAF50;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1 class="title">🔧 SSE Critical Error Fix Test</h1>
+
+    <div class="section">
+      <h3>🎯 Null Reference Error Fix Verification</h3>
+      <p>Testing the fix for: <code>TypeError: Cannot read properties of null (reading 'url')</code></p>
+
+      <button class="test-button" onclick="testNullReferenceFix()">
+        🔍 Test Null Reference Fix
+      </button>
+      <span id="nullTestStatus" class="status warning">Ready</span>
+
+      <button class="test-button" onclick="simulateOriginalError()">
+        ⚡ Simulate Original Error Pattern
+      </button>
+      <span id="simulateStatus" class="status warning">Ready</span>
+    </div>
+
+    <div class="section">
+      <h3>📊 Test Metrics</h3>
+      <div class="metric">
+        <div>Null Errors</div>
+        <div class="metric-value" id="nullErrors">0</div>
+      </div>
+      <div class="metric">
+        <div>Safe Accesses</div>
+        <div class="metric-value" id="safeAccesses">0</div>
+      </div>
+      <div class="metric">
+        <div>Test Cycles</div>
+        <div class="metric-value" id="testCycles">0</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>📝 Test Results</h3>
+      <button onclick="clearLog()"
+        style="background: #f44336; border: none; color: white; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Clear
+        Log</button>
+      <div class="log-output" id="logOutput"></div>
+    </div>
+  </div>
+
+  <script>
+    let metrics = { nullErrors: 0, safeAccesses: 0, testCycles: 0 };
+
+    function log(message, type = 'info') {
+      const logOutput = document.getElementById('logOutput');
+      const timestamp = new Date().toLocaleTimeString();
+      const typeMap = { info: '[INFO]', success: '[✅]', error: '[❌]', warning: '[⚠️]' };
+      logOutput.textContent += `${timestamp} ${typeMap[type]} ${message}\n`;
+      logOutput.scrollTop = logOutput.scrollHeight;
+    }
+
+    function updateMetric(key, value) {
+      metrics[key] = value;
+      document.getElementById(key).textContent = value;
+    }
+
+    function updateStatus(id, className, text) {
+      const element = document.getElementById(id);
+      element.className = `status ${className}`;
+      element.textContent = text;
+    }
+
+    function clearLog() {
+      document.getElementById('logOutput').textContent = '';
+    }
+
+    // Test the null reference fix
+    async function testNullReferenceFix() {
+      log('🔍 Testing SSE null reference fix...', 'info');
+      updateStatus('nullTestStatus', 'warning', 'Testing...');
+
+      let nullErrors = 0;
+      let safeAccesses = 0;
+      let cycles = 0;
+
+      try {
+        // Monitor console errors for null reference issues
+        const originalError = console.error;
+        console.error = function (...args) {
+          const errorString = args.join(' ');
+          if (errorString.includes('Cannot read properties of null') &&
+            errorString.includes('url')) {
+            nullErrors++;
+            updateMetric('nullErrors', nullErrors);
+            log('❌ NULL REFERENCE ERROR DETECTED!', 'error');
+          }
+          originalError.apply(console, args);
+        };
+
+        // Test multiple EventSource scenarios
+        for (let i = 0; i < 5; i++) {
+          cycles++;
+          updateMetric('testCycles', cycles);
+
+          log(`🔄 Test cycle ${i + 1}/5`, 'info');
+
+          try {
+            const eventSource = new EventSource(`/events?test=${i}&token=test`);
+
+            // Test the problematic onopen handler
+            eventSource.onopen = function (event) {
+              try {
+                // This was the line causing the null reference error
+                // Fixed version should use event.target fallback
+                const source = event.target || this;
+                const url = source?.url || 'no-url';
+                const readyState = source?.readyState || 'unknown';
+
+                safeAccesses++;
+                updateMetric('safeAccesses', safeAccesses);
+                log(`✅ Cycle ${i}: Safe property access - URL: ${url ? 'present' : 'null'}, ReadyState: ${readyState}`, 'success');
+
+              } catch (error) {
+                if (error.message.includes('null')) {
+                  nullErrors++;
+                  updateMetric('nullErrors', nullErrors);
+                  log(`❌ Cycle ${i}: NULL REFERENCE ERROR: ${error.message}`, 'error');
+                } else {
+                  log(`⚠️ Cycle ${i}: Other error: ${error.message}`, 'warning');
+                }
+              }
+            };
+
+            // Test the onerror handler too
+            eventSource.onerror = function (error) {
+              try {
+                // This was another problematic line
+                const source = error.target || this;
+                const readyState = source?.readyState || 'unknown';
+                const url = source?.url || 'no-url';
+
+                safeAccesses++;
+                updateMetric('safeAccesses', safeAccesses);
+                log(`✅ Cycle ${i}: Safe error handling - ReadyState: ${readyState}`, 'success');
+
+              } catch (err) {
+                if (err.message.includes('null')) {
+                  nullErrors++;
+                  updateMetric('nullErrors', nullErrors);
+                  log(`❌ Cycle ${i}: NULL REFERENCE in error handler: ${err.message}`, 'error');
+                }
+              }
+              eventSource.close();
+            };
+
+            // Wait for events to trigger
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Force close if still open
+            if (eventSource.readyState !== 2) {
+              eventSource.close();
+            }
+
+          } catch (error) {
+            log(`❌ EventSource creation failed: ${error.message}`, 'error');
+          }
+
+          // Small delay between cycles
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        // Restore original console.error
+        console.error = originalError;
+
+        // Final assessment
+        if (nullErrors === 0 && safeAccesses > 0) {
+          log(`🎉 NULL REFERENCE FIX VERIFIED! ${safeAccesses} safe accesses, 0 null errors`, 'success');
+          updateStatus('nullTestStatus', 'success', 'Fix Verified ✅');
+        } else if (nullErrors > 0) {
+          log(`❌ NULL REFERENCE ERRORS STILL PRESENT: ${nullErrors} errors detected`, 'error');
+          updateStatus('nullTestStatus', 'error', `${nullErrors} null errors`);
+        } else {
+          log('⚠️ No events triggered - test inconclusive', 'warning');
+          updateStatus('nullTestStatus', 'warning', 'Inconclusive');
+        }
+
+      } catch (error) {
+        log(`❌ Test failed with exception: ${error.message}`, 'error');
+        updateStatus('nullTestStatus', 'error', 'Test failed');
+      }
+    }
+
+    // Simulate the original error pattern
+    async function simulateOriginalError() {
+      log('⚡ Simulating original error pattern...', 'info');
+      updateStatus('simulateStatus', 'warning', 'Simulating...');
+
+      try {
+        // Create a scenario that would trigger the original null reference error
+        log('🔍 Creating EventSource with immediate state changes...', 'info');
+
+        const eventSource = new EventSource('/events?simulate=original');
+
+        // Simulate the problematic scenario
+        eventSource.onopen = function (event) {
+          log('📡 EventSource onopen triggered', 'info');
+
+          try {
+            // OLD CODE (would cause null reference):
+            // console.log('🌐 EventSource URL:', this.eventSource.url);
+
+            // NEW CODE (safe with fallback):
+            const source = event.target || this;
+            const url = source?.url || 'unknown';
+            log(`✅ Safe URL access: ${url ? 'URL present' : 'No URL'}`, 'success');
+
+          } catch (error) {
+            log(`❌ Error in onopen: ${error.message}`, 'error');
+          }
+        };
+
+        eventSource.onerror = function (error) {
+          log('📡 EventSource onerror triggered', 'info');
+
+          try {
+            // OLD CODE (would cause null reference):
+            // console.log('ReadyState:', this.eventSource.readyState);
+
+            // NEW CODE (safe with fallback):
+            const source = error.target || this;
+            const readyState = source?.readyState || 'unknown';
+            log(`✅ Safe ReadyState access: ${readyState}`, 'success');
+
+          } catch (err) {
+            log(`❌ Error in onerror: ${err.message}`, 'error');
+          }
+
+          eventSource.close();
+        };
+
+        // Wait for events
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        if (eventSource.readyState !== 2) {
+          eventSource.close();
+        }
+
+        log('✅ Original error pattern simulation completed', 'success');
+        updateStatus('simulateStatus', 'success', 'Simulation complete ✅');
+
+      } catch (error) {
+        log(`❌ Simulation failed: ${error.message}`, 'error');
+        updateStatus('simulateStatus', 'error', 'Simulation failed');
+      }
+    }
+
+    // Initialize
+    window.addEventListener('load', function () {
+      log('🚀 SSE Critical Error Fix Test Tool loaded', 'info');
+      log('💡 This tool tests the specific fix for "Cannot read properties of null (reading \'url\')" error', 'info');
+      log('💡 The fix uses event.target as fallback when this.eventSource becomes null', 'info');
+      log('💡 Click "Test Null Reference Fix" to verify the error is resolved', 'info');
+    });
+  </script>
+</body>
+
+</html>

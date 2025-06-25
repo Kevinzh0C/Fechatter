@@ -21,7 +21,7 @@ export const SIMPLE_SSE_CONFIG = {
 
   // Feature flags
   DISABLE_IN_DEVELOPMENT: false,  // Keep it simple - same behavior in all envs
-  USE_MOCK_IN_OFFLINE: true,  // Graceful degradation when offline
+  USE_MOCK_IN_OFFLINE: false,  // 🚀 CRITICAL FIX: Mock mode completely disabled
 };
 
 /**

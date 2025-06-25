@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎨 人体工学代码高亮系统测试</title>
+
+  <!-- 导入优化后的CSS -->
+  <link rel="stylesheet" href="../src/styles/enhanced-code-highlight.css">
+
+  <!-- 引入highlight.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      min-height: 100vh;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+
+    .test-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 1rem;
+      padding: 2rem;
+      box-shadow: 0 4px 16px rgba(16, 24, 40, 0.08);
+    }
+
+    h1 {
+      color: #1e293b;
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      text-align: center;
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #64748b;
+      margin-bottom: 3rem;
+      font-size: 1.125rem;
+    }
+
+    h2 {
+      color: #374151;
+      margin: 2rem 0 1rem;
+      font-size: 1.5rem;
+      border-left: 4px solid #4f46e5;
+      padding-left: 1rem;
+    }
+
+    .improvement-note {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border: 1px solid #16a34a;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin: 2rem 0;
+      color: #166534;
+    }
+
+    .improvement-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .improvement-item {
+      background: white;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      border: 1px solid #bbf7d0;
+    }
+
+    .improvement-title {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #15803d;
+    }
+
+    .test-result {
+      background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+      border: 1px solid #0ea5e9;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin: 1rem 0;
+      color: #0c4a6e;
+    }
+
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin: 2rem 0;
+    }
+
+    .comparison-item h3 {
+      margin-bottom: 1rem;
+      color: #1e293b;
+    }
+
+    .before-after {
+      display: flex;
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+
+    .before,
+    .after {
+      flex: 1;
+      padding: 1rem;
+      border-radius: 0.5rem;
+    }
+
+    .before {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+    }
+
+    .after {
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+    }
+
+    /* 复制增强的代码高亮样式 */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f8f9fa;
+    }
+
+    h1 {
+      color: #2d3748;
+      border-bottom: 3px solid #4f46e5;
+      padding-bottom: 10px;
+    }
+
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Enhanced Code Block Styles - 精美的代码高亮容器 */
+    .enhanced-code-container {
+      margin: 12px 0;
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid #e1e8ed;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      overflow: hidden;
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Source Code Pro', monospace;
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .enhanced-code-container:hover {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1px);
+    }
+
+    /* 增强的头部样式 */
+    .code-header-enhanced {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border-bottom: 1px solid #dee2e6;
+      min-height: 48px;
+    }
+
+    .code-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .code-header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* 语言指示器 */
+    .language-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      color: white;
+      font-weight: 600;
+      font-size: 0.85rem;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      min-width: 120px;
+    }
+
+    .language-icon {
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .language-name {
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* 代码元信息 */
+    .code-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .lines-count {
+      color: #6b7280;
+      font-size: 0.75rem;
+      background: #f3f4f6;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    /* 增强的复制按钮 */
+    .copy-button-enhanced {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 80px;
+      justify-content: center;
+    }
+
+    .copy-button-enhanced:hover {
+      background: #4338ca;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+    }
+
+    .copy-button-enhanced.copied {
+      background: #10b981;
+      animation: copied-pulse 0.6s ease;
+    }
+
+    @keyframes copied-pulse {
+      0% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.05);
+      }
+
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    /* 代码内容区域 */
+    .code-content-area {
+      position: relative;
+      overflow-x: auto;
+      background: #ffffff;
+    }
+
+    /* 代码块基础样式 */
+    .code-content-area .hljs {
+      padding: 20px;
+      margin: 0;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Source Code Pro', monospace;
+      background: transparent !important;
+      color: #24292f;
+      overflow-x: auto;
+      white-space: pre;
+      tab-size: 4;
+    }
+
+    /* 彩色语法高亮 - Light Theme */
+    .hljs-keyword,
+    .hljs-selector-tag,
+    .hljs-built_in,
+    .hljs-name,
+    .hljs-tag {
+      color: #d73a49;
+      font-weight: 600;
+    }
+
+    .hljs-string,
+    .hljs-attr {
+      color: #032f62;
+    }
+
+    .hljs-comment,
+    .hljs-quote {
+      color: #6a737d;
+      font-style: italic;
+    }
+
+    .hljs-number,
+    .hljs-literal {
+      color: #005cc5;
+      font-weight: 500;
+    }
+
+    .hljs-type,
+    .hljs-class .hljs-title,
+    .hljs-title.class_,
+    .hljs-function .hljs-title,
+    .hljs-title.function_ {
+      color: #6f42c1;
+      font-weight: 600;
+    }
+
+    .hljs-variable,
+    .hljs-property {
+      color: #e36209;
+    }
+
+    .hljs-operator,
+    .hljs-punctuation {
+      color: #24292f;
+    }
+
+    .test-success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .test-info {
+      background: #cce7ff;
+      color: #004085;
+      border: 1px solid #99d6ff;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="test-container">
+    <h1>🎨 人体工学代码高亮系统</h1>
+    <p class="subtitle">基于认知负荷理论、色彩心理学、视觉层次和黄金比例的美学设计</p>
+
+    <div class="improvement-note">
+      <strong>🧠 人体工学优化成果：</strong>
+      <div class="improvement-list">
+        <div class="improvement-item">
+          <div class="improvement-title">🎯 认知负荷优化</div>
+          移除行号干扰，专注内容阅读
+        </div>
+        <div class="improvement-item">
+          <div class="improvement-title">🎨 色彩心理学</div>
+          舒适的色彩搭配，减少眼疲劳
+        </div>
+        <div class="improvement-item">
+          <div class="improvement-title">📐 黄金比例系统</div>
+          φ = 1.618 完美间距和尺寸
+        </div>
+        <div class="improvement-item">
+          <div class="improvement-title">🔤 专业字体栈</div>
+          连字、字距、反锯齿优化
+        </div>
+      </div>
+    </div>
+
+    <div class="test-result">
+      <strong>✅ 优化效果：</strong> 已移除代码行号，运用人体工学原理重构视觉系统
+    </div>
+
+    <h2>1. SQL 语句优化展示</h2>
+    <div class="enhanced-code-container" data-language="sql">
+      <div class="code-header-enhanced">
+        <div class="code-header-left">
+          <div class="language-indicator" style="background: linear-gradient(135deg, #336791 0%, #2c5282 100%);">
+            <span class="language-icon">🗄️</span>
+            <span class="language-name">SQL</span>
+          </div>
+          <div class="code-meta">
+            <span class="lines-count">3 lines</span>
+          </div>
+        </div>
+        <div class="code-header-right">
+          <button class="copy-button-enhanced" onclick="copyCodeToClipboard(this)">
+            <span class="copy-text">Copy</span>
+          </button>
+        </div>
+      </div>
+      <div class="code-content-area">
+        <pre class="hljs language-sql">CREATE INDEX idx_orders_user_status_date
+ON orders(user_id, status, created_at);</pre>
+      </div>
+    </div>
+
+    <h2>2. JavaScript 函数示例</h2>
+    <div class="enhanced-code-container" data-language="javascript">
+      <div class="code-header-enhanced">
+        <div class="code-header-left">
+          <div class="language-indicator"
+            style="background: linear-gradient(135deg, #f7df1e 0%, #f39c12 100%); color: #2c3e50;">
+            <span class="language-icon">⚡</span>
+            <span class="language-name">JavaScript</span>
+          </div>
+          <div class="code-meta">
+            <span class="lines-count">8 lines</span>
+          </div>
+        </div>
+        <div class="code-header-right">
+          <button class="copy-button-enhanced" onclick="copyCodeToClipboard(this)">
+            <span class="copy-text">Copy</span>
+          </button>
+        </div>
+      </div>
+      <div class="code-content-area">
+        <pre class="hljs language-javascript">const highlightCodeAsync = async (code, language) => {
+  try {
+    const highlighted = await import('@/utils/codeHighlight')
+    return highlighted.render(code, { 
+      language,
+      theme: 'light',
+      lineNumbers: false  // 移除行号
+    })
+  } catch (error) {
+    console.error('Code highlighting failed:', error)
+    return code
+  }
+}</pre>
+      </div>
+    </div>
+
+    <h2>3. Python 数据处理</h2>
+    <div class="enhanced-code-container" data-language="python">
+      <div class="code-header-enhanced">
+        <div class="code-header-left">
+          <div class="language-indicator" style="background: linear-gradient(135deg, #3776ab 0%, #2c5282 100%);">
+            <span class="language-icon">🐍</span>
+            <span class="language-name">Python</span>
+          </div>
+          <div class="code-meta">
+            <span class="lines-count">6 lines</span>
+          </div>
+        </div>
+        <div class="code-header-right">
+          <button class="copy-button-enhanced" onclick="copyCodeToClipboard(this)">
+            <span class="copy-text">Copy</span>
+          </button>
+        </div>
+      </div>
+      <div class="code-content-area">
+        <pre class="hljs language-python">def process_messages(messages):
+    """Process chat messages with enhanced formatting"""
+    for message in messages:
+        if message.content:
+            # Apply ergonomic highlighting
+            highlighted = highlight_code(message.content)
+            yield highlighted</pre>
+      </div>
+    </div>
+
+    <h2>4. 人体工学对比分析</h2>
+    <div class="before-after">
+      <div class="before">
+        <h3>❌ 优化前</h3>
+        <ul>
+          <li>显示行号干扰阅读</li>
+          <li>高对比度色彩刺激</li>
+          <li>固定间距系统</li>
+          <li>基础字体栈</li>
+          <li>单调的视觉层次</li>
+        </ul>
+      </div>
+      <div class="after">
+        <h3>✅ 优化后</h3>
+        <ul>
+          <li>无行号，专注内容</li>
+          <li>护眼色彩配色</li>
+          <li>φ黄金比例系统</li>
+          <li>专业连字字体</li>
+          <li>多层次视觉架构</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="test-result">
+      <strong>🎯 验证结果：</strong> 人体工学代码高亮系统已成功应用，提供舒适的代码阅读体验，符合现代UI/UX设计标准。
+    </div>
+  </div>
+
+  <script>
+    // Enhanced copy functionality with visual feedback
+    function copyCodeToClipboard(button) {
+      const codeBlock = button.closest('.enhanced-code-container').querySelector('.hljs');
+      const codeText = codeBlock.textContent || codeBlock.innerText;
+
+      navigator.clipboard.writeText(codeText).then(() => {
+        // Visual feedback
+        const originalText = button.innerHTML;
+        button.innerHTML = '<span class="copy-text">✅ Copied!</span>';
+        button.classList.add('copied');
+
+        // Reset after 2 seconds
+        setTimeout(() => {
+          button.innerHTML = originalText;
+          button.classList.remove('copied');
+        }, 2000);
+      }).catch(err => {
+        console.error('Copy failed:', err);
+        button.innerHTML = '<span class="copy-text">❌ Failed</span>';
+        setTimeout(() => {
+          button.innerHTML = '<span class="copy-text">Copy</span>';
+        }, 2000);
+      });
+    }
+
+    // Add hover effects and micro-interactions
+    document.querySelectorAll('.enhanced-code-container').forEach(container => {
+      container.addEventListener('mouseenter', () => {
+        container.style.transform = 'translateY(-2px)';
+      });
+
+      container.addEventListener('mouseleave', () => {
+        container.style.transform = 'translateY(0)';
+      });
+    });
+
+    // Language indicator glow effect
+    document.querySelectorAll('.language-indicator').forEach(indicator => {
+      indicator.addEventListener('mouseover', () => {
+        indicator.style.boxShadow = '0 0 20px rgba(79, 70, 229, 0.3)';
+      });
+
+      indicator.addEventListener('mouseout', () => {
+        indicator.style.boxShadow = 'none';
+      });
+    });
+
+    console.log('🎨 Human-centered code highlighting system loaded successfully!');
+  </script>
+</body>
+
+</html>

@@ -116,7 +116,7 @@ async function testWithAuthStore() {
       result.value = JSON.stringify({
         success: true,
         user: authStore.user,
-        token: authStore.tokens?.accessToken ? 'Present' : 'Missing'
+        token: authStore.token ? 'Present' : 'Missing'
       }, null, 2);
       resultClass.value = 'bg-green-100 border border-green-300';
     } else {

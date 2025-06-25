@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE Fix Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #16213e;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .connecting { background: rgba(255, 152, 0, 0.2); }
+        .connected { background: rgba(76, 175, 80, 0.2); }
+        .error { background: rgba(244, 67, 54, 0.2); }
+        .button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .log {
+            background: #000;
+            padding: 15px;
+            border-radius: 5px;
+            height: 300px;
+            overflow-y: auto;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 SSE Connection Fix Test</h1>
+        
+        <div id="status" class="status">
+            <strong>Status:</strong> <span id="status-text">Ready</span><br>
+            <strong>ReadyState:</strong> <span id="readystate">—</span><br>
+            <strong>Duration:</strong> <span id="duration">—</span>
+        </div>
+        
+        <button class="button" onclick="testConnection()">Test SSE Connection</button>
+        <button class="button" onclick="closeConnection()">Close Connection</button>
+        <button class="button" onclick="clearLog()">Clear Log</button>
+        
+        <h3>📋 Connection Log</h3>
+        <div id="log" class="log"></div>
+        
+        <h3>🎯 Expected Results After Fix</h3>
+        <ul>
+            <li>✅ ReadyState should change: 0 → 1 (within 3 seconds)</li>
+            <li>✅ Status should show: "Connected"</li>
+            <li>✅ No "STILL CONNECTING" errors</li>
+            <li>✅ Should receive server ping events</li>
+        </ul>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let startTime = null;
+        let durationInterval = null;
+
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                info: '#2196F3',
+                success: '#4CAF50',
+                warning: '#FF9800',
+                error: '#F44336'
+            };
+            
+            logElement.innerHTML += `<div style="color: ${colors[type]}">[${timestamp}] ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function updateStatus(status, readyState) {
+            document.getElementById('status-text').textContent = status;
+            document.getElementById('readystate').textContent = readyState;
+            
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status';
+            
+            if (readyState === 0) {
+                statusDiv.classList.add('connecting');
+            } else if (readyState === 1) {
+                statusDiv.classList.add('connected');
+            } else {
+                statusDiv.classList.add('error');
+            }
+        }
+
+        function updateDuration() {
+            if (startTime) {
+                const duration = Math.floor((Date.now() - startTime) / 1000);
+                document.getElementById('duration').textContent = `${duration}s`;
+            }
+        }
+
+        function testConnection() {
+            if (eventSource) {
+                eventSource.close();
+                log('Closed existing connection', 'warning');
+            }
+
+            const token = localStorage.getItem('auth_token') || 'test-token';
+            const url = `/events?access_token=${token}`;
+            
+            log(`🚀 Testing SSE connection to: ${url}`, 'info');
+            startTime = Date.now();
+            
+            try {
+                eventSource = new EventSource(url);
+                updateStatus('Connecting...', 0);
+                
+                durationInterval = setInterval(updateDuration, 1000);
+                
+                eventSource.onopen = function(event) {
+                    log('✅ CONNECTION OPENED! Fix successful!', 'success');
+                    log(`📡 ReadyState: ${eventSource.readyState}`, 'success');
+                    updateStatus('Connected', 1);
+                };
+
+                eventSource.onmessage = function(event) {
+                    log(`📨 Event received: ${event.data}`, 'success');
+                };
+
+                eventSource.onerror = function(event) {
+                    log(`❌ Connection error occurred`, 'error');
+                    log(`🔍 ReadyState: ${eventSource ? eventSource.readyState : 'null'}`, 'error');
+                    updateStatus('Error', eventSource ? eventSource.readyState : 'null');
+                };
+
+                // Check connection progress
+                setTimeout(() => {
+                    if (eventSource && eventSource.readyState === 0) {
+                        log(`⚠️ Still connecting after 1s...`, 'warning');
+                    }
+                }, 1000);
+
+                setTimeout(() => {
+                    if (eventSource && eventSource.readyState === 0) {
+                        log(`❌ FAILED: Still connecting after 3s - fix didn't work`, 'error');
+                    } else if (eventSource && eventSource.readyState === 1) {
+                        log(`🎉 SUCCESS: Connection established within 3s!`, 'success');
+                    }
+                }, 3000);
+
+            } catch (error) {
+                log(`💥 Error creating EventSource: ${error.message}`, 'error');
+                updateStatus('Failed', 'error');
+            }
+        }
+
+        function closeConnection() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                log('🛑 Connection closed', 'warning');
+                updateStatus('Closed', 2);
+                
+                if (durationInterval) {
+                    clearInterval(durationInterval);
+                }
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('🧹 Log cleared', 'info');
+        }
+
+        // Initialize
+        log('🔧 SSE Fix Test Tool Ready', 'info');
+        log('💡 Click "Test SSE Connection" to verify the fix', 'info');
+    </script>
+</body>
+</html>

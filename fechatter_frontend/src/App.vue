@@ -173,6 +173,9 @@ onUnmounted(() => {
 /* 引入Channel List设计系统变量 */
 @import './styles/channel-list-variables.css';
 
+/* 引入增强的代码高亮样式 */
+@import './styles/enhanced-code-highlight.css';
+
 /* 引入自定义CSS */
 @import './style.css';
 
@@ -342,5 +345,117 @@ pre {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ✨ Global Styles */
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+#app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ✨ Highlight.js Theme for Code Highlighting */
+.hljs.dark {
+  color: #f0f6fc;
+  background: #0d1117;
+}
+
+.hljs.dark .hljs-comment,
+.hljs.dark .hljs-quote {
+  color: #8b949e;
+  font-style: italic;
+}
+
+.hljs.dark .hljs-keyword,
+.hljs.dark .hljs-selector-tag,
+.hljs.dark .hljs-literal,
+.hljs.dark .hljs-type {
+  color: #ff7b72;
+}
+
+.hljs.dark .hljs-string,
+.hljs.dark .hljs-doctag {
+  color: #a5d6ff;
+}
+
+.hljs.dark .hljs-title,
+.hljs.dark .hljs-section,
+.hljs.dark .hljs-selector-id {
+  color: #7ee787;
+}
+
+.hljs.dark .hljs-variable,
+.hljs.dark .hljs-template-variable,
+.hljs.dark .hljs-class .hljs-title {
+  color: #ffa657;
+}
+
+.hljs.dark .hljs-number {
+  color: #79c0ff;
+}
+
+.hljs.dark .hljs-function {
+  color: #d2a8ff;
+}
+
+.hljs.dark .hljs-built_in,
+.hljs.dark .hljs-builtin-name {
+  color: #79c0ff;
+}
+
+/* Light theme */
+.hljs.light {
+  color: #24292f;
+  background: #f6f8fa;
+}
+
+.hljs.light .hljs-comment,
+.hljs.light .hljs-quote {
+  color: #6a737d;
+  font-style: italic;
+}
+
+.hljs.light .hljs-keyword,
+.hljs.light .hljs-selector-tag,
+.hljs.light .hljs-literal,
+.hljs.light .hljs-type {
+  color: #d73a49;
+}
+
+.hljs.light .hljs-string,
+.hljs.light .hljs-doctag {
+  color: #032f62;
+}
+
+.hljs.light .hljs-title,
+.hljs.light .hljs-section,
+.hljs.light .hljs-selector-id {
+  color: #6f42c1;
+}
+
+.hljs.light .hljs-variable,
+.hljs.light .hljs-template-variable,
+.hljs.light .hljs-class .hljs-title {
+  color: #6f42c1;
+}
+
+.hljs.light .hljs-number {
+  color: #005cc5;
+}
+
+.hljs.light .hljs-function {
+  color: #6f42c1;
+}
+
+.hljs.light .hljs-built_in,
+.hljs.light .hljs-builtin-name {
+  color: #005cc5;
 }
 </style>

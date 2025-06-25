@@ -176,7 +176,7 @@ function isActiveChat(chatId: number): boolean {
 // Use chat store data with proper filtering
 const allChats = computed(() => {
   // Use visible chats from store (excludes hidden DMs)
-  return chatStore.visibleChats || [];
+  return (chatStore.visibleChats as any[]) || (chatStore.chats as any[]) || [];
 });
 
 const sortedChannels = computed(() => {
@@ -314,46 +314,7 @@ async function closeDM(dmId: number) {
   }
 }
 
-function debugChatTypes() {
-  console.log('🔍 [DEBUG] All chats with full details:');
-  allChats.value.forEach((chat, index) => {
-    console.log(`🔍 [DEBUG] Chat ${index + 1}:`, {
-      id: chat.id,
-      name: chat.name,
-      chat_type: chat.chat_type,
-      original_data: chat
-    });
-  });
 
-  console.log('🔍 [DEBUG] Chat Store state:');
-  console.log('- Store chats:', chatStore.chats);
-  console.log('- Store visible chats:', chatStore.visibleChats);
-  console.log('- Store loading:', chatStore.loading);
-}
-
-async function createTestDM() {
-  try {
-    console.log('🔍 [DEBUG] Creating test DM...');
-
-    // Create a test DM chat
-    const newChat = await chatStore.createChat(
-      'Test DM',
-      [], // no additional members for now
-      'Test direct message',
-      'Single' // DM type
-    );
-
-    console.log('🔍 [DEBUG] Created test DM:', newChat);
-    notifyError('Test DM created successfully!', '');
-
-    // Refresh the chat list
-    await fetchChats();
-
-  } catch (error: any) {
-    console.error('🔍 [DEBUG] Failed to create test DM:', error);
-    notifyError('Failed to create test DM', error.message);
-  }
-}
 
 // 监听认证状态变化
 watch(() => authStore.user, (newUser) => {

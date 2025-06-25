@@ -1,0 +1,180 @@
+/* 🎯 统一频道标题字体样式 - 支持多语言显示 
+ * 适用于：频道名称、用户名、DM标题等
+ * 语言支持：中文、英文、日文、韩文、emoji
+ */
+
+:root {
+  /* 🌏 多语言字体栈变量 */
+  --font-family-unified: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Sans CN', 'Noto Sans CJK SC', 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+  /* 📐 字体大小变量 */
+  --font-size-channel-title: 14px;
+  --font-size-channel-title-mobile: 15px;
+
+  /* 📏 字体权重变量 */
+  --font-weight-channel-normal: 500;
+  --font-weight-channel-unread: 600;
+  --font-weight-channel-active: 600;
+
+  /* 📖 排版优化变量 */
+  --line-height-channel: 1.4;
+  --letter-spacing-channel: 0.01em;
+}
+
+/* 🎨 统一频道标题基础样式类 */
+.channel-title-unified {
+  font-family: var(--font-family-unified);
+  font-size: var(--font-size-channel-title);
+  font-weight: var(--font-weight-channel-normal);
+  line-height: var(--line-height-channel);
+  letter-spacing: var(--letter-spacing-channel);
+
+  /* 🔧 字体渲染优化 */
+  font-feature-settings: 'liga' 1, 'kern' 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+
+  /* 📝 文本溢出处理 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 🔔 未读状态 */
+.channel-title-unified.unread {
+  font-weight: var(--font-weight-channel-unread);
+}
+
+/* ✨ 激活状态 */
+.channel-title-unified.active {
+  font-weight: var(--font-weight-channel-active);
+}
+
+/* 📱 移动端适配 */
+@media (max-width: 768px) {
+  .channel-title-unified {
+    font-size: var(--font-size-channel-title-mobile);
+  }
+}
+
+/* 🌏 特定语言优化 */
+
+/* 中文字体优化 */
+.channel-title-unified:lang(zh) {
+  font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Sans CN', 'Noto Sans CJK SC', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* 日文字体优化 */
+.channel-title-unified:lang(ja) {
+  font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+  letter-spacing: 0.02em;
+  /* 日文需要稍大的字间距 */
+}
+
+/* 韩文字体优化 */
+.channel-title-unified:lang(ko) {
+  font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans CJK KR', sans-serif;
+}
+
+/* 🎨 颜色变量 - 可在各组件中使用 */
+:root {
+  --color-channel-normal: rgba(255, 255, 255, 0.6);
+  --color-channel-hover: rgba(255, 255, 255, 0.9);
+  --color-channel-active: white;
+  --color-channel-unread: white;
+  --color-channel-muted: rgba(255, 255, 255, 0.4);
+}
+
+/* 🛠️ 实用工具类 */
+.channel-title-normal {
+  @extend .channel-title-unified;
+  color: var(--color-channel-normal);
+}
+
+.channel-title-hover {
+  @extend .channel-title-unified;
+  color: var(--color-channel-hover);
+}
+
+.channel-title-active {
+  @extend .channel-title-unified;
+  color: var(--color-channel-active);
+  font-weight: var(--font-weight-channel-active);
+}
+
+.channel-title-unread {
+  @extend .channel-title-unified;
+  color: var(--color-channel-unread);
+  font-weight: var(--font-weight-channel-unread);
+}
+
+.channel-title-muted {
+  @extend .channel-title-unified;
+  color: var(--color-channel-muted);
+  opacity: 0.7;
+}
+
+/* 🧩 组件特定样式 */
+
+/* 频道列表项 */
+.channel-item .channel-title-unified,
+.dm-item .channel-title-unified {
+  color: inherit;
+  /* 继承父容器颜色状态 */
+}
+
+/* 频道列表项激活状态 */
+.channel-item.active .channel-title-unified,
+.dm-item.active .channel-title-unified {
+  font-weight: var(--font-weight-channel-active);
+}
+
+/* 频道列表项未读状态 */
+.channel-item.unread .channel-title-unified,
+.dm-item.unread .channel-title-unified {
+  font-weight: var(--font-weight-channel-unread);
+}
+
+/* 🌙 暗色主题适配 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-channel-normal: rgba(255, 255, 255, 0.7);
+    --color-channel-hover: rgba(255, 255, 255, 0.9);
+    --color-channel-active: white;
+    --color-channel-unread: white;
+    --color-channel-muted: rgba(255, 255, 255, 0.5);
+  }
+}
+
+/* 🎭 高对比度模式 */
+@media (prefers-contrast: high) {
+  :root {
+    --color-channel-normal: rgba(255, 255, 255, 0.9);
+    --color-channel-hover: white;
+    --color-channel-active: white;
+    --color-channel-unread: white;
+    --color-channel-muted: rgba(255, 255, 255, 0.8);
+  }
+
+  .channel-title-unified {
+    font-weight: 600;
+    /* 高对比度模式下使用更粗的字体 */
+  }
+}
+
+/* 🔍 无障碍优化 */
+@media (prefers-reduced-motion: reduce) {
+  .channel-title-unified {
+    transition: none;
+    /* 减少动画敏感用户的动画效果 */
+  }
+}
+
+/* 📐 大字体支持 */
+@media (min-resolution: 2dppx) {
+  .channel-title-unified {
+    -webkit-font-smoothing: subpixel-antialiased;
+    /* 高分辨率屏幕优化 */
+  }
+}

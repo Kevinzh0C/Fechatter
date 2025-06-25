@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚨 Message Display Emergency Fix</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f5f5;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: linear-gradient(135deg, #dc2626, #ef4444);
+      color: white;
+      border-radius: 8px;
+    }
+
+    .emergency-status {
+      background: #fee2e2;
+      border: 2px solid #fca5a5;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    .error-details {
+      background: #1f2937;
+      color: #f9fafb;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: monospace;
+      margin: 15px 0;
+      overflow-x: auto;
+    }
+
+    .fix-button {
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 10px;
+      transition: all 0.2s;
+    }
+
+    .fix-button:hover {
+      background: #b91c1c;
+      transform: translateY(-2px);
+    }
+
+    .fix-button.success {
+      background: #059669;
+    }
+
+    .fix-button.warning {
+      background: #d97706;
+    }
+
+    .system-status {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .status-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 15px;
+    }
+
+    .status-card.error {
+      border-color: #fca5a5;
+      background: #fef2f2;
+    }
+
+    .status-card.success {
+      border-color: #a7f3d0;
+      background: #f0fdf4;
+    }
+
+    .monitor {
+      background: #1f2937;
+      color: #00ff00;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+      margin: 20px 0;
+    }
+
+    .diagnostic-info {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🚨 Message Display Emergency Fix</h1>
+      <p>Resolving: ALL 15 messages missing in chat 6 - Critical system failure</p>
+    </div>
+
+    <div class="emergency-status">
+      <h2>🔥 CRITICAL ERROR DETECTED</h2>
+      <div class="error-details">
+        [MessageDisplayGuarantee] ALL 15 messages are missing in chat 6 - this indicates a system issue
+        ❌ [MessageDisplayGuarantee] CRITICAL: Failed to display 15 messages in chat 6
+        ⚠️ Taken: 9725ms, retryAttempts: 2, status: failed
+      </div>
+      <p><strong>Issue:</strong> MessageDisplayGuarantee system started tracking 15 messages but ZERO were marked as
+        displayed.</p>
+      <p><strong>Impact:</strong> Complete message visibility failure in chat 6.</p>
+    </div>
+
+    <div class="system-status">
+      <div class="status-card error" id="guaranteeStatus">
+        <h3>🛡️ MessageDisplayGuarantee</h3>
+        <div id="guaranteeInfo">Checking...</div>
+      </div>
+      <div class="status-card error" id="domStatus">
+        <h3>🏗️ DOM Elements</h3>
+        <div id="domInfo">Checking...</div>
+      </div>
+      <div class="status-card error" id="registrationStatus">
+        <h3>📝 Registration Status</h3>
+        <div id="registrationInfo">Checking...</div>
+      </div>
+      <div class="status-card error" id="containerStatus">
+        <h3>📦 Message Container</h3>
+        <div id="containerInfo">Checking...</div>
+      </div>
+    </div>
+
+    <div>
+      <button class="fix-button" onclick="runEmergencyFix()">
+        🚨 EMERGENCY FIX: Force Register All Messages
+      </button>
+      <button class="fix-button warning" onclick="clearAllTracking()">
+        🧹 Clear All Failed Tracking
+      </button>
+      <button class="fix-button" onclick="diagnoseSystem()">
+        🔍 Run Full Diagnostics
+      </button>
+      <button class="fix-button success" onclick="runSystemTest()">
+        ✅ Test System Health
+      </button>
+    </div>
+
+    <div class="diagnostic-info">
+      <h3>🔧 Emergency Fix Strategy</h3>
+      <ol>
+        <li><strong>Force Registration:</strong> Manually register all visible message elements</li>
+        <li><strong>Clear Failed Tracking:</strong> Remove all failed verification contexts</li>
+        <li><strong>Restart Tracking:</strong> Reinitialize message tracking for current chat</li>
+        <li><strong>Validate Recovery:</strong> Ensure all messages are properly registered</li>
+      </ol>
+    </div>
+
+    <div class="monitor" id="fixMonitor">
+      🚨 Emergency Fix Monitor initialized - Ready to resolve critical message display failure...
+
+    </div>
+  </div>
+
+  <script>
+    let fixLog = [];
+
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const logEntry = `[${timestamp}] ${message}`;
+      fixLog.push(logEntry);
+
+      const monitor = document.getElementById('fixMonitor');
+      monitor.textContent += logEntry + '\n';
+      monitor.scrollTop = monitor.scrollHeight;
+
+      console.log(`[EmergencyFix] ${message}`);
+    }
+
+    function updateStatus(cardId, status, info) {
+      const card = document.getElementById(cardId);
+      const infoDiv = document.getElementById(cardId.replace('Status', 'Info'));
+
+      card.className = `status-card ${status}`;
+      infoDiv.textContent = info;
+    }
+
+    function diagnoseSystem() {
+      log('🔍 Running comprehensive system diagnostics...', 'info');
+
+      // Check MessageDisplayGuarantee
+      if (window.messageDisplayGuarantee) {
+        const metrics = window.messageDisplayGuarantee.getMetrics();
+        const contexts = Array.from(window.messageDisplayGuarantee.verificationQueue.entries());
+
+        log(`✅ MessageDisplayGuarantee: ${contexts.length} active contexts`, 'success');
+        updateStatus('guaranteeStatus', 'success', `Active: ${contexts.length} contexts, Success rate: ${metrics.successRate}%`);
+
+        contexts.forEach(([id, ctx]) => {
+          log(`🔍 Context ${id}: Chat ${ctx.chatId}, ${ctx.displayedIds.size}/${ctx.messageIds.size} displayed, Status: ${ctx.status}`, 'warn');
+        });
+      } else {
+        log('❌ MessageDisplayGuarantee not available', 'error');
+        updateStatus('guaranteeStatus', 'error', 'Not available');
+      }
+
+      // Check DOM elements
+      const messageElements = document.querySelectorAll('[data-message-id]');
+      log(`🔍 Found ${messageElements.length} message elements with data-message-id`, 'info');
+      updateStatus('domStatus', messageElements.length > 0 ? 'success' : 'error', `${messageElements.length} elements found`);
+
+      // Check message containers
+      const containers = document.querySelectorAll('.discord-message-list, .messages-container, .simple-message-list');
+      log(`🔍 Found ${containers.length} message containers`, 'info');
+      updateStatus('containerStatus', containers.length > 0 ? 'success' : 'error', `${containers.length} containers found`);
+
+      // Check current chat ID
+      const chatId = getCurrentChatId();
+      log(`🔍 Current chat ID: ${chatId}`, 'info');
+
+      // Registration status
+      let registeredCount = 0;
+      messageElements.forEach(el => {
+        if (el.offsetParent !== null) {
+          registeredCount++;
+        }
+      });
+      updateStatus('registrationStatus', registeredCount > 0 ? 'success' : 'error',
+        `${registeredCount}/${messageElements.length} visible`);
+
+      log('🎯 Diagnostics complete', 'success');
+    }
+
+    function getCurrentChatId() {
+      const match = window.location.pathname.match(/\/chat\/(\d+)/);
+      return match ? parseInt(match[1]) : null;
+    }
+
+    function runEmergencyFix() {
+      log('🚨 STARTING EMERGENCY FIX - Force registering all messages...', 'emergency');
+
+      const chatId = getCurrentChatId();
+      if (!chatId) {
+        log('❌ No chat ID found - cannot proceed with fix', 'error');
+        return;
+      }
+
+      if (!window.messageDisplayGuarantee) {
+        log('❌ MessageDisplayGuarantee not available - cannot proceed with fix', 'error');
+        return;
+      }
+
+      // Step 1: Clear all failed tracking contexts
+      log('🧹 Step 1: Clearing all failed tracking contexts...', 'info');
+      window.messageDisplayGuarantee.clearAllTracking();
+
+      // Step 2: Find all message elements
+      const messageElements = document.querySelectorAll('[data-message-id]');
+      log(`🔍 Step 2: Found ${messageElements.length} message elements`, 'info');
+
+      // Step 3: Force register each visible message
+      let successCount = 0;
+      let failCount = 0;
+
+      messageElements.forEach((el, index) => {
+        const messageId = el.getAttribute('data-message-id');
+        const isVisible = el.offsetParent !== null;
+
+        if (messageId && isVisible) {
+          try {
+            window.messageDisplayGuarantee.markMessageDisplayed(
+              parseInt(messageId),
+              el,
+              chatId
+            );
+            successCount++;
+            log(`✅ Registered message ${messageId}`, 'success');
+          } catch (error) {
+            failCount++;
+            log(`❌ Failed to register message ${messageId}: ${error.message}`, 'error');
+          }
+        } else {
+          log(`⚠️ Skipped message ${messageId}: ${isVisible ? 'visible' : 'hidden'}`, 'warn');
+        }
+      });
+
+      // Step 4: Restart tracking for current chat
+      log('🔄 Step 4: Restarting message tracking...', 'info');
+      const visibleMessageIds = Array.from(messageElements)
+        .filter(el => el.offsetParent !== null)
+        .map(el => parseInt(el.getAttribute('data-message-id')))
+        .filter(id => !isNaN(id));
+
+      if (visibleMessageIds.length > 0) {
+        try {
+          window.messageDisplayGuarantee.startMessageTracking(chatId, new Set(visibleMessageIds));
+          log(`✅ Restarted tracking for ${visibleMessageIds.length} messages`, 'success');
+        } catch (error) {
+          log(`❌ Failed to restart tracking: ${error.message}`, 'error');
+        }
+      }
+
+      // Summary
+      log(`🎯 EMERGENCY FIX COMPLETE`, 'success');
+      log(`📊 Results: ${successCount} registered, ${failCount} failed`, 'info');
+
+      updateStatus('registrationStatus', successCount > 0 ? 'success' : 'error',
+        `${successCount}/${messageElements.length} registered`);
+
+      // Run post-fix diagnostics
+      setTimeout(() => {
+        diagnoseSystem();
+      }, 1000);
+    }
+
+    function clearAllTracking() {
+      log('🧹 Clearing all failed tracking contexts...', 'info');
+
+      if (window.messageDisplayGuarantee) {
+        const clearedCount = window.messageDisplayGuarantee.clearAllTracking();
+        log(`✅ Cleared ${clearedCount} tracking contexts`, 'success');
+        updateStatus('guaranteeStatus', 'success', 'All contexts cleared');
+      } else {
+        log('❌ MessageDisplayGuarantee not available', 'error');
+      }
+    }
+
+    function runSystemTest() {
+      log('🧪 Running system health test...', 'info');
+
+      // Test 1: MessageDisplayGuarantee availability
+      if (window.messageDisplayGuarantee) {
+        log('✅ Test 1 PASS: MessageDisplayGuarantee available', 'success');
+      } else {
+        log('❌ Test 1 FAIL: MessageDisplayGuarantee not available', 'error');
+        return;
+      }
+
+      // Test 2: DOM elements presence
+      const messageElements = document.querySelectorAll('[data-message-id]');
+      if (messageElements.length > 0) {
+        log(`✅ Test 2 PASS: ${messageElements.length} message elements found`, 'success');
+      } else {
+        log('❌ Test 2 FAIL: No message elements found', 'error');
+        return;
+      }
+
+      // Test 3: Container detection
+      const containers = document.querySelectorAll('.discord-message-list, .messages-container');
+      if (containers.length > 0) {
+        log(`✅ Test 3 PASS: ${containers.length} message containers found`, 'success');
+      } else {
+        log('❌ Test 3 FAIL: No message containers found', 'error');
+      }
+
+      // Test 4: Registration functionality
+      const testElement = messageElements[0];
+      if (testElement) {
+        const messageId = testElement.getAttribute('data-message-id');
+        const chatId = getCurrentChatId();
+
+        if (messageId && chatId) {
+          try {
+            window.messageDisplayGuarantee.markMessageDisplayed(
+              parseInt(messageId),
+              testElement,
+              chatId
+            );
+            log('✅ Test 4 PASS: Registration function works', 'success');
+          } catch (error) {
+            log(`❌ Test 4 FAIL: Registration failed - ${error.message}`, 'error');
+          }
+        } else {
+          log('❌ Test 4 FAIL: Missing messageId or chatId', 'error');
+        }
+      }
+
+      log('🎯 System health test complete', 'success');
+    }
+
+    // Auto-run diagnostics on load
+    window.addEventListener('load', () => {
+      log('🚨 Emergency Fix Tool loaded - analyzing critical failure...', 'init');
+
+      setTimeout(() => {
+        diagnoseSystem();
+      }, 500);
+    });
+
+    // Listen for console errors
+    window.addEventListener('error', (event) => {
+      if (event.message.includes('MessageDisplayGuarantee')) {
+        log(`🚨 DETECTED ERROR: ${event.message}`, 'error');
+      }
+    });
+
+    // Monitor MessageDisplayGuarantee events
+    window.addEventListener('fechatter:display-guarantee-event', (event) => {
+      const { eventType, data } = event.detail;
+      log(`📡 GUARANTEE EVENT: ${eventType} - ${JSON.stringify(data)}`, 'warn');
+    });
+  </script>
+</body>
+
+</html>

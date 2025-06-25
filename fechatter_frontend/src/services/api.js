@@ -9,8 +9,12 @@ const api = axios.create({
   baseURL: '/api',
   timeout: 30000,
   headers: {
-    'Content-Type': 'application/json',
     'Accept': 'application/json'
+    // 🔧 CRITICAL FIX: Removed default 'Content-Type': 'application/json'
+    // This allows axios to automatically set the correct Content-Type based on request body:
+    // - FormData → multipart/form-data; boundary=...
+    // - Object → application/json
+    // - String → text/plain
   }
 });
 
@@ -20,18 +24,52 @@ const api = axios.create({
 api.interceptors.request.use(
   async (config) => {
     try {
-      // Import tokenManager dynamically to avoid circular dependencies
+      // Import dependencies dynamically to avoid circular dependencies
       const { default: tokenManager } = await import('./tokenManager');
+      const { default: authStateManager } = await import('../utils/authStateManager');
 
-      // Get current token
-      const tokens = tokenManager.getTokens();
+      // 🔧 CRITICAL FIX: Get token with fallback mechanism
+      // Priority 1: tokenManager (in-memory, fast)
+      let token = tokenManager.getAccessToken();
 
-      if (tokens.accessToken && !config.skipAuthRefresh) {
-        config.headers.Authorization = `Bearer ${tokens.accessToken}`;
+      // Priority 2: authStateManager (localStorage, persistent)
+      if (!token) {
+        const authState = authStateManager.getAuthState();
+        token = authState.token;
+
+        // 🔧 RECOVERY: If authStateManager has token but tokenManager doesn't,
+        // restore tokenManager with the token for future requests
+        if (token) {
+          await tokenManager.setTokens({
+            accessToken: token,
+            refreshToken: token, // Using same token as refresh for stub implementation
+            expiresAt: Date.now() + (3600 * 1000), // 1 hour default
+            issuedAt: Date.now(),
+          });
+
+          if (import.meta.env.DEV) {
+            console.log('🔄 [API] Restored tokenManager from authStateManager');
+          }
+        }
+      }
+
+      // Add Authorization header if token is available
+      if (token && !config.skipAuthRefresh) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+
+      // 🔧 CRITICAL FIX: Smart Content-Type handling for FormData
+      // If body is FormData, remove any existing Content-Type to let browser set it automatically
+      if (config.data instanceof FormData) {
+        delete config.headers['Content-Type'];
+        if (import.meta.env.DEV) {
+          console.log('🔧 [API] Removed Content-Type header for FormData - browser will auto-set boundary');
+        }
       }
 
       if (import.meta.env.DEV) {
-        console.log(`🔗 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+        const hasToken = !!token;
+        console.log(`🔗 API Request: ${config.method?.toUpperCase()} ${config.url}${hasToken ? ' (with auth)' : ' (no auth)'}`);
       }
 
       return config;

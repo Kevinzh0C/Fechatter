@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔍 图片显示 & SSE送达状态 - 综合诊断</title>
+  <style>
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 2.5rem;
+      font-weight: 700;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    .section {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-left: 4px solid #007bff;
+    }
+
+    .section h2 {
+      margin-top: 0;
+      color: #007bff;
+      font-size: 1.5rem;
+    }
+
+    .diagnostic-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .diagnostic-card {
+      background: white;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e9ecef;
+    }
+
+    .diagnostic-card h3 {
+      margin-top: 0;
+      color: #495057;
+      font-size: 1.2rem;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-right: 8px;
+    }
+
+    .status-success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .status-warning {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+
+    .status-error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      margin: 5px;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    .code-block {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 4px;
+      padding: 12px;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 0.875rem;
+      line-height: 1.4;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+
+    .results {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+      font-family: monospace;
+      font-size: 0.875rem;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .log-entry {
+      margin: 5px 0;
+      padding: 8px;
+      border-radius: 4px;
+      border-left: 3px solid;
+    }
+
+    .log-success {
+      background: #d4edda;
+      border-color: #28a745;
+      color: #155724;
+    }
+
+    .log-warning {
+      background: #fff3cd;
+      border-color: #ffc107;
+      color: #856404;
+    }
+
+    .log-error {
+      background: #f8d7da;
+      border-color: #dc3545;
+      color: #721c24;
+    }
+
+    .log-info {
+      background: #d1ecf1;
+      border-color: #17a2b8;
+      color: #0c5460;
+    }
+
+    .file-preview {
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 10px;
+      margin: 10px 0;
+      background: white;
+    }
+
+    .file-preview img {
+      max-width: 200px;
+      max-height: 150px;
+      border-radius: 4px;
+      border: 1px solid #dee2e6;
+    }
+
+    .auto-refresh {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 25px;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .refresh-indicator {
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top: 2px solid white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="auto-refresh">
+    <div class="refresh-indicator"></div>
+    自动刷新中...
+  </div>
+
+  <div class="container">
+    <div class="header">
+      <h1>🔍 图片显示 & SSE送达状态诊断</h1>
+      <p>检查文件显示系统和消息送达确认机制</p>
+    </div>
+
+    <div class="content">
+      <!-- 快速状态概览 -->
+      <div class="section">
+        <h2>📊 快速状态概览</h2>
+        <div class="diagnostic-grid">
+          <div class="diagnostic-card">
+            <h3>🖼️ 图片显示状态</h3>
+            <div id="imageDisplayStatus">检查中...</div>
+          </div>
+          <div class="diagnostic-card">
+            <h3>📬 SSE送达状态</h3>
+            <div id="sseDeliveryStatus">检查中...</div>
+          </div>
+          <div class="diagnostic-card">
+            <h3>🔗 API连接状态</h3>
+            <div id="apiConnectionStatus">检查中...</div>
+          </div>
+          <div class="diagnostic-card">
+            <h3>💾 文件上传状态</h3>
+            <div id="fileUploadStatus">检查中...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 详细诊断 -->
+      <div class="section">
+        <h2>🔍 详细诊断分析</h2>
+
+        <div class="diagnostic-card">
+          <h3>1. 消息数据结构检查</h3>
+          <button class="btn" onclick="checkMessageStructure()">检查最新消息</button>
+          <div id="messageStructureResults" class="results"></div>
+        </div>
+
+        <div class="diagnostic-card">
+          <h3>2. 文件URL可达性测试</h3>
+          <button class="btn" onclick="testFileUrls()">测试文件下载</button>
+          <div id="fileUrlResults" class="results"></div>
+        </div>
+
+        <div class="diagnostic-card">
+          <h3>3. SSE事件监听检查</h3>
+          <button class="btn" onclick="checkSSEListeners()">检查SSE连接</button>
+          <div id="sseListenerResults" class="results"></div>
+        </div>
+
+        <div class="diagnostic-card">
+          <h3>4. CSS样式应用检查</h3>
+          <button class="btn" onclick="checkCSSStyles()">检查样式</button>
+          <div id="cssStyleResults" class="results"></div>
+        </div>
+      </div>
+
+      <!-- 实时修复工具 -->
+      <div class="section">
+        <h2>🔧 实时修复工具</h2>
+
+        <div class="diagnostic-grid">
+          <div class="diagnostic-card">
+            <h3>强制刷新消息</h3>
+            <button class="btn" onclick="forceRefreshMessages()">重新加载消息</button>
+            <div id="refreshResults" class="results"></div>
+          </div>
+
+          <div class="diagnostic-card">
+            <h3>重置SSE连接</h3>
+            <button class="btn" onclick="resetSSEConnection()">重连SSE</button>
+            <div id="sseResetResults" class="results"></div>
+          </div>
+
+          <div class="diagnostic-card">
+            <h3>修复送达状态</h3>
+            <button class="btn" onclick="fixDeliveryStatus()">修复状态</button>
+            <div id="deliveryFixResults" class="results"></div>
+          </div>
+
+          <div class="diagnostic-card">
+            <h3>强制显示文件</h3>
+            <button class="btn" onclick="forceShowFiles()">显示文件</button>
+            <div id="fileShowResults" class="results"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 实时日志 -->
+      <div class="section">
+        <h2>📝 实时系统日志</h2>
+        <button class="btn" onclick="clearLogs()">清空日志</button>
+        <button class="btn" onclick="exportLogs()">导出日志</button>
+        <div id="systemLogs" class="results"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let logs = [];
+    let isMonitoring = true;
+
+    // 日志记录函数
+    function addLog(level, message) {
+      const timestamp = new Date().toLocaleTimeString();
+      const logEntry = `[${timestamp}] ${level.toUpperCase()}: ${message}`;
+      logs.push({ timestamp, level, message });
+
+      const logElement = document.getElementById('systemLogs');
+      const logDiv = document.createElement('div');
+      logDiv.className = `log-entry log-${level}`;
+      logDiv.textContent = logEntry;
+
+      logElement.appendChild(logDiv);
+      logElement.scrollTop = logElement.scrollHeight;
+
+      // 保持最多100条日志
+      if (logElement.children.length > 100) {
+        logElement.removeChild(logElement.firstChild);
+      }
+    }
+
+    // 初始化诊断
+    async function initializeDiagnosis() {
+      addLog('info', '开始综合诊断...');
+
+      // 快速状态检查
+      await Promise.all([
+        checkImageDisplayQuick(),
+        checkSSEDeliveryQuick(),
+        checkAPIConnectionQuick(),
+        checkFileUploadQuick()
+      ]);
+
+      addLog('success', '快速诊断完成');
+    }
+
+    // 1. 图片显示快速检查
+    async function checkImageDisplayQuick() {
+      try {
+        // 检查DOM中的消息
+        const messageElements = document.querySelectorAll('[data-message-id]');
+        const imageElements = document.querySelectorAll('.attachment-image, .file-attachment img');
+
+        let status = '';
+        if (imageElements.length === 0) {
+          status = '<span class="status-warning">⚠️ 无图片元素</span> - 检查消息数据';
+        } else {
+          const loadedImages = Array.from(imageElements).filter(img => img.complete && img.naturalHeight > 0);
+          status = `<span class="status-success">✅ 发现 ${imageElements.length} 个图片</span> - ${loadedImages.length} 个已加载`;
+        }
+
+        document.getElementById('imageDisplayStatus').innerHTML = status;
+        addLog('info', `图片检查: 发现 ${imageElements.length} 个图片元素`);
+      } catch (error) {
+        document.getElementById('imageDisplayStatus').innerHTML = '<span class="status-error">❌ 检查失败</span>';
+        addLog('error', `图片检查失败: ${error.message}`);
+      }
+    }
+
+    // 2. SSE送达状态快速检查
+    async function checkSSEDeliveryQuick() {
+      try {
+        // 检查SSE连接
+        const hasSSE = window.minimalSSE || window.eventSource || false;
+        const deliveredMessages = document.querySelectorAll('.message-item[data-status="delivered"]');
+
+        let status = '';
+        if (!hasSSE) {
+          status = '<span class="status-warning">⚠️ SSE未连接</span>';
+        } else {
+          status = `<span class="status-success">✅ SSE已连接</span> - ${deliveredMessages.length} 条已送达`;
+        }
+
+        document.getElementById('sseDeliveryStatus').innerHTML = status;
+        addLog('info', `SSE检查: 连接状态 ${hasSSE ? '已连接' : '未连接'}`);
+      } catch (error) {
+        document.getElementById('sseDeliveryStatus').innerHTML = '<span class="status-error">❌ 检查失败</span>';
+        addLog('error', `SSE检查失败: ${error.message}`);
+      }
+    }
+
+    // 3. API连接快速检查
+    async function checkAPIConnectionQuick() {
+      try {
+        const response = await fetch('/api/health', {
+          method: 'GET',
+          timeout: 5000
+        });
+
+        let status = '';
+        if (response.ok) {
+          status = '<span class="status-success">✅ API连接正常</span>';
+        } else {
+          status = `<span class="status-warning">⚠️ API响应 ${response.status}</span>`;
+        }
+
+        document.getElementById('apiConnectionStatus').innerHTML = status;
+        addLog('info', `API检查: 状态 ${response.status}`);
+      } catch (error) {
+        document.getElementById('apiConnectionStatus').innerHTML = '<span class="status-error">❌ API连接失败</span>';
+        addLog('error', `API检查失败: ${error.message}`);
+      }
+    }
+
+    // 4. 文件上传快速检查
+    async function checkFileUploadQuick() {
+      try {
+        // 检查最近的上传记录
+        const uploadElements = document.querySelectorAll('.file-attachment, .message-files');
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+
+        let status = '';
+        if (uploadElements.length === 0) {
+          status = '<span class="status-warning">⚠️ 无文件附件</span>';
+        } else {
+          status = `<span class="status-success">✅ 发现 ${uploadElements.length} 个文件</span>`;
+        }
+
+        document.getElementById('fileUploadStatus').innerHTML = status;
+        addLog('info', `文件检查: 发现 ${uploadElements.length} 个文件附件`);
+      } catch (error) {
+        document.getElementById('fileUploadStatus').innerHTML = '<span class="status-error">❌ 检查失败</span>';
+        addLog('error', `文件检查失败: ${error.message}`);
+      }
+    }
+
+    // 详细诊断函数
+    async function checkMessageStructure() {
+      const results = document.getElementById('messageStructureResults');
+      results.textContent = '正在检查消息数据结构...\n';
+
+      try {
+        // 从localStorage或全局变量获取消息数据
+        const chatStore = window.chatStore || {};
+        const messages = chatStore.messages || [];
+
+        if (messages.length === 0) {
+          results.textContent += '❌ 未找到消息数据\n';
+          return;
+        }
+
+        // 检查最新的几条消息
+        const recentMessages = messages.slice(-5);
+
+        results.textContent += `✅ 找到 ${messages.length} 条消息\n\n`;
+
+        recentMessages.forEach((msg, index) => {
+          results.textContent += `消息 ${msg.id || msg.temp_id}:\n`;
+          results.textContent += `  - 发送者: ${msg.sender_name || '未知'}\n`;
+          results.textContent += `  - 内容: ${(msg.content || '').substring(0, 50)}...\n`;
+          results.textContent += `  - 文件数量: ${(msg.files || []).length}\n`;
+          results.textContent += `  - 状态: ${msg.status || '未知'}\n`;
+
+          if (msg.files && msg.files.length > 0) {
+            msg.files.forEach((file, fileIndex) => {
+              results.textContent += `    文件 ${fileIndex + 1}: ${file.file_name || file.filename || '未知'}\n`;
+              results.textContent += `      URL: ${file.file_url || file.url || '无'}\n`;
+              results.textContent += `      类型: ${file.mime_type || file.type || '未知'}\n`;
+            });
+          }
+          results.textContent += '\n';
+        });
+
+      } catch (error) {
+        results.textContent += `❌ 检查失败: ${error.message}\n`;
+        addLog('error', `消息结构检查失败: ${error.message}`);
+      }
+    }
+
+    async function testFileUrls() {
+      const results = document.getElementById('fileUrlResults');
+      results.textContent = '正在测试文件URL可达性...\n';
+
+      try {
+        // 获取所有文件URL
+        const fileElements = document.querySelectorAll('.attachment-image, .file-attachment');
+        const urls = [];
+
+        fileElements.forEach(element => {
+          const src = element.src || element.querySelector('img')?.src;
+          if (src) urls.push(src);
+        });
+
+        if (urls.length === 0) {
+          results.textContent += '❌ 未找到文件URL\n';
+          return;
+        }
+
+        results.textContent += `找到 ${urls.length} 个文件URL\n\n`;
+
+        for (const url of urls) {
+          try {
+            const response = await fetch(url, { method: 'HEAD' });
+            const status = response.ok ? '✅ 可访问' : `❌ 错误 ${response.status}`;
+            results.textContent += `${status}: ${url}\n`;
+          } catch (error) {
+            results.textContent += `❌ 网络错误: ${url}\n`;
+          }
+        }
+
+      } catch (error) {
+        results.textContent += `❌ 测试失败: ${error.message}\n`;
+        addLog('error', `文件URL测试失败: ${error.message}`);
+      }
+    }
+
+    async function checkSSEListeners() {
+      const results = document.getElementById('sseListenerResults');
+      results.textContent = '正在检查SSE监听器...\n';
+
+      try {
+        // 检查全局SSE对象
+        const sseObjects = [];
+
+        if (window.minimalSSE) sseObjects.push('minimalSSE');
+        if (window.eventSource) sseObjects.push('eventSource');
+        if (window.sseConnection) sseObjects.push('sseConnection');
+
+        results.textContent += `发现SSE对象: ${sseObjects.join(', ') || '无'}\n\n`;
+
+        // 检查事件监听器
+        if (window.minimalSSE) {
+          const listeners = window.minimalSSE._events || {};
+          results.textContent += `minimalSSE监听器:\n`;
+          Object.keys(listeners).forEach(event => {
+            results.textContent += `  - ${event}: ${listeners[event].length || 0} 个监听器\n`;
+          });
+        }
+
+        // 检查连接状态
+        if (window.eventSource) {
+          results.textContent += `\nEventSource状态: ${window.eventSource.readyState}\n`;
+          results.textContent += `URL: ${window.eventSource.url}\n`;
+        }
+
+      } catch (error) {
+        results.textContent += `❌ 检查失败: ${error.message}\n`;
+        addLog('error', `SSE监听器检查失败: ${error.message}`);
+      }
+    }
+
+    async function checkCSSStyles() {
+      const results = document.getElementById('cssStyleResults');
+      results.textContent = '正在检查CSS样式应用...\n';
+
+      try {
+        // 检查关键CSS类
+        const testClasses = [
+          '.message-files',
+          '.file-attachment',
+          '.attachment-image',
+          '.image-attachment',
+          '.generic-file-attachment'
+        ];
+
+        testClasses.forEach(className => {
+          const elements = document.querySelectorAll(className);
+          const computed = elements.length > 0 ?
+            window.getComputedStyle(elements[0]) : null;
+
+          results.textContent += `${className}: ${elements.length} 个元素`;
+          if (computed) {
+            results.textContent += ` (display: ${computed.display})`;
+          }
+          results.textContent += '\n';
+        });
+
+        // 检查样式冲突
+        const imageElements = document.querySelectorAll('.attachment-image');
+        if (imageElements.length > 0) {
+          const style = window.getComputedStyle(imageElements[0]);
+          results.textContent += `\n图片样式检查:\n`;
+          results.textContent += `  - 显示: ${style.display}\n`;
+          results.textContent += `  - 可见性: ${style.visibility}\n`;
+          results.textContent += `  - 透明度: ${style.opacity}\n`;
+          results.textContent += `  - 最大宽度: ${style.maxWidth}\n`;
+          results.textContent += `  - 最大高度: ${style.maxHeight}\n`;
+        }
+
+      } catch (error) {
+        results.textContent += `❌ 检查失败: ${error.message}\n`;
+        addLog('error', `CSS样式检查失败: ${error.message}`);
+      }
+    }
+
+    // 修复工具函数
+    async function forceRefreshMessages() {
+      const results = document.getElementById('refreshResults');
+      results.textContent = '正在强制刷新消息...\n';
+
+      try {
+        // 尝试调用Vue应用的刷新方法
+        if (window.app && window.app.$forceUpdate) {
+          window.app.$forceUpdate();
+          results.textContent += '✅ Vue应用强制更新完成\n';
+        }
+
+        // 刷新页面的消息区域
+        const messageContainers = document.querySelectorAll('.message-list, .messages-container, .chat-messages');
+        messageContainers.forEach(container => {
+          container.style.display = 'none';
+          setTimeout(() => {
+            container.style.display = '';
+          }, 100);
+        });
+
+        results.textContent += '✅ 消息容器重新显示完成\n';
+        addLog('success', '强制刷新消息完成');
+
+      } catch (error) {
+        results.textContent += `❌ 刷新失败: ${error.message}\n`;
+        addLog('error', `强制刷新失败: ${error.message}`);
+      }
+    }
+
+    async function resetSSEConnection() {
+      const results = document.getElementById('sseResetResults');
+      results.textContent = '正在重置SSE连接...\n';
+
+      try {
+        // 关闭现有连接
+        if (window.eventSource) {
+          window.eventSource.close();
+          results.textContent += '✅ 关闭现有EventSource\n';
+        }
+
+        if (window.minimalSSE && window.minimalSSE.close) {
+          window.minimalSSE.close();
+          results.textContent += '✅ 关闭现有minimalSSE\n';
+        }
+
+        // 等待一下再重连
+        setTimeout(() => {
+          if (window.setupSSE) {
+            window.setupSSE();
+            results.textContent += '✅ 重新建立SSE连接\n';
+          } else {
+            results.textContent += '⚠️ 未找到SSE设置函数\n';
+          }
+        }, 1000);
+
+        addLog('success', 'SSE连接重置完成');
+
+      } catch (error) {
+        results.textContent += `❌ 重置失败: ${error.message}\n`;
+        addLog('error', `SSE重置失败: ${error.message}`);
+      }
+    }
+
+    async function fixDeliveryStatus() {
+      const results = document.getElementById('deliveryFixResults');
+      results.textContent = '正在修复送达状态...\n';
+
+      try {
+        // 查找所有 'sent' 状态的消息并标记为 'delivered'
+        const sentMessages = document.querySelectorAll('[data-status="sent"], .message-item:has(.status-sent)');
+
+        results.textContent += `找到 ${sentMessages.length} 条待确认消息\n`;
+
+        // 模拟SSE送达确认
+        sentMessages.forEach((element, index) => {
+          const messageId = element.getAttribute('data-message-id');
+          if (messageId) {
+            // 更新状态
+            element.setAttribute('data-status', 'delivered');
+
+            // 更新UI元素
+            const statusIcon = element.querySelector('.message-status-icon, .status-icon');
+            if (statusIcon) {
+              statusIcon.className = statusIcon.className.replace(/status-\w+/, 'status-delivered');
+              statusIcon.innerHTML = '✅';
+              statusIcon.title = 'Delivered';
+            }
+
+            results.textContent += `✅ 消息 ${messageId} 状态已更新\n`;
+          }
+        });
+
+        addLog('success', `修复了 ${sentMessages.length} 条消息的送达状态`);
+
+      } catch (error) {
+        results.textContent += `❌ 修复失败: ${error.message}\n`;
+        addLog('error', `送达状态修复失败: ${error.message}`);
+      }
+    }
+
+    async function forceShowFiles() {
+      const results = document.getElementById('fileShowResults');
+      results.textContent = '正在强制显示文件...\n';
+
+      try {
+        // 查找隐藏的文件容器
+        const hiddenFiles = document.querySelectorAll('.message-files[style*="display: none"], .file-attachment[style*="display: none"]');
+
+        hiddenFiles.forEach(element => {
+          element.style.display = '';
+          element.style.visibility = 'visible';
+          element.style.opacity = '1';
+        });
+
+        results.textContent += `✅ 显示了 ${hiddenFiles.length} 个隐藏文件\n`;
+
+        // 强制重新加载失败的图片
+        const failedImages = document.querySelectorAll('.attachment-image[src=""], img[alt*="Failed"]');
+
+        failedImages.forEach((img, index) => {
+          const originalSrc = img.getAttribute('data-original-src') || img.src;
+          if (originalSrc) {
+            img.src = originalSrc + '?t=' + Date.now();
+            results.textContent += `🔄 重新加载图片 ${index + 1}\n`;
+          }
+        });
+
+        addLog('success', `强制显示文件完成: ${hiddenFiles.length} 个文件容器，${failedImages.length} 个图片`);
+
+      } catch (error) {
+        results.textContent += `❌ 显示失败: ${error.message}\n`;
+        addLog('error', `强制显示文件失败: ${error.message}`);
+      }
+    }
+
+    // 日志管理
+    function clearLogs() {
+      logs = [];
+      document.getElementById('systemLogs').innerHTML = '';
+      addLog('info', '日志已清空');
+    }
+
+    function exportLogs() {
+      const logText = logs.map(log => `[${log.timestamp}] ${log.level.toUpperCase()}: ${log.message}`).join('\n');
+      const blob = new Blob([logText], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `fechatter-diagnosis-${new Date().toISOString().slice(0, 19)}.log`;
+      a.click();
+      URL.revokeObjectURL(url);
+      addLog('success', '日志已导出');
+    }
+
+    // 自动刷新
+    setInterval(async () => {
+      if (isMonitoring) {
+        await checkImageDisplayQuick();
+        await checkSSEDeliveryQuick();
+      }
+    }, 5000);
+
+    // 页面加载时初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeDiagnosis();
+      addLog('success', '诊断工具已启动');
+    });
+
+    // 监听开发者工具中的错误
+    window.addEventListener('error', (event) => {
+      addLog('error', `JavaScript错误: ${event.message} (${event.filename}:${event.lineno})`);
+    });
+
+    // 监听fetch错误
+    const originalFetch = window.fetch;
+    window.fetch = function (...args) {
+      return originalFetch.apply(this, args)
+        .then(response => {
+          if (!response.ok) {
+            addLog('warning', `API请求失败: ${response.status} ${response.url}`);
+          }
+          return response;
+        })
+        .catch(error => {
+          addLog('error', `网络请求错误: ${error.message}`);
+          throw error;
+        });
+    };
+  </script>
+</body>
+
+</html>

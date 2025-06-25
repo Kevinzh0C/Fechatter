@@ -59,11 +59,13 @@ class ChannelPreloaderService {
     } catch (error) {
       if (import.meta.env.DEV) {
         console.error('❌ [PRELOADER] Preloading failed:', error);
-      throw error;
-    } finally {
-      this.isPreloading = false;
-      this.preloadPromise = null;
+        throw error;
+      } finally {
+        this.isPreloading = false;
+        this.preloadPromise = null;
+      }
     }
+  }
 
   /**
    * 执行预加载逻辑
@@ -122,6 +124,7 @@ class ChannelPreloaderService {
 
       throw error;
     }
+  }
 
   /**
    * 预加载频道列表
@@ -133,317 +136,374 @@ class ChannelPreloaderService {
       // Preload channels
       if (import.meta.env.DEV) {
         console.log('📦 [PRELOADER] Fetching channels...');
-      const workspaceStore = useWorkspaceStore();
+        const workspaceStore = useWorkspaceStore();
 
-      // Use workspace store to fetch chats since chat store doesn't have fetchChats
-      const chats = await workspaceStore.fetchWorkspaceChats();
+        // Use workspace store to fetch chats since chat store doesn't have fetchChats
+        const chats = await workspaceStore.fetchWorkspaceChats();
 
-      // Update chat store's chats array if needed
-      if (chatStore.chats !== undefined) {
-        chatStore.chats = chats;
-      }
-
-      // Get unread counts
-      const unreadCounts = await chatStore.getAllUnreadCounts();
-
-      // Apply unread counts to chats
-      chats.forEach(chat => {
-        if (unreadCounts[chat.id] !== undefined) {
-          chat.unread_count = unreadCounts[chat.id];
+        // Update chat store's chats array if needed
+        if (chatStore.chats !== undefined) {
+          chatStore.chats = chats;
         }
-      });
 
-      // 过滤和组织频道
-      const channels = Array.isArray(chats) ? chats.filter(chat =>
-        chat && (chat.chat_type === 'PublicChannel' || chat.chat_type === 'PrivateChannel')
-      ) : [];
+        // Get unread counts
+        const unreadCounts = await chatStore.getAllUnreadCounts();
 
-      // 🔥 获取真实的未读计数
-      let realUnreadCounts = {};
-      try {
-        const { useAuthStore } = await import('@/stores/auth');
-        const authStore = useAuthStore();
-
-        if (authStore.token) {
-          const api = await import('@/services/api');
-          const response = await api.default.get('/unread-counts');
-
-          // 处理 ApiResponse 包装的数据结构：response.data.data
-          const unreadData = response.data?.data || response.data;
-          if (unreadData && Array.isArray(unreadData)) {
-            realUnreadCounts = unreadData.reduce((acc, item) => {
-              acc[item.chat_id] = item.unread_count;
-              return acc;
-            }, {});
-
-        }
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.warn('📋 [PRELOADER] Failed to load unread counts:', error);
-        }
-        // 继续使用默认值0
-      }
-
-      const loadTime = performance.now() - startTime;
-      return channels.map(channel => ({
-        id: channel.id,
-        name: channel.name,
-        chat_type: channel.chat_type,
-        description: channel.description,
-        unread_count: realUnreadCounts[channel.id] || unreadCounts[channel.id] || 0, // 使用真实的未读计数
-        member_count: channel.chat_members?.length || 0,
-        last_activity: channel.updated_at,
-        preloaded: true
-      }));
-
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('📋 [PRELOADER] Failed to preload channels:', error);
-      return [];
-    }
-
-  /**
-   * 预加载SSE实时连接
-   */
-  async preloadSSEConnection(token) {
-    try {
-      // 异步连接SSE，不阻塞主要加载流程
-      const connectPromise = minimalSSE.connect(token);
-
-      // 设置超时以避免长时间等待
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('SSE connection timeout')), 5000)
-      );
-
-      await Promise.race([connectPromise, timeoutPromise]);
-
-      return true;
-
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.warn('🔌 [PRELOADER] SSE connection failed, will retry in background:', error);
-      }
-
-      // SSE连接失败不应该阻塞主要流程
-      // 稍后在后台重试
-      setTimeout(() => {
-        minimalSSE.connect(token).catch(console.warn);
-      }, 3000);
-
-      return false;
-    }
-
-  /**
-   * 获取预加载的数据
-   */
-  getPreloadedChannels() {
-    if (this.isCacheValid()) {
-      return this.preloadedData.channels;
-    return null;
-  }
-
-  /**
-   * 检查缓存是否有效
-   */
-  isCacheValid() {
-    if (!this.preloadedData.isValid || !this.preloadedData.lastUpdate) {
-      return false;
-    }
-
-    const now = Date.now();
-    const age = now - this.preloadedData.lastUpdate;
-
-    return age < this.config.cacheTimeout;
-  }
-
-  /**
-   * 开始后台刷新
-   */
-  startBackgroundRefresh() {
-    if (!this.config.enableBackgroundRefresh) return;
-
-    this.stopBackgroundRefresh();
-
-    // 每30秒检查一次是否需要刷新
-    this.backgroundRefreshTimer = setInterval(() => {
-      if (!this.isCacheValid() && !this.isPreloading) {
-        this.startPreloading().catch(error => {
-          if (import.meta.env.DEV) {
-            console.warn('🔄 [PRELOADER] Background refresh failed:', error);
+        // Apply unread counts to chats
+        chats.forEach(chat => {
+          if (unreadCounts[chat.id] !== undefined) {
+            chat.unread_count = unreadCounts[chat.id];
           }
         });
-    }, 30000);
-  }
+
+        // 过滤和组织频道
+        const channels = Array.isArray(chats) ? chats.filter(chat =>
+          chat && (chat.chat_type === 'PublicChannel' || chat.chat_type === 'PrivateChannel')
+        ) : [];
+
+        // 🔥 获取真实的未读计数
+        let realUnreadCounts = {};
+        try {
+          const { useAuthStore } = await import('@/stores/auth');
+          const authStore = useAuthStore();
+
+          if (authStore.token) {
+            const api = await import('@/services/api');
+            const response = await api.default.get('/unread-counts');
+
+            // 处理 ApiResponse 包装的数据结构：response.data.data
+            const unreadData = response.data?.data || response.data;
+            if (unreadData && Array.isArray(unreadData)) {
+              realUnreadCounts = unreadData.reduce((acc, item) => {
+                acc[item.chat_id] = item.unread_count;
+                return acc;
+              }, {});
+            }
+          } catch (error) {
+            if (import.meta.env.DEV) {
+              console.warn('📋 [PRELOADER] Failed to load unread counts:', error);
+            }
+            // 继续使用默认值0
+          }
+
+          const loadTime = performance.now() - startTime;
+          return channels.map(channel => ({
+            id: channel.id,
+            name: channel.name,
+            chat_type: channel.chat_type,
+            description: channel.description,
+            unread_count: realUnreadCounts[channel.id] || unreadCounts[channel.id] || 0, // 使用真实的未读计数
+            member_count: channel.chat_members?.length || 0,
+            last_activity: channel.updated_at,
+            preloaded: true
+          }));
+
+        } catch (error) {
+          if (import.meta.env.DEV) {
+            console.error('📋 [PRELOADER] Failed to preload channels:', error);
+            return [];
+          }
+        }
+
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('📋 [PRELOADER] Failed to preload channels:', error);
+          return [];
+        }
+      }
+    }
 
   /**
-   * 停止后台刷新
+   * 预加载SSE实时连接 - 🚀 ENHANCED: 只在聊天页面连接
    */
-  stopBackgroundRefresh() {
-    if (this.backgroundRefreshTimer) {
-      clearInterval(this.backgroundRefreshTimer);
-      this.backgroundRefreshTimer = null;
+  async preloadSSEConnection(token) {
+      try {
+        // 🚀 CRITICAL FIX: 只在聊天页面建立SSE连接
+        const currentPath = window.location.pathname;
+        const isOnChatPage = currentPath.startsWith('/chat/') && currentPath !== '/chat';
+        const isOnAuthPage = currentPath.includes('/login') ||
+          currentPath.includes('/register') ||
+          currentPath === '/';
+
+        if (import.meta.env.DEV) {
+          console.log('🔍 [PRELOADER] SSE connection check:');
+          console.log('  - currentPath:', currentPath);
+          console.log('  - isOnChatPage:', isOnChatPage);
+          console.log('  - isOnAuthPage:', isOnAuthPage);
+        }
+
+        // 🚀 只在聊天页面才建立SSE连接
+        if (!isOnChatPage || isOnAuthPage) {
+          if (import.meta.env.DEV) {
+            console.log('⚠️ [PRELOADER] SKIPPING SSE connection - not on chat page');
+          }
+          return false;
+        }
+
+        // 确保有有效 token
+        if (!token || token.length < 50) {
+          if (import.meta.env.DEV) {
+            console.warn('⚠️ [PRELOADER] SKIPPING SSE - invalid token');
+          }
+          return false;
+        }
+
+        // 异步连接SSE，不阻塞主要加载流程
+        const connectPromise = minimalSSE.connect(token);
+
+        // 设置超时以避免长时间等待
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('SSE connection timeout')), 5000)
+        );
+
+        await Promise.race([connectPromise, timeoutPromise]);
+
+        if (import.meta.env.DEV) {
+          console.log('✅ [PRELOADER] SSE connection established on chat page');
+        }
+
+        return true;
+
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.warn('🔌 [PRELOADER] SSE connection failed:', error);
+        }
+
+        // 🚀 ENHANCED: 只在聊天页面才重试
+        const currentPath = window.location.pathname;
+        if (currentPath.startsWith('/chat/') && !currentPath.includes('/login')) {
+          setTimeout(() => {
+            if (import.meta.env.DEV) {
+              console.log('🔄 [PRELOADER] Retrying SSE connection on chat page...');
+            }
+            minimalSSE.connect(token).catch(console.warn);
+          }, 3000);
+        }
+
+        return false;
+      }
+    }
+
+    /**
+     * 获取预加载的数据
+     */
+    getPreloadedChannels() {
+      if (this.isCacheValid()) {
+        return this.preloadedData.channels;
+      }
+      return null;
+    }
+
+    /**
+     * 检查缓存是否有效
+     */
+    isCacheValid() {
+      if (!this.preloadedData.isValid || !this.preloadedData.lastUpdate) {
+        return false;
+      }
+
+      const now = Date.now();
+      const age = now - this.preloadedData.lastUpdate;
+
+      return age < this.config.cacheTimeout;
+    }
+
+    /**
+     * 开始后台刷新
+     */
+    startBackgroundRefresh() {
+      if (!this.config.enableBackgroundRefresh) return;
+
+      this.stopBackgroundRefresh();
+
+      // 每30秒检查一次是否需要刷新
+      this.backgroundRefreshTimer = setInterval(() => {
+        if (!this.isCacheValid() && !this.isPreloading) {
+          this.startPreloading().catch(error => {
+            if (import.meta.env.DEV) {
+              console.warn('🔄 [PRELOADER] Background refresh failed:', error);
+            }
+          });
+        }, 30000);
+    }
+
+    /**
+     * 停止后台刷新
+     */
+    stopBackgroundRefresh() {
+      if (this.backgroundRefreshTimer) {
+        clearInterval(this.backgroundRefreshTimer);
+        this.backgroundRefreshTimer = null;
+      }
     }
 
   /**
    * 手动刷新数据
    */
   async refresh() {
-    this.invalidateCache();
-    return this.startPreloading();
-  }
-
-  /**
-   * 使缓存失效
-   */
-  invalidateCache() {
-    this.preloadedData.isValid = false;
-    this.preloadedData.lastUpdate = null;
-  }
-
-  /**
-   * 添加新频道到缓存
-   */
-  addChannelToCache(channel) {
-    if (this.preloadedData.isValid) {
-      const formattedChannel = {
-        id: channel.id,
-        name: channel.name,
-        chat_type: channel.chat_type,
-        description: channel.description,
-        unread_count: 0,
-        member_count: 1,
-        last_activity: new Date().toISOString(),
-        preloaded: false // 标记为非预加载的新频道
-      };
-
-      this.preloadedData.channels.unshift(formattedChannel);
+      this.invalidateCache();
+      return this.startPreloading();
     }
 
-  /**
-   * 从缓存中移除频道
-   */
-  removeChannelFromCache(channelId) {
-    if (this.preloadedData.isValid) {
-      this.preloadedData.channels = this.preloadedData.channels.filter(
-        channel => channel.id !== channelId
-      );
+    /**
+     * 使缓存失效
+     */
+    invalidateCache() {
+      this.preloadedData.isValid = false;
+      this.preloadedData.lastUpdate = null;
     }
 
-  /**
-   * 更新频道未读计数
-   */
-  updateChannelUnreadCount(channelId, unreadCount) {
-    if (this.preloadedData.isValid) {
-      const channel = this.preloadedData.channels.find(c => c.id === channelId);
-      if (channel) {
-        const oldCount = channel.unread_count;
-        channel.unread_count = unreadCount;
+    /**
+     * 添加新频道到缓存
+     */
+    addChannelToCache(channel) {
+      if (this.preloadedData.isValid) {
+        const formattedChannel = {
+          id: channel.id,
+          name: channel.name,
+          chat_type: channel.chat_type,
+          description: channel.description,
+          unread_count: 0,
+          member_count: 1,
+          last_activity: new Date().toISOString(),
+          preloaded: false // 标记为非预加载的新频道
+        };
 
-      } else {
-        if (import.meta.env.DEV) {
-          console.warn(`📦 [PRELOADER] Channel ${channelId} not found in preloaded data`);
-        }
-
-  /**
-   * 增加频道未读计数
-   */
-  incrementChannelUnreadCount(channelId, increment = 1) {
-    if (this.preloadedData.isValid) {
-      const channel = this.preloadedData.channels.find(c => c.id === channelId);
-      if (channel) {
-        const oldCount = channel.unread_count;
-        channel.unread_count += increment;
-
+        this.preloadedData.channels.unshift(formattedChannel);
       }
+    }
 
-  /**
-   * 重置频道未读计数
-   */
-  resetChannelUnreadCount(channelId) {
-    this.updateChannelUnreadCount(channelId, 0);
-  }
+    /**
+     * 从缓存中移除频道
+     */
+    removeChannelFromCache(channelId) {
+      if (this.preloadedData.isValid) {
+        this.preloadedData.channels = this.preloadedData.channels.filter(
+          channel => channel.id !== channelId
+        );
+      }
+    }
 
-  /**
-   * 获取预加载状态
-   */
-  getPreloadStatus() {
-    return {
-      isPreloading: this.isPreloading,
-      isValid: this.preloadedData.isValid,
-      lastUpdate: this.preloadedData.lastUpdate,
-      channelCount: this.preloadedData.channels.length,
-      sseConnected: this.preloadedData.sseConnected
-    };
-  }
+    /**
+     * 更新频道未读计数
+     */
+    updateChannelUnreadCount(channelId, unreadCount) {
+      if (this.preloadedData.isValid) {
+        const channel = this.preloadedData.channels.find(c => c.id === channelId);
+        if (channel) {
+          const oldCount = channel.unread_count;
+          channel.unread_count = unreadCount;
+        } else {
+          if (import.meta.env.DEV) {
+            console.warn(`📦 [PRELOADER] Channel ${channelId} not found in preloaded data`);
+          }
+        }
+      }
+    }
 
-  /**
-   * 清理资源
-   */
-  dispose() {
-    this.stopBackgroundRefresh();
-    this.invalidateCache();
-    this.isPreloading = false;
-    this.preloadPromise = null;
+    /**
+     * 增加频道未读计数
+     */
+    incrementChannelUnreadCount(channelId, increment = 1) {
+      if (this.preloadedData.isValid) {
+        const channel = this.preloadedData.channels.find(c => c.id === channelId);
+        if (channel) {
+          const oldCount = channel.unread_count;
+          channel.unread_count += increment;
+        }
+      }
+    }
 
-    // 断开SSE连接
-    minimalSSE.disconnect();
+    /**
+     * 重置频道未读计数
+     */
+    resetChannelUnreadCount(channelId) {
+      this.updateChannelUnreadCount(channelId, 0);
+    }
 
-  }
+    /**
+     * 获取预加载状态
+     */
+    getPreloadStatus() {
+      return {
+        isPreloading: this.isPreloading,
+        isValid: this.preloadedData.isValid,
+        lastUpdate: this.preloadedData.lastUpdate,
+        channelCount: this.preloadedData.channels.length,
+        sseConnected: this.preloadedData.sseConnected
+      };
+    }
+
+    /**
+     * 清理资源
+     */
+    dispose() {
+      this.stopBackgroundRefresh();
+      this.invalidateCache();
+      this.isPreloading = false;
+      this.preloadPromise = null;
+
+      // 断开SSE连接
+      minimalSSE.disconnect();
+    }
 
   /**
    * 🚀 并行加载：预加载数据 + SSE连接 
    */
   async startParallelLoading(authStore, chatStore) {
-    const startTime = performance.now();
+      const startTime = performance.now();
 
-    const token = authStore.token;
+      const token = authStore.token;
 
-    // 🔥 并行启动：数据预加载 + SSE连接
-    const [dataPromise, connectPromise] = await Promise.allSettled([
-      this.preloadChannels(chatStore),
-      minimalSSE.connect(token)
-    ]);
+      // 🔥 并行启动：数据预加载 + SSE连接
+      const [dataPromise, connectPromise] = await Promise.allSettled([
+        this.preloadChannels(chatStore),
+        minimalSSE.connect(token)
+      ]);
 
-    // 检查预加载结果
-    if (dataPromise.status === 'fulfilled') {
-    } else {
-      if (import.meta.env.DEV) {
-        console.warn('⚠️ [PRELOADER] Data preloading failed:', dataPromise.reason);
+      // 检查预加载结果
+      if (dataPromise.status === 'fulfilled') {
+      } else {
+        if (import.meta.env.DEV) {
+          console.warn('⚠️ [PRELOADER] Data preloading failed:', dataPromise.reason);
+        }
+
+        // 检查SSE连接结果
+        if (connectPromise.status === 'fulfilled') {
+        } else {
+          if (import.meta.env.DEV) {
+            console.warn('⚠️ [PRELOADER] Real-time connection failed:', connectPromise.reason);
+          }
+          // SSE连接失败时，仍然可以尝试在后台重连
+          minimalSSE.connect(token).catch(console.warn);
+        }
+
+        const endTime = performance.now();
+        return {
+          dataSuccess: dataPromise.status === 'fulfilled',
+          sseSuccess: connectPromise.status === 'fulfilled',
+          totalTime: endTime - startTime
+        };
       }
 
-    // 检查SSE连接结果
-    if (connectPromise.status === 'fulfilled') {
-    } else {
-      if (import.meta.env.DEV) {
-        console.warn('⚠️ [PRELOADER] Real-time connection failed:', connectPromise.reason);
+      /**
+       * 断开连接并清理
+       */
+      disconnect() {
+        // 断开SSE连接
+        minimalSSE.disconnect();
+
+        // 清除缓存
+        this.clearCache();
+
+        if (import.meta.env.DEV) {
+          console.log('🧹 [PRELOADER] Cleanup completed');
+        }
       }
-      // SSE连接失败时，仍然可以尝试在后台重连
-      minimalSSE.connect(token).catch(console.warn);
     }
-
-    const endTime = performance.now();
-    return {
-      dataSuccess: dataPromise.status === 'fulfilled',
-      sseSuccess: connectPromise.status === 'fulfilled',
-      totalTime: endTime - startTime
-    };
   }
 
-  /**
-   * 断开连接并清理
-   */
-  disconnect() {
-    // 断开SSE连接
-    minimalSSE.disconnect();
-
-    // 清除缓存
-    this.clearCache();
-
-    if (import.meta.env.DEV) {
-      console.log('🧹 [PRELOADER] Cleanup completed');
-    }
-
-// 单例实例
-const channelPreloaderService = new ChannelPreloaderService();
+  // 单例实例
+  const channelPreloaderService = new ChannelPreloaderService();
 
 export default channelPreloaderService; 

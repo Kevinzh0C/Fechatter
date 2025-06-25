@@ -25,32 +25,47 @@ export function formatTimestamp(timestamp) {
     return `${minutes}m ago`
   }
 
-  // Less than 24 hours ago
+  // Less than 24 hours ago - show time only
   if (diffInSeconds < 86400) {
-    const hours = Math.floor(diffInSeconds / 3600)
-    return `${hours}h ago`
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    })
   }
 
-  // Less than 7 days ago
+  // Less than 7 days ago - show time + relative day
   if (diffInSeconds < 604800) {
     const days = Math.floor(diffInSeconds / 86400)
-    return `${days}d ago`
+    const timeString = date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    })
+    return `${timeString} • ${days}d ago`
   }
 
-  // More than 7 days ago - show date
+  // More than 7 days ago - show time + date
   const isCurrentYear = date.getFullYear() === now.getFullYear()
+  const timeString = date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  })
 
   if (isCurrentYear) {
-    return date.toLocaleDateString('en-US', {
+    const dateString = date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric'
     })
+    return `${timeString} • ${dateString}`
   } else {
-    return date.toLocaleDateString('en-US', {
+    const dateString = date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
     })
+    return `${timeString} • ${dateString}`
   }
 }
 

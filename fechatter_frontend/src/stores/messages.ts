@@ -5,7 +5,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Message, MessageStoreState } from '@/types/message'
+import type { Message } from '@/types/message'
 import api from '@/services/api'
 
 export const useMessagesStore = defineStore('messages', () => {

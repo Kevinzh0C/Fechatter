@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>SSE连接诊断</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #fff; }
+        .btn { padding: 10px 20px; margin: 5px; background: #007acc; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .btn:hover { background: #005999; }
+        .log { background: #2d2d2d; padding: 15px; border-radius: 5px; margin: 10px 0; max-height: 300px; overflow-y: auto; }
+        .success { color: #4caf50; }
+        .error { color: #f44336; }
+        .warning { color: #ff9800; }
+    </style>
+</head>
+<body>
+    <h1>🔬 SSE连接诊断工具</h1>
+    
+    <div>
+        <button class="btn" onclick="checkAuth()">🔐 检查认证</button>
+        <button class="btn" onclick="checkSSE()">📡 检查SSE状态</button>
+        <button class="btn" onclick="testConnection()">🔗 测试连接</button>
+        <button class="btn" onclick="clearLog()">🗑️ 清空日志</button>
+    </div>
+    
+    <div class="log" id="log"></div>
+    
+    <script>
+        function log(message, type = "info") {
+            const timestamp = new Date().toLocaleTimeString();
+            const logDiv = document.getElementById("log");
+            const className = type === "error" ? "error" : type === "success" ? "success" : type === "warning" ? "warning" : "";
+            logDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(`[SSE诊断] ${message}`);
+        }
+        
+        function clearLog() {
+            document.getElementById("log").innerHTML = "";
+        }
+        
+        function checkAuth() {
+            log("🔐 检查认证状态...", "info");
+            
+            const tokenKeys = ["auth_token", "fechatter_auth_token", "access_token"];
+            let foundToken = null;
+            
+            for (const key of tokenKeys) {
+                const token = localStorage.getItem(key);
+                if (token) {
+                    foundToken = token;
+                    log(`✅ 找到Token: ${key} (${token.length}字符)`, "success");
+                    break;
+                }
+            }
+            
+            if (!foundToken) {
+                log("❌ 未找到任何Token", "error");
+            }
+            
+            try {
+                const authUser = localStorage.getItem("auth_user");
+                if (authUser) {
+                    const userInfo = JSON.parse(authUser);
+                    log(`✅ 用户信息: ID=${userInfo.id}, 工作区=${userInfo.workspace_id}`, "success");
+                } else {
+                    log("❌ 用户信息缺失", "error");
+                }
+            } catch (error) {
+                log(`❌ 用户信息解析失败: ${error.message}`, "error");
+            }
+            
+            if (window.authStore || (window.__pinia_stores__ && window.__pinia_stores__.auth)) {
+                const authStore = window.authStore || window.__pinia_stores__.auth();
+                log(`📊 AuthStore: 认证=${authStore.isAuthenticated}, Token=${!!authStore.token}`, "info");
+            }
+        }
+        
+        function checkSSE() {
+            log("📡 检查SSE状态...", "info");
+            
+            if (window.minimalSSE) {
+                log("✅ MinimalSSE服务存在", "success");
+                
+                try {
+                    const status = window.minimalSSE.getStatus();
+                    if (status.connected) {
+                        log(`✅ SSE已连接 (重试:${status.retries})`, "success");
+                    } else {
+                        log(`❌ SSE未连接 (重试:${status.retries})`, "error");
+                    }
+                    
+                    const listeners = window.minimalSSE.listeners;
+                    if (listeners && listeners.size > 0) {
+                        let total = 0;
+                        for (const callbacks of listeners.values()) {
+                            total += callbacks.length;
+                        }
+                        log(`📨 SSE监听器: ${total}个`, total > 0 ? "success" : "warning");
+                    } else {
+                        log("⚠️ 没有SSE监听器", "warning");
+                    }
+                } catch (error) {
+                    log(`❌ SSE状态检查失败: ${error.message}`, "error");
+                }
+            } else {
+                log("❌ MinimalSSE服务不存在", "error");
+            }
+        }
+        
+        async function testConnection() {
+            log("🔗 测试SSE连接...", "info");
+            
+            const token = localStorage.getItem("auth_token") || 
+                         localStorage.getItem("fechatter_auth_token") ||
+                         localStorage.getItem("access_token");
+            
+            if (!token) {
+                log("❌ 无法测试：缺少Token", "error");
+                return;
+            }
+            
+            try {
+                const sseUrl = `/events?access_token=${token}`;
+                log(`🔗 连接: ${sseUrl.substring(0, 50)}...`, "info");
+                
+                const eventSource = new EventSource(sseUrl);
+                
+                eventSource.onopen = function() {
+                    log("✅ 手动SSE连接成功！", "success");
+                };
+                
+                eventSource.onmessage = function(event) {
+                    log(`📨 收到SSE消息: ${event.data}`, "success");
+                };
+                
+                eventSource.onerror = function() {
+                    log(`❌ SSE连接错误: ReadyState=${eventSource.readyState}`, "error");
+                };
+                
+                setTimeout(() => {
+                    eventSource.close();
+                    log("�� 测试连接已关闭", "info");
+                }, 10000);
+                
+            } catch (error) {
+                log(`❌ 测试失败: ${error.message}`, "error");
+            }
+        }
+        
+        window.addEventListener("load", () => {
+            log("🔬 SSE诊断工具已加载", "info");
+            log("📋 请先检查认证状态，然后检查SSE状态", "info");
+        });
+    </script>
+</body>
+</html>

@@ -52,11 +52,11 @@ export function useWindowSize() {
     isTablet: readonly(isTablet),
     isDesktop: readonly(isDesktop),
     windowSize: readonly({
-      width,
-      height,
-      isMobile,
-      isTablet,
-      isDesktop,
-    } as WindowSize),
+      width: width.value,
+      height: height.value,
+      isMobile: isMobile.value,
+      isTablet: isTablet.value,
+      isDesktop: isDesktop.value,
+    } as unknown as WindowSize),
   };
 }

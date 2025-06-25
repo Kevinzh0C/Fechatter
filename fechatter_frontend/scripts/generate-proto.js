@@ -214,7 +214,7 @@ export function encodeAnalyticsEvent(event: IAnalyticsEvent): Uint8Array {
 }
 
 export function decodeAnalyticsEvent(buffer: Uint8Array): IAnalyticsEvent {
-  return AnalyticsEvent.decode(buffer);
+  return AnalyticsEvent.decode(buffer) as any;
 }
 
 export function encodeBatchRequest(request: IBatchRecordEventsRequest): Uint8Array {
@@ -223,7 +223,7 @@ export function encodeBatchRequest(request: IBatchRecordEventsRequest): Uint8Arr
 }
 
 export function decodeBatchRequest(buffer: Uint8Array): IBatchRecordEventsRequest {
-  return BatchRecordEventsRequest.decode(buffer);
+  return BatchRecordEventsRequest.decode(buffer) as any;
 }
 `;
 

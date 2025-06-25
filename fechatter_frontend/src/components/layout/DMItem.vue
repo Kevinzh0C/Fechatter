@@ -226,13 +226,21 @@ const handleImageError = (event) => {
   flex-shrink: 0;
 }
 
-/* Unified channel name font size */
+/* 🎯 统一频道/用户名字体样式 - 支持多语言显示 */
 .user-name {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   font-size: 14px;
   font-weight: 500;
+  color: inherit;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  font-feature-settings: 'liga' 1, 'kern' 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* 🟢 Status Indicator - Modern design */

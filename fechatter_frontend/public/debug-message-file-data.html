@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Debug File URL Issue</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+    }
+
+    .error {
+      color: red;
+      background: #ffe6e6;
+      padding: 10px;
+      margin: 10px 0;
+    }
+
+    .success {
+      color: green;
+      background: #e6ffe6;
+      padding: 10px;
+      margin: 10px 0;
+    }
+
+    .info {
+      color: blue;
+      background: #e6f3ff;
+      padding: 10px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>🔍 File URL Debug Analysis</h1>
+
+  <div class="error">
+    <h3>❌ FOUND ROOT CAUSE</h3>
+    <p>fileUrlHandler.js generates <strong>/files/</strong> URLs but test.rest requires <strong>/api/files/</strong>
+      format!</p>
+  </div>
+
+  <div id="analysis"></div>
+
+  <script>
+    function log(message, type = 'info') {
+      const div = document.createElement('div');
+      div.className = type;
+      div.innerHTML = message;
+      document.getElementById('analysis').appendChild(div);
+    }
+
+    // Analyze the current URL generation bug
+    log('<h3>🔍 URL Generation Analysis</h3>', 'info');
+    log('<strong>Expected (test.rest):</strong> /api/files/2/60c/155/filename.png', 'success');
+    log('<strong>Current (fileUrlHandler):</strong> /files/2/60c/155/filename.png', 'error');
+    log('<strong>Console shows:</strong> /files/2/ (incomplete)', 'error');
+
+    // Test the broken logic
+    function mockConstructHashUrl(filename, workspaceId) {
+      // This is the CURRENT BROKEN implementation
+      if (!filename) {
+        return '/files/' + workspaceId + '/';  // ❌ This creates the /files/2/ bug!
+      }
+
+      const cleanFilename = filename.replace(/^.*\//, '');
+      if (cleanFilename.length >= 10) {
+        const hash1 = cleanFilename.substring(0, 3);
+        const hash2 = cleanFilename.substring(3, 6);
+        return '/files/' + workspaceId + '/' + hash1 + '/' + hash2 + '/' + cleanFilename;
+      }
+      return '/files/' + workspaceId + '/' + cleanFilename;
+    }
+
+    // Test cases
+    const testCases = [
+      { name: 'Empty filename', input: '', expected: 'ERROR' },
+      { name: 'Null filename', input: null, expected: 'ERROR' },
+      { name: 'Valid hash filename', input: '60c155658fcb1ef14145b5c9e359a571c504b8e1a7449d9965f720d3c1eebb68.png', expected: '/api/files/2/60c/155/60c155658fcb1ef14145b5c9e359a571c504b8e1a7449d9965f720d3c1eebb68.png' }
+    ];
+
+    log('<h3>🧪 Testing Current Broken Logic</h3>', 'info');
+    testCases.forEach(test => {
+      const result = mockConstructHashUrl(test.input, 2);
+      const isCorrect = result === test.expected;
+      log(`<strong>${test.name}:</strong><br>Input: ${test.input}<br>Output: ${result}<br>Expected: ${test.expected}<br>Status: ${isCorrect ? '✅ Correct' : '❌ WRONG'}`, isCorrect ? 'success' : 'error');
+    });
+
+    log('<h3>✅ SOLUTION</h3>', 'success');
+    log('1. Change /files/ to /api/files/ in constructHashUrl function', 'success');
+    log('2. Add proper error handling for empty/null filenames', 'success');
+    log('3. Ensure EnhancedImageThumbnail uses getStandardFileUrl consistently', 'success');
+  </script>
+</body>
+
+</html>

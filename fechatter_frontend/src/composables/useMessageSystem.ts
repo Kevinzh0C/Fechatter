@@ -2,7 +2,7 @@
  * 消息系统 Composable
  * 提供完整的消息管理功能
  */
-import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
+import { reactive, computed, onMounted, onUnmounted, watch } from 'vue';
 import ChatService from '@/services/ChatService';
 import { useMessageBatcher } from './useMessageBatcher';
 import type { ChatMessage, SendMessageRequest, UploadedFile, User } from '@/types/api';
@@ -256,7 +256,7 @@ export function useMessageSystem(chatId: number | string) {
       const fileInfo = files[i];
 
       try {
-        const uploadedFile: UploadedFile = await ChatService.uploadFile(fileInfo.file, (progress: number) => {
+        const uploadedFile: UploadedFile = await ChatService.uploadFile(fileInfo.file, (_progress: number) => {
           // TODO: 更新上传进度
         });
 

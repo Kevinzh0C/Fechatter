@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Send Button Debug Tool</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 20px;
+      background: #1a1a1a;
+      color: #ffffff;
+    }
+
+    .debug-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #2a2a2a;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .status-item {
+      background: #333;
+      border-radius: 8px;
+      padding: 16px;
+      border-left: 4px solid #666;
+    }
+
+    .status-item.true {
+      border-left-color: #4CAF50;
+      background: rgba(76, 175, 80, 0.1);
+    }
+
+    .status-item.false {
+      border-left-color: #f44336;
+      background: rgba(244, 67, 54, 0.1);
+    }
+
+    .status-label {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-value {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .status-details {
+      font-size: 12px;
+      margin-top: 8px;
+      opacity: 0.8;
+      font-family: monospace;
+    }
+
+    .console-log {
+      background: #000;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 24px;
+      height: 300px;
+      overflow-y: auto;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 13px;
+      border: 1px solid #444;
+    }
+
+    .log-entry {
+      margin-bottom: 4px;
+      line-height: 1.4;
+    }
+
+    .log-success {
+      color: #4CAF50;
+    }
+
+    .log-error {
+      color: #f44336;
+    }
+
+    .log-info {
+      color: #2196F3;
+    }
+
+    .log-warning {
+      color: #FF9800;
+    }
+
+    .refresh-btn {
+      background: #5865f2;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 20px;
+    }
+
+    .title {
+      text-align: center;
+      color: #5865f2;
+      margin-bottom: 24px;
+      font-size: 24px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="debug-container">
+    <h1 class="title">🐛 Send Button Debug Tool</h1>
+
+    <button class="refresh-btn" onclick="startMonitoring()">
+      🔄 Start Real-time Monitoring
+    </button>
+
+    <div class="status-grid">
+      <div class="status-item" id="messageContent-status">
+        <div class="status-label">Message Content</div>
+        <div class="status-value" id="messageContent-value">-</div>
+        <div class="status-details" id="messageContent-details">Length: 0</div>
+      </div>
+
+      <div class="status-item" id="files-status">
+        <div class="status-label">Local Files</div>
+        <div class="status-value" id="files-value">-</div>
+        <div class="status-details" id="files-details">Count: 0</div>
+      </div>
+
+      <div class="status-item" id="uploadedFileUrl-status">
+        <div class="status-label">Uploaded File URL</div>
+        <div class="status-value" id="uploadedFileUrl-value">-</div>
+        <div class="status-details" id="uploadedFileUrl-details">Empty</div>
+      </div>
+
+      <div class="status-item" id="canSend-status">
+        <div class="status-label">Can Send</div>
+        <div class="status-value" id="canSend-value">-</div>
+        <div class="status-details" id="canSend-details">Logic: ?</div>
+      </div>
+    </div>
+
+    <div class="console-log" id="console-log">
+      <div class="log-entry log-info">🔍 Waiting for monitoring to start...</div>
+    </div>
+  </div>
+
+  <script>
+    let monitoring = false;
+    let logContainer;
+
+    function log(message, type = 'info') {
+      if (!logContainer) logContainer = document.getElementById('console-log');
+
+      const timestamp = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `[${timestamp}] ${message}`;
+
+      logContainer.appendChild(entry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+
+      // Keep only last 100 entries
+      if (logContainer.children.length > 100) {
+        logContainer.removeChild(logContainer.firstChild);
+      }
+    }
+
+    function updateStatus(elementId, value, isBoolean = false) {
+      const statusItem = document.getElementById(`${elementId}-status`);
+      const valueElement = document.getElementById(`${elementId}-value`);
+      const detailsElement = document.getElementById(`${elementId}-details`);
+
+      if (isBoolean) {
+        statusItem.className = `status-item ${value}`;
+        valueElement.textContent = value ? '✅ TRUE' : '❌ FALSE';
+      } else {
+        valueElement.textContent = value || '-';
+      }
+
+      return { statusItem, valueElement, detailsElement };
+    }
+
+    function checkMessageInputState() {
+      try {
+        // Try to access Vue component data through various methods
+        const vueApp = window.Vue?.getCurrentInstance?.() ||
+          document.querySelector('#app')?.__vue__ ||
+          window.__VUE_DEVTOOLS_GLOBAL_HOOK__?.apps?.[0];
+
+        if (!vueApp) {
+          log('❌ Vue app not found - unable to access component state', 'error');
+          return;
+        }
+
+        // Look for MessageInput component
+        const findMessageInput = (component) => {
+          if (component?.$options?.name === 'MessageInput' ||
+            component?.type?.name === 'MessageInput') {
+            return component;
+          }
+
+          if (component?.$children) {
+            for (const child of component.$children) {
+              const result = findMessageInput(child);
+              if (result) return result;
+            }
+          }
+
+          return null;
+        };
+
+        const messageInput = findMessageInput(vueApp);
+
+        if (!messageInput) {
+          log('❌ MessageInput component not found', 'error');
+          return;
+        }
+
+        // Extract reactive data
+        const messageContent = messageInput.messageContent || '';
+        const files = messageInput.files || [];
+        const uploadedFileUrl = messageInput.uploadedFileUrl || '';
+        const uploadedFileInfo = messageInput.uploadedFileInfo || null;
+        const isSending = messageInput.isSending || false;
+
+        // Calculate canSend logic
+        const hasContent = messageContent.trim().length > 0;
+        const hasFiles = files.length > 0;
+        const hasUploadedFile = uploadedFileUrl.trim().length > 0;
+        const notSending = !isSending;
+        const canSend = (hasContent || hasFiles || hasUploadedFile) && notSending;
+
+        // Update UI
+        const contentStatus = updateStatus('messageContent', hasContent, true);
+        contentStatus.detailsElement.textContent = `Length: ${messageContent.length}`;
+
+        const filesStatus = updateStatus('files', hasFiles, true);
+        filesStatus.detailsElement.textContent = `Count: ${files.length}`;
+
+        const urlStatus = updateStatus('uploadedFileUrl', hasUploadedFile, true);
+        urlStatus.detailsElement.textContent = uploadedFileUrl ?
+          `URL: ${uploadedFileUrl.substring(0, 50)}...` : 'Empty';
+
+        const sendStatus = updateStatus('canSend', canSend, true);
+        sendStatus.detailsElement.textContent =
+          `Logic: (${hasContent} || ${hasFiles} || ${hasUploadedFile}) && ${notSending}`;
+
+        // Log important changes
+        if (hasUploadedFile && canSend) {
+          log('✅ File uploaded and send button should be active!', 'success');
+        } else if (hasUploadedFile && !canSend) {
+          log('⚠️ File uploaded but send button is not active - check isSending state', 'warning');
+        } else if (!hasUploadedFile && files.length > 0) {
+          log('📁 Files selected but not yet uploaded', 'info');
+        }
+
+        // Debug uploadedFileInfo
+        if (uploadedFileInfo) {
+          log(`📄 File info: ${JSON.stringify(uploadedFileInfo, null, 2)}`, 'info');
+        }
+
+      } catch (error) {
+        log(`❌ Error checking state: ${error.message}`, 'error');
+      }
+    }
+
+    function startMonitoring() {
+      if (monitoring) return;
+
+      monitoring = true;
+      log('🚀 Started real-time monitoring', 'success');
+
+      // Check every 500ms
+      const interval = setInterval(() => {
+        if (!monitoring) {
+          clearInterval(interval);
+          return;
+        }
+        checkMessageInputState();
+      }, 500);
+
+      // Initial check
+      checkMessageInputState();
+
+      // Listen for console messages related to file upload
+      const originalConsoleLog = console.log;
+      console.log = function (...args) {
+        originalConsoleLog.apply(console, args);
+
+        const message = args.join(' ');
+        if (message.includes('[MessageInput]') ||
+          message.includes('[FilePreview]') ||
+          message.includes('File uploaded') ||
+          message.includes('canSend')) {
+          log(`🔍 Console: ${message}`, 'info');
+        }
+      };
+
+      // Stop after 5 minutes
+      setTimeout(() => {
+        monitoring = false;
+        log('⏹️ Monitoring stopped after 5 minutes', 'warning');
+      }, 5 * 60 * 1000);
+    }
+
+    // Auto-start if on development server
+    if (window.location.hostname === 'localhost') {
+      setTimeout(startMonitoring, 1000);
+    }
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat → MessageInput DAG Debug</title>
+    <style>
+        body { font-family: system-ui, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .dag-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 6px; }
+        .dag-title { font-weight: bold; color: #2563eb; margin-bottom: 10px; }
+        .success { background: #dcfce7; border-color: #16a34a; }
+        .error { background: #fef2f2; border-color: #dc2626; }
+        .warning { background: #fefce8; border-color: #ca8a04; }
+        .info { background: #eff6ff; border-color: #2563eb; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 12px; overflow-x: auto; }
+        button { background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin: 5px; }
+        .step { margin: 10px 0; padding: 10px; border-left: 4px solid #e5e7eb; background: #f9fafb; }
+        .step.active { border-left-color: #2563eb; background: #eff6ff; }
+        .step.success { border-left-color: #16a34a; background: #f0fdf4; }
+        .step.error { border-left-color: #dc2626; background: #fef2f2; }
+        .step.warning { border-left-color: #ca8a04; background: #fefce8; }
+        .flow-chart { display: flex; gap: 10px; margin: 20px 0; flex-wrap: wrap; }
+        .flow-step { padding: 8px 12px; border-radius: 4px; background: #f3f4f6; border: 2px solid #d1d5db; min-width: 120px; text-align: center; }
+        .flow-step.current { border-color: #2563eb; background: #dbeafe; }
+        .flow-step.success { border-color: #16a34a; background: #dcfce7; }
+        .flow-step.error { border-color: #dc2626; background: #fecaca; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Chat → MessageInput DAG 细粒度调试</h1>
+        <p>深入分析从Chat页面到MessageInput组件的完整调用链路和所有可能的失败点</p>
+
+        <div class="dag-section">
+            <div class="dag-title">🎯 实时调用链路跟踪</div>
+            <div class="flow-chart" id="flowChart">
+                <!-- 动态生成 -->
+            </div>
+            <button onclick="traceFullDAG()">🔄 完整DAG跟踪</button>
+            <button onclick="window.open('/chat/2', '_blank')">🚀 测试Chat/2</button>
+            <button onclick="window.open('/chat/invalid', '_blank')">⚠️ 测试无效ID</button>
+        </div>
+
+        <div class="dag-section">
+            <div class="dag-title">1️⃣ 路由层 Route Processing</div>
+            <div id="routeAnalysis">分析中...</div>
+        </div>
+
+        <div class="dag-section">
+            <div class="dag-title">2️⃣ 组件初始化层 Component Initialization</div>
+            <div id="componentAnalysis">分析中...</div>
+        </div>
+
+        <div class="dag-section">
+            <div class="dag-title">3️⃣ 状态管理层 State Management</div>
+            <div id="stateAnalysis">分析中...</div>
+        </div>
+
+        <div class="dag-section">
+            <div class="dag-title">4️⃣ 模板渲染层 Template Rendering</div>
+            <div id="templateAnalysis">分析中...</div>
+        </div>
+
+        <div class="dag-section">
+            <div class="dag-title">5️⃣ Props验证层 Props Validation</div>
+            <div id="propsAnalysis">分析中...</div>
+        </div>
+
+        <div class="dag-section">
+            <div class="dag-title">6️⃣ DOM渲染层 DOM Rendering</div>
+            <div id="domAnalysis">分析中...</div>
+        </div>
+
+        <div class="dag-section">
+            <div class="dag-title">🐛 API调用分析 (NaN问题)</div>
+            <div id="apiAnalysis">分析中...</div>
+        </div>
+
+        <div class="dag-section">
+            <div class="dag-title">🎯 根因诊断与修复建议</div>
+            <div id="diagnosisResults">生成中...</div>
+        </div>
+    </div>
+
+    <script>
+        let dagResults = {};
+
+        function analyzeRouteLayer() {
+            const analysis = {
+                currentUrl: window.location.href,
+                pathname: window.location.pathname,
+                searchParams: new URLSearchParams(window.location.search),
+                pathSegments: window.location.pathname.split('/'),
+                rawId: window.location.pathname.split('/')[2],
+                isValidPath: window.location.pathname.match(/^\/chat\/\d+$/),
+                isInvalidPath: window.location.pathname.match(/^\/chat\/[^\/]+$/) && !window.location.pathname.match(/^\/chat\/\d+$/),
+                extractedChatId: window.location.pathname.match(/\/chat\/(\d+)/)?.[1],
+                parsingResults: {}
+            };
+
+            // 模拟route.params.id的解析过程
+            const rawId = analysis.rawId;
+            analysis.parsingResults = {
+                raw: rawId,
+                string: String(rawId || ''),
+                parseInt: parseInt(rawId),
+                isNaN: isNaN(parseInt(rawId)),
+                finalResult: rawId && !isNaN(parseInt(rawId)) ? parseInt(rawId) : null
+            };
+
+            const resultElement = document.getElementById('routeAnalysis');
+            let html = `<pre>路由解析详细步骤:
+URL: ${analysis.currentUrl}
+路径段: [${analysis.pathSegments.map(s => `"${s}"`).join(', ')}]
+原始ID: "${rawId}"
+字符串化: "${analysis.parsingResults.string}"
+parseInt结果: ${analysis.parsingResults.parseInt}
+isNaN检查: ${analysis.parsingResults.isNaN}
+最终结果: ${analysis.parsingResults.finalResult}</pre>`;
+
+            const steps = [
+                {
+                    name: 'URL路径匹配',
+                    status: analysis.isValidPath ? 'success' : (analysis.isInvalidPath ? 'error' : 'warning'),
+                    details: analysis.isValidPath ? '✅ 匹配 /chat/{id} 格式' : 
+                            analysis.isInvalidPath ? '❌ 无效的chat ID格式' : '⚠️ 不在chat页面'
+                },
+                {
+                    name: 'route.params.id提取',
+                    status: rawId ? (rawId === 'undefined' ? 'error' : 'success') : 'error',
+                    details: rawId ? `✅ 提取到: "${rawId}"` : '❌ 未提取到ID'
+                },
+                {
+                    name: 'parseInt()转换',
+                    status: analysis.parsingResults.isNaN ? 'error' : 'success',
+                    details: analysis.parsingResults.isNaN ? 
+                            `❌ parseInt("${rawId}") = NaN` : 
+                            `✅ parseInt("${rawId}") = ${analysis.parsingResults.parseInt}`
+                },
+                {
+                    name: 'initChatId()验证',
+                    status: analysis.parsingResults.finalResult ? 'success' : 'error',
+                    details: analysis.parsingResults.finalResult ? 
+                            `✅ 验证通过: ${analysis.parsingResults.finalResult}` : 
+                            '❌ 验证失败，返回null'
+                }
+            ];
+
+            steps.forEach(step => {
+                html += `<div class="step ${step.status}">
+                    <strong>${step.name}</strong><br>
+                    ${step.details}
+                </div>`;
+            });
+
+            resultElement.innerHTML = html;
+            dagResults.route = analysis;
+            updateFlowChart('route', steps[steps.length - 1].status);
+            return analysis;
+        }
+
+        function analyzeComponentLayer() {
+            const analysis = {
+                vueDetected: typeof window.Vue !== 'undefined',
+                vueDevtools: typeof window.__VUE_DEVTOOLS_GLOBAL_HOOK__ !== 'undefined',
+                chatComponentExists: document.querySelector('.chat-view-container') !== null,
+                chatComponentClass: document.querySelector('.chat-view-container')?.className,
+                scriptTags: document.querySelectorAll('script[type="module"]').length,
+                vueElements: document.querySelectorAll('[data-v-]').length,
+                hasVueErrors: false
+            };
+
+            // 检查Vue组件挂载状态
+            const chatContainer = document.querySelector('.chat-view-container');
+            if (chatContainer) {
+                analysis.componentState = {
+                    mounted: true,
+                    hasData: chatContainer.children.length > 0,
+                    hasInputContainer: document.querySelector('.input-container') !== null,
+                    hasMessageInput: document.querySelector('.message-input') !== null,
+                    hasLoadingState: document.querySelector('.loading-input') !== null
+                };
+            }
+
+            const resultElement = document.getElementById('componentAnalysis');
+            let html = `<pre>组件初始化状态:
+Vue检测: ${analysis.vueDetected ? '✅' : '❌'}
+Vue DevTools: ${analysis.vueDevtools ? '✅' : '❌'}
+Chat组件: ${analysis.chatComponentExists ? '✅' : '❌'}
+Vue元素数量: ${analysis.vueElements}</pre>`;
+
+            if (analysis.componentState) {
+                html += `<pre>Chat组件状态:
+已挂载: ${analysis.componentState.mounted ? '✅' : '❌'}
+有数据: ${analysis.componentState.hasData ? '✅' : '❌'}
+Input容器: ${analysis.componentState.hasInputContainer ? '✅' : '❌'}
+MessageInput: ${analysis.componentState.hasMessageInput ? '✅' : '❌'}
+加载状态: ${analysis.componentState.hasLoadingState ? '✅' : '❌'}</pre>`;
+            }
+
+            const componentStatus = analysis.chatComponentExists && 
+                                  analysis.componentState?.mounted ? 'success' : 'error';
+
+            resultElement.innerHTML = html;
+            dagResults.component = analysis;
+            updateFlowChart('component', componentStatus);
+            return analysis;
+        }
+
+        function analyzeStateLayer() {
+            const analysis = {
+                storeAccess: false,
+                currentChatId: null,
+                storeState: null,
+                stateConsistency: false
+            };
+
+            // 尝试访问Vue stores
+            try {
+                if (window.__VUE_DEVTOOLS_GLOBAL_HOOK__) {
+                    // 通过devtools检查store状态
+                    const apps = window.__VUE_DEVTOOLS_GLOBAL_HOOK__.apps;
+                    if (apps && apps.length > 0) {
+                        analysis.storeAccess = true;
+                        // 这里可以添加更详细的store状态检查
+                    }
+                }
+            } catch (error) {
+                analysis.storeError = error.message;
+            }
+
+            // 从URL推断预期的chatId
+            const urlChatId = window.location.pathname.match(/\/chat\/(\d+)/)?.[1];
+            analysis.expectedChatId = urlChatId ? parseInt(urlChatId) : null;
+
+            const resultElement = document.getElementById('stateAnalysis');
+            let html = `<pre>状态管理分析:
+Store访问: ${analysis.storeAccess ? '✅' : '❌'}
+预期ChatId: ${analysis.expectedChatId}
+Store错误: ${analysis.storeError || '无'}
+</pre>`;
+
+            // 检查console中的相关错误
+            const consoleErrors = [];
+            const originalError = console.error;
+            console.error = function(...args) {
+                const message = args.join(' ');
+                if (message.includes('chatId') || message.includes('currentChatId') || message.includes('NaN')) {
+                    consoleErrors.push(message);
+                }
+                originalError.apply(console, args);
+            };
+
+            setTimeout(() => {
+                console.error = originalError;
+                if (consoleErrors.length > 0) {
+                    html += `<pre>相关Console错误:
+${consoleErrors.map(err => `• ${err}`).join('\n')}</pre>`;
+                    analysis.hasStateErrors = true;
+                }
+                
+                const stateStatus = analysis.storeAccess && !analysis.hasStateErrors ? 'success' : 'warning';
+                updateFlowChart('state', stateStatus);
+            }, 1000);
+
+            resultElement.innerHTML = html;
+            dagResults.state = analysis;
+            return analysis;
+        }
+
+        function analyzeTemplateLayer() {
+            const analysis = {
+                inputContainer: document.querySelector('.input-container'),
+                messageInput: document.querySelector('.message-input'),
+                loadingInput: document.querySelector('.loading-input'),
+                conditionalRendering: null
+            };
+
+            // 分析条件渲染结果
+            if (analysis.inputContainer) {
+                if (analysis.messageInput) {
+                    analysis.conditionalRendering = 'messageInput';
+                } else if (analysis.loadingInput) {
+                    analysis.conditionalRendering = 'loadingState';
+                } else {
+                    analysis.conditionalRendering = 'unknown';
+                }
+            } else {
+                analysis.conditionalRendering = 'containerMissing';
+            }
+
+            const resultElement = document.getElementById('templateAnalysis');
+            let html = `<pre>模板渲染分析:
+Input容器: ${analysis.inputContainer ? '✅ 存在' : '❌ 缺失'}
+MessageInput: ${analysis.messageInput ? '✅ 已渲染' : '❌ 未渲染'}
+Loading状态: ${analysis.loadingInput ? '✅ 显示' : '❌ 未显示'}
+条件渲染结果: ${analysis.conditionalRendering}</pre>`;
+
+            const renderingSteps = [
+                {
+                    name: 'v-if="currentChatId" 评估',
+                    status: analysis.inputContainer ? 'success' : 'error',
+                    details: analysis.inputContainer ? '✅ 条件为真，开始渲染' : '❌ 条件为假，跳过渲染'
+                },
+                {
+                    name: 'MessageInput vs Loading',
+                    status: analysis.messageInput ? 'success' : (analysis.loadingInput ? 'warning' : 'error'),
+                    details: analysis.messageInput ? '✅ 渲染MessageInput组件' : 
+                            analysis.loadingInput ? '⚠️ 显示Loading状态' : '❌ 两者都未渲染'
+                }
+            ];
+
+            renderingSteps.forEach(step => {
+                html += `<div class="step ${step.status}">
+                    <strong>${step.name}</strong><br>
+                    ${step.details}
+                </div>`;
+            });
+
+            const templateStatus = analysis.messageInput ? 'success' : 
+                                 analysis.loadingInput ? 'warning' : 'error';
+
+            resultElement.innerHTML = html;
+            dagResults.template = analysis;
+            updateFlowChart('template', templateStatus);
+            return analysis;
+        }
+
+        function analyzePropsLayer() {
+            const analysis = {
+                propsValidation: null,
+                chatIdProp: null,
+                currentUserIdProp: null,
+                propErrors: []
+            };
+
+            // 检查MessageInput的props
+            const messageInput = document.querySelector('.message-input');
+            if (messageInput) {
+                // 尝试从元素属性检查props
+                const chatIdAttr = messageInput.getAttribute('chat-id') || 
+                                  messageInput.getAttribute(':chat-id');
+                const userIdAttr = messageInput.getAttribute('current-user-id') || 
+                                  messageInput.getAttribute(':current-user-id');
+                
+                analysis.chatIdProp = chatIdAttr;
+                analysis.currentUserIdProp = userIdAttr;
+                analysis.propsValidation = 'passed';
+            } else {
+                analysis.propsValidation = 'component_missing';
+            }
+
+            // 检查console中的prop validation错误
+            const propErrors = [];
+            const originalWarn = console.warn;
+            console.warn = function(...args) {
+                const message = args.join(' ');
+                if (message.includes('required') || message.includes('Missing required prop')) {
+                    propErrors.push(message);
+                }
+                originalWarn.apply(console, args);
+            };
+
+            const resultElement = document.getElementById('propsAnalysis');
+            let html = `<pre>Props验证分析:
+验证状态: ${analysis.propsValidation}
+chatId prop: ${analysis.chatIdProp || '未检测到'}
+currentUserId prop: ${analysis.currentUserIdProp || '未检测到'}</pre>`;
+
+            setTimeout(() => {
+                console.warn = originalWarn;
+                if (propErrors.length > 0) {
+                    html += `<pre>Props验证错误:
+${propErrors.map(err => `• ${err}`).join('\n')}</pre>`;
+                    analysis.propErrors = propErrors;
+                }
+                
+                const propsStatus = analysis.propsValidation === 'passed' && 
+                                  analysis.propErrors.length === 0 ? 'success' : 'error';
+                updateFlowChart('props', propsStatus);
+            }, 1000);
+
+            resultElement.innerHTML = html;
+            dagResults.props = analysis;
+            return analysis;
+        }
+
+        function analyzeDOMLayer() {
+            const analysis = {
+                domElements: {},
+                visibility: {},
+                styles: {}
+            };
+
+            // 检查各种DOM元素
+            const selectors = [
+                '.chat-view-container',
+                '.input-container', 
+                '.message-input',
+                '.loading-input',
+                'message-input', // Custom element
+                '[class*="message-input"]'
+            ];
+
+            selectors.forEach(selector => {
+                const elements = document.querySelectorAll(selector);
+                analysis.domElements[selector] = {
+                    count: elements.length,
+                    visible: Array.from(elements).some(el => el.offsetWidth > 0 && el.offsetHeight > 0),
+                    styles: elements.length > 0 ? {
+                        display: getComputedStyle(elements[0]).display,
+                        visibility: getComputedStyle(elements[0]).visibility,
+                        opacity: getComputedStyle(elements[0]).opacity
+                    } : null
+                };
+            });
+
+            const resultElement = document.getElementById('domAnalysis');
+            let html = '<pre>DOM渲染分析:\n';
+            
+            Object.entries(analysis.domElements).forEach(([selector, data]) => {
+                html += `${selector}: ${data.count}个 (可见: ${data.visible ? '✅' : '❌'})\n`;
+                if (data.styles) {
+                    html += `  样式: display=${data.styles.display}, visibility=${data.styles.visibility}\n`;
+                }
+            });
+            html += '</pre>';
+
+            const domStatus = analysis.domElements['.message-input'].count > 0 && 
+                            analysis.domElements['.message-input'].visible ? 'success' : 'error';
+
+            resultElement.innerHTML = html;
+            dagResults.dom = analysis;
+            updateFlowChart('dom', domStatus);
+            return analysis;
+        }
+
+        function analyzeAPILayer() {
+            const analysis = {
+                nanRequests: [],
+                validRequests: [],
+                apiPattern: /\/api\/chat\/([^\/]+)\//
+            };
+
+            // 监听网络请求（简化版）
+            const performanceEntries = performance.getEntriesByType('resource');
+            performanceEntries.forEach(entry => {
+                const match = entry.name.match(analysis.apiPattern);
+                if (match) {
+                    const chatId = match[1];
+                    if (chatId === 'NaN') {
+                        analysis.nanRequests.push(entry.name);
+                    } else {
+                        analysis.validRequests.push(entry.name);
+                    }
+                }
+            });
+
+            const resultElement = document.getElementById('apiAnalysis');
+            let html = `<pre>API调用分析:
+NaN请求数量: ${analysis.nanRequests.length}
+有效请求数量: ${analysis.validRequests.length}</pre>`;
+
+            if (analysis.nanRequests.length > 0) {
+                html += `<pre>❌ NaN API请求:
+${analysis.nanRequests.slice(0, 5).map(url => `• ${url}`).join('\n')}
+${analysis.nanRequests.length > 5 ? `... 还有${analysis.nanRequests.length - 5}个` : ''}</pre>`;
+            }
+
+            if (analysis.validRequests.length > 0) {
+                html += `<pre>✅ 有效API请求:
+${analysis.validRequests.slice(0, 3).map(url => `• ${url}`).join('\n')}</pre>`;
+            }
+
+            resultElement.innerHTML = html;
+            dagResults.api = analysis;
+            return analysis;
+        }
+
+        function generateDiagnosis() {
+            const problems = [];
+            const solutions = [];
+
+            // 分析收集的数据
+            const routeResult = dagResults.route;
+            const componentResult = dagResults.component;
+            const templateResult = dagResults.template;
+            const apiResult = dagResults.api;
+
+            // 根因分析
+            if (routeResult?.parsingResults?.isNaN) {
+                problems.push('🎯 ROOT CAUSE: route.params.id解析为NaN');
+                solutions.push('修复URL路由格式，确保/chat/{id}中的id为有效数字');
+            }
+
+            if (routeResult?.parsingResults?.finalResult === null) {
+                problems.push('🎯 ROOT CAUSE: currentChatId初始化为null');
+                solutions.push('添加v-if="currentChatId"条件渲染防护');
+            }
+
+            if (apiResult?.nanRequests?.length > 0) {
+                problems.push('🔥 CRITICAL: 检测到NaN API请求');
+                solutions.push('修复组件中传递NaN值给API调用的逻辑');
+            }
+
+            if (!templateResult?.messageInput && !templateResult?.loadingInput) {
+                problems.push('🔥 CRITICAL: MessageInput和Loading状态都未渲染');
+                solutions.push('检查v-if条件和组件导入路径');
+            }
+
+            const resultElement = document.getElementById('diagnosisResults');
+            let html = '<div class="step error"><strong>🐛 发现的问题</strong><br>';
+            html += problems.length > 0 ? problems.join('<br>') : '✅ 未发现明显问题';
+            html += '</div>';
+
+            html += '<div class="step success"><strong>💡 修复建议</strong><br>';
+            html += solutions.length > 0 ? solutions.join('<br>') : '✅ 系统运行正常';
+            html += '</div>';
+
+            resultElement.innerHTML = html;
+        }
+
+        function updateFlowChart(step, status) {
+            const flowChart = document.getElementById('flowChart');
+            const steps = ['route', 'component', 'state', 'template', 'props', 'dom'];
+            
+            if (flowChart.children.length === 0) {
+                // 初始化流程图
+                steps.forEach(stepName => {
+                    const div = document.createElement('div');
+                    div.className = 'flow-step';
+                    div.id = `flow-${stepName}`;
+                    div.textContent = stepName.charAt(0).toUpperCase() + stepName.slice(1);
+                    flowChart.appendChild(div);
+                });
+            }
+
+            // 更新当前步骤状态
+            const stepElement = document.getElementById(`flow-${step}`);
+            if (stepElement) {
+                stepElement.className = `flow-step ${status}`;
+            }
+        }
+
+        function traceFullDAG() {
+            console.log('🔍 开始完整DAG跟踪...');
+            
+            // 按顺序执行分析
+            setTimeout(() => analyzeRouteLayer(), 100);
+            setTimeout(() => analyzeComponentLayer(), 500);
+            setTimeout(() => analyzeStateLayer(), 1000);
+            setTimeout(() => analyzeTemplateLayer(), 1500);
+            setTimeout(() => analyzePropsLayer(), 2000);
+            setTimeout(() => analyzeDOMLayer(), 2500);
+            setTimeout(() => analyzeAPILayer(), 3000);
+            setTimeout(() => generateDiagnosis(), 3500);
+        }
+
+        // 自动开始分析
+        setTimeout(traceFullDAG, 1000);
+
+        // 每5秒更新一次API分析
+        setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                analyzeAPILayer();
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

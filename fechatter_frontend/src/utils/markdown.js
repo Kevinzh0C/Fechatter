@@ -10,6 +10,26 @@ import DOMPurify from 'dompurify'
 // 🎨 Configure marked with enhanced code handling
 const renderer = {
   code(code, infostring, escaped) {
+    // 🔍 DEBUG: 添加详细的代码块调试
+    console.group('🎨 [MARKDOWN] Code renderer called')
+    console.log('🔍 [MARKDOWN] Raw code parameter:', code)
+    console.log('🔍 [MARKDOWN] Code type:', typeof code)
+    console.log('🔍 [MARKDOWN] Code constructor:', code?.constructor?.name)
+    console.log('🔍 [MARKDOWN] Infostring:', infostring)
+    console.log('🔍 [MARKDOWN] Escaped flag:', escaped)
+
+    // 🚨 CRITICAL: 检查code参数是否为对象
+    if (typeof code === 'object') {
+      console.error('🚨 [MARKDOWN] CRITICAL: Code parameter is object, not string!')
+      console.log('🔍 [MARKDOWN] Object keys:', Object.keys(code || {}))
+      console.log('🔍 [MARKDOWN] Object values:', code)
+
+      // 尝试从对象中提取代码内容
+      const extractedCode = code?.code || code?.content || code?.text || code?.value || String(code)
+      console.log('🔍 [MARKDOWN] Extracted code:', extractedCode)
+      code = extractedCode
+    }
+
     const lang = (infostring || '').match(/\S*/)
     const language = lang ? lang[0] : 'plaintext'
 
@@ -20,13 +40,22 @@ const renderer = {
     // Create a placeholder that will be replaced by Vue component
     const escapedCode = escaped ? code : escapeHtml(code)
 
-    return `<div class="code-block-placeholder" 
+    // 🔍 DEBUG: 最终的escaped code
+    console.log('🔍 [MARKDOWN] Final escaped code:', escapedCode)
+    console.log('🔍 [MARKDOWN] Final escaped code type:', typeof escapedCode)
+
+    const result = `<div class="code-block-placeholder" 
       data-code="${escapeAttribute(escapedCode)}"
       data-language="${escapeAttribute(language)}"
       ${title ? `data-title="${escapeAttribute(title)}"` : ''}
       data-line-numbers="true">
       <pre class="loading-code"><code class="language-${language}">${escapedCode}</code></pre>
     </div>`
+
+    console.log('🔍 [MARKDOWN] Final renderer result:', result)
+    console.groupEnd()
+
+    return result
   },
 
   codespan(code) {
@@ -73,20 +102,36 @@ const purifyConfig = {
  * @returns {string} HTML string
  */
 export function renderMarkdown(content) {
+  // 🔍 DEBUG: 添加renderMarkdown函数调试
+  console.group('📝 [MARKDOWN] renderMarkdown called')
+  console.log('🔍 [MARKDOWN] Input content:', content)
+  console.log('🔍 [MARKDOWN] Input content type:', typeof content)
+  console.log('🔍 [MARKDOWN] Input content length:', content?.length)
+
   if (!content || typeof content !== 'string') {
+    console.log('🔍 [MARKDOWN] No content or not string, returning empty')
+    console.groupEnd()
     return ''
   }
 
   try {
     // First pass: Convert markdown to HTML using marked v15 API
+    console.log('🔍 [MARKDOWN] About to call marked.parse...')
     let html = marked.parse(content)
+    console.log('🔍 [MARKDOWN] marked.parse result:', html)
+    console.log('🔍 [MARKDOWN] marked.parse result type:', typeof html)
 
     // Second pass: Sanitize with DOMPurify
+    console.log('🔍 [MARKDOWN] About to sanitize with DOMPurify...')
     html = DOMPurify.sanitize(html, purifyConfig)
+    console.log('🔍 [MARKDOWN] DOMPurify result:', html)
+    console.log('🔍 [MARKDOWN] Final result contains [object Object]?', html.includes('[object Object]'))
 
+    console.groupEnd()
     return html
   } catch (error) {
     console.error('❌ Markdown rendering failed:', error)
+    console.groupEnd()
     // Fallback to escaped plain text
     return `<p>${escapeHtml(content)}</p>`
   }
@@ -98,6 +143,19 @@ export function renderMarkdown(content) {
  * @returns {string} Escaped text
  */
 function escapeHtml(text) {
+  // 🚨 CRITICAL FIX: 处理对象参数防止[object Object]
+  if (typeof text === 'object' && text !== null) {
+    console.error('🚨 [MARKDOWN] escapeHtml received object:', text)
+    // 尝试提取字符串内容
+    text = text.code || text.content || text.text || text.value || JSON.stringify(text)
+    console.log('🔧 [MARKDOWN] escapeHtml converted object to string:', text)
+  }
+
+  // 确保是字符串
+  if (typeof text !== 'string') {
+    text = String(text || '')
+  }
+
   const div = document.createElement('div')
   div.textContent = text
   return div.innerHTML
@@ -365,6 +423,19 @@ export const markdownUtils = {
 }
 
 function escapeAttribute(text) {
+  // 🚨 CRITICAL FIX: 处理对象参数防止[object Object]
+  if (typeof text === 'object' && text !== null) {
+    console.error('🚨 [MARKDOWN] escapeAttribute received object:', text)
+    // 尝试提取字符串内容
+    text = text.code || text.content || text.text || text.value || JSON.stringify(text)
+    console.log('🔧 [MARKDOWN] Converted object to string:', text)
+  }
+
+  // 确保是字符串
+  if (typeof text !== 'string') {
+    text = String(text || '')
+  }
+
   return text
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')

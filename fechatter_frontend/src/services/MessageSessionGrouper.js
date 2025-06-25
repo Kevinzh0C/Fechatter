@@ -116,6 +116,15 @@ export class MessageSessionGrouper {
         if (dateDivider) {
           dividers.push(dateDivider);
           groupedMessages.push(dateDivider);
+
+          // 🔧 CRITICAL FIX: 每个主日期分割线下方必须显示一次副日期分割线
+          const subDateDivider = this.createSubDateDivider(
+            messageTime, // 首条消息使用相同时间
+            messageTime,
+            'session-start'
+          );
+          dividers.push(subDateDivider);
+          groupedMessages.push(subDateDivider);
         }
 
         groupedMessages.push(this.enhanceMessageWithSession(message, currentSession));
@@ -134,8 +143,23 @@ export class MessageSessionGrouper {
         // 结束当前会话
         this.finalizeSession(currentSession);
 
-        // 添加会话间分割线
-        if (breakAnalysis.needsSessionDivider) {
+        // 🔧 CRITICAL FIX: 主日期分界线下面必须跟一个副日期分割线
+        // 先添加日期分割线 (如果跨日) - 主日期分界线
+        if (breakAnalysis.needsDateDivider) {
+          const dateDivider = this.createDateDivider(messageTime, 'new-day');
+          dividers.push(dateDivider);
+          groupedMessages.push(dateDivider);
+
+          // ✅ 强制添加副日期分割线 - 必须跟在主日期分界线后面
+          const subDateDivider = this.createSubDateDivider(
+            lastMessageTime,
+            messageTime,
+            'new-day-session'
+          );
+          dividers.push(subDateDivider);
+          groupedMessages.push(subDateDivider);
+        } else if (breakAnalysis.needsSessionDivider) {
+          // 添加普通会话间分割线 (非跨日情况)
           const sessionDivider = this.createSessionDivider(
             lastMessageTime,
             messageTime,
@@ -143,13 +167,6 @@ export class MessageSessionGrouper {
           );
           dividers.push(sessionDivider);
           groupedMessages.push(sessionDivider);
-        }
-
-        // 添加日期分割线 (如果跨日)
-        if (breakAnalysis.needsDateDivider) {
-          const dateDivider = this.createDateDivider(messageTime, 'new-day');
-          dividers.push(dateDivider);
-          groupedMessages.push(dateDivider);
         }
 
         // 创建新会话
@@ -179,8 +196,11 @@ export class MessageSessionGrouper {
       });
     }
 
+    // 🔧 CRITICAL VERIFICATION: 确保每个主日期分割线的相邻下方都有副日期分割线
+    const verifiedGroupedMessages = this.ensureSubDateDividersFollowMainDividers(groupedMessages);
+
     return {
-      groupedMessages,
+      groupedMessages: verifiedGroupedMessages,
       dividers,
       sessions,
       metadata: {
@@ -419,6 +439,29 @@ export class MessageSessionGrouper {
   }
 
   /**
+   * 📅 创建副日期分割线 - 必须跟在主日期分界线后面
+   * 用于显示时间段信息，如"Morning Session"、"Afternoon Break"等
+   */
+  createSubDateDivider(lastTime, currentTime, breakType) {
+    const timeGap = currentTime.getTime() - lastTime.getTime();
+
+    return {
+      id: `sub_date_divider_${currentTime.getTime()}`,
+      type: 'sub-date-divider', // 🔧 NEW: 副日期分割线类型
+      subType: breakType, // 'new-day-session', 'morning-session', 'afternoon-session'
+      timeGap,
+      displayText: this.formatSubDateDivider(lastTime, currentTime, breakType),
+      metadata: {
+        lastMessageTime: lastTime,
+        currentMessageTime: currentTime,
+        gapDuration: timeGap,
+        timeOfDay: this.getTimeOfDay(currentTime),
+        isNewDay: true
+      }
+    };
+  }
+
+  /**
    * 🎨 格式化日期分割线显示文本 - 具体月日+星期几格式
    */
   formatDateDivider(date) {
@@ -501,6 +544,63 @@ export class MessageSessionGrouper {
 
       default:
         return null;
+    }
+  }
+
+  /**
+   * 🕐 格式化副日期分割线显示文本
+   * 显示具体时分信息，如"9:30 AM - Morning Conversation Begins"
+   */
+  formatSubDateDivider(lastTime, currentTime, breakType) {
+    // 🎯 核心改进：使用第一条消息的具体时分作为副日期分割线显示
+    const timeOfDay = this.getTimeOfDay(currentTime);
+    const timeString = currentTime.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    switch (breakType) {
+      case 'session-start':
+        // 🔧 NEW: 显示具体时分 + 会话开始信息
+        return `${timeString} - ${timeOfDay} Conversation Begins`;
+
+      case 'new-day-session':
+        // 🔧 NEW: 跨日消息显示具体时分
+        return `${timeString} - ${timeOfDay} Session`;
+
+      case 'morning-session':
+        return `${timeString} - Morning Conversation`;
+
+      case 'afternoon-session':
+        return `${timeString} - Afternoon Discussion`;
+
+      case 'evening-session':
+        return `${timeString} - Evening Chat`;
+
+      default:
+        const hours = Math.floor((currentTime.getTime() - lastTime.getTime()) / (1000 * 60 * 60));
+        if (hours >= 12) {
+          return `${timeString} - ${timeOfDay} (After ${hours}h break)`;
+        }
+        return `${timeString} - ${timeOfDay} Conversation`;
+    }
+  }
+
+  /**
+   * 🌅 获取时间段信息
+   */
+  getTimeOfDay(date) {
+    const hour = date.getHours();
+
+    if (hour >= 5 && hour < 12) {
+      return 'Morning';
+    } else if (hour >= 12 && hour < 17) {
+      return 'Afternoon';
+    } else if (hour >= 17 && hour < 22) {
+      return 'Evening';
+    } else {
+      return 'Night';
     }
   }
 
@@ -592,6 +692,50 @@ export class MessageSessionGrouper {
     if (import.meta.env.DEV) {
       console.log('🧹 [MessageSessionGrouper] 资源已清理');
     }
+  }
+
+  /**
+   * 🔧 CRITICAL VERIFICATION: 确保每个主日期分割线的相邻下方都有副日期分割线
+   * 这是最终的保障机制，确保100%的主日期分割线都有对应的副日期分割线
+   */
+  ensureSubDateDividersFollowMainDividers(groupedMessages) {
+    const verifiedMessages = [];
+
+    for (let i = 0; i < groupedMessages.length; i++) {
+      const currentItem = groupedMessages[i];
+      verifiedMessages.push(currentItem);
+
+      // 🎯 核心逻辑：如果当前是主日期分割线
+      if (currentItem.type === 'date-divider') {
+        const nextItem = groupedMessages[i + 1];
+
+        // 检查下一个元素是否是副日期分割线
+        const hasSubDateDivider = nextItem && nextItem.type === 'sub-date-divider';
+
+        if (!hasSubDateDivider) {
+          // 🚨 没有副日期分割线！立即插入一个
+          const subDateDivider = this.createSubDateDivider(
+            currentItem.date,
+            currentItem.date,
+            currentItem.subType === 'new-day' ? 'new-day-session' : 'session-start'
+          );
+
+          verifiedMessages.push(subDateDivider);
+
+          if (import.meta.env.DEV) {
+            console.warn(`🔧 [MessageSessionGrouper] 自动插入副日期分割线 after main divider:`, currentItem.displayText);
+          }
+        }
+      }
+    }
+
+    if (import.meta.env.DEV) {
+      const mainDividers = verifiedMessages.filter(m => m.type === 'date-divider').length;
+      const subDividers = verifiedMessages.filter(m => m.type === 'sub-date-divider').length;
+      console.log(`📊 [MessageSessionGrouper] 验证完成: ${mainDividers} 个主日期分割线, ${subDividers} 个副日期分割线`);
+    }
+
+    return verifiedMessages;
   }
 }
 

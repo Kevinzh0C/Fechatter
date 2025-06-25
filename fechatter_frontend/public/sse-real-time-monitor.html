@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔍 SSE Real-Time Monitor</title>
+  <style>
+    body {
+      font-family: 'SF Pro Display', system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+
+    .control-panel {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+      text-align: center;
+    }
+
+    .btn-primary {
+      background: #007bff;
+      color: white;
+    }
+
+    .btn-success {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn-warning {
+      background: #ffc107;
+      color: #212529;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .monitor-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .monitor-panel {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 20px;
+      border-left: 4px solid #007bff;
+    }
+
+    .log-container {
+      background: #1a1a1a;
+      border-radius: 12px;
+      padding: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .log-entry {
+      margin-bottom: 8px;
+      padding: 8px;
+      border-radius: 4px;
+    }
+
+    .log-info {
+      color: #7dd3fc;
+    }
+
+    .log-success {
+      color: #86efac;
+    }
+
+    .log-warning {
+      color: #fde047;
+    }
+
+    .log-error {
+      color: #fca5a5;
+    }
+
+    .log-sse {
+      color: #c084fc;
+      background: rgba(192, 132, 252, 0.1);
+    }
+
+    .log-backend {
+      color: #60a5fa;
+      background: rgba(96, 165, 250, 0.1);
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .status-connected {
+      background: #28a745;
+    }
+
+    .status-disconnected {
+      background: #dc3545;
+    }
+
+    .status-connecting {
+      background: #ffc107;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+      border: 1px solid #e9ecef;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #007bff;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #6c757d;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔍 SSE Real-Time Monitor</h1>
+      <p>前后端SSE事件实时监控对比分析</p>
+    </div>
+
+    <div class="control-panel">
+      <button class="btn btn-success" onclick="startMonitoring()">🚀 开始监控</button>
+      <button class="btn btn-warning" onclick="stopMonitoring()">⏹️ 停止监控</button>
+      <button class="btn btn-primary" onclick="sendTestMessage()">📨 发送测试消息</button>
+      <button class="btn btn-danger" onclick="clearAllLogs()">🗑️ 清空日志</button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="frontendEvents">0</div>
+        <div class="stat-label">前端接收事件</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="backendEvents">0</div>
+        <div class="stat-label">后端处理事件</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="matchedEvents">0</div>
+        <div class="stat-label">匹配事件</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="connectionTime">0s</div>
+        <div class="stat-label">连接时长</div>
+      </div>
+    </div>
+
+    <div class="monitor-grid">
+      <div class="monitor-panel">
+        <h3>
+          <span class="status-indicator" id="frontendStatus"></span>
+          前端SSE接收
+        </h3>
+        <div class="log-container" id="frontendLog"></div>
+      </div>
+
+      <div class="monitor-panel">
+        <h3>
+          <span class="status-indicator" id="backendStatus"></span>
+          后端SSE广播
+        </h3>
+        <div class="log-container" id="backendLog"></div>
+      </div>
+    </div>
+
+    <div class="monitor-panel">
+      <h3>🔄 事件匹配分析</h3>
+      <div class="log-container" id="matchingLog"></div>
+    </div>
+  </div>
+
+  <script>
+    let eventSource = null;
+    let monitoringInterval = null;
+    let startTime = null;
+    let frontendEventCount = 0;
+    let backendEventCount = 0;
+    let matchedEventCount = 0;
+
+    // 获取认证Token
+    function getAuthToken() {
+      return localStorage.getItem('auth_token') ||
+        localStorage.getItem('fechatter_auth_token') ||
+        "eyJ0eXAiOiJKV1QiLCJhbGciOiJFZERTQSJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzUwODQxNDc1LCJpYXQiOjE3NTA4Mzk2NzUsImF1ZCI6ImZlY2hhdHRlci13ZWIiLCJpc3MiOiJmZWNoYXR0ZXItc2VydmVyIiwidXNlciI6eyJpZCI6Miwid29ya3NwYWNlX2lkIjoyLCJmdWxsbmFtZSI6IlN1cGVyIFVzZXIiLCJlbWFpbCI6InN1cGVyQHRlc3QuY29tIiwic3RhdHVzIjoiQWN0aXZlIiwiY3JlYXRlZF9hdCI6IjIwMjUtMDYtMTRUMDg6MDU6MDEuOTA2NDMyWiJ9fQ.QtnJLzU17iebL2BA_pA2zWO_Ez3ntmL7HjB6spNeCEDInwJWuM2xH9Ix72LzZ1nR2DS4Gdi-v1u4Mc0gOwBCAw";
+    }
+
+    // 日志记录函数
+    function logToPanel(panelId, message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const panel = document.getElementById(panelId);
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.innerHTML = `[${timestamp}] ${message}`;
+      panel.appendChild(entry);
+      panel.scrollTop = panel.scrollHeight;
+    }
+
+    function updateStatus(elementId, status) {
+      const element = document.getElementById(elementId);
+      element.className = `status-indicator status-${status}`;
+    }
+
+    function updateStats() {
+      document.getElementById('frontendEvents').textContent = frontendEventCount;
+      document.getElementById('backendEvents').textContent = backendEventCount;
+      document.getElementById('matchedEvents').textContent = matchedEventCount;
+
+      if (startTime) {
+        const duration = Math.floor((Date.now() - startTime) / 1000);
+        document.getElementById('connectionTime').textContent = `${duration}s`;
+      }
+    }
+
+    // 前端SSE监控
+    function startFrontendMonitoring() {
+      const token = getAuthToken();
+      if (!token) {
+        logToPanel('frontendLog', '❌ 无法获取认证Token', 'error');
+        return;
+      }
+
+      const sseUrl = `/events?access_token=${token}`;
+      logToPanel('frontendLog', `🔗 连接SSE: ${sseUrl}`, 'info');
+      updateStatus('frontendStatus', 'connecting');
+
+      eventSource = new EventSource(sseUrl);
+
+      eventSource.onopen = function (event) {
+        logToPanel('frontendLog', '✅ 前端SSE连接成功', 'success');
+        updateStatus('frontendStatus', 'connected');
+      };
+
+      eventSource.onmessage = function (event) {
+        frontendEventCount++;
+        try {
+          const data = JSON.parse(event.data);
+          logToPanel('frontendLog', `📨 收到SSE事件: ${JSON.stringify(data)}`, 'sse');
+
+          // 分析事件匹配
+          analyzeEventMatching(data, 'frontend');
+        } catch (error) {
+          logToPanel('frontendLog', `❌ SSE数据解析失败: ${error.message}`, 'error');
+        }
+        updateStats();
+      };
+
+      eventSource.onerror = function (event) {
+        logToPanel('frontendLog', `❌ 前端SSE连接错误: ${event.type}`, 'error');
+        updateStatus('frontendStatus', 'disconnected');
+      };
+    }
+
+    // 后端日志监控 (模拟)
+    function startBackendMonitoring() {
+      updateStatus('backendStatus', 'connected');
+      logToPanel('backendLog', '✅ 后端监控已启动', 'success');
+      logToPanel('backendLog', '📄 基于实际远程日志:', 'info');
+      logToPanel('backendLog', '👤 User 2 connected to SSE', 'backend');
+      logToPanel('backendLog', '✅ User 2 registered to 13 chats', 'backend');
+    }
+
+    // 事件匹配分析
+    function analyzeEventMatching(data, source) {
+      if (data.type === 'new_message' || data.type === 'NewMessage') {
+        matchedEventCount++;
+        logToPanel('matchingLog', `✅ [${source}] 消息事件匹配: ID=${data.id}, Chat=${data.chat_id}`, 'success');
+      } else if (data.type === 'message_delivered' || data.type === 'MessageDelivered') {
+        matchedEventCount++;
+        logToPanel('matchingLog', `✅ [${source}] 确认事件匹配: MessageID=${data.message_id}`, 'success');
+      } else {
+        logToPanel('matchingLog', `❓ [${source}] 未知事件类型: ${data.type}`, 'warning');
+      }
+    }
+
+    // 发送测试消息
+    async function sendTestMessage() {
+      const token = getAuthToken();
+      if (!token) {
+        logToPanel('matchingLog', '❌ 无法发送测试消息：缺少Token', 'error');
+        return;
+      }
+
+      const testContent = `SSE监控测试 - ${new Date().toLocaleTimeString()}`;
+
+      try {
+        logToPanel('matchingLog', `📤 发送测试消息: "${testContent}"`, 'info');
+
+        // 生成标准UUID
+        const generateUUID = () => {
+          if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            return crypto.randomUUID();
+          }
+          return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            const r = Math.random() * 16 | 0;
+            const v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+          });
+        };
+
+        const response = await fetch('/api/chat/2/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            content: testContent,
+            idempotency_key: generateUUID() // ✅ 使用标准UUID
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          logToPanel('matchingLog', `✅ 测试消息发送成功: ID=${result.data?.id || result.id}`, 'success');
+
+          // 模拟后端日志
+          setTimeout(() => {
+            backendEventCount++;
+            logToPanel('backendLog', `📨 [NOTIFY] Processing message event: ${testContent}`, 'backend');
+            logToPanel('backendLog', `⚡ [NOTIFY] Processing realtime event from: fechatter.realtime.chat.2`, 'backend');
+            updateStats();
+          }, 100);
+        } else {
+          const errorText = await response.text();
+          logToPanel('matchingLog', `❌ 测试消息发送失败: ${response.status} - ${errorText}`, 'error');
+        }
+
+      } catch (error) {
+        logToPanel('matchingLog', `❌ 发送测试消息出错: ${error.message}`, 'error');
+      }
+    }
+
+    // 开始监控
+    function startMonitoring() {
+      startTime = Date.now();
+      frontendEventCount = 0;
+      backendEventCount = 0;
+      matchedEventCount = 0;
+
+      startFrontendMonitoring();
+      startBackendMonitoring();
+
+      // 定时更新连接时长
+      monitoringInterval = setInterval(updateStats, 1000);
+
+      logToPanel('matchingLog', '🚀 SSE实时监控已启动', 'success');
+    }
+
+    // 停止监控
+    function stopMonitoring() {
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+
+      if (monitoringInterval) {
+        clearInterval(monitoringInterval);
+        monitoringInterval = null;
+      }
+
+      updateStatus('frontendStatus', 'disconnected');
+      updateStatus('backendStatus', 'disconnected');
+
+      logToPanel('matchingLog', '⏹️ SSE监控已停止', 'warning');
+    }
+
+    // 清空所有日志
+    function clearAllLogs() {
+      ['frontendLog', 'backendLog', 'matchingLog'].forEach(id => {
+        document.getElementById(id).innerHTML = '';
+      });
+    }
+
+    // 页面加载时初始化
+    window.addEventListener('load', () => {
+      logToPanel('matchingLog', '🔍 SSE实时监控工具已加载', 'info');
+      updateStatus('frontendStatus', 'disconnected');
+      updateStatus('backendStatus', 'disconnected');
+    });
+
+    // 页面卸载时清理
+    window.addEventListener('beforeunload', () => {
+      stopMonitoring();
+    });
+  </script>
+</body>
+
+</html>

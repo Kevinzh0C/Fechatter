@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Raw SSE Event Monitor - Fechatter</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .header {
+      background: #0d7377;
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .controls {
+      background: #2d2d30;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 4px;
+      margin: 5px;
+      font-weight: bold;
+    }
+
+    .connected {
+      background: #4caf50;
+      color: white;
+    }
+
+    .disconnected {
+      background: #f44336;
+      color: white;
+    }
+
+    .connecting {
+      background: #ff9800;
+      color: white;
+    }
+
+    button {
+      background: #007acc;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+
+    button:hover {
+      background: #005a9e;
+    }
+
+    .event-log {
+      background: #0c0c0c;
+      border: 1px solid #404040;
+      border-radius: 8px;
+      padding: 15px;
+      height: 600px;
+      overflow-y: auto;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .event-entry {
+      margin: 5px 0;
+      padding: 8px;
+      border-left: 3px solid #404040;
+      background: #1a1a1a;
+      border-radius: 4px;
+    }
+
+    .event-raw {
+      border-left-color: #17a2b8;
+    }
+
+    .event-parsed {
+      border-left-color: #28a745;
+    }
+
+    .event-error {
+      border-left-color: #dc3545;
+    }
+
+    .event-system {
+      border-left-color: #6f42c1;
+    }
+
+    .timestamp {
+      color: #6c757d;
+      font-size: 11px;
+    }
+
+    .event-type {
+      color: #ffc107;
+      font-weight: bold;
+    }
+
+    .event-data {
+      color: #e9ecef;
+      margin-top: 5px;
+      white-space: pre-wrap;
+    }
+
+    .stats {
+      background: #2d2d30;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .stat-item {
+      display: inline-block;
+      margin: 5px 15px;
+      color: #17a2b8;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <h1>🔍 Raw SSE Event Monitor</h1>
+    <p>直接监控从服务器发送的所有SSE事件，无框架干扰</p>
+  </div>
+
+  <div class="controls">
+    <span>连接状态：</span>
+    <span id="connectionStatus" class="status disconnected">断开连接</span>
+    <button onclick="connect()">🔗 连接</button>
+    <button onclick="disconnect()">❌ 断开</button>
+    <button onclick="clearLog()">🗑️ 清除日志</button>
+    <button onclick="sendTestMessage()">📤 发送测试消息</button>
+  </div>
+
+  <div class="stats">
+    <span class="stat-item">总事件: <span id="totalEvents">0</span></span>
+    <span class="stat-item">成功解析: <span id="parsedEvents">0</span></span>
+    <span class="stat-item">解析失败: <span id="failedEvents">0</span></span>
+    <span class="stat-item">连接时长: <span id="connectionTime">0s</span></span>
+    <span class="stat-item">最后事件: <span id="lastEventTime">无</span></span>
+  </div>
+
+  <div class="event-log" id="eventLog">
+    <div class="event-entry event-system">
+      <div class="timestamp">[系统] 原始SSE监控器已启动</div>
+      <div class="event-data">等待连接...</div>
+    </div>
+  </div>
+
+  <script>
+    let eventSource = null;
+    let stats = {
+      total: 0,
+      parsed: 0,
+      failed: 0,
+      connectionStart: null
+    };
+
+    function log(message, type = 'system', data = null) {
+      const eventLog = document.getElementById('eventLog');
+      const entry = document.createElement('div');
+      entry.className = `event-entry event-${type}`;
+
+      const timestamp = new Date().toLocaleTimeString();
+      entry.innerHTML = `
+                <div class="timestamp">[${timestamp}] ${message}</div>
+                ${data ? `<div class="event-data">${data}</div>` : ''}
+            `;
+
+      eventLog.appendChild(entry);
+      eventLog.scrollTop = eventLog.scrollHeight;
+    }
+
+    function updateStats() {
+      document.getElementById('totalEvents').textContent = stats.total;
+      document.getElementById('parsedEvents').textContent = stats.parsed;
+      document.getElementById('failedEvents').textContent = stats.failed;
+
+      if (stats.connectionStart) {
+        const duration = Math.floor((Date.now() - stats.connectionStart) / 1000);
+        document.getElementById('connectionTime').textContent = duration + 's';
+      }
+    }
+
+    function getToken() {
+      // 尝试多种token获取方式
+      const methods = [
+        () => localStorage.getItem('auth_token'),
+        () => window.__PINIA__?.state?.value?.auth?.token,
+        () => window.tokenManager?.getAccessToken(),
+        () => sessionStorage.getItem('auth_token')
+      ];
+
+      for (const method of methods) {
+        try {
+          const token = method();
+          if (token) {
+            log(`Token获取成功: ${token.substring(0, 20)}...`, 'system');
+            return token;
+          }
+        } catch (e) {
+          // 继续尝试下一种方法
+        }
+      }
+
+      log('❌ 无法获取认证token', 'error');
+      return null;
+    }
+
+    function connect() {
+      if (eventSource) {
+        disconnect();
+      }
+
+      const token = getToken();
+      if (!token) {
+        return;
+      }
+
+      const url = `/events?access_token=${encodeURIComponent(token)}`;
+      log(`🔗 尝试连接SSE: ${url}`, 'system');
+
+      try {
+        eventSource = new EventSource(url);
+        stats.connectionStart = Date.now();
+
+        // 连接打开
+        eventSource.onopen = function (event) {
+          document.getElementById('connectionStatus').className = 'status connected';
+          document.getElementById('connectionStatus').textContent = '已连接';
+          log('✅ SSE连接已建立', 'system');
+          log(`连接详情: ReadyState=${eventSource.readyState}, URL=${eventSource.url}`, 'system');
+        };
+
+        // 接收消息 - 这是关键！
+        eventSource.onmessage = function (event) {
+          stats.total++;
+          document.getElementById('lastEventTime').textContent = new Date().toLocaleTimeString();
+
+          log(`📨 收到原始SSE事件`, 'raw', `原始数据:\n${event.data}`);
+
+          try {
+            const data = JSON.parse(event.data);
+            stats.parsed++;
+
+            log(`✅ 成功解析事件`, 'parsed',
+              `事件类型: ${data.type || '未知'}\n` +
+              `完整数据: ${JSON.stringify(data, null, 2)}`
+            );
+
+            // 特别检查NewMessage事件
+            if (data.type === 'NewMessage' || data.type === 'new_message') {
+              log(`🎯 检测到NewMessage事件!`, 'parsed',
+                `消息ID: ${data.id || data.message_id}\n` +
+                `发送者: ${data.sender_id}\n` +
+                `内容: ${data.content || data.message}\n` +
+                `聊天ID: ${data.chat_id}`
+              );
+            }
+
+          } catch (e) {
+            stats.failed++;
+            log(`❌ 解析事件失败: ${e.message}`, 'error', event.data);
+          }
+
+          updateStats();
+        };
+
+        // 监听所有事件类型
+        const eventTypes = ['message', 'NewMessage', 'new_message', 'MessageDelivered', 'message_delivered',
+          'TypingStatus', 'typing_status', 'UserPresence', 'user_presence', 'ping'];
+
+        eventTypes.forEach(eventType => {
+          eventSource.addEventListener(eventType, function (event) {
+            log(`📡 收到${eventType}事件`, 'raw', event.data);
+          });
+        });
+
+        // 连接错误
+        eventSource.onerror = function (event) {
+          document.getElementById('connectionStatus').className = 'status disconnected';
+          document.getElementById('connectionStatus').textContent = '连接错误';
+
+          log(`❌ SSE连接错误`, 'error',
+            `ReadyState: ${eventSource ? eventSource.readyState : 'null'}\n` +
+            `错误详情: ${JSON.stringify(event, null, 2)}`
+          );
+        };
+
+      } catch (e) {
+        log(`❌ 创建EventSource失败: ${e.message}`, 'error');
+      }
+    }
+
+    function disconnect() {
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+        stats.connectionStart = null;
+      }
+
+      document.getElementById('connectionStatus').className = 'status disconnected';
+      document.getElementById('connectionStatus').textContent = '断开连接';
+      log('🔌 SSE连接已断开', 'system');
+    }
+
+    function clearLog() {
+      document.getElementById('eventLog').innerHTML = '';
+      stats = { total: 0, parsed: 0, failed: 0, connectionStart: stats.connectionStart };
+      updateStats();
+    }
+
+    function sendTestMessage() {
+      log('📤 尝试发送测试消息...', 'system');
+
+      // 尝试通过chat store发送消息
+      if (window.chatStore && window.chatStore.sendMessage) {
+        const testMessage = `Raw SSE Test ${Date.now()}`;
+        window.chatStore.sendMessage(testMessage)
+          .then(result => {
+            log(`✅ 测试消息发送成功`, 'system',
+              `消息ID: ${result.message?.id}\n` +
+              `内容: ${testMessage}\n` +
+              `现在监听后端的SSE事件...`
+            );
+          })
+          .catch(error => {
+            log(`❌ 测试消息发送失败: ${error.message}`, 'error');
+          });
+      } else {
+        log('❌ ChatStore不可用，无法发送测试消息', 'error');
+      }
+    }
+
+    // 自动连接
+    document.addEventListener('DOMContentLoaded', function () {
+      log('🚀 Raw SSE监控器已加载', 'system');
+      updateStats();
+
+      // 如果有token，自动连接
+      setTimeout(() => {
+        if (getToken()) {
+          connect();
+        }
+      }, 1000);
+    });
+
+    // 更新连接时长
+    setInterval(updateStats, 1000);
+
+    // 页面卸载时断开连接
+    window.addEventListener('beforeunload', disconnect);
+  </script>
+</body>
+
+</html>

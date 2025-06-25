@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MessageInput Diagnosis</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #000;
+      color: #0f0;
+      padding: 10px;
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 500px;
+      height: 100vh;
+      z-index: 999999;
+      overflow-y: auto;
+      font-size: 12px;
+      border-left: 2px solid #0f0;
+    }
+
+    .result {
+      margin: 5px 0;
+      padding: 3px;
+      border-left: 3px solid;
+    }
+
+    .success {
+      border-color: #0f0;
+      color: #0f0;
+    }
+
+    .error {
+      border-color: #f00;
+      color: #f00;
+    }
+
+    .warning {
+      border-color: #ff0;
+      color: #ff0;
+    }
+
+    .info {
+      border-color: #0ff;
+      color: #0ff;
+    }
+
+    button {
+      background: #333;
+      color: #0f0;
+      border: 1px solid #0f0;
+      padding: 5px;
+      margin: 2px;
+      cursor: pointer;
+    }
+
+    .highlight {
+      outline: 3px solid #f0f !important;
+      background: rgba(255, 0, 255, 0.2) !important;
+    }
+  </style>
+</head>
+
+<body>
+  <h3>🔍 MessageInput Diagnosis</h3>
+  <button onclick="runDiagnosis()">🔍 Run Diagnosis</button>
+  <button onclick="highlightElements()">�� Highlight</button>
+  <button onclick="checkCSS()">🎨 Check CSS</button>
+  <button onclick="injectMessageInput()">🔧 Inject</button>
+  <div id="results"></div>
+
+  <script>
+    function log(type, message) {
+      const div = document.createElement('div');
+      div.className = `result ${type}`;
+      div.textContent = message;
+      document.getElementById('results').appendChild(div);
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+
+    function clearResults() {
+      document.getElementById('results').innerHTML = '';
+    }
+
+    function runDiagnosis() {
+      clearResults();
+      log('info', '🔍 Starting MessageInput diagnosis...');
+
+      // 1. Check Vue app
+      const vueApp = document.querySelector('#app');
+      if (vueApp) {
+        log('success', '✅ Vue app found');
+        log('info', `Vue app children: ${vueApp.children.length}`);
+      } else {
+        log('error', '❌ Vue app not found');
+        return;
+      }
+
+      // 2. Check Chat view
+      const chatContainer = document.querySelector('.chat-view-container, [class*="chat"], .main-content-container');
+      if (chatContainer) {
+        log('success', '✅ Chat container found');
+        log('info', `Chat classes: ${chatContainer.className}`);
+        log('info', `Chat children: ${chatContainer.children.length}`);
+      } else {
+        log('error', '❌ Chat container not found');
+      }
+
+      // 3. Check input container
+      const inputContainer = document.querySelector('.input-container');
+      if (inputContainer) {
+        log('success', '✅ Input container found');
+        log('info', `Input container children: ${inputContainer.children.length}`);
+
+        const style = window.getComputedStyle(inputContainer);
+        log('info', `Input container display: ${style.display}`);
+        log('info', `Input container visibility: ${style.visibility}`);
+        log('info', `Input container height: ${style.height}`);
+
+        // Check children
+        Array.from(inputContainer.children).forEach((child, index) => {
+          log('info', `Child ${index}: ${child.tagName}.${child.className}`);
+        });
+      } else {
+        log('error', '❌ Input container not found');
+      }
+
+      // 4. Check MessageInput component
+      const messageInputSelectors = [
+        '.message-input',
+        '[class*="message-input"]',
+        'div[data-v-*][class*="message"]',
+        'textarea[placeholder*="message"]',
+        'textarea[placeholder*="Type"]'
+      ];
+
+      let foundMessageInput = false;
+      messageInputSelectors.forEach(selector => {
+        try {
+          const elements = document.querySelectorAll(selector);
+          if (elements.length > 0) {
+            foundMessageInput = true;
+            log('success', `✅ Found ${elements.length} elements with selector: ${selector}`);
+
+            elements.forEach((el, index) => {
+              const style = window.getComputedStyle(el);
+              const rect = el.getBoundingClientRect();
+              log('info', `Element ${index}: ${el.tagName}.${el.className}`);
+              log('info', `  Display: ${style.display}, Visibility: ${style.visibility}`);
+              log('info', `  Size: ${rect.width}x${rect.height}, Position: ${rect.left},${rect.top}`);
+              log('info', `  Z-index: ${style.zIndex}, Opacity: ${style.opacity}`);
+            });
+          }
+        } catch (e) {
+          log('error', `Error checking selector ${selector}: ${e.message}`);
+        }
+      });
+
+      if (!foundMessageInput) {
+        log('error', '❌ No MessageInput elements found with any selector');
+      }
+
+      // 5. Check for Vue component instances
+      const allElements = document.querySelectorAll('*');
+      let vueComponentsFound = 0;
+      allElements.forEach(el => {
+        if (el.__vueParentComponent || el.__vue__ || el._vnode) {
+          vueComponentsFound++;
+        }
+      });
+      log('info', `Vue components found: ${vueComponentsFound}`);
+
+      // 6. Check CSS compilation
+      const stylesheets = Array.from(document.styleSheets);
+      let messageInputCSSFound = false;
+      stylesheets.forEach(sheet => {
+        try {
+          if (sheet.href && sheet.href.includes('MessageInput')) {
+            messageInputCSSFound = true;
+            log('success', `✅ MessageInput CSS: ${sheet.href}`);
+          }
+        } catch (e) {
+          // CORS issues with external stylesheets
+        }
+      });
+
+      const styleTags = document.querySelectorAll('style[data-vite-dev-id*="MessageInput"]');
+      if (styleTags.length > 0) {
+        messageInputCSSFound = true;
+        log('success', `✅ MessageInput style tags: ${styleTags.length}`);
+      }
+
+      if (!messageInputCSSFound) {
+        log('warning', '⚠️ No MessageInput CSS detected');
+      }
+
+      // 7. Check for PostCSS errors
+      const hasErrors = Array.from(document.querySelectorAll('style')).some(style => {
+        return style.textContent.includes('postcss') || style.textContent.includes('error');
+      });
+
+      if (hasErrors) {
+        log('error', '❌ CSS compilation errors detected');
+      } else {
+        log('success', '✅ No obvious CSS errors');
+      }
+
+      log('info', '🔍 Diagnosis complete');
+    }
+
+    function highlightElements() {
+      // Remove previous highlights
+      document.querySelectorAll('.highlight').forEach(el => {
+        el.classList.remove('highlight');
+      });
+
+      const selectors = [
+        '.input-container',
+        '.message-input',
+        '[class*="message-input"]',
+        'textarea',
+        '.chat-content-container'
+      ];
+
+      let count = 0;
+      selectors.forEach(selector => {
+        document.querySelectorAll(selector).forEach(el => {
+          el.classList.add('highlight');
+          count++;
+        });
+      });
+
+      log('info', `🎯 Highlighted ${count} elements`);
+
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        document.querySelectorAll('.highlight').forEach(el => {
+          el.classList.remove('highlight');
+        });
+      }, 5000);
+    }
+
+    function checkCSS() {
+      clearResults();
+      log('info', '🎨 Checking CSS...');
+
+      // Test MessageInput styles
+      const testDiv = document.createElement('div');
+      testDiv.className = 'message-input';
+      testDiv.style.position = 'absolute';
+      testDiv.style.top = '-9999px';
+      document.body.appendChild(testDiv);
+
+      const style = window.getComputedStyle(testDiv);
+      log('info', `.message-input computed styles:`);
+      log('info', `  display: ${style.display}`);
+      log('info', `  position: ${style.position}`);
+      log('info', `  visibility: ${style.visibility}`);
+      log('info', `  background: ${style.backgroundColor}`);
+      log('info', `  border: ${style.border}`);
+
+      document.body.removeChild(testDiv);
+
+      // Check for CSS variables
+      const rootStyle = getComputedStyle(document.documentElement);
+      const hasColorVars = rootStyle.getPropertyValue('--color-background') ||
+        rootStyle.getPropertyValue('--color-primary');
+
+      if (hasColorVars) {
+        log('success', '✅ CSS variables found');
+      } else {
+        log('warning', '⚠️ CSS variables missing');
+      }
+    }
+
+    function injectMessageInput() {
+      clearResults();
+      log('info', '🔧 Injecting test MessageInput...');
+
+      const inputContainer = document.querySelector('.input-container');
+      if (!inputContainer) {
+        log('error', '❌ No input container found to inject into');
+        return;
+      }
+
+      // Create test MessageInput HTML
+      const testHTML = `
+        <div class="message-input test-injected" style="
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          padding: 16px;
+          background: #ffffff;
+          border: 2px solid #ff0000;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        ">
+          <div style="
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 6px;
+          ">
+            <button style="
+              background: #007bff;
+              color: white;
+              border: none;
+              padding: 8px 12px;
+              border-radius: 4px;
+              cursor: pointer;
+            ">📁</button>
+            
+            <textarea placeholder="Type a message..." style="
+              flex: 1;
+              border: 1px solid #ddd;
+              border-radius: 4px;
+              padding: 8px;
+              min-height: 40px;
+              resize: vertical;
+              font-family: inherit;
+            "></textarea>
+            
+            <button style="
+              background: #28a745;
+              color: white;
+              border: none;
+              padding: 8px 12px;
+              border-radius: 4px;
+              cursor: pointer;
+            ">✈️</button>
+          </div>
+          <div style="
+            color: #ff0000;
+            font-weight: bold;
+            text-align: center;
+            font-size: 12px;
+          ">
+            🔧 TEST INJECTED MessageInput - Remove after testing
+          </div>
+        </div>
+      `;
+
+      inputContainer.innerHTML = testHTML;
+      log('success', '✅ Test MessageInput injected');
+      log('info', 'Check the page - you should see a red-bordered input area');
+    }
+
+    // Auto-run on load
+    window.addEventListener('load', () => {
+      setTimeout(runDiagnosis, 1000);
+    });
+
+    // Console helpers
+    window.messageInputDiag = {
+      run: runDiagnosis,
+      highlight: highlightElements,
+      css: checkCSS,
+      inject: injectMessageInput
+    };
+
+    console.log('🔍 MessageInput Diagnosis loaded');
+    console.log('Available: messageInputDiag.run(), messageInputDiag.highlight(), messageInputDiag.css(), messageInputDiag.inject()');
+  </script>
+</body>
+
+</html>

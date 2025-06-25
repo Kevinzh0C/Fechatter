@@ -2,7 +2,7 @@ import type { RouterMiddleware } from '../types';
 
 const DEFAULT_TITLE = 'Fechatter';
 
-export const titleMiddleware: RouterMiddleware = async (to, from, next) => {
+export const titleMiddleware: RouterMiddleware = async (to, _from, next) => {
   // 设置页面标题
   const title = to.meta?.title;
   if (title) {

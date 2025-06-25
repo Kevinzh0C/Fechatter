@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Token Consistency Diagnostic</title>
+  <style>
+    body {
+      font-family: 'Monaco', monospace;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      padding: 20px;
+    }
+
+    .container {
+      background: #2d2d2d;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 10px 0;
+    }
+
+    .header {
+      background: #667eea;
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .status {
+      padding: 10px;
+      border-radius: 4px;
+      margin: 5px 0;
+      font-weight: bold;
+    }
+
+    .success {
+      background: #2d5a27;
+      color: #90ee90;
+    }
+
+    .warning {
+      background: #5a4a27;
+      color: #ffa500;
+    }
+
+    .error {
+      background: #5a2727;
+      color: #ff6b6b;
+    }
+
+    .code {
+      background: #1e1e1e;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+    }
+
+    button {
+      background: #00d4aa;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <h1>🔍 Token Consistency Diagnostic</h1>
+    <p>Check if all frontend systems use the same auth token</p>
+  </div>
+
+  <div class="container">
+    <h2>🎫 Token Sources Comparison</h2>
+    <button onclick="checkTokenConsistency()">Check Token Consistency</button>
+    <button onclick="fixTokenInconsistency()">Fix Token Issues</button>
+    <div id="tokenResults"></div>
+  </div>
+
+  <div class="container">
+    <h2>🔌 SSE Connection Verification</h2>
+    <button onclick="testSSEWithDifferentTokens()">Test SSE with All Token Sources</button>
+    <div id="sseResults"></div>
+  </div>
+
+  <script>
+    function log(containerId, message, type = 'info') {
+      const container = document.getElementById(containerId);
+      const className = type === 'error' ? 'error' : type === 'warning' ? 'warning' : type === 'success' ? 'success' : 'status';
+      const icon = type === 'error' ? '❌' : type === 'warning' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
+      container.innerHTML += `<div class="${className}">${icon} ${message}</div>`;
+    }
+
+    async function checkTokenConsistency() {
+      const container = document.getElementById('tokenResults');
+      container.innerHTML = '<div class="status">🔍 Checking token consistency...</div>';
+
+      try {
+        // 1. Check localStorage
+        const authToken = localStorage.getItem('auth_token');
+        const fechatterToken = localStorage.getItem('fechatter_access_token');
+        const accessToken = localStorage.getItem('access_token');
+
+        log('tokenResults', `localStorage auth_token: ${authToken ? authToken.substring(0, 30) + '...' : 'NOT FOUND'}`, authToken ? 'success' : 'error');
+        log('tokenResults', `localStorage fechatter_access_token: ${fechatterToken ? fechatterToken.substring(0, 30) + '...' : 'NOT FOUND'}`, fechatterToken ? 'warning' : 'info');
+        log('tokenResults', `localStorage access_token: ${accessToken ? accessToken.substring(0, 30) + '...' : 'NOT FOUND'}`, accessToken ? 'warning' : 'info');
+
+        // 2. Check if tokenManager exists and get its token
+        let tokenManagerToken = null;
+        try {
+          // Try to access tokenManager if it exists
+          if (window.tokenManager) {
+            tokenManagerToken = window.tokenManager.getAccessToken();
+          } else if (typeof require !== 'undefined') {
+            // Try importing tokenManager
+            const { default: tokenManager } = await import('/src/services/tokenManager.js');
+            tokenManagerToken = tokenManager.getAccessToken();
+          }
+        } catch (e) {
+          log('tokenResults', `tokenManager access failed: ${e.message}`, 'warning');
+        }
+
+        log('tokenResults', `tokenManager token: ${tokenManagerToken ? tokenManagerToken.substring(0, 30) + '...' : 'NOT ACCESSIBLE'}`, tokenManagerToken ? 'success' : 'warning');
+
+        // 3. Check Pinia auth store if accessible
+        let authStoreToken = null;
+        try {
+          if (window.__PINIA__ && window.__PINIA__.state && window.__PINIA__.state.value.auth) {
+            // Try to access Pinia auth store
+            const authState = window.__PINIA__.state.value.auth;
+            authStoreToken = authState.token || 'No token in auth state';
+          }
+        } catch (e) {
+          log('tokenResults', `Pinia auth store access failed: ${e.message}`, 'warning');
+        }
+
+        log('tokenResults', `Pinia authStore token: ${authStoreToken || 'NOT ACCESSIBLE'}`, authStoreToken ? 'success' : 'warning');
+
+        // 4. Compare tokens for consistency
+        const tokens = [authToken, tokenManagerToken, authStoreToken].filter(t => t && t !== 'NOT ACCESSIBLE' && t !== 'No token in auth state');
+        const uniqueTokens = [...new Set(tokens)];
+
+        if (uniqueTokens.length === 0) {
+          log('tokenResults', 'CRITICAL: No valid tokens found in any system!', 'error');
+        } else if (uniqueTokens.length === 1) {
+          log('tokenResults', `✅ TOKEN CONSISTENCY: All systems use the same token`, 'success');
+          log('tokenResults', `Token preview: ${uniqueTokens[0].substring(0, 40)}...`, 'success');
+        } else {
+          log('tokenResults', `❌ TOKEN INCONSISTENCY: Found ${uniqueTokens.length} different tokens!`, 'error');
+          uniqueTokens.forEach((token, index) => {
+            log('tokenResults', `Token ${index + 1}: ${token.substring(0, 40)}...`, 'error');
+          });
+        }
+
+        // 5. Check token format
+        if (authToken) {
+          const parts = authToken.split('.');
+          if (parts.length === 3) {
+            log('tokenResults', `✅ Token format: Valid JWT (3 parts)`, 'success');
+            try {
+              const payload = JSON.parse(atob(parts[1]));
+              const exp = payload.exp * 1000; // Convert to milliseconds
+              const now = Date.now();
+
+              if (exp > now) {
+                const remainingTime = Math.floor((exp - now) / 1000 / 60); // Minutes
+                log('tokenResults', `✅ Token expiry: Valid for ${remainingTime} more minutes`, 'success');
+              } else {
+                log('tokenResults', `❌ Token expiry: EXPIRED!`, 'error');
+              }
+            } catch (e) {
+              log('tokenResults', `⚠️ Token payload: Cannot decode (${e.message})`, 'warning');
+            }
+          } else {
+            log('tokenResults', `❌ Token format: Invalid JWT (${parts.length} parts instead of 3)`, 'error');
+          }
+        }
+
+      } catch (error) {
+        log('tokenResults', `Error checking tokens: ${error.message}`, 'error');
+      }
+    }
+
+    async function testSSEWithDifferentTokens() {
+      const container = document.getElementById('sseResults');
+      container.innerHTML = '<div class="status">🔌 Testing SSE with different token sources...</div>';
+
+      const tokens = {
+        'localStorage auth_token': localStorage.getItem('auth_token'),
+        'localStorage fechatter_access_token': localStorage.getItem('fechatter_access_token'),
+        'localStorage access_token': localStorage.getItem('access_token')
+      };
+
+      for (const [source, token] of Object.entries(tokens)) {
+        if (!token) {
+          log('sseResults', `${source}: No token available`, 'warning');
+          continue;
+        }
+
+        try {
+          log('sseResults', `Testing SSE with ${source}...`, 'info');
+
+          const sseUrl = `/events?access_token=${encodeURIComponent(token)}`;
+          const eventSource = new EventSource(sseUrl);
+
+          await new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+              eventSource.close();
+              log('sseResults', `${source}: Connection timeout (10s)`, 'error');
+              resolve();
+            }, 10000);
+
+            eventSource.onopen = () => {
+              clearTimeout(timeout);
+              eventSource.close();
+              log('sseResults', `${source}: ✅ SSE connection successful!`, 'success');
+              resolve();
+            };
+
+            eventSource.onerror = () => {
+              clearTimeout(timeout);
+              eventSource.close();
+              log('sseResults', `${source}: ❌ SSE connection failed`, 'error');
+              resolve();
+            };
+          });
+
+        } catch (error) {
+          log('sseResults', `${source}: Error - ${error.message}`, 'error');
+        }
+
+        // Small delay between tests
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      log('sseResults', 'SSE testing completed. Check which token sources work.', 'info');
+    }
+
+    async function fixTokenInconsistency() {
+      const container = document.getElementById('tokenResults');
+
+      try {
+        // Get the primary token (auth_token from localStorage)
+        const primaryToken = localStorage.getItem('auth_token');
+
+        if (!primaryToken) {
+          log('tokenResults', '❌ Cannot fix: No primary auth_token found', 'error');
+          return;
+        }
+
+        log('tokenResults', '🔧 Fixing token inconsistency...', 'info');
+
+        // Sync all localStorage token keys to the primary token
+        localStorage.setItem('fechatter_access_token', primaryToken);
+        localStorage.setItem('access_token', primaryToken);
+
+        // Try to update tokenManager if accessible
+        try {
+          if (window.tokenManager && window.tokenManager.setTokens) {
+            window.tokenManager.setTokens({
+              accessToken: primaryToken,
+              refreshToken: primaryToken,
+              expiresAt: Date.now() + (3600 * 1000) // 1 hour default
+            });
+            log('tokenResults', '✅ TokenManager synchronized', 'success');
+          }
+        } catch (e) {
+          log('tokenResults', `⚠️ TokenManager sync failed: ${e.message}`, 'warning');
+        }
+
+        // Force Pinia state update if possible
+        try {
+          if (window.__PINIA__ && window.__PINIA__.state && window.__PINIA__.state.value.auth) {
+            window.__PINIA__.state.value.auth.token = primaryToken;
+            log('tokenResults', '✅ Pinia auth store synchronized', 'success');
+          }
+        } catch (e) {
+          log('tokenResults', `⚠️ Pinia sync failed: ${e.message}`, 'warning');
+        }
+
+        log('tokenResults', '✅ Token synchronization completed!', 'success');
+        log('tokenResults', 'Please re-run the consistency check to verify.', 'info');
+
+      } catch (error) {
+        log('tokenResults', `❌ Fix failed: ${error.message}`, 'error');
+      }
+    }
+
+    // Auto-run on page load
+    window.addEventListener('load', () => {
+      setTimeout(checkTokenConsistency, 1000);
+    });
+  </script>
+</body>
+
+</html>

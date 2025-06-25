@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MessageInput Fix Verification</title>
+    <style>
+        body {
+            font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+            line-height: 1.6;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .title {
+            color: #1f2937;
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            font-size: 14px;
+            margin: 8px 0 0 0;
+        }
+
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+
+        .section-title {
+            color: #374151;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 15px 0;
+        }
+
+        .test-result {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .test-result.pass {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .test-result.fail {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .test-result.info {
+            background: #f0f9ff;
+            color: #0369a1;
+            border: 1px solid #bae6fd;
+        }
+
+        .status-icon {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        .monitor-section {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .fix-status {
+            background: #fffbeb;
+            border: 1px solid #fbbf24;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .fix-status h3 {
+            color: #92400e;
+            margin: 0 0 10px 0;
+        }
+
+        .fix-points {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0 0 0;
+        }
+
+        .fix-points li {
+            background: #fef3c7;
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            border-left: 3px solid #f59e0b;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">🔧 MessageInput修复验证</h1>
+            <p class="subtitle">检查条件渲染、NaN API请求、和状态同步修复</p>
+        </div>
+
+        <div class="fix-status">
+            <h3>🎯 已实施修复：</h3>
+            <ul class="fix-points">
+                <li><strong>initChatId()验证:</strong> 检查 !isNaN(parseInt(routeId)) 防止NaN设置</li>
+                <li><strong>watch验证:</strong> route.params.id变化时使用相同验证逻辑</li>
+                <li><strong>onMounted验证:</strong> 组件挂载时验证chatId有效性</li>
+                <li><strong>条件渲染:</strong> v-if="currentChatId" 确保只在有效ID时渲染</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2 class="section-title">🚨 NaN API请求检测</h2>
+            <button onclick="startAPIMonitoring()">开始监控API请求</button>
+            <button onclick="stopAPIMonitoring()">停止监控</button>
+            <div id="apiResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h2 class="section-title">🔍 DOM元素存在检查</h2>
+            <button onclick="checkDOMElements()">检查MessageInput组件</button>
+            <div id="domResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h2 class="section-title">📊 实时聊天导航测试</h2>
+            <button onclick="testChatNavigation()">测试聊天导航</button>
+            <div id="navigationResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h2 class="section-title">💻 控制台日志监控</h2>
+            <button onclick="startConsoleMonitoring()">开始监控控制台</button>
+            <button onclick="stopConsoleMonitoring()">停止监控</button>
+            <div id="consoleResults"></div>
+        </div>
+    </div>
+
+    <script>
+        let apiMonitoring = false;
+        let consoleMonitoring = false;
+        let nanRequestCount = 0;
+        let validRequestCount = 0;
+        let originalFetch = window.fetch;
+        let originalConsoleLog = console.log;
+        let originalConsoleWarn = console.warn;
+        let originalConsoleError = console.error;
+
+        function log(container, message, type = 'info') {
+            const result = document.createElement('div');
+            result.className = `test-result ${type}`;
+            result.innerHTML = `
+                <span class="status-icon">${type === 'pass' ? '✅' : type === 'fail' ? '❌' : 'ℹ️'}</span>
+                <span>${message}</span>
+            `;
+            container.appendChild(result);
+        }
+
+        function logMonitor(container, data) {
+            const monitor = document.createElement('div');
+            monitor.className = 'monitor-section';
+            monitor.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+            container.appendChild(monitor);
+        }
+
+        function startAPIMonitoring() {
+            if (apiMonitoring) return;
+
+            apiMonitoring = true;
+            nanRequestCount = 0;
+            validRequestCount = 0;
+
+            const container = document.getElementById('apiResults');
+            container.innerHTML = '';
+            log(container, '开始监控API请求...', 'info');
+
+            // 拦截fetch请求
+            window.fetch = function (...args) {
+                const url = args[0];
+
+                if (typeof url === 'string') {
+                    const timestamp = new Date().toLocaleTimeString();
+
+                    if (url.includes('/chat/NaN/') || url.includes('chatId=NaN')) {
+                        nanRequestCount++;
+                        log(container, `❌ 发现NaN请求 [${timestamp}]: ${url}`, 'fail');
+                        logMonitor(container, `NaN请求详情: ${url}`);
+                    } else if (url.includes('/chat/') || url.includes('chatId=')) {
+                        validRequestCount++;
+                        log(container, `✅ 有效聊天请求 [${timestamp}]: ${url}`, 'pass');
+                    }
+                }
+
+                return originalFetch.apply(this, args);
+            };
+
+            log(container, 'API监控已启动，访问 /chat/2 进行测试', 'info');
+        }
+
+        function stopAPIMonitoring() {
+            if (!apiMonitoring) return;
+
+            apiMonitoring = false;
+            window.fetch = originalFetch;
+
+            const container = document.getElementById('apiResults');
+
+            log(container, `监控结束统计:`, 'info');
+            log(container, `• NaN请求: ${nanRequestCount} 次 ${nanRequestCount === 0 ? '(✅ 修复成功!)' : '(❌ 仍有问题)'}`,
+                nanRequestCount === 0 ? 'pass' : 'fail');
+            log(container, `• 有效请求: ${validRequestCount} 次`, 'info');
+        }
+
+        function checkDOMElements() {
+            const container = document.getElementById('domResults');
+            container.innerHTML = '';
+
+            // 检查当前页面是否在聊天页面
+            const currentPath = window.location.pathname;
+            log(container, `当前路径: ${currentPath}`, 'info');
+
+            if (!currentPath.includes('/chat/')) {
+                log(container, '请先导航到聊天页面 (如 /chat/2)', 'info');
+                return;
+            }
+
+            // 检查关键DOM元素
+            const tests = [
+                {
+                    selector: '[data-chat-id]',
+                    name: 'Chat容器'
+                },
+                {
+                    selector: '.message-input, .input-container',
+                    name: 'MessageInput容器'
+                },
+                {
+                    selector: 'textarea, input[type="text"]',
+                    name: '输入框元素'
+                },
+                {
+                    selector: '[class*="message"], [id*="message"]',
+                    name: '消息相关元素'
+                }
+            ];
+
+            tests.forEach(test => {
+                const element = document.querySelector(test.selector);
+                if (element) {
+                    log(container, `${test.name}: 存在`, 'pass');
+                    logMonitor(container, `元素详情: ${test.selector} -> ${element.tagName.toLowerCase()}`);
+                } else {
+                    log(container, `${test.name}: 不存在`, 'fail');
+                }
+            });
+
+            // 检查Vue应用状态
+            if (window.Vue || document.querySelector('[data-v-]')) {
+                log(container, 'Vue应用: 检测到Vue组件', 'pass');
+            } else {
+                log(container, 'Vue应用: 未检测到Vue组件', 'fail');
+            }
+        }
+
+        function testChatNavigation() {
+            const container = document.getElementById('navigationResults');
+            container.innerHTML = '';
+
+            log(container, '开始聊天导航测试...', 'info');
+
+            const testUrls = [
+                '/chat/2',
+                '/chat/invalid',
+                '/chat/999',
+                '/chat/',
+                '/chat/abc'
+            ];
+
+            testUrls.forEach((url, index) => {
+                setTimeout(() => {
+                    log(container, `测试 ${index + 1}: 导航到 ${url}`, 'info');
+
+                    // 检查是否会产生NaN请求
+                    const beforeCount = nanRequestCount;
+
+                    // 模拟导航（在iframe中或新标签页中）
+                    if (index === 0) {
+                        // 只测试有效URL
+                        window.location.href = url;
+                    } else {
+                        log(container, `模拟测试 ${url} - 预期应该被阻止`, 'info');
+                    }
+
+                }, index * 1000);
+            });
+        }
+
+        function startConsoleMonitoring() {
+            if (consoleMonitoring) return;
+
+            consoleMonitoring = true;
+            const container = document.getElementById('consoleResults');
+            container.innerHTML = '';
+            log(container, '开始监控控制台输出...', 'info');
+
+            // 拦截控制台输出
+            console.log = function (...args) {
+                const message = args.join(' ');
+                if (message.includes('NaN') || message.includes('Invalid') || message.includes('⚠️')) {
+                    log(container, `Console: ${message}`, message.includes('✅') ? 'pass' : 'fail');
+                }
+                return originalConsoleLog.apply(this, args);
+            };
+
+            console.warn = function (...args) {
+                const message = args.join(' ');
+                log(container, `Warning: ${message}`, 'fail');
+                return originalConsoleWarn.apply(this, args);
+            };
+
+            console.error = function (...args) {
+                const message = args.join(' ');
+                log(container, `Error: ${message}`, 'fail');
+                return originalConsoleError.apply(this, args);
+            };
+        }
+
+        function stopConsoleMonitoring() {
+            if (!consoleMonitoring) return;
+
+            consoleMonitoring = false;
+            console.log = originalConsoleLog;
+            console.warn = originalConsoleWarn;
+            console.error = originalConsoleError;
+
+            const container = document.getElementById('consoleResults');
+            log(container, '控制台监控已停止', 'info');
+        }
+
+        // 页面加载时自动开始基本检查
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                checkDOMElements();
+
+                // 如果在聊天页面，自动开始API监控
+                if (window.location.pathname.includes('/chat/')) {
+                    startAPIMonitoring();
+                }
+            }, 1000);
+        });
+
+        // 页面卸载时清理
+        window.addEventListener('beforeunload', () => {
+            stopAPIMonitoring();
+            stopConsoleMonitoring();
+        });
+    </script>
+</body>
+
+</html>

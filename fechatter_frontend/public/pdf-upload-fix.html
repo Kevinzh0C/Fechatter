@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF Upload Fix - Fechatter</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f0f2f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #e9ecef; }
+        .header h1 { color: #dc3545; margin-bottom: 10px; }
+        .fix-card { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .fix-card h3 { color: #495057; margin-top: 0; }
+        .btn { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; margin: 10px 5px; }
+        .btn:hover { background: #0056b3; }
+        .btn.success { background: #28a745; }
+        .btn.danger { background: #dc3545; }
+        .result { background: #1a202c; color: #e2e8f0; padding: 15px; border-radius: 6px; font-family: monospace; margin-top: 15px; max-height: 200px; overflow-y: auto; }
+        .success { color: #48bb78; }
+        .error { color: #f56565; }
+        .warning { color: #ed8936; }
+        .file-zone { border: 2px dashed #007bff; border-radius: 8px; padding: 30px; text-align: center; margin: 20px 0; cursor: pointer; background: #f8f9ff; }
+        .file-zone:hover { border-color: #0056b3; background: #e7f3ff; }
+        .status { display: inline-block; padding: 4px 8px; border-radius: 4px; color: white; font-weight: bold; margin-left: 10px; }
+        .status.pending { background: #6c757d; }
+        .status.testing { background: #ffc107; color: #000; }
+        .status.success { background: #28a745; }
+        .status.failed { background: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚨 PDF Upload Fix Tool</h1>
+            <p><strong>解决"400 Bad Request - Invalid boundary for multipart/form-data"错误</strong></p>
+        </div>
+
+        <!-- File Selection -->
+        <div class="fix-card">
+            <h3>📁 Step 1: 选择要测试的PDF文件</h3>
+            <div class="file-zone" onclick="document.getElementById('pdfFile').click()">
+                <div id="fileDisplay">点击选择PDF文件 (建议使用相同的"Learn Like Einstein.pdf")</div>
+                <input type="file" id="pdfFile" accept=".pdf" style="display: none;">
+            </div>
+        </div>
+
+        <!-- Quick Test -->
+        <div class="fix-card">
+            <h3>🧪 Step 2: 快速诊断测试</h3>
+            <p>运行快速测试来确定问题根源：</p>
+            <button class="btn" onclick="runQuickTest()" id="quickTestBtn">🚀 运行快速诊断</button>
+            <span id="quickTestStatus" class="status pending">等待测试</span>
+            <div class="result" id="quickTestResult" style="display: none;"></div>
+        </div>
+
+        <!-- Cache Fix -->
+        <div class="fix-card">
+            <h3>🔧 Step 3: 缓存清理 (最常见原因)</h3>
+            <p>清除浏览器缓存并强制刷新：</p>
+            <button class="btn success" onclick="clearCacheAndReload()">💨 清除缓存并刷新</button>
+            <p style="color: #6c757d; margin-top: 10px;">
+                <strong>手动操作：</strong> 按 Ctrl+Shift+R (Windows/Linux) 或 Cmd+Shift+R (Mac)
+            </p>
+        </div>
+
+        <!-- Smart Upload Test -->
+        <div class="fix-card">
+            <h3>🎯 Step 4: 智能上传测试</h3>
+            <p>使用修复后的智能推导系统测试上传：</p>
+            <button class="btn" onclick="testSmartUpload()" id="smartUploadBtn">🧠 测试智能上传</button>
+            <span id="smartUploadStatus" class="status pending">等待测试</span>
+            <div class="result" id="smartUploadResult" style="display: none;"></div>
+        </div>
+
+        <!-- Summary -->
+        <div class="fix-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h3 style="color: white;">�� 诊断结果</h3>
+            <div id="summary">请选择PDF文件并运行测试...</div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+
+        // File selection
+        document.getElementById('pdfFile').addEventListener('change', function(e) {
+            selectedFile = e.target.files[0];
+            if (selectedFile) {
+                const sizeStr = selectedFile.size > 1024*1024 ? 
+                    (selectedFile.size/1024/1024).toFixed(2) + 'MB' : 
+                    Math.round(selectedFile.size/1024) + 'KB';
+                document.getElementById('fileDisplay').innerHTML = 
+                    '✅ 已选择: ' + selectedFile.name + ' (' + sizeStr + ')';
+                
+                document.getElementById('quickTestBtn').disabled = false;
+                document.getElementById('smartUploadBtn').disabled = false;
+            }
+        });
+
+        function log(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            const time = new Date().toLocaleTimeString();
+            const className = type || 'info';
+            element.innerHTML += '<span class="' + className + '">[' + time + '] ' + message + '</span>\n';
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function setStatus(statusId, status, text) {
+            const element = document.getElementById(statusId);
+            element.className = 'status ' + status;
+            element.textContent = text;
+        }
+
+        function getAuthToken() {
+            return localStorage.getItem('auth_token') || 
+                   (JSON.parse(localStorage.getItem('auth') || '{}').tokens && 
+                    JSON.parse(localStorage.getItem('auth') || '{}').tokens.accessToken);
+        }
+
+        async function runQuickTest() {
+            if (!selectedFile) {
+                alert('请先选择PDF文件');
+                return;
+            }
+
+            setStatus('quickTestStatus', 'testing', '测试中...');
+            log('quickTestResult', '🚀 开始快速诊断测试...', 'warning');
+
+            try {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                
+                const token = getAuthToken();
+                const headers = {};
+                if (token) {
+                    headers['Authorization'] = 'Bearer ' + token;
+                    log('quickTestResult', '🔐 使用认证token', 'info');
+                } else {
+                    log('quickTestResult', '⚠️ 未找到认证token', 'warning');
+                }
+
+                log('quickTestResult', '📤 发送POST /api/files/single请求...', 'info');
+                log('quickTestResult', '🔧 重要：不设置Content-Type，让浏览器自动处理', 'warning');
+                
+                const response = await fetch('/api/files/single', {
+                    method: 'POST',
+                    headers: headers,
+                    body: formData
+                });
+
+                log('quickTestResult', '📨 响应状态: ' + response.status + ' ' + response.statusText, 'info');
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log('quickTestResult', '✅ 快速测试成功！PDF上传工作正常！', 'success');
+                    log('quickTestResult', '📊 响应数据: ' + JSON.stringify(data), 'success');
+                    setStatus('quickTestStatus', 'success', '✅ 成功');
+                    updateSummary('success', '快速测试成功！PDF上传功能正常工作。问题可能是界面缓存问题。');
+                } else {
+                    const errorText = await response.text();
+                    log('quickTestResult', '❌ 快速测试失败: ' + response.status, 'error');
+                    log('quickTestResult', '📊 错误详情: ' + errorText, 'error');
+                    setStatus('quickTestStatus', 'failed', '❌ 失败');
+                    
+                    if (response.status === 400 && errorText.includes('boundary')) {
+                        updateSummary('boundary_error', '发现boundary错误！这表明服务器端有问题，或者某个组件仍在错误设置Content-Type。');
+                    } else {
+                        updateSummary('other_error', '发现其他错误 (' + response.status + ')，需要进一步调查。');
+                    }
+                }
+            } catch (error) {
+                log('quickTestResult', '❌ 网络异常: ' + error.message, 'error');
+                setStatus('quickTestStatus', 'failed', '❌ 网络错误');
+                updateSummary('network_error', '网络连接问题，请检查服务器状态。');
+            }
+        }
+
+        async function testSmartUpload() {
+            if (!selectedFile) {
+                alert('请先选择PDF文件');
+                return;
+            }
+
+            setStatus('smartUploadStatus', 'testing', '测试中...');
+            log('smartUploadResult', '🧠 开始智能上传系统测试...', 'warning');
+
+            try {
+                // Simulate ChatService upload with progress
+                log('smartUploadResult', '📦 模拟ChatService.uploadFile调用...', 'info');
+                
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                
+                const token = getAuthToken();
+                const headers = {};
+                if (token) headers['Authorization'] = 'Bearer ' + token;
+
+                log('smartUploadResult', '🔧 使用智能推导系统 (无Content-Type设置)', 'warning');
+                
+                const response = await fetch('/api/files/single', {
+                    method: 'POST',
+                    headers: headers,
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log('smartUploadResult', '✅ 智能上传成功！修复生效！', 'success');
+                    log('smartUploadResult', '📊 上传结果: ' + JSON.stringify(data), 'success');
+                    setStatus('smartUploadStatus', 'success', '✅ 成功');
+                } else {
+                    const errorText = await response.text();
+                    log('smartUploadResult', '❌ 智能上传失败: ' + response.status, 'error');
+                    log('smartUploadResult', '📊 错误: ' + errorText, 'error');
+                    setStatus('smartUploadStatus', 'failed', '❌ 失败');
+                }
+            } catch (error) {
+                log('smartUploadResult', '❌ 智能上传异常: ' + error.message, 'error');
+                setStatus('smartUploadStatus', 'failed', '❌ 异常');
+            }
+        }
+
+        function clearCacheAndReload() {
+            if (confirm('这将清除缓存并刷新页面，是否继续？')) {
+                // Clear various caches
+                if ('caches' in window) {
+                    caches.keys().then(names => {
+                        names.forEach(name => caches.delete(name));
+                    });
+                }
+                
+                // Clear localStorage related to auth (keep it, just refresh)
+                // localStorage.clear(); // Don't clear all
+                
+                // Force reload with cache bypass
+                window.location.reload(true);
+            }
+        }
+
+        function updateSummary(type, message) {
+            const summary = document.getElementById('summary');
+            let icon = '';
+            
+            switch(type) {
+                case 'success':
+                    icon = '🎉';
+                    break;
+                case 'boundary_error':
+                    icon = '⚠️';
+                    break;
+                case 'other_error':
+                    icon = '❌';
+                    break;
+                case 'network_error':
+                    icon = '🌐';
+                    break;
+                default:
+                    icon = '🔍';
+            }
+            
+            summary.innerHTML = icon + ' <strong>诊断结果：</strong><br>' + message;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('quickTestBtn').disabled = true;
+            document.getElementById('smartUploadBtn').disabled = true;
+        });
+    </script>
+</body>
+</html>

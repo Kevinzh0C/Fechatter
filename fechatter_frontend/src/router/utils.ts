@@ -71,9 +71,9 @@ export class RouterPerformance {
   static endNavigation(routeName?: string): void {
     if (this.navigationStart > 0) {
       const duration = performance.now() - this.navigationStart;
-      
+
       if (import.meta.env.VITE_DEBUG === 'true') {
-        }ms`);
+        console.log(`Navigation to ${routeName} took ${duration.toFixed(2)}ms`);
       }
 
       // 上报性能数据到分析服务
@@ -93,7 +93,7 @@ export class RouterPerformance {
  * 路由守卫完成处理
  */
 export const setupRouterAfterHooks = (router: Router): void => {
-  router.afterEach((to, from, failure) => {
+  router.afterEach((to, _from, failure) => {
     // 完成进度条
     NProgress.done();
 
@@ -111,7 +111,7 @@ export const setupRouterAfterHooks = (router: Router): void => {
     // 处理导航失败
     if (failure) {
       console.error('Navigation failed:', failure);
-      
+
       // 上报错误
       if (window.gtag) {
         window.gtag('event', 'exception', {
@@ -126,7 +126,7 @@ export const setupRouterAfterHooks = (router: Router): void => {
   router.onError((error) => {
     console.error('Router error:', error);
     NProgress.done();
-    
+
     // 重定向到错误页面
     router.push('/error/500');
   });

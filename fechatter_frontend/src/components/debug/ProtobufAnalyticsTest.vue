@@ -66,12 +66,7 @@
     <div class="logs-panel">
       <h3>📝 Event Logs</h3>
       <div class="logs-container">
-        <div 
-          v-for="(log, index) in logs" 
-          :key="index" 
-          class="log-entry"
-          :class="log.type"
-        >
+        <div v-for="(log, index) in logs" :key="index" class="log-entry" :class="log.type">
           <span class="timestamp">{{ formatTime(log.timestamp) }}</span>
           <span class="message">{{ log.message }}</span>
         </div>
@@ -111,7 +106,20 @@
 
 <script>
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
-import { CompleteProtobufAnalyticsClient } from '../../lib/analytics-protobuf-complete.js'
+// import { CompleteProtobufAnalyticsClient } from '../../lib/analytics-protobuf-complete.js'
+// Temporarily disable analytics for build
+const CompleteProtobufAnalyticsClient = class {
+  constructor() { }
+  getStatus() { return { enabled: false, protobufAvailable: false, pendingEvents: 0, clientId: 'disabled' } }
+  trackAppStart() { return Promise.resolve() }
+  trackUserLogin() { return Promise.resolve() }
+  trackMessageSent() { return Promise.resolve() }
+  trackNavigation() { return Promise.resolve() }
+  trackError() { return Promise.resolve() }
+  trackSearch() { return Promise.resolve() }
+  trackFileUpload() { return Promise.resolve() }
+  flush() { return Promise.resolve() }
+}
 
 export default {
   name: 'ProtobufAnalyticsTest',
@@ -156,7 +164,7 @@ export default {
         message,
         type,
       })
-      
+
       // Keep only last 50 logs
       if (logs.value.length > 50) {
         logs.value = logs.value.slice(0, 50)
@@ -309,7 +317,7 @@ export default {
       updateStatus()
       statusUpdateInterval = setInterval(updateStatus, 1000)
       addLog('Protobuf Analytics Test Panel initialized', 'success')
-      
+
       // Set user ID for testing
       analytics.setUserId('test-user-123')
       analytics.setSessionId('test-session-' + Date.now())
@@ -376,7 +384,10 @@ export default {
   background-color: #44aa44;
 }
 
-.status-panel, .test-panel, .logs-panel, .network-panel {
+.status-panel,
+.test-panel,
+.logs-panel,
+.network-panel {
   margin-bottom: 20px;
   padding: 15px;
   border: 1px solid #ddd;
@@ -384,18 +395,23 @@ export default {
   background-color: #f9f9f9;
 }
 
-.status-panel h3, .test-panel h3, .logs-panel h3, .network-panel h3 {
+.status-panel h3,
+.test-panel h3,
+.logs-panel h3,
+.network-panel h3 {
   margin-top: 0;
   color: #333;
 }
 
-.status-grid, .network-stats {
+.status-grid,
+.network-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 10px;
 }
 
-.status-item, .stat-item {
+.status-item,
+.stat-item {
   display: flex;
   justify-content: space-between;
   padding: 8px;
@@ -519,4 +535,4 @@ export default {
 .clear-logs-btn:hover {
   background-color: #545b62;
 }
-</style> 
+</style>

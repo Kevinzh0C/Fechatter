@@ -226,7 +226,7 @@ export class MessageDisplayGuarantee {
     // Set timeout for verification - 使用统一的trackingId
     setTimeout(() => {
       this.verifyDisplayCompletion(trackingId);
-    }, 2000); // 2 second timeout
+    }, 800); // 🔧 OPTIMIZED: Reduced from 2000ms to 800ms for faster feedback
 
     return trackingId;
   }
@@ -548,6 +548,12 @@ export class MessageDisplayGuarantee {
     if (missingRatio === 1.0) {
       // If ALL messages are missing, this is definitely a system problem, not deleted messages
       console.warn(`🚨 [MessageDisplayGuarantee] ALL ${totalExpected} messages are missing in chat ${context.chatId} - this indicates a system issue`);
+
+      // 🚨 EMERGENCY AUTO-FIX: Try to auto-register visible messages
+      if (context.retryAttempts === 0) {
+        console.log(`🆘 [MessageDisplayGuarantee] Attempting emergency auto-registration for chat ${context.chatId}`);
+        this.emergencyAutoRegister(context.chatId, missingIds);
+      }
 
       if (context.retryAttempts < this.retryConfig.maxRetries) {
         this.attemptRecovery(trackingId, missingIds);
@@ -1183,6 +1189,106 @@ export class MessageDisplayGuarantee {
     }
 
     return clearedCount;
+  }
+
+  /**
+   * 🚨 NEW: Emergency auto-registration when ALL messages are missing
+   */
+  emergencyAutoRegister(chatId, expectedMessageIds) {
+    try {
+      const messageElements = document.querySelectorAll('[data-message-id]');
+      let registeredCount = 0;
+
+      console.log(`🆘 [MessageDisplayGuarantee] Emergency auto-register: Found ${messageElements.length} elements, expecting ${expectedMessageIds.length} messages`);
+
+      messageElements.forEach(element => {
+        const messageId = element.getAttribute('data-message-id');
+        const numericId = parseInt(messageId);
+
+        // Only register if this message ID was expected and element is visible
+        if (expectedMessageIds.includes(numericId) && element.offsetParent !== null) {
+          try {
+            this.markMessageDisplayed(numericId, element, chatId);
+            registeredCount++;
+
+            if (this.debugMode.value) {
+              console.log(`🆘 [Emergency] Auto-registered message ${messageId}`);
+            }
+          } catch (error) {
+            if (this.debugMode.value) {
+              console.warn(`🆘 [Emergency] Failed to auto-register message ${messageId}:`, error.message);
+            }
+          }
+        }
+      });
+
+      console.log(`🆘 [MessageDisplayGuarantee] Emergency auto-registration complete: ${registeredCount}/${expectedMessageIds.length} messages registered`);
+
+      return registeredCount;
+    } catch (error) {
+      console.error(`🚨 [MessageDisplayGuarantee] Emergency auto-registration failed:`, error);
+      return 0;
+    }
+  }
+
+  /**
+   * Mark temporary message as replaced by real message
+   * 🔧 NEW: Handle temp message to real message transition
+   */
+  markMessageReplaced(tempMessageId, realMessageId, chatId) {
+    if (!this.isEnabled.value) return;
+
+    const normalizedTempId = tempMessageId.toString();
+    const normalizedRealId = parseInt(realMessageId);
+    const normalizedChatId = parseInt(chatId);
+
+    if (this.debugMode.value) {
+      console.log(`🔄 [MessageDisplayGuarantee] Processing message replacement: ${normalizedTempId} → ${normalizedRealId} in chat ${normalizedChatId}`);
+    }
+
+    // Find contexts that contain the temporary message
+    for (const [trackingId, context] of this.verificationQueue.entries()) {
+      if (context.chatId !== normalizedChatId) continue;
+
+      // Check if this context contains the temporary message
+      const hasTempMessage = context.messageIds.has(normalizedTempId) ||
+        context.messageIds.has(tempMessageId);
+
+      if (hasTempMessage) {
+        // Remove the temporary message ID and add the real message ID
+        context.messageIds.delete(normalizedTempId);
+        context.messageIds.delete(tempMessageId);
+        context.messageIds.add(normalizedRealId);
+
+        // If temp message was marked as displayed, mark real message as displayed too
+        if (context.displayedIds.has(normalizedTempId) || context.displayedIds.has(tempMessageId)) {
+          context.displayedIds.delete(normalizedTempId);
+          context.displayedIds.delete(tempMessageId);
+          context.displayedIds.add(normalizedRealId);
+
+          if (this.debugMode.value) {
+            console.log(`✅ [MessageDisplayGuarantee] Transferred display status from ${normalizedTempId} to ${normalizedRealId} in context ${trackingId}`);
+          }
+        }
+
+        // Update context metadata
+        context.lastReplacement = {
+          tempId: normalizedTempId,
+          realId: normalizedRealId,
+          timestamp: Date.now()
+        };
+
+        if (this.debugMode.value) {
+          console.log(`🔄 [MessageDisplayGuarantee] Updated context ${trackingId}: temp message replaced. Progress: ${context.displayedIds.size}/${context.messageIds.size}`);
+        }
+
+        // Check if tracking should be completed after replacement
+        if (context.displayedIds.size === context.messageIds.size && context.status !== 'completed') {
+          context.status = 'completed';
+          this.completeTracking(trackingId);
+        }
+      }
+    }
   }
 }
 

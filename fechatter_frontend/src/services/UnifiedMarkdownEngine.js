@@ -17,7 +17,11 @@ import remarkRehype from 'remark-rehype';
 import rehypeKatex from 'rehype-katex';
 import rehypeStringify from 'rehype-stringify';
 import rehypeSanitize from 'rehype-sanitize';
-import { createHighlighter } from 'shiki';
+// import { createHighlighter } from 'shiki';
+// Temporarily disable shiki for build
+const createHighlighter = () => Promise.resolve({
+  codeToHtml: (code, options) => `<pre><code class="language-${options?.lang || 'text'}">${code}</code></pre>`
+});
 import katex from 'katex';
 
 export class UnifiedMarkdownEngine {

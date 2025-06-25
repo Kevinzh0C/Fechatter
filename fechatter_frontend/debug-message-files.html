@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔍 消息文件附件调试工具</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .debug-section {
+      background: #f8f9fa;
+      border: 2px solid #e9ecef;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .debug-section h3 {
+      color: #495057;
+      margin-top: 0;
+    }
+
+    .code-block {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      overflow-x: auto;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      margin: 10px 5px;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+    }
+
+    .status {
+      padding: 10px;
+      border-radius: 6px;
+      margin: 10px 0;
+      font-weight: 600;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .status.warning {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔍 消息文件附件调试工具</h1>
+      <p>检查消息178的files字段和文件附件渲染状态</p>
+    </div>
+
+    <div class="debug-section">
+      <h3>🎯 快速诊断</h3>
+      <button class="btn" onclick="quickDiagnose()">快速诊断消息178</button>
+      <button class="btn" onclick="checkUnifiedMessageService()">检查UnifiedMessageService</button>
+      <button class="btn" onclick="checkChatStore()">检查ChatStore</button>
+      <div id="quickResults"></div>
+    </div>
+
+    <div class="debug-section">
+      <h3>📨 消息178详细信息</h3>
+      <button class="btn" onclick="analyzeMessage178()">分析消息178</button>
+      <div id="message178Results"></div>
+    </div>
+
+    <div class="debug-section">
+      <h3>🗃️ 所有消息概览</h3>
+      <button class="btn" onclick="listAllMessages()">列出聊天2的所有消息</button>
+      <div id="allMessagesResults"></div>
+    </div>
+
+    <div class="debug-section">
+      <h3>🔧 文件附件渲染检查</h3>
+      <button class="btn" onclick="checkFileRendering()">检查文件渲染组件</button>
+      <button class="btn" onclick="simulateFileMessage()">模拟文件消息</button>
+      <div id="fileRenderingResults"></div>
+    </div>
+
+    <div class="debug-section">
+      <h3>💊 修复工具</h3>
+      <button class="btn" onclick="fixMessage178()">修复消息178文件字段</button>
+      <button class="btn" onclick="refreshMessages()">刷新消息列表</button>
+      <div id="fixResults"></div>
+    </div>
+  </div>
+
+  <script>
+    // 快速诊断函数
+    function quickDiagnose() {
+      const results = document.getElementById('quickResults');
+      results.innerHTML = '<div class="status">🔍 正在诊断...</div>';
+
+      try {
+        // 检查是否有必要的全局对象
+        const checks = {
+          unifiedMessageService: typeof window.unifiedMessageService !== 'undefined',
+          chatStore: typeof window.useChatStore !== 'undefined' || typeof window.$pinia !== 'undefined',
+          vue: typeof window.Vue !== 'undefined' || typeof window.__VUE__ !== 'undefined'
+        };
+
+        // 尝试获取消息178
+        let message178 = null;
+        let messagesInChat2 = null;
+
+        if (window.unifiedMessageService) {
+          messagesInChat2 = window.unifiedMessageService.getMessagesForChat(2);
+          if (messagesInChat2) {
+            message178 = messagesInChat2.find(m => m.id === 178 || m.id === '178');
+          }
+        }
+
+        const diagnosis = {
+          globalObjects: checks,
+          chat2Messages: messagesInChat2 ? messagesInChat2.length : 'N/A',
+          message178Found: !!message178,
+          message178HasFiles: message178 ? !!(message178.files && message178.files.length > 0) : false,
+          message178FilesCount: message178 ? (message178.files ? message178.files.length : 0) : 'N/A'
+        };
+
+        let status = 'success';
+        let summary = '✅ 系统正常';
+
+        if (!message178) {
+          status = 'error';
+          summary = '❌ 找不到消息178';
+        } else if (!diagnosis.message178HasFiles) {
+          status = 'warning';
+          summary = '⚠️ 消息178存在但没有files字段';
+        }
+
+        results.innerHTML = `
+                    <div class="status ${status}">${summary}</div>
+                    <div class="code-block">${JSON.stringify(diagnosis, null, 2)}</div>
+                    ${message178 ? `<div class="code-block">消息178内容：\n${JSON.stringify(message178, null, 2)}</div>` : ''}
+                `;
+
+      } catch (error) {
+        results.innerHTML = `
+                    <div class="status error">❌ 诊断失败: ${error.message}</div>
+                    <div class="code-block">${error.stack}</div>
+                `;
+      }
+    }
+
+    // 检查UnifiedMessageService
+    function checkUnifiedMessageService() {
+      const results = document.getElementById('quickResults');
+
+      try {
+        if (!window.unifiedMessageService) {
+          results.innerHTML = '<div class="status error">❌ UnifiedMessageService未找到</div>';
+          return;
+        }
+
+        const service = window.unifiedMessageService;
+        const chat2Messages = service.getMessagesForChat(2);
+
+        const serviceInfo = {
+          available: true,
+          chat2MessagesCount: chat2Messages ? chat2Messages.length : 0,
+          allChats: Array.from(service.messagesByChat.keys()),
+          hasChat2: service.messagesByChat.has(2),
+          recentMessages: chat2Messages ? chat2Messages.slice(-3).map(m => ({
+            id: m.id,
+            content: m.content ? m.content.substring(0, 50) : '(empty)',
+            hasFiles: !!(m.files && m.files.length > 0),
+            filesCount: m.files ? m.files.length : 0
+          })) : []
+        };
+
+        results.innerHTML = `
+                    <div class="status success">✅ UnifiedMessageService正常</div>
+                    <div class="code-block">${JSON.stringify(serviceInfo, null, 2)}</div>
+                `;
+
+      } catch (error) {
+        results.innerHTML = `
+                    <div class="status error">❌ 检查失败: ${error.message}</div>
+                `;
+      }
+    }
+
+    // 分析消息178
+    function analyzeMessage178() {
+      const results = document.getElementById('message178Results');
+      results.innerHTML = '<div class="status">🔍 正在分析消息178...</div>';
+
+      try {
+        if (!window.unifiedMessageService) {
+          results.innerHTML = '<div class="status error">❌ UnifiedMessageService未找到</div>';
+          return;
+        }
+
+        const messages = window.unifiedMessageService.getMessagesForChat(2);
+        const message178 = messages ? messages.find(m => m.id === 178 || m.id === '178') : null;
+
+        if (!message178) {
+          results.innerHTML = '<div class="status error">❌ 找不到消息178</div>';
+          return;
+        }
+
+        const analysis = {
+          basicInfo: {
+            id: message178.id,
+            temp_id: message178.temp_id,
+            content: message178.content,
+            sender_name: message178.sender_name,
+            created_at: message178.created_at,
+            status: message178.status
+          },
+          filesInfo: {
+            hasFiles: !!(message178.files),
+            filesCount: message178.files ? message178.files.length : 0,
+            filesArray: message178.files || [],
+            filesType: typeof message178.files,
+            filesIsArray: Array.isArray(message178.files)
+          },
+          fullMessage: message178
+        };
+
+        let status = 'success';
+        let summary = '✅ 消息178分析完成';
+
+        if (!message178.files || message178.files.length === 0) {
+          status = 'warning';
+          summary = '⚠️ 消息178没有文件附件';
+        }
+
+        results.innerHTML = `
+                    <div class="status ${status}">${summary}</div>
+                    <div class="code-block">基础信息：\n${JSON.stringify(analysis.basicInfo, null, 2)}</div>
+                    <div class="code-block">文件信息：\n${JSON.stringify(analysis.filesInfo, null, 2)}</div>
+                    <div class="code-block">完整消息：\n${JSON.stringify(analysis.fullMessage, null, 2)}</div>
+                `;
+
+      } catch (error) {
+        results.innerHTML = `
+                    <div class="status error">❌ 分析失败: ${error.message}</div>
+                `;
+      }
+    }
+
+    // 列出所有消息
+    function listAllMessages() {
+      const results = document.getElementById('allMessagesResults');
+      results.innerHTML = '<div class="status">🔍 正在获取所有消息...</div>';
+
+      try {
+        if (!window.unifiedMessageService) {
+          results.innerHTML = '<div class="status error">❌ UnifiedMessageService未找到</div>';
+          return;
+        }
+
+        const messages = window.unifiedMessageService.getMessagesForChat(2) || [];
+
+        const messagesSummary = messages.map(m => ({
+          id: m.id,
+          temp_id: m.temp_id,
+          content: m.content ? m.content.substring(0, 30) + '...' : '(empty)',
+          sender: m.sender_name,
+          hasFiles: !!(m.files && m.files.length > 0),
+          filesCount: m.files ? m.files.length : 0,
+          files: m.files ? m.files.map(f => ({
+            filename: f.filename,
+            url: f.url,
+            size: f.size
+          })) : [],
+          status: m.status,
+          isOptimistic: m.isOptimistic
+        }));
+
+        results.innerHTML = `
+                    <div class="status success">✅ 找到${messages.length}条消息</div>
+                    <div class="code-block">${JSON.stringify(messagesSummary, null, 2)}</div>
+                `;
+
+      } catch (error) {
+        results.innerHTML = `
+                    <div class="status error">❌ 获取失败: ${error.message}</div>
+                `;
+      }
+    }
+
+    // 检查文件渲染
+    function checkFileRendering() {
+      const results = document.getElementById('fileRenderingResults');
+      results.innerHTML = '<div class="status">🔍 检查文件渲染组件...</div>';
+
+      try {
+        // 检查DOM中是否有DiscordMessageItem元素
+        const messageItems = document.querySelectorAll('[data-message-id="178"]');
+        const allMessageItems = document.querySelectorAll('.discord-message-item');
+        const filePreviewElements = document.querySelectorAll('.file-preview-container');
+
+        const renderingInfo = {
+          message178Elements: messageItems.length,
+          allMessageElements: allMessageItems.length,
+          filePreviewElements: filePreviewElements.length,
+          message178Content: Array.from(messageItems).map(el => ({
+            innerHTML: el.innerHTML.substring(0, 200) + '...',
+            hasFilePreview: el.querySelector('.file-preview-container') !== null,
+            hasMessageFiles: el.querySelector('.message-files') !== null
+          }))
+        };
+
+        results.innerHTML = `
+                    <div class="status success">✅ DOM检查完成</div>
+                    <div class="code-block">${JSON.stringify(renderingInfo, null, 2)}</div>
+                `;
+
+      } catch (error) {
+        results.innerHTML = `
+                    <div class="status error">❌ 检查失败: ${error.message}</div>
+                `;
+      }
+    }
+
+    // 修复消息178
+    function fixMessage178() {
+      const results = document.getElementById('fixResults');
+      results.innerHTML = '<div class="status">🔧 正在修复消息178...</div>';
+
+      try {
+        if (!window.unifiedMessageService) {
+          results.innerHTML = '<div class="status error">❌ UnifiedMessageService未找到</div>';
+          return;
+        }
+
+        const messages = window.unifiedMessageService.getMessagesForChat(2);
+        const message178 = messages ? messages.find(m => m.id === 178 || m.id === '178') : null;
+
+        if (!message178) {
+          results.innerHTML = '<div class="status error">❌ 找不到消息178</div>';
+          return;
+        }
+
+        // 检查是否需要修复files字段
+        if (!message178.files || message178.files.length === 0) {
+          // 尝试添加files字段（基于上传日志中的信息）
+          message178.files = [{
+            id: 1750792726974,
+            filename: 'bubble_concept_fluid_1.png',
+            url: '/files/60c155658fcb1ef14145b5c9e359a571c504b8e1a7449d9965f720d3c1eebb68.png',
+            mime_type: 'image/png',
+            size: 1124883
+          }];
+
+          // 更新消息
+          window.unifiedMessageService.messagesByChat.set(2, messages);
+
+          results.innerHTML = `
+                        <div class="status success">✅ 已修复消息178的files字段</div>
+                        <div class="code-block">修复后的消息：\n${JSON.stringify(message178, null, 2)}</div>
+                    `;
+        } else {
+          results.innerHTML = `
+                        <div class="status warning">⚠️ 消息178已有files字段，无需修复</div>
+                        <div class="code-block">当前files：\n${JSON.stringify(message178.files, null, 2)}</div>
+                    `;
+        }
+
+      } catch (error) {
+        results.innerHTML = `
+                    <div class="status error">❌ 修复失败: ${error.message}</div>
+                `;
+      }
+    }
+
+    // 刷新消息列表
+    function refreshMessages() {
+      const results = document.getElementById('fixResults');
+      results.innerHTML = '<div class="status">🔄 正在刷新消息列表...</div>';
+
+      try {
+        // 触发Vue重新渲染
+        if (window.Vue && window.Vue.nextTick) {
+          window.Vue.nextTick(() => {
+            results.innerHTML = '<div class="status success">✅ 消息列表已刷新</div>';
+          });
+        } else {
+          // 简单的DOM刷新
+          setTimeout(() => {
+            results.innerHTML = '<div class="status success">✅ 页面已刷新</div>';
+            window.location.reload();
+          }, 1000);
+        }
+
+      } catch (error) {
+        results.innerHTML = `
+                    <div class="status error">❌ 刷新失败: ${error.message}</div>
+                `;
+      }
+    }
+
+    // 页面加载时自动运行快速诊断
+    window.addEventListener('load', () => {
+      setTimeout(quickDiagnose, 1000);
+    });
+  </script>
+</body>
+
+</html>

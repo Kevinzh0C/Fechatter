@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Loading Root Cause Analysis</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .header {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 14px;
+        }
+        .test-success { background: #d4edda; color: #155724; }
+        .test-error { background: #f8d7da; color: #721c24; }
+        .test-warning { background: #fff3cd; color: #856404; }
+        .test-info { background: #d1ecf1; color: #0c5460; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 8px;
+        }
+        .format-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .correct-format {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+        }
+        .current-format {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+        }
+        .critical-issue {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔍 Image Loading Root Cause Analysis</h1>
+        <p>Deep analysis based on test.rest correct format</p>
+    </div>
+
+    <div class="section">
+        <h2>📋 Format Comparison</h2>
+        <div class="format-comparison">
+            <div class="correct-format">
+                <h4>✅ Test.rest Correct Format:</h4>
+                <code>GET /api/files/1/e89/663/filename.png<br>Authorization: Bearer token</code>
+                <br><br><strong>Pattern:</strong><br>
+                <code>/api/files/{workspace_id}/{hash1}/{hash2}/{filename}</code>
+            </div>
+            <div class="current-format" id="current-format">
+                <h4>❓ Current Format:</h4>
+                <span>Analyzing...</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🧪 Analysis Tools</h2>
+        <button onclick="analyzeImages()">Analyze Current Images</button>
+        <button onclick="testFileUrls()">Test URL Construction</button>
+        <button onclick="checkFilePreview()">Check FilePreview Component</button>
+        <div id="results"></div>
+    </div>
+
+    <div class="section">
+        <h2>🚨 Critical Issues</h2>
+        <div id="critical-issues"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-result test-${type}`;
+            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            document.getElementById('results').appendChild(div);
+        }
+
+        function addCriticalIssue(title, issue, solution) {
+            const div = document.createElement('div');
+            div.className = 'critical-issue';
+            div.innerHTML = `
+                <h4>🚨 ${title}</h4>
+                <p><strong>Issue:</strong> ${issue}</p>
+                <p><strong>Solution:</strong> ${solution}</p>
+            `;
+            document.getElementById('critical-issues').appendChild(div);
+        }
+
+        function analyzeImages() {
+            log('🔍 Analyzing current page images...', 'info');
+            
+            const images = document.querySelectorAll('img');
+            log(`Found ${images.length} images on page`, 'info');
+            
+            let failed = 0;
+            images.forEach((img, i) => {
+                const src = img.src;
+                const loaded = img.naturalWidth > 0;
+                
+                if (src.includes('/api/files/') || src.includes('/files/')) {
+                    log(`Image ${i+1}: ${loaded ? '✅' : '❌'} ${src}`, loaded ? 'success' : 'error');
+                    if (!loaded) failed++;
+                    
+                    // Check URL format
+                    const correctFormat = /\/api\/files\/\d+\/[a-f0-9]{3}\/[a-f0-9]{3}\//.test(src);
+                    if (!correctFormat) {
+                        log(`❌ Wrong format: ${src}`, 'error');
+                        addCriticalIssue(
+                            'URL Format Error', 
+                            `Image URL doesn't match test.rest format: ${src}`,
+                            'Fix fileUrlHandler.js to generate correct /api/files/{workspace}/{hash1}/{hash2}/{filename} format'
+                        );
+                    }
+                }
+            });
+            
+            if (failed > 0) {
+                addCriticalIssue(
+                    `${failed} Images Failed to Load`,
+                    'Images are not loading, likely due to incorrect URL format or authentication',
+                    'Check URL construction in FilePreview.vue and authentication in API calls'
+                );
+            }
+        }
+
+        function testFileUrls() {
+            log('🧪 Testing file URL construction...', 'info');
+            
+            // Test common file formats from logs
+            const testFiles = [
+                '60c155658fcb1ef14145b5c9e359a571c504b8e1a7449d9965f720d3c1eebb68.png',
+                '5ec998139f87f169452f5e2c26a66f3060005cbd1a3b93598f367ead9d05dbb3.webp'
+            ];
+            
+            testFiles.forEach(filename => {
+                // Expected format based on test.rest
+                const hash1 = filename.substring(0, 3);
+                const hash2 = filename.substring(3, 6);
+                const expectedUrl = `/api/files/2/${hash1}/${hash2}/${filename}`;
+                
+                log(`Expected for ${filename.substring(0, 10)}...`, 'info');
+                log(`${expectedUrl}`, 'info');
+                
+                // Test if URL exists
+                testImageUrl(expectedUrl);
+            });
+        }
+
+        async function testImageUrl(url) {
+            try {
+                const token = localStorage.getItem('auth_token');
+                const response = await fetch(url, {
+                    method: 'HEAD',
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                });
+                
+                log(`${response.ok ? '✅' : '❌'} ${url} - Status: ${response.status}`, 
+                    response.ok ? 'success' : 'error');
+            } catch (error) {
+                log(`❌ ${url} - Error: ${error.message}`, 'error');
+            }
+        }
+
+        function checkFilePreview() {
+            log('🔍 Checking FilePreview component...', 'info');
+            
+            // Check if FilePreview components exist
+            const filePreviewElements = document.querySelectorAll('[class*="file-preview"]');
+            log(`Found ${filePreviewElements.length} file preview elements`, 'info');
+            
+            // Check for EnhancedImageThumbnail
+            const imageThumbnails = document.querySelectorAll('[class*="thumbnail"]');
+            log(`Found ${imageThumbnails.length} image thumbnail elements`, 'info');
+            
+            // Look for specific issues
+            const longFilenames = document.querySelectorAll('[class*="file-name"]');
+            longFilenames.forEach(el => {
+                const text = el.textContent;
+                if (text && text.length > 30 && text.includes('658fcb1ef')) {
+                    log(`❌ Found long filename display: ${text}`, 'error');
+                    addCriticalIssue(
+                        'Image Display Issue',
+                        `Showing filename instead of image: ${text}`,
+                        'Check EnhancedImageThumbnail component src attribute and authentication'
+                    );
+                }
+            });
+        }
+
+        function updateCurrentFormat() {
+            const images = Array.from(document.querySelectorAll('img'))
+                .map(img => img.src)
+                .filter(src => src.includes('/api/files/') || src.includes('/files/'))
+                .slice(0, 2);
+
+            const formatDiv = document.getElementById('current-format');
+            if (images.length > 0) {
+                formatDiv.innerHTML = `
+                    <h4>❓ Current Format:</h4>
+                    ${images.map(url => `<code>${url}</code><br>`).join('')}
+                `;
+            } else {
+                formatDiv.innerHTML = `
+                    <h4>❓ Current Format:</h4>
+                    <p>No images found - navigate to chat with images</p>
+                `;
+            }
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            updateCurrentFormat();
+            log('🔍 Root cause analysis ready', 'info');
+        });
+    </script>
+</body>
+</html>

@@ -155,6 +155,9 @@ export function useMessageBatcher() {
           if (newTime > existingTime || (!result[index].id && msg.id)) {
             result[index] = msg;
           }
+        }
+      }
+    }
 
     return result;
   };
@@ -166,6 +169,7 @@ export function useMessageBatcher() {
     if (flushTimer) {
       cancelAnimationFrame(flushTimer);
       flushTimer = null;
+    }
     flushBatch();
   };
 
@@ -176,6 +180,7 @@ export function useMessageBatcher() {
     if (flushTimer) {
       cancelAnimationFrame(flushTimer);
       flushTimer = null;
+    }
     messageQueue.length = 0;
     batchedMessages.value = [];
     lastFlushTime = 0;
@@ -194,6 +199,7 @@ export function useMessageBatcher() {
         cancelAnimationFrame(flushTimer);
       }
     });
+  }
 
   // Manual cleanup method for non-component usage
   const cleanup = () => {

@@ -17,7 +17,18 @@ export function getUserInitials(name) {
     return '?';
   }
 
-  const parts = name.trim().split(/\s+/);
+  // 🔧 CRITICAL FIX: Filter out placeholder/invalid names
+  const trimmedName = name.trim();
+  const invalidNames = [
+    '(fullname)', 'fullname', 'undefined', 'null',
+    'unknown user', 'unknown', 'user', '???', 'n/a'
+  ];
+
+  if (invalidNames.includes(trimmedName.toLowerCase()) || trimmedName.startsWith('(') && trimmedName.endsWith(')')) {
+    return '?';
+  }
+
+  const parts = trimmedName.split(/\s+/);
   if (parts.length === 1) {
     return parts[0].charAt(0).toUpperCase();
   }

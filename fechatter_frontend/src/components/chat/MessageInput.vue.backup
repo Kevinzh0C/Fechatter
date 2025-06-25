@@ -1,0 +1,1880 @@
+<template>
+  <div class="message-input" :class="{ 'has-preview': showPreview }">
+    <!-- Preview Container (at top) -->
+    <div v-if="showPreview" class="preview-container">
+      <div class="preview-header">
+        <span class="preview-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          {{ getPreviewTitle() }}
+        </span>
+        <button @click="closePreview" class="preview-close">×</button>
+      </div>
+      <div class="preview-content">
+        <!-- Markdown Preview -->
+        <div v-if="formatMode === 'markdown'" class="markdown-preview" v-html="renderedMarkdown"></div>
+
+        <!-- Code Preview -->
+        <div v-else-if="formatMode === 'code'" class="code-preview">
+          <div class="code-header">
+            <select v-model="selectedLanguage" class="language-selector">
+              <option value="javascript">JavaScript</option>
+              <option value="typescript">TypeScript</option>
+              <option value="python">Python</option>
+              <option value="rust">Rust</option>
+              <option value="html">HTML</option>
+              <option value="css">CSS</option>
+              <option value="json">JSON</option>
+              <option value="sql">SQL</option>
+              <option value="bash">Bash</option>
+            </select>
+            <span class="code-info">{{ messageContent.split('\n').length }} lines</span>
+          </div>
+          <pre><code :class="`language-${selectedLanguage}`">{{ messageContent || 'Start typing code...' }}</code></pre>
+        </div>
+
+        <!-- File Preview -->
+        <div v-else-if="formatMode === 'file'" class="file-preview">
+          <div class="file-upload-area" v-if="files.length === 0">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"></path>
+            </svg>
+            <p>Click to upload files or drag and drop</p>
+            <button @click="triggerFileUpload" class="upload-btn">Choose Files</button>
+          </div>
+          <div v-else class="file-list">
+            <div v-for="(file, index) in files" :key="index" class="file-item">
+              <div class="file-icon-wrapper">
+                <img v-if="file.type.startsWith('image/')" :src="getFilePreviewUrl(file)" :alt="file.name"
+                  class="file-thumbnail">
+                <div v-else class="file-icon" :class="getFileTypeClass(file.type)">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z">
+                    </path>
+                  </svg>
+                </div>
+              </div>
+              <div class="file-info">
+                <span class="file-name">{{ file.name }}</span>
+                <span class="file-size">{{ formatFileSize(file.size) }}</span>
+                <span class="file-type">{{ file.type || 'Unknown' }}</span>
+              </div>
+              <div class="file-actions">
+                <button @click="removeFile(index)" class="file-remove" title="Remove">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3,6 5,6 21,6"></polyline>
+                    <path d="M19,6V20A2,2 0 0,1 17,20H7A2,2 0 0,1 5,20V6M8,6V4A2,2 0 0,1 10,4H14A2,2 0 0,1 16,4V6">
+                    </path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <button @click="triggerFileUpload" class="add-more-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add More Files
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Enhanced Markdown Toolbar (in middle) -->
+    <div v-if="formatMode === 'markdown'" class="markdown-toolbar">
+      <!-- Text Formatting Section -->
+      <div class="toolbar-section">
+        <button @click="insertMarkdown('**', '**')" class="toolbar-btn" title="Bold (Ctrl+B)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
+            <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
+          </svg>
+        </button>
+        <button @click="insertMarkdown('*', '*')" class="toolbar-btn" title="Italic (Ctrl+I)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="19" y1="4" x2="10" y2="4"></line>
+            <line x1="14" y1="20" x2="5" y2="20"></line>
+            <line x1="15" y1="4" x2="9" y2="20"></line>
+          </svg>
+        </button>
+        <button @click="insertMarkdown('~~', '~~')" class="toolbar-btn" title="Strikethrough">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 4H9a3 3 0 0 0-2.83 4M14 12a4 4 0 0 1 0 8H6"></path>
+            <line x1="4" y1="12" x2="20" y2="12"></line>
+          </svg>
+        </button>
+        <button @click="insertMarkdown('==', '==')" class="toolbar-btn" title="Highlight">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 11H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5m6 6v3a2 2 0 0 1-2 2H7l-3-3 3-3h6a2 2 0 0 1 2 2z"></path>
+            <path d="M19 7h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2"></path>
+          </svg>
+        </button>
+        <button @click="insertMarkdown('`', '`')" class="toolbar-btn" title="Inline Code">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16,18 22,12 16,6"></polyline>
+            <polyline points="8,6 2,12 8,18"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <!-- Structure Section -->
+      <div class="toolbar-section">
+        <button @click="insertMarkdown('# ', '')" class="toolbar-btn" title="H1 Heading">
+          <span class="text-btn">H1</span>
+        </button>
+        <button @click="insertMarkdown('## ', '')" class="toolbar-btn" title="H2 Heading">
+          <span class="text-btn">H2</span>
+        </button>
+        <button @click="insertMarkdown('### ', '')" class="toolbar-btn" title="H3 Heading">
+          <span class="text-btn">H3</span>
+        </button>
+        <button @click="insertMarkdown('- ', '')" class="toolbar-btn" title="Unordered List">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+          </svg>
+        </button>
+        <button @click="insertMarkdown('1. ', '')" class="toolbar-btn" title="Ordered List">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="10" y1="6" x2="21" y2="6"></line>
+            <line x1="10" y1="12" x2="21" y2="12"></line>
+            <line x1="10" y1="18" x2="21" y2="18"></line>
+            <line x1="4" y1="6" x2="4" y2="10"></line>
+            <line x1="4" y1="10" x2="6" y2="10"></line>
+            <line x1="6" y1="10" x2="6" y2="6"></line>
+          </svg>
+        </button>
+        <button @click="insertMarkdown('- [ ] ', '')" class="toolbar-btn" title="Task List">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9,11 12,14 22,4"></polyline>
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <!-- Content Section -->
+      <div class="toolbar-section">
+        <button @click="insertMarkdown('> ', '')" class="toolbar-btn" title="Quote">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path
+              d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z">
+            </path>
+            <path
+              d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z">
+            </path>
+          </svg>
+        </button>
+        <button @click="insertCodeBlock" class="toolbar-btn" title="Code Block">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+        </button>
+        <button @click="insertMarkdown('[', '](url)')" class="toolbar-btn" title="Link (Ctrl+K)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+          </svg>
+        </button>
+        <button @click="insertMarkdown('![alt](', ')')" class="toolbar-btn" title="Image">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21,15 16,10 5,21"></polyline>
+          </svg>
+        </button>
+        <button @click="insertTable" class="toolbar-btn" title="Table">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path
+              d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18">
+            </path>
+          </svg>
+        </button>
+        <button @click="insertMarkdown('---\n', '\n')" class="toolbar-btn" title="Horizontal Rule">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <!-- Actions Section -->
+      <div class="toolbar-section">
+        <button @click="toggleMarkdownPreview" class="toolbar-btn" :class="{ active: showPreview }" title="Preview">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </button>
+        <button @click="clearContent" class="toolbar-btn" title="Clear All">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3,6 5,6 21,6"></polyline>
+            <path d="M19,6V20A2,2 0 0,1 17,20H7A2,2 0 0,1 5,20V6M8,6V4A2,2 0 0,1 10,4H14A2,2 0 0,1 16,4V6">
+            </path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Input Area (at bottom) -->
+    <div class="main-input-area">
+      <!-- File Upload Button -->
+      <button @click="triggerFileUpload" class="input-btn file-btn" :class="{ active: formatMode === 'file' }"
+        title="Attach file">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"></path>
+        </svg>
+      </button>
+
+      <!-- Input Container -->
+      <div class="input-container">
+        <textarea ref="messageInput" v-model="messageContent" @keydown="handleKeyDown" @input="handleInput"
+          @paste="handlePaste" :placeholder="placeholderText" class="message-textarea" rows="1">
+        </textarea>
+      </div>
+
+      <!-- Mode Button -->
+      <button @click="cycleFormatMode" class="input-btn mode-btn" :class="{
+        'mode-markdown': formatMode === 'markdown',
+        'mode-code': formatMode === 'code'
+      }" :title="getFormatModeTooltip()">
+        <svg v-if="formatMode === 'text'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2">
+          <path d="M4 7V4h16v3M9 20h6M12 4v16"></path>
+        </svg>
+        <svg v-else-if="formatMode === 'markdown'" width="20" height="20" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2">
+          <path d="M3 5h18v14H3zM7 15V9l2 2 2-2v6m3-2h4"></path>
+        </svg>
+        <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="16,18 22,12 16,6"></polyline>
+          <polyline points="8,6 2,12 8,18"></polyline>
+        </svg>
+      </button>
+
+      <!-- Emoji Button -->
+      <button @click="toggleEmojiPicker" class="input-btn emoji-btn" title="Add emoji">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+          <line x1="9" y1="9" x2="9.01" y2="9"></line>
+          <line x1="15" y1="9" x2="15.01" y2="9"></line>
+        </svg>
+      </button>
+
+      <!-- Enhanced Send Button with Dynamic State -->
+      <button @click="sendMessage" :disabled="!canSend" class="input-btn send-btn" :class="{
+        'active': canSend,
+        'empty': !messageContent.trim(),
+        'filled': messageContent.trim(),
+        'pulse': canSend && messageContent.trim().length > 5
+      }">
+        <svg v-if="!isSending" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22,2 15,22 11,13 2,9"></polygon>
+        </svg>
+        <div v-else class="loading-spinner"></div>
+      </button>
+    </div>
+
+    <!-- Production Emoji Modal -->
+    <div v-if="showEmojiPicker" class="emoji-modal-overlay" @click="closeEmojiPicker">
+      <div class="emoji-modal" @click.stop ref="emojiPickerRef">
+        <div class="emoji-header">
+          <h3>Choose Emoji</h3>
+          <button @click="closeEmojiPicker" class="emoji-close">×</button>
+        </div>
+
+        <div class="emoji-search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input v-model="emojiSearchQuery" type="text" placeholder="Search emojis..." @input="filterEmojis">
+        </div>
+
+        <div class="emoji-categories">
+          <button v-for="(category, key) in emojiCategories" :key="key" @click="selectEmojiCategory(key)"
+            class="category-btn" :class="{ active: selectedEmojiCategory === key }" :title="category.name">
+            {{ category.icon }}
+          </button>
+        </div>
+
+        <div class="emoji-content">
+          <div v-if="filteredEmojis.length > 0" class="emoji-grid">
+            <button v-for="emoji in filteredEmojis" :key="emoji.char" @click="insertEmoji(emoji)" class="emoji-item"
+              :title="emoji.name">
+              {{ emoji.char }}
+            </button>
+          </div>
+          <div v-else class="no-emojis">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <p>No emojis found</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hidden file input -->
+    <input ref="fileInput" type="file" multiple @change="handleFileSelect" style="display: none">
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
+
+const props = defineProps({
+  chatId: { type: [Number, String], required: true },
+  replyToMessage: { type: Object, default: null },
+  disabled: { type: Boolean, default: false },
+  maxLength: { type: Number, default: 2000 }
+});
+
+const emit = defineEmits(['message-sent', 'reply-cancelled', 'preview-state-change']);
+
+// State
+const messageContent = ref('');
+const showPreview = ref(false);
+const formatMode = ref('text'); // 'text', 'markdown', 'code', 'file'
+const isSending = ref(false);
+const showEmojiPicker = ref(false);
+const selectedLanguage = ref('javascript');
+const files = ref([]);
+const selectedEmojiCategory = ref('smileys');
+const emojiSearchQuery = ref('');
+
+// Refs
+const messageInput = ref(null);
+const emojiPickerRef = ref(null);
+const fileInput = ref(null);
+
+// Production-grade emoji categories
+const emojiCategories = {
+  smileys: {
+    name: 'Smileys & People',
+    icon: '😀',
+    emojis: [
+      { char: '😀', name: 'grinning face' },
+      { char: '😃', name: 'grinning face with big eyes' },
+      { char: '😄', name: 'grinning face with smiling eyes' },
+      { char: '😁', name: 'beaming face with smiling eyes' },
+      { char: '😆', name: 'grinning squinting face' },
+      { char: '😅', name: 'grinning face with sweat' },
+      { char: '🤣', name: 'rolling on the floor laughing' },
+      { char: '😂', name: 'face with tears of joy' },
+      { char: '🙂', name: 'slightly smiling face' },
+      { char: '🙃', name: 'upside-down face' },
+      { char: '😉', name: 'winking face' },
+      { char: '😊', name: 'smiling face with smiling eyes' },
+      { char: '😇', name: 'smiling face with halo' },
+      { char: '🥰', name: 'smiling face with hearts' },
+      { char: '😍', name: 'smiling face with heart-eyes' },
+      { char: '🤩', name: 'star-struck' },
+      { char: '😘', name: 'face blowing a kiss' },
+      { char: '😗', name: 'kissing face' },
+      { char: '😚', name: 'kissing face with closed eyes' },
+      { char: '😙', name: 'kissing face with smiling eyes' },
+      { char: '🥲', name: 'smiling face with tear' },
+      { char: '😋', name: 'face savoring food' },
+      { char: '😛', name: 'face with tongue' },
+      { char: '😜', name: 'winking face with tongue' },
+      { char: '🤪', name: 'zany face' },
+      { char: '😝', name: 'squinting face with tongue' },
+      { char: '🤑', name: 'money-mouth face' },
+      { char: '🤗', name: 'hugging face' },
+      { char: '🤭', name: 'face with hand over mouth' },
+      { char: '🤫', name: 'shushing face' },
+      { char: '🤔', name: 'thinking face' },
+      { char: '🤐', name: 'zipper-mouth face' },
+      { char: '🤨', name: 'face with raised eyebrow' },
+      { char: '😐', name: 'neutral face' },
+      { char: '😑', name: 'expressionless face' },
+      { char: '😶', name: 'face without mouth' },
+      { char: '😶‍🌫️', name: 'face in clouds' },
+      { char: '😏', name: 'smirking face' },
+      { char: '😒', name: 'unamused face' },
+      { char: '🙄', name: 'face with rolling eyes' },
+      { char: '😬', name: 'grimacing face' },
+      { char: '😮‍💨', name: 'face exhaling' },
+      { char: '🤥', name: 'lying face' },
+      { char: '😔', name: 'pensive face' },
+      { char: '😪', name: 'sleepy face' },
+      { char: '🤤', name: 'drooling face' },
+      { char: '😴', name: 'sleeping face' },
+      { char: '😷', name: 'face with medical mask' },
+      { char: '🤒', name: 'face with thermometer' },
+      { char: '🤕', name: 'face with head-bandage' },
+      { char: '🤢', name: 'nauseated face' },
+      { char: '🤮', name: 'face vomiting' },
+      { char: '🤧', name: 'sneezing face' },
+      { char: '🥵', name: 'hot face' },
+      { char: '🥶', name: 'cold face' },
+      { char: '🥴', name: 'woozy face' },
+      { char: '😵', name: 'dizzy face' },
+      { char: '😵‍💫', name: 'face with spiral eyes' },
+      { char: '🤯', name: 'exploding head' },
+      { char: '🤠', name: 'cowboy hat face' },
+      { char: '🥳', name: 'partying face' },
+      { char: '🥸', name: 'disguised face' },
+      { char: '😎', name: 'smiling face with sunglasses' },
+      { char: '🤓', name: 'nerd face' },
+      { char: '🧐', name: 'face with monocle' }
+    ]
+  },
+  gestures: {
+    name: 'Gestures',
+    icon: '👍',
+    emojis: [
+      { char: '👍', name: 'thumbs up' },
+      { char: '👎', name: 'thumbs down' },
+      { char: '👌', name: 'OK hand' },
+      { char: '🤌', name: 'pinched fingers' },
+      { char: '🤏', name: 'pinching hand' },
+      { char: '✌️', name: 'victory hand' },
+      { char: '🤞', name: 'crossed fingers' },
+      { char: '🤟', name: 'love-you gesture' },
+      { char: '🤘', name: 'sign of the horns' },
+      { char: '🤙', name: 'call me hand' },
+      { char: '👈', name: 'backhand index pointing left' },
+      { char: '👉', name: 'backhand index pointing right' },
+      { char: '👆', name: 'backhand index pointing up' },
+      { char: '🖕', name: 'middle finger' },
+      { char: '👇', name: 'backhand index pointing down' },
+      { char: '☝️', name: 'index pointing up' },
+      { char: '👋', name: 'waving hand' },
+      { char: '🤚', name: 'raised back of hand' },
+      { char: '🖐️', name: 'hand with fingers splayed' },
+      { char: '✋', name: 'raised hand' },
+      { char: '🖖', name: 'vulcan salute' },
+      { char: '👏', name: 'clapping hands' },
+      { char: '🙌', name: 'raising hands' },
+      { char: '👐', name: 'open hands' },
+      { char: '🤲', name: 'palms up together' },
+      { char: '🤝', name: 'handshake' },
+      { char: '🙏', name: 'folded hands' }
+    ]
+  },
+  hearts: {
+    name: 'Hearts',
+    icon: '❤️',
+    emojis: [
+      { char: '❤️', name: 'red heart' },
+      { char: '🧡', name: 'orange heart' },
+      { char: '💛', name: 'yellow heart' },
+      { char: '💚', name: 'green heart' },
+      { char: '💙', name: 'blue heart' },
+      { char: '💜', name: 'purple heart' },
+      { char: '🖤', name: 'black heart' },
+      { char: '🤍', name: 'white heart' },
+      { char: '🤎', name: 'brown heart' },
+      { char: '💔', name: 'broken heart' },
+      { char: '❣️', name: 'heart exclamation' },
+      { char: '💕', name: 'two hearts' },
+      { char: '💞', name: 'revolving hearts' },
+      { char: '💓', name: 'beating heart' },
+      { char: '💗', name: 'growing heart' },
+      { char: '💖', name: 'sparkling heart' },
+      { char: '💘', name: 'heart with arrow' },
+      { char: '💝', name: 'heart with ribbon' },
+      { char: '💟', name: 'heart decoration' }
+    ]
+  },
+  symbols: {
+    name: 'Symbols',
+    icon: '🔥',
+    emojis: [
+      { char: '🔥', name: 'fire' },
+      { char: '💯', name: 'hundred points' },
+      { char: '⭐', name: 'star' },
+      { char: '🌟', name: 'glowing star' },
+      { char: '✨', name: 'sparkles' },
+      { char: '💫', name: 'dizzy' },
+      { char: '⚡', name: 'high voltage' },
+      { char: '💥', name: 'collision' },
+      { char: '💢', name: 'anger symbol' },
+      { char: '💨', name: 'dashing away' },
+      { char: '💤', name: 'zzz' },
+      { char: '💦', name: 'sweat droplets' },
+      { char: '💧', name: 'droplet' },
+      { char: '🌊', name: 'water wave' },
+      { char: '🎯', name: 'direct hit' },
+      { char: '💯', name: 'hundred points' },
+      { char: '🔴', name: 'red circle' },
+      { char: '🟠', name: 'orange circle' },
+      { char: '🟡', name: 'yellow circle' },
+      { char: '🟢', name: 'green circle' },
+      { char: '🔵', name: 'blue circle' },
+      { char: '🟣', name: 'purple circle' },
+      { char: '⚫', name: 'black circle' },
+      { char: '⚪', name: 'white circle' },
+      { char: '🟤', name: 'brown circle' },
+      { char: '🔶', name: 'large orange diamond' },
+      { char: '🔷', name: 'large blue diamond' },
+      { char: '🔸', name: 'small orange diamond' },
+      { char: '🔹', name: 'small blue diamond' },
+      { char: '🔺', name: 'red triangle pointed up' },
+      { char: '🔻', name: 'red triangle pointed down' }
+    ]
+  },
+  objects: {
+    name: 'Objects',
+    icon: '🎉',
+    emojis: [
+      { char: '🎉', name: 'party popper' },
+      { char: '🎊', name: 'confetti ball' },
+      { char: '🎈', name: 'balloon' },
+      { char: '🎁', name: 'wrapped gift' },
+      { char: '🏆', name: 'trophy' },
+      { char: '🥇', name: '1st place medal' },
+      { char: '🥈', name: '2nd place medal' },
+      { char: '🥉', name: '3rd place medal' },
+      { char: '🏅', name: 'sports medal' },
+      { char: '🎖️', name: 'military medal' },
+      { char: '📱', name: 'mobile phone' },
+      { char: '💻', name: 'laptop' },
+      { char: '🖥️', name: 'desktop computer' },
+      { char: '⌚', name: 'watch' },
+      { char: '📷', name: 'camera' },
+      { char: '📹', name: 'video camera' },
+      { char: '🎵', name: 'musical note' },
+      { char: '🎶', name: 'musical notes' },
+      { char: '🎸', name: 'guitar' },
+      { char: '🎤', name: 'microphone' },
+      { char: '🎧', name: 'headphone' },
+      { char: '📚', name: 'books' },
+      { char: '📖', name: 'open book' },
+      { char: '📝', name: 'memo' },
+      { char: '✏️', name: 'pencil' },
+      { char: '✒️', name: 'black nib' },
+      { char: '🖊️', name: 'pen' },
+      { char: '🖋️', name: 'fountain pen' },
+      { char: '🔍', name: 'magnifying glass tilted left' },
+      { char: '🔎', name: 'magnifying glass tilted right' }
+    ]
+  }
+};
+
+// Computed
+const canSend = computed(() => messageContent.value.trim() && !isSending.value);
+
+const placeholderText = computed(() => {
+  if (formatMode.value === 'markdown') {
+    return 'Type in Markdown... **bold**, *italic*, `code`';
+  } else if (formatMode.value === 'code') {
+    return 'Type code... (supports syntax highlighting)';
+  } else if (formatMode.value === 'file') {
+    return 'Add files to share...';
+  }
+  return 'Type a message...';
+});
+
+const renderedMarkdown = computed(() => {
+  if (!messageContent.value.trim()) {
+    return '<p class="empty-preview">Start typing to see preview...</p>';
+  }
+  try {
+    return DOMPurify.sanitize(marked(messageContent.value, { breaks: true, gfm: true }));
+  } catch (error) {
+    return '<p class="error-preview">Markdown syntax error</p>';
+  }
+});
+
+const filteredEmojis = computed(() => {
+  try {
+    const query = (emojiSearchQuery.value || '').toString().toLowerCase();
+    let emojis = emojiCategories[selectedEmojiCategory.value]?.emojis || [];
+
+    if (query && query.trim()) {
+      emojis = Object.values(emojiCategories)
+        .flatMap(category => category.emojis || [])
+        .filter(emoji => {
+          try {
+            const emojiName = (emoji?.name || '').toString().toLowerCase();
+            return emojiName.indexOf(query) !== -1;
+          } catch (error) {
+            console.warn('⚠️ Error filtering emoji:', emoji, error);
+            return false;
+          }
+        });
+    }
+
+    console.log('🔍 Filtered emojis count:', emojis.length, 'for query:', query);
+    return emojis;
+  } catch (error) {
+    console.error('❌ Error in filteredEmojis:', error);
+    return emojiCategories[selectedEmojiCategory.value]?.emojis || [];
+  }
+});
+
+// Methods
+const getPreviewTitle = () => {
+  if (formatMode.value === 'markdown') return 'Markdown Preview';
+  if (formatMode.value === 'code') return `Code Preview (${selectedLanguage.value})`;
+  if (formatMode.value === 'file') return 'File Preview';
+  return 'Preview';
+};
+
+const cycleFormatMode = () => {
+  if (formatMode.value === 'text') {
+    formatMode.value = 'markdown';
+    showPreview.value = false;
+  } else if (formatMode.value === 'markdown') {
+    formatMode.value = 'code';
+    showPreview.value = true; // Auto-show preview for code
+  } else {
+    formatMode.value = 'text';
+    showPreview.value = false;
+  }
+  emit('preview-state-change', showPreview.value);
+};
+
+const getFormatModeTooltip = () => {
+  if (formatMode.value === 'text') return 'Switch to Markdown mode';
+  if (formatMode.value === 'markdown') return 'Switch to Code mode';
+  return 'Switch to Text mode';
+};
+
+const closePreview = () => {
+  showPreview.value = false;
+  emit('preview-state-change', false);
+};
+
+const toggleMarkdownPreview = () => {
+  if (formatMode.value === 'markdown') {
+    showPreview.value = !showPreview.value;
+    emit('preview-state-change', showPreview.value);
+  }
+};
+
+// Enhanced Markdown toolbar methods
+const insertMarkdown = (before, after = '') => {
+  const textarea = messageInput.value;
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const selectedText = messageContent.value.substring(start, end);
+
+  const newText = before + selectedText + after;
+  messageContent.value = messageContent.value.substring(0, start) + newText + messageContent.value.substring(end);
+
+  nextTick(() => {
+    const newCursorPos = start + before.length + selectedText.length;
+    textarea.setSelectionRange(newCursorPos, newCursorPos);
+    textarea.focus();
+  });
+};
+
+const insertCodeBlock = () => {
+  const textarea = messageInput.value;
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const selectedText = messageContent.value.substring(start, end);
+
+  const codeBlock = selectedText
+    ? `\`\`\`\n${selectedText}\n\`\`\``
+    : `\`\`\`\n\n\`\`\``;
+
+  messageContent.value = messageContent.value.substring(0, start) + codeBlock + messageContent.value.substring(end);
+
+  nextTick(() => {
+    const newCursorPos = selectedText ? start + codeBlock.length : start + 4; // 4 = "```\n".length
+    textarea.setSelectionRange(newCursorPos, newCursorPos);
+    textarea.focus();
+  });
+};
+
+const insertTable = () => {
+  const textarea = messageInput.value;
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const table = `| Header 1 | Header 2 | Header 3 |
+|----------|----------|----------|
+| Cell 1   | Cell 2   | Cell 3   |
+| Cell 4   | Cell 5   | Cell 6   |
+
+`;
+
+  messageContent.value = messageContent.value.substring(0, start) + table + messageContent.value.substring(start);
+
+  nextTick(() => {
+    const newCursorPos = start + table.length;
+    textarea.setSelectionRange(newCursorPos, newCursorPos);
+    textarea.focus();
+  });
+};
+
+const clearContent = () => {
+  messageContent.value = '';
+  files.value = [];
+  showPreview.value = false;
+  emit('preview-state-change', false);
+  nextTick(() => {
+    if (messageInput.value) {
+      messageInput.value.focus();
+      messageInput.value.style.height = 'auto';
+    }
+  });
+};
+
+// File handling
+const triggerFileUpload = () => {
+  if (fileInput.value) {
+    fileInput.value.click();
+  }
+};
+
+const handleFileSelect = (event) => {
+  const selectedFiles = Array.from(event.target.files);
+  if (selectedFiles.length === 0) return;
+
+  files.value.push(...selectedFiles);
+  formatMode.value = 'file';
+  showPreview.value = true;
+  emit('preview-state-change', true);
+
+  event.target.value = '';
+};
+
+const handlePaste = (event) => {
+  const items = event.clipboardData?.items;
+  if (!items) return;
+
+  const pastedFiles = [];
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      event.preventDefault();
+      const file = item.getAsFile();
+      if (file) {
+        pastedFiles.push(file);
+      }
+    }
+  }
+
+  if (pastedFiles.length > 0) {
+    files.value.push(...pastedFiles);
+    formatMode.value = 'file';
+    showPreview.value = true;
+    emit('preview-state-change', true);
+  }
+};
+
+const removeFile = (index) => {
+  files.value.splice(index, 1);
+  if (files.value.length === 0) {
+    closePreview();
+    formatMode.value = 'text';
+  }
+};
+
+const getFilePreviewUrl = (file) => {
+  return URL.createObjectURL(file);
+};
+
+const getFileTypeClass = (type) => {
+  if (type.startsWith('image/')) return 'file-image';
+  if (type.startsWith('video/')) return 'file-video';
+  if (type.startsWith('audio/')) return 'file-audio';
+  if (type.includes('pdf')) return 'file-pdf';
+  if (type.includes('text/') || type.includes('json') || type.includes('javascript')) return 'file-code';
+  return 'file-document';
+};
+
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+// Emoji handling
+const toggleEmojiPicker = () => {
+  console.log('🎭 Toggling emoji picker. Current state:', showEmojiPicker.value);
+  showEmojiPicker.value = !showEmojiPicker.value;
+  if (showEmojiPicker.value) {
+    emojiSearchQuery.value = '';
+    selectedEmojiCategory.value = 'smileys';
+    console.log('✅ Emoji picker opened');
+  } else {
+    console.log('❌ Emoji picker closed');
+  }
+};
+
+const closeEmojiPicker = () => {
+  console.log('🔒 Closing emoji picker');
+  showEmojiPicker.value = false;
+};
+
+const selectEmojiCategory = (categoryKey) => {
+  console.log('📂 Selecting emoji category:', categoryKey);
+  selectedEmojiCategory.value = categoryKey;
+  emojiSearchQuery.value = '';
+};
+
+const filterEmojis = () => {
+  // Computed property handles filtering
+  console.log('🔍 Filtering emojis with query:', emojiSearchQuery.value);
+};
+
+const insertEmoji = (emoji) => {
+  console.log('😊 Inserting emoji:', emoji);
+  const textarea = messageInput.value;
+  if (!textarea) {
+    console.warn('⚠️ Textarea not found');
+    return;
+  }
+
+  try {
+    const start = textarea.selectionStart || 0;
+    const end = textarea.selectionEnd || 0;
+
+    messageContent.value = messageContent.value.substring(0, start) + emoji.char + messageContent.value.substring(end);
+
+    nextTick(() => {
+      const newPos = start + emoji.char.length;
+      textarea.setSelectionRange(newPos, newPos);
+      textarea.focus();
+    });
+
+    console.log('✅ Emoji inserted successfully');
+    showEmojiPicker.value = false;
+  } catch (error) {
+    console.error('❌ Error inserting emoji:', error);
+    showEmojiPicker.value = false;
+  }
+};
+
+// Input handling
+const handleKeyDown = (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendMessage();
+  }
+
+  // Markdown shortcuts
+  if ((event.metaKey || event.ctrlKey) && formatMode.value === 'markdown') {
+    switch (event.key) {
+      case 'b': event.preventDefault(); insertMarkdown('**', '**'); break;
+      case 'i': event.preventDefault(); insertMarkdown('*', '*'); break;
+      case 'k': event.preventDefault(); insertMarkdown('[', '](url)'); break;
+    }
+  }
+};
+
+const handleInput = () => {
+  nextTick(() => {
+    if (messageInput.value) {
+      messageInput.value.style.height = 'auto';
+      messageInput.value.style.height = Math.min(messageInput.value.scrollHeight, 120) + 'px';
+    }
+  });
+};
+
+// Send message
+const sendMessage = async () => {
+  if (!canSend.value) return;
+
+  isSending.value = true;
+
+  try {
+    const messageData = {
+      content: messageContent.value.trim(),
+      files: files.value.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type
+      })),
+      formatMode: formatMode.value,
+      reply_to: props.replyToMessage?.id
+    };
+
+    emit('message-sent', messageData);
+
+    // Reset state
+    messageContent.value = '';
+    files.value = [];
+    closePreview();
+    formatMode.value = 'text';
+
+    nextTick(() => {
+      if (messageInput.value) {
+        messageInput.value.style.height = 'auto';
+      }
+    });
+
+  } catch (error) {
+    console.error('Failed to send message:', error);
+  } finally {
+    isSending.value = false;
+  }
+};
+
+// Click outside handler
+const handleClickOutside = (event) => {
+  if (showEmojiPicker.value && emojiPickerRef.value && !emojiPickerRef.value.contains(event.target)) {
+    showEmojiPicker.value = false;
+  }
+};
+
+// Chat isolation
+watch(() => props.chatId, (newChatId, oldChatId) => {
+  if (newChatId !== oldChatId && oldChatId !== undefined) {
+    messageContent.value = '';
+    files.value = [];
+    showPreview.value = false;
+    formatMode.value = 'text';
+    showEmojiPicker.value = false;
+    emojiSearchQuery.value = '';
+    selectedEmojiCategory.value = 'smileys';
+    emit('preview-state-change', false);
+  }
+});
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+});
+</script>
+
+<style scoped>
+.message-input {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--color-background);
+  border-top: 1px solid var(--color-border);
+}
+
+/* Main Input Area */
+.main-input-area {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.input-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--color-background-soft);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.input-btn:hover {
+  background: var(--color-background-muted);
+  border-color: var(--color-border-hover);
+  color: var(--color-text);
+}
+
+.input-btn:active {
+  transform: scale(0.95);
+}
+
+.input-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.input-btn.active {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Mode Button States */
+.mode-btn.mode-markdown {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.mode-btn.mode-code {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  border-color: var(--color-warning);
+}
+
+/* Input Container */
+.input-container {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+}
+
+.message-textarea {
+  width: 100%;
+  min-height: 40px;
+  max-height: 120px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-size: 14px;
+  line-height: 1.4;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+}
+
+.message-textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-alpha);
+}
+
+.message-textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* Loading Spinner */
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Enhanced Markdown Toolbar */
+.markdown-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--color-background-soft);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  gap: 8px;
+}
+
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: var(--color-text-muted);
+}
+
+.toolbar-btn:hover {
+  background: var(--color-background-muted);
+  border-color: var(--color-border-hover);
+  color: var(--color-text);
+}
+
+.toolbar-btn:active {
+  transform: translateY(0);
+}
+
+.toolbar-btn.active {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--color-border);
+  margin: 0 4px;
+}
+
+/* Preview Container */
+.preview-container {
+  background: var(--color-background-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--color-background-soft);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.preview-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.preview-close {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.preview-close:hover {
+  background: var(--color-background-soft);
+  color: var(--color-text);
+}
+
+.preview-content {
+  padding: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* Markdown Preview */
+.markdown-preview {
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3 {
+  margin: 16px 0 8px 0;
+  color: var(--color-text);
+}
+
+.markdown-preview p {
+  margin: 8px 0;
+}
+
+.markdown-preview code {
+  background: var(--color-background-soft);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 85%;
+}
+
+.markdown-preview pre {
+  background: var(--color-background-soft);
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+.markdown-preview table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+}
+
+.markdown-preview th,
+.markdown-preview td {
+  border: 1px solid var(--color-border);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.markdown-preview th {
+  background: var(--color-background-soft);
+  font-weight: 600;
+}
+
+.markdown-preview blockquote {
+  border-left: 4px solid var(--color-primary);
+  margin: 12px 0;
+  padding: 8px 16px;
+  background: var(--color-background-soft);
+  border-radius: 0 6px 6px 0;
+}
+
+.markdown-preview hr {
+  border: none;
+  border-top: 2px solid var(--color-border);
+  margin: 20px 0;
+}
+
+.empty-preview {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.error-preview {
+  color: var(--color-error);
+}
+
+/* Code Preview */
+.code-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.language-selector {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-size: 12px;
+}
+
+.code-info {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.code-preview pre {
+  margin: 0;
+  padding: 12px;
+  background: var(--color-background-soft);
+  border-radius: 4px;
+  overflow-x: auto;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* File Preview */
+.file-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.file-upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px;
+  border: 2px dashed var(--color-border);
+  border-radius: 8px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.file-upload-area svg {
+  color: var(--color-text-muted);
+  margin-bottom: 12px;
+}
+
+.file-upload-area p {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+}
+
+.upload-btn {
+  padding: 8px 16px;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.15s ease;
+}
+
+.upload-btn:hover {
+  background: var(--color-primary-hover);
+}
+
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.file-icon-wrapper {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-thumbnail {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.file-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--color-text-muted);
+}
+
+.file-icon.file-image {
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+.file-icon.file-video {
+  background: #fef3e2;
+  color: #f59e0b;
+}
+
+.file-icon.file-audio {
+  background: #f0fdf4;
+  color: #10b981;
+}
+
+.file-icon.file-pdf {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.file-icon.file-code {
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.file-icon.file-document {
+  background: #fafafa;
+  color: #6b7280;
+}
+
+.file-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.file-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-size {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.file-type {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+  opacity: 0.7;
+}
+
+.file-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.file-remove {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.file-remove:hover {
+  background: var(--color-error-soft);
+  color: var(--color-error);
+}
+
+.add-more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--color-background-soft);
+  border: 1px dashed var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s ease;
+}
+
+.add-more-btn:hover {
+  background: var(--color-background-muted);
+  border-color: var(--color-border-hover);
+  color: var(--color-text);
+}
+
+/* Enhanced Send Button with Dynamic States */
+.send-btn {
+  background: var(--color-background-soft);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Empty state - unattractive and subdued */
+.send-btn.empty {
+  background: var(--color-background);
+  border: 2px dashed var(--color-border);
+  color: var(--color-text-muted);
+  opacity: 0.4;
+  transform: scale(0.9);
+  cursor: not-allowed;
+}
+
+.send-btn.empty:hover {
+  background: var(--color-background);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+  transform: scale(0.9);
+}
+
+/* Filled state - attractive and inviting */
+.send-btn.filled {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  color: white;
+  border-color: var(--color-primary);
+  box-shadow: 0 4px 12px rgba(88, 101, 242, 0.3);
+  transform: scale(1);
+}
+
+.send-btn.filled:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--color-primary-hover), var(--color-primary));
+  box-shadow: 0 6px 20px rgba(88, 101, 242, 0.4);
+  transform: scale(1.05);
+}
+
+/* Pulse effect for longer messages */
+.send-btn.pulse {
+  animation: sendPulse 2s infinite;
+}
+
+@keyframes sendPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 4px 12px rgba(88, 101, 242, 0.3);
+    transform: scale(1);
+  }
+
+  50% {
+    box-shadow: 0 6px 24px rgba(88, 101, 242, 0.6);
+    transform: scale(1.02);
+  }
+}
+
+.send-btn.active {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.send-btn svg {
+  transition: transform 0.2s ease;
+}
+
+.send-btn.filled:hover:not(:disabled) svg {
+  transform: rotate(15deg) scale(1.1);
+}
+
+/* Text buttons for H1, H2, H3 */
+.text-btn {
+  font-size: 11px;
+  font-weight: 600;
+  color: inherit;
+  letter-spacing: 0.5px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .message-input {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .markdown-toolbar {
+    gap: 6px;
+    padding: 6px 8px;
+    flex-wrap: wrap;
+  }
+
+  .toolbar-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .text-btn {
+    font-size: 10px;
+  }
+
+  .input-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .emoji-modal {
+    width: 90vw;
+    max-width: 350px;
+    max-height: 80vh;
+  }
+
+  .emoji-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .emoji-item {
+    font-size: 20px;
+    padding: 6px;
+  }
+
+  .file-item {
+    padding: 8px;
+  }
+
+  .file-icon-wrapper {
+    width: 40px;
+    height: 40px;
+  }
+
+  .file-thumbnail {
+    width: 40px;
+    height: 40px;
+  }
+
+  .file-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .preview-content {
+    max-height: 200px;
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .file-icon.file-image {
+    background: #1e3a8a;
+    color: #60a5fa;
+  }
+
+  .file-icon.file-video {
+    background: #92400e;
+    color: #fbbf24;
+  }
+
+  .file-icon.file-audio {
+    background: #064e3b;
+    color: #34d399;
+  }
+
+  .file-icon.file-pdf {
+    background: #7f1d1d;
+    color: #f87171;
+  }
+
+  .file-icon.file-code {
+    background: #1e293b;
+    color: #94a3b8;
+  }
+
+  .file-icon.file-document {
+    background: #1f2937;
+    color: #9ca3af;
+  }
+}
+
+/* Enhanced focus and accessibility */
+.toolbar-btn:focus,
+.input-btn:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.message-textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-alpha);
+}
+
+/* Animation for toolbar appearance */
+.markdown-toolbar {
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Preview container animation */
+.preview-container {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Production Emoji Modal */
+.emoji-modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 999999 !important;
+  backdrop-filter: blur(4px);
+  pointer-events: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.emoji-modal {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  width: 400px;
+  max-height: 500px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 999999 !important;
+  position: relative !important;
+}
+
+.emoji-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-background-soft);
+}
+
+.emoji-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.emoji-close {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.emoji-close:hover {
+  background: var(--color-background-muted);
+  color: var(--color-text);
+}
+
+.emoji-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.emoji-search svg {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.emoji-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 14px;
+}
+
+.emoji-search input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.emoji-categories {
+  display: flex;
+  gap: 4px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-background-soft);
+  overflow-x: auto;
+}
+
+.category-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 18px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+}
+
+.category-btn:hover {
+  background: var(--color-background-muted);
+}
+
+.category-btn.active {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.emoji-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+}
+
+.emoji-item {
+  background: none;
+  border: none;
+  font-size: 24px;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emoji-item:hover {
+  background: var(--color-background-soft);
+  transform: scale(1.1);
+}
+
+.emoji-item:active {
+  transform: scale(0.95);
+}
+
+.no-emojis {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.no-emojis svg {
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.no-emojis p {
+  margin: 0;
+  font-size: 14px;
+}
+</style>

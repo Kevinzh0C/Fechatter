@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>SSE Direct Test</title>
+  <style>
+    body {
+      font-family: monospace;
+      margin: 20px;
+    }
+
+    .log {
+      background: #f0f0f0;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+    }
+
+    .error {
+      background: #ffebee;
+      color: #c62828;
+    }
+
+    .success {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .warning {
+      background: #fff3e0;
+      color: #ef6c00;
+    }
+
+    button {
+      margin: 5px;
+      padding: 10px 15px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>🚀 SSE Direct Connection Test</h1>
+
+  <button onclick="testSSE()">Test SSE Connection</button>
+  <button onclick="checkServices()">Check Services</button>
+  <button onclick="clearLogs()">Clear</button>
+
+  <div id="logs"></div>
+
+  <script>
+    function log(message, type = 'log') {
+      const div = document.createElement('div');
+      div.className = `log ${type}`;
+      div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      document.getElementById('logs').appendChild(div);
+      console.log(message);
+    }
+
+    function checkServices() {
+      log('🔍 Checking available services...');
+
+      // Check minimalSSE
+      const minimalSSE = window.minimalSSE || window.realtimeCommunicationService;
+      log(`minimalSSE service: ${!!minimalSSE}`, minimalSSE ? 'success' : 'error');
+
+      // Check auth store
+      const authStore = window.__pinia_stores__?.auth?.() || window.pinia?.stores?.auth;
+      log(`Auth store: ${!!authStore}`, authStore ? 'success' : 'error');
+
+      if (authStore) {
+        log(`Authenticated: ${authStore.isAuthenticated}`, authStore.isAuthenticated ? 'success' : 'warning');
+        log(`Token exists: ${!!authStore.token}`, authStore.token ? 'success' : 'error');
+
+        if (authStore.token) {
+          log(`Token preview: ${authStore.token.substring(0, 20)}...`);
+        }
+      }
+
+      if (minimalSSE) {
+        log(`SSE connected: ${minimalSSE.connected}`);
+        log(`EventSource exists: ${!!minimalSSE.eventSource}`, minimalSSE.eventSource ? 'success' : 'error');
+
+        if (minimalSSE.eventSource) {
+          log(`EventSource URL: ${minimalSSE.eventSource.url}`);
+          log(`EventSource state: ${minimalSSE.eventSource.readyState}`);
+        }
+      }
+    }
+
+    function testSSE() {
+      log('🧪 Testing direct SSE connection...');
+
+      // Get token
+      const authStore = window.__pinia_stores__?.auth?.() || window.pinia?.stores?.auth;
+      if (!authStore || !authStore.token) {
+        log('❌ No auth token available', 'error');
+        return;
+      }
+
+      const token = authStore.token;
+      const url = `/events?access_token=${token}`;
+
+      log(`🔗 Creating EventSource: ${url}`);
+
+      try {
+        const eventSource = new EventSource(url);
+
+        eventSource.onopen = function () {
+          log('✅ EventSource OPENED successfully!', 'success');
+          log('🌐 Network request to /events was successful!', 'success');
+        };
+
+        eventSource.onmessage = function (event) {
+          log(`📨 Message received: ${event.data.substring(0, 100)}`, 'success');
+        };
+
+        eventSource.onerror = function (error) {
+          log(`❌ EventSource error: ${error}`, 'error');
+          log(`ReadyState: ${eventSource.readyState}`, 'error');
+        };
+
+        // Store for manual cleanup
+        window.testEventSource = eventSource;
+
+        // Auto-close after 30 seconds
+        setTimeout(() => {
+          eventSource.close();
+          log('🔚 Test EventSource closed');
+        }, 30000);
+
+      } catch (error) {
+        log(`❌ Failed to create EventSource: ${error.message}`, 'error');
+      }
+    }
+
+    function clearLogs() {
+      document.getElementById('logs').innerHTML = '';
+    }
+
+    // Auto-check services on load
+    document.addEventListener('DOMContentLoaded', function () {
+      log('🚀 SSE Direct Test Tool Ready');
+
+      // Wait a moment for app to load
+      setTimeout(() => {
+        checkServices();
+      }, 2000);
+    });
+  </script>
+</body>
+
+</html>

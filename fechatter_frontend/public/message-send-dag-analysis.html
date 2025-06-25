@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Fechatter 发送消息流程 DAG 分析</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .analysis-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #5865f2 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 22px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .dag-container {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            overflow-x: auto;
+            margin-bottom: 30px;
+        }
+
+        .dag-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-width: 1200px;
+        }
+
+        .flow-layer {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .flow-node {
+            background: white;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            padding: 15px 20px;
+            min-width: 200px;
+            text-align: center;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .flow-node:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .flow-node.start {
+            border-color: #28a745;
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        }
+
+        .flow-node.process {
+            border-color: #17a2b8;
+            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+        }
+
+        .flow-node.api {
+            border-color: #ffc107;
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+        }
+
+        .flow-node.backend {
+            border-color: #dc3545;
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        }
+
+        .flow-node.end {
+            border-color: #6f42c1;
+            background: linear-gradient(135deg, #e2d9f3 0%, #d1b3ff 100%);
+        }
+
+        .flow-node h4 {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .flow-node p {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .flow-node .tech {
+            font-size: 12px;
+            color: #999;
+            font-style: italic;
+        }
+
+        .flow-arrow {
+            color: #5865f2;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0 10px;
+        }
+
+        .code-section {
+            background: #2d3748;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+
+        .code-section h4 {
+            color: #ffffff;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .code-section pre {
+            color: #e2e8f0;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+
+        .step-details {
+            display: grid;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .step-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid #5865f2;
+        }
+
+        .step-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .step-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .step-info div {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #e1e5e9;
+        }
+
+        .step-info strong {
+            color: #5865f2;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+
+        .metric-card h4 {
+            color: #495057;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #5865f2;
+            margin-bottom: 5px;
+        }
+
+        .metric-desc {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .parallel-flows {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .flow-branch {
+            background: #f1f3f4;
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px dashed #5865f2;
+        }
+
+        .flow-branch h3 {
+            color: #5865f2;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .flow-branch ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .flow-branch li {
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+            color: #495057;
+        }
+
+        .flow-branch li:last-child {
+            border-bottom: none;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 2px solid;
+        }
+
+        .error-flow {
+            background: #ffe6e6;
+            border: 2px solid #dc3545;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .error-flow h3 {
+            color: #dc3545;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .optimization-tips {
+            background: #e8f4fd;
+            border: 2px solid #17a2b8;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .optimization-tips h3 {
+            color: #17a2b8;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .optimization-tips ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .optimization-tips li {
+            padding: 5px 0;
+            color: #495057;
+        }
+
+        .optimization-tips li::before {
+            content: "💡 ";
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="analysis-container">
+        <div class="header">
+            <h1>📊 Fechatter 发送消息流程 DAG 分析</h1>
+            <p>完整的前端消息发送有向无环图流程解析</p>
+        </div>
+
+        <div class="content">
+            <!-- 主流程DAG -->
+            <div class="section">
+                <h2>�� 主流程 DAG 图</h2>
+                
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color start" style="border-color: #28a745; background: #d4edda;"></div>
+                        <span>用户操作</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color process" style="border-color: #17a2b8; background: #d1ecf1;"></div>
+                        <span>前端处理</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color api" style="border-color: #ffc107; background: #fff3cd;"></div>
+                        <span>API调用</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color backend" style="border-color: #dc3545; background: #f8d7da;"></div>
+                        <span>后端处理</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color end" style="border-color: #6f42c1; background: #e2d9f3;"></div>
+                        <span>完成状态</span>
+                    </div>
+                </div>
+
+                <div class="dag-container">
+                    <div class="dag-flow">
+                        <!-- Layer 1: User Action -->
+                        <div class="flow-layer">
+                            <div class="flow-node start">
+                                <h4>🖱️ 用户操作</h4>
+                                <p>点击发送按钮或按Enter键</p>
+                                <div class="tech">用户交互触发</div>
+                            </div>
+                        </div>
+
+                        <div class="flow-layer">
+                            <div class="flow-arrow">↓</div>
+                        </div>
+
+                        <!-- Layer 2: Input Validation -->
+                        <div class="flow-layer">
+                            <div class="flow-node process">
+                                <h4>✅ canSend 检查</h4>
+                                <p>验证有文本内容或文件</p>
+                                <div class="tech">MessageInput.vue computed</div>
+                            </div>
+                        </div>
+
+                        <div class="flow-layer">
+                            <div class="flow-arrow">↓</div>
+                        </div>
+
+                        <!-- Layer 3: Message Processing -->
+                        <div class="flow-layer">
+                            <div class="flow-node process">
+                                <h4>📝 sendMessage()</h4>
+                                <p>构建消息数据和状态管理</p>
+                                <div class="tech">MessageInput.vue:932</div>
+                            </div>
+                        </div>
+
+                        <div class="flow-layer">
+                            <div class="flow-arrow">↓</div>
+                        </div>
+
+                        <!-- Layer 4: File Upload (Conditional) -->
+                        <div class="flow-layer">
+                            <div class="flow-node api">
+                                <h4>📤 文件上传</h4>
+                                <p>上传File对象获取URL</p>
+                                <div class="tech">ChatService.uploadFile()</div>
+                            </div>
+                            <div class="flow-node process">
+                                <h4>🔄 并行处理</h4>
+                                <p>多文件并发上传</p>
+                                <div class="tech">Promise.all()</div>
+                            </div>
+                        </div>
+
+                        <div class="flow-layer">
+                            <div class="flow-arrow">↓</div>
+                        </div>
+
+                        <!-- Layer 5: Message Send -->
+                        <div class="flow-layer">
+                            <div class="flow-node api">
+                                <h4>🚀 ChatService.sendMessage()</h4>
+                                <p>发送消息到后端API</p>
+                                <div class="tech">POST /chat/{id}/messages</div>
+                            </div>
+                        </div>
+
+                        <div class="flow-layer">
+                            <div class="flow-arrow">↓</div>
+                        </div>
+
+                        <!-- Layer 6: Backend Processing -->
+                        <div class="flow-layer">
+                            <div class="flow-node backend">
+                                <h4>💾 后端处理</h4>
+                                <p>验证、保存到数据库</p>
+                                <div class="tech">Rust Backend Service</div>
+                            </div>
+                            <div class="flow-node backend">
+                                <h4>📡 NATS事件</h4>
+                                <p>发布消息事件到JetStream</p>
+                                <div class="tech">Event Publishing</div>
+                            </div>
+                        </div>
+
+                        <div class="flow-layer">
+                            <div class="flow-arrow">↓</div>
+                        </div>
+
+                        <!-- Layer 7: SSE Broadcasting -->
+                        <div class="flow-layer">
+                            <div class="flow-node backend">
+                                <h4>📻 SSE广播</h4>
+                                <p>实时推送给所有用户</p>
+                                <div class="tech">Server-Sent Events</div>
+                            </div>
+                        </div>
+
+                        <div class="flow-layer">
+                            <div class="flow-arrow">↓</div>
+                        </div>
+
+                        <!-- Layer 8: UI Update -->
+                        <div class="flow-layer">
+                            <div class="flow-node end">
+                                <h4>🎯 UI更新</h4>
+                                <p>消息显示在聊天界面</p>
+                                <div class="tech">DiscordMessageItem.vue</div>
+                            </div>
+                            <div class="flow-node end">
+                                <h4>🖼️ 图片显示</h4>
+                                <p>图片缩略图渲染</p>
+                                <div class="tech">FilePreview.vue</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 详细步骤分析 -->
+            <div class="section">
+                <h2>🔍 详细步骤分析</h2>
+                
+                <div class="step-details">
+                    <div class="step-card">
+                        <h3>1️⃣ 触发机制</h3>
+                        <div class="step-info">
+                            <div>
+                                <strong>触发事件</strong>
+                                handleKeyDown (Enter键) | @click="sendMessage"
+                            </div>
+                            <div>
+                                <strong>前置条件</strong>
+                                canSend.value === true
+                            </div>
+                        </div>
+                        <div class="code-section">
+                            <h4>MessageInput.vue - 触发代码</h4>
+                            <pre>const handleKeyDown = (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendMessage();
+  }
+};
+
+const canSend = computed(() => {
+  const hasContent = messageContent.value.trim().length > 0;
+  const hasFiles = files.value.length > 0;
+  const notSending = !isSending.value;
+  return (hasContent || hasFiles) && notSending;
+});</pre>
+                        </div>
+                    </div>
+
+                    <div class="step-card">
+                        <h3>2️⃣ 消息数据构建</h3>
+                        <div class="step-info">
+                            <div>
+                                <strong>数据来源</strong>
+                                messageContent.value + files.value + props
+                            </div>
+                            <div>
+                                <strong>数据格式</strong>
+                                SendMessageRequest 接口
+                            </div>
+                        </div>
+                        <div class="code-section">
+                            <h4>MessageInput.vue:932 - 数据构建</h4>
+                            <pre>const messageData = {
+  content: messageContent.value.trim(),
+  files: files.value, // File对象数组
+  formatMode: formatMode.value,
+  reply_to: props.replyToMessage?.id,
+  mentions: [], 
+  priority: 'normal',
+  is_important: false,
+  is_scheduled: false
+};</pre>
+                        </div>
+                    </div>
+
+                    <div class="step-card">
+                        <h3>3️⃣ 文件上传处理</h3>
+                        <div class="step-info">
+                            <div>
+                                <strong>上传方式</strong>
+                                multipart/form-data
+                            </div>
+                            <div>
+                                <strong>并发策略</strong>
+                                Promise.all() 并行上传
+                            </div>
+                        </div>
+                        <div class="code-section">
+                            <h4>ChatService.ts:252 - 文件上传</h4>
+                            <pre>// 1. Handle file uploads
+let uploadedFiles: UploadedFile[] = [];
+const filesToUpload = messageData.files?.filter(f => f instanceof File) as File[] || [];
+
+if (filesToUpload.length > 0) {
+  const uploadPromises = filesToUpload.map(file => this.uploadFile(file as File));
+  uploadedFiles = await Promise.all(uploadPromises);
+}
+
+// 2. 整理文件URL
+const newFileUrls = uploadedFiles.map(f => f.url || f.file_url);
+const allFileUrls = [...existingFileUrls, ...newFileUrls];</pre>
+                        </div>
+                    </div>
+
+                    <div class="step-card">
+                        <h3>4️⃣ API消息发送</h3>
+                        <div class="step-info">
+                            <div>
+                                <strong>请求方式</strong>
+                                POST /chat/{chatId}/messages
+                            </div>
+                            <div>
+                                <strong>幂等性</strong>
+                                idempotency_key 防重复
+                            </div>
+                        </div>
+                        <div class="code-section">
+                            <h4>ChatService.ts:284 - API调用</h4>
+                            <pre>const requestPayload = {
+  content: finalContent,
+  files: allFileUrls.length > 0 ? allFileUrls : undefined,
+  reply_to: messageData.reply_to || undefined,
+  mentions: messageData.mentions || undefined,
+  idempotency_key: messageData.idempotency_key || this.generateIdempotencyKey()
+};
+
+const response = await api.post(`/chat/${chatId}/messages`, requestPayload);</pre>
+                        </div>
+                    </div>
+
+                    <div class="step-card">
+                        <h3>5️⃣ 事件传播</h3>
+                        <div class="step-info">
+                            <div>
+                                <strong>组件通信</strong>
+                                emit('message-sent', sentMessage)
+                            </div>
+                            <div>
+                                <strong>状态更新</strong>
+                                Chat.vue → handleMessageSent
+                            </div>
+                        </div>
+                        <div class="code-section">
+                            <h4>MessageInput.vue:968 - 事件发射</h4>
+                            <pre>const sentMessage = await ChatService.sendMessage(props.chatId, messageData);
+
+// 🎯 触发父组件事件，传递已发送的消息
+emit('message-sent', sentMessage);
+
+// Reset state
+messageContent.value = '';
+files.value = [];
+closePreview();</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 并行流程分析 -->
+            <div class="section">
+                <h2>⚡ 并行流程分析</h2>
+                
+                <div class="parallel-flows">
+                    <div class="flow-branch">
+                        <h3>🔄 同步流程</h3>
+                        <ul>
+                            <li>✅ 用户输入验证</li>
+                            <li>📤 文件上传处理</li>
+                            <li>🚀 消息API发送</li>
+                            <li>📨 父组件事件通知</li>
+                            <li>🧹 UI状态重置</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="flow-branch">
+                        <h3>📡 异步流程</h3>
+                        <ul>
+                            <li>💾 后端数据库保存</li>
+                            <li>📊 NATS事件发布</li>
+                            <li>🔍 搜索索引更新</li>
+                            <li>📻 SSE实时广播</li>
+                            <li>🖥️ 其他用户UI更新</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 性能指标 -->
+            <div class="section">
+                <h2>📈 性能指标</h2>
+                
+                <div class="metrics">
+                    <div class="metric-card">
+                        <h4>🚀 发送延迟</h4>
+                        <div class="metric-value">< 500ms</div>
+                        <div class="metric-desc">文件上传 + API调用</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <h4>📡 SSE延迟</h4>
+                        <div class="metric-value">< 100ms</div>
+                        <div class="metric-desc">实时广播到其他用户</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <h4>📁 文件上传</h4>
+                        <div class="metric-value">2MB</div>
+                        <div class="metric-desc">单文件最大大小</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <h4>🔄 重试机制</h4>
+                        <div class="metric-value">3次</div>
+                        <div class="metric-desc">网络失败自动重试</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 错误处理流程 -->
+            <div class="error-flow">
+                <h3>⚠️ 错误处理流程</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px;">
+                    <div>
+                        <strong>网络错误处理：</strong>
+                        <ul style="margin-top: 10px; padding-left: 20px;">
+                            <li>自动重试机制（3次）</li>
+                            <li>指数退避策略</li>
+                            <li>用户友好错误提示</li>
+                            <li>网络健康检查</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <strong>业务错误处理：</strong>
+                        <ul style="margin-top: 10px; padding-left: 20px;">
+                            <li>401: 引导重新登录</li>
+                            <li>403: 权限不足提示</li>
+                            <li>413: 文件过大提示</li>
+                            <li>422: 格式错误提示</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 优化建议 -->
+            <div class="optimization-tips">
+                <h3>💡 优化建议</h3>
+                <ul>
+                    <li>实现乐观更新：消息发送前先显示在UI中</li>
+                    <li>添加消息状态指示：发送中、已发送、已送达</li>
+                    <li>文件压缩：图片自动压缩减少上传时间</li>
+                    <li>批量上传：多文件时使用批量上传API</li>
+                    <li>离线支持：网络断开时缓存消息</li>
+                    <li>预加载优化：预先加载表情和贴纸</li>
+                </ul>
+            </div>
+
+            <!-- 技术架构总结 -->
+            <div class="section">
+                <h2>🏗️ 技术架构总结</h2>
+                
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-top: 20px;">
+                    <h3 style="color: #495057; margin-bottom: 15px;">核心组件协作</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+                        <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6;">
+                            <strong style="color: #5865f2;">前端层</strong>
+                            <div style="font-size: 14px; color: #6c757d; margin-top: 5px;">
+                                MessageInput.vue → ChatService.ts → API调用
+                            </div>
+                        </div>
+                        <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6;">
+                            <strong style="color: #5865f2;">传输层</strong>
+                            <div style="font-size: 14px; color: #6c757d; margin-top: 5px;">
+                                HTTP/REST → multipart/form-data → JSON
+                            </div>
+                        </div>
+                        <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6;">
+                            <strong style="color: #5865f2;">后端层</strong>
+                            <div style="font-size: 14px; color: #6c757d; margin-top: 5px;">
+                                Rust服务 → PostgreSQL → NATS → SSE
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 添加交互式功能
+        document.addEventListener('DOMContentLoaded', function() {
+            // 点击节点显示详细信息
+            const flowNodes = document.querySelectorAll('.flow-node');
+            flowNodes.forEach(node => {
+                node.addEventListener('click', function() {
+                    // 高亮选中的节点
+                    flowNodes.forEach(n => n.style.boxShadow = '');
+                    this.style.boxShadow = '0 0 20px rgba(88, 101, 242, 0.4)';
+                    
+                    // 可以在这里添加更多交互逻辑
+                    console.log('Clicked node:', this.querySelector('h4').textContent);
+                });
+            });
+
+            // 添加复制代码功能
+            const codeBlocks = document.querySelectorAll('.code-section pre');
+            codeBlocks.forEach(block => {
+                block.style.cursor = 'pointer';
+                block.title = '点击复制代码';
+                block.addEventListener('click', function() {
+                    navigator.clipboard.writeText(this.textContent);
+                    
+                    // 显示复制成功提示
+                    const originalBg = this.style.backgroundColor;
+                    this.style.backgroundColor = 'rgba(40, 167, 69, 0.2)';
+                    setTimeout(() => {
+                        this.style.backgroundColor = originalBg;
+                    }, 500);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

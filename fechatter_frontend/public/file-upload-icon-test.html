@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件上传按钮图标测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        h1 {
+            color: #2d3748;
+            border-bottom: 3px solid #4f46e5;
+            padding-bottom: 10px;
+        }
+
+        .demo-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .icon-demo {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 15px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            margin: 10px 0;
+            transition: all 0.2s ease;
+        }
+
+        .icon-demo:hover {
+            border-color: #4f46e5;
+            background: #f8f9ff;
+            transform: translateY(-1px);
+        }
+
+        .input-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border: 1px solid #d1d5db;
+            background: #ffffff;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #6b7280;
+        }
+
+        .input-btn:hover {
+            background: #f3f4f6;
+            border-color: #9ca3af;
+            color: #374151;
+        }
+
+        .input-btn.active {
+            background: #4f46e5;
+            border-color: #4f46e5;
+            color: white;
+            box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+        }
+
+        .icon-info {
+            flex: 1;
+        }
+
+        .icon-name {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 5px;
+        }
+
+        .icon-description {
+            font-size: 0.9rem;
+            color: #6b7280;
+        }
+
+        .current-choice {
+            background: #dbeafe;
+            border: 2px solid #3b82f6;
+            position: relative;
+        }
+
+        .current-badge {
+            position: absolute;
+            top: -10px;
+            right: 10px;
+            background: #3b82f6;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .recommendation {
+            background: #ecfdf5;
+            border: 1px solid #10b981;
+            color: #065f46;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <h1>📁 文件上传按钮图标测试</h1>
+
+    <div class="demo-section">
+        <h2>当前使用的图标</h2>
+        <div class="icon-demo current-choice">
+            <span class="current-badge">当前</span>
+            <button class="input-btn active" title="文件夹">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+            </button>
+            <div class="icon-info">
+                <div class="icon-name">文件夹图标 📁</div>
+                <div class="icon-description">现代文件夹样式，符合用户直觉的文件管理概念</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>其他可选图标</h2>
+        
+        <div class="icon-demo">
+            <button class="input-btn" title="回形针">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.64 16.2a2 2 0 0 1-2.83-2.83l7.07-7.07"/>
+                </svg>
+            </button>
+            <div class="icon-info">
+                <div class="icon-name">回形针图标 📎</div>
+                <div class="icon-description">经典的附件图标，常用于邮件和聊天应用</div>
+            </div>
+        </div>
+
+        <div class="icon-demo">
+            <button class="input-btn" title="上传">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7,10 12,5 17,10"/>
+                    <line x1="12" y1="5" x2="12" y2="15"/>
+                </svg>
+            </button>
+            <div class="icon-info">
+                <div class="icon-name">上传图标 ⬆️</div>
+                <div class="icon-description">直接的上传动作图标，清楚表示上传文件的功能</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="recommendation">
+        <strong>🎯 推荐:</strong> 
+        目前使用的文件夹图标📁是很好的选择，符合用户直觉的文件管理概念。
+        <br><strong>如需更换：</strong>只需替换MessageInput.vue中第243行附近的SVG path即可。
+    </div>
+</body>
+</html>

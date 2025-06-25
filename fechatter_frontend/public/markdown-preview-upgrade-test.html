@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enhanced Markdown Preview Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f7fa;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #5865f2, #7289da);
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      min-height: 600px;
+    }
+
+    .input-section,
+    .preview-section {
+      padding: 20px;
+    }
+
+    .input-section {
+      border-right: 1px solid #e5e7eb;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #374151;
+      border-bottom: 2px solid #5865f2;
+      padding-bottom: 8px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 500px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 16px;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      resize: vertical;
+      background: #f9fafb;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #5865f2;
+      box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.1);
+    }
+
+    .preview-content {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 20px;
+      height: 500px;
+      overflow-y: auto;
+      background: white;
+    }
+
+    .feature-list {
+      margin-top: 20px;
+      padding: 16px;
+      background: #f0f9ff;
+      border-radius: 8px;
+      border-left: 4px solid #0ea5e9;
+    }
+
+    .feature {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 0;
+      font-size: 13px;
+    }
+
+    .feature-icon {
+      color: #0ea5e9;
+      font-weight: bold;
+    }
+
+    /* Enhanced Markdown Preview Styles (matching MessageInput) */
+    .markdown-preview {
+      color: #374151;
+      line-height: 1.65;
+      font-size: 14px;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .markdown-preview .markdown-heading {
+      margin: 24px 0 16px 0;
+      font-weight: 600;
+      line-height: 1.3;
+      color: #374151;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+
+    .markdown-preview h1 {
+      font-size: 1.8em;
+      border-bottom: 2px solid #5865f2;
+    }
+
+    .markdown-preview h2 {
+      font-size: 1.5em;
+    }
+
+    .markdown-preview h3 {
+      font-size: 1.25em;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .markdown-preview code {
+      background: #f3f4f6;
+      color: #374151;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      border: 1px solid #e5e7eb;
+    }
+
+    .markdown-preview .code-block {
+      margin: 16px 0;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+    }
+
+    .markdown-preview .code-language {
+      background: #f3f4f6;
+      color: #6b7280;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      border-bottom: 1px solid #e5e7eb;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .markdown-preview pre {
+      background: transparent;
+      padding: 16px;
+      margin: 0;
+      overflow-x: auto;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .markdown-preview .markdown-link {
+      color: #5865f2;
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .markdown-preview .markdown-link:hover {
+      color: #4338ca;
+      border-bottom-color: #4338ca;
+    }
+
+    .markdown-preview .enhanced-quote {
+      border-left: 4px solid #5865f2;
+      margin: 16px 0;
+      padding: 12px 20px;
+      background: #f8fafc;
+      border-radius: 0 8px 8px 0;
+      position: relative;
+      font-style: italic;
+      color: #6b7280;
+    }
+
+    .markdown-preview .task-list-item {
+      list-style: none;
+      margin-left: -20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .markdown-preview .task-checkbox {
+      margin: 0;
+      margin-top: 2px;
+      cursor: not-allowed;
+      accent-color: #5865f2;
+    }
+
+    .markdown-preview .markdown-highlight {
+      background: #fef3c7;
+      color: #92400e;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-weight: 500;
+    }
+
+    .markdown-preview .enhanced-table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 16px 0;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .markdown-preview .enhanced-table th,
+    .markdown-preview .enhanced-table td {
+      border: 1px solid #e5e7eb;
+      padding: 12px 16px;
+      text-align: left;
+    }
+
+    .markdown-preview .enhanced-table th {
+      background: #f9fafb;
+      font-weight: 600;
+    }
+
+    .markdown-preview .enhanced-table tr:nth-child(even) {
+      background: #f9fafb;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎨 Enhanced Markdown Preview - Production Ready</h1>
+      <p>Real-time Markdown rendering with all MessageInput features</p>
+    </div>
+
+    <div class="content">
+      <div class="input-section">
+        <h3 class="section-title">📝 Input (Type here)</h3>
+        <textarea id="markdown-input" placeholder="Type your Markdown here...">
+# 🚀 Enhanced Markdown Features
+
+## Text Formatting
+This is **bold text**, *italic text*, and ==highlighted text==.
+
+You can also use ~~strikethrough~~ and `inline code`.
+
+## Links & External Resources
+- [Internal link](#features)
+- [External link](https://github.com) (notice the icon)
+- [Email link](mailto:test@example.com)
+
+## Code Blocks
+```javascript
+function enhancedMarkdown() {
+  console.log("Now with syntax highlighting!");
+  return "🎉 Production ready!";
+}
+```
+
+```python
+def hello_world():
+    print("Multi-language support! 🐍")
+    return True
+```
+
+## Task Lists
+- [x] ✅ Enhanced rendering
+- [x] ✅ Code syntax highlighting  
+- [x] ✅ External link indicators
+- [ ] 🚧 Math formulas (coming soon)
+- [ ] 📊 Chart support (planned)
+
+## Tables
+| Feature | Status | Priority |
+|---------|--------|----------|
+| Syntax highlighting | ✅ Done | High |
+| Task lists | ✅ Done | High |
+| External links | ✅ Done | Medium |
+| Image optimization | 🚧 Progress | Medium |
+
+## Quotes & Callouts
+> **💡 Pro Tip:** This enhanced preview supports GitHub Flavored Markdown with custom styling for better readability and user experience.
+
+> Multi-line quotes work perfectly
+> and maintain proper formatting
+> across multiple lines.
+
+## Emoji Support
+Text emoji shortcuts: :rocket: :heart: :thumbsup: :fire: :star: :check:
+
+## Special Features
+- Automatic `code` highlighting
+- Smart link detection
+- ==Text highlighting== support
+- GitHub-style task lists
+- Enhanced table styling
+- Professional blockquotes
+
+---
+
+## Try These Features:
+1. **Headings** - Multiple levels with auto-anchors
+2. **Lists** - Both ordered and unordered
+3. **Code** - Inline and block with language detection
+4. **Links** - Internal and external with indicators
+5. **Tables** - Enhanced styling with hover effects
+6. **Quotes** - Professional blockquote styling
+</textarea>
+
+        <div class="feature-list">
+          <h4>✨ New Features Implemented:</h4>
+          <div class="feature"><span class="feature-icon">🎨</span> Enhanced typography & spacing</div>
+          <div class="feature"><span class="feature-icon">🔗</span> External link indicators</div>
+          <div class="feature"><span class="feature-icon">💻</span> Code language detection & labels</div>
+          <div class="feature"><span class="feature-icon">✅</span> GitHub-style task lists</div>
+          <div class="feature"><span class="feature-icon">🎯</span> Highlight syntax (==text==)</div>
+          <div class="feature"><span class="feature-icon">😊</span> Emoji shortcuts (:emoji:)</div>
+          <div class="feature"><span class="feature-icon">📊</span> Enhanced table styling</div>
+          <div class="feature"><span class="feature-icon">🔒</span> Advanced XSS protection</div>
+        </div>
+      </div>
+
+      <div class="preview-section">
+        <h3 class="section-title">👁️ Live Preview</h3>
+        <div id="markdown-preview" class="preview-content markdown-preview"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
+  <script>
+    const input = document.getElementById('markdown-input');
+    const preview = document.getElementById('markdown-preview');
+
+    function renderMarkdown(content) {
+      if (!content.trim()) {
+        return '<div class="empty-preview"><p>Start typing to see live preview...</p></div>';
+      }
+
+      try {
+        // Enhanced marked configuration
+        marked.setOptions({
+          breaks: true,
+          gfm: true,
+          tables: true,
+          smartLists: true,
+          smartypants: true,
+          pedantic: false,
+          sanitize: false,
+          silent: false
+        });
+
+        // Custom renderer
+        const renderer = new marked.Renderer();
+
+        // Enhanced code blocks
+        renderer.code = function (code, language) {
+          const validLang = language && language.match(/^[a-zA-Z0-9]+$/);
+          const langClass = validLang ? ` language-${language}` : '';
+          const langLabel = validLang ? `<div class="code-language">${language}</div>` : '';
+
+          return `<div class="code-block">${langLabel}<pre><code class="hljs${langClass}">${code}</code></pre></div>`;
+        };
+
+        // Enhanced blockquotes
+        renderer.blockquote = function (quote) {
+          return `<blockquote class="enhanced-quote">${quote}</blockquote>`;
+        };
+
+        // Enhanced links
+        renderer.link = function (href, title, text) {
+          const isExternal = href && (href.startsWith('http') || href.startsWith('//'));
+          const titleAttr = title ? ` title="${title}"` : '';
+          const targetAttr = isExternal ? ' target="_blank" rel="noopener noreferrer"' : '';
+          const externalIcon = isExternal ? ' 🔗' : '';
+
+          return `<a href="${href}"${titleAttr}${targetAttr} class="markdown-link">${text}${externalIcon}</a>`;
+        };
+
+        // Enhanced tables
+        renderer.table = function (header, body) {
+          return `<table class="enhanced-table"><thead>${header}</thead><tbody>${body}</tbody></table>`;
+        };
+
+        // Enhanced task lists
+        renderer.listitem = function (text) {
+          if (text.includes('<input')) {
+            return `<li class="task-list-item">${text}</li>`;
+          }
+          return `<li>${text}</li>`;
+        };
+
+        // Enhanced headings
+        renderer.heading = function (text, level) {
+          const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+          return `<h${level} id="${id}" class="markdown-heading">${text}</h${level}>`;
+        };
+
+        // Process markdown
+        let html = marked(content, { renderer });
+
+        // Post-process for task lists
+        html = html.replace(/\[ \]/g, '<input type="checkbox" disabled class="task-checkbox">');
+        html = html.replace(/\[x\]/gi, '<input type="checkbox" checked disabled class="task-checkbox task-checked">');
+
+        // Post-process for highlights
+        html = html.replace(/==(.*?)==/g, '<mark class="markdown-highlight">$1</mark>');
+
+        // Post-process for emoji
+        html = html.replace(/:([a-z_]+):/g, (match, emoji) => {
+          const emojiMap = {
+            smile: '😊', heart: '❤️', thumbsup: '👍', fire: '🔥',
+            rocket: '🚀', star: '⭐', check: '✅', warning: '⚠️',
+            info: 'ℹ️', question: '❓', bulb: '💡', gear: '⚙️'
+          };
+          return emojiMap[emoji] || match;
+        });
+
+        // Sanitize HTML
+        return DOMPurify.sanitize(html, {
+          ALLOWED_TAGS: [
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+            'p', 'br', 'strong', 'em', 'u', 's', 'del',
+            'a', 'img', 'code', 'pre', 'kbd',
+            'blockquote', 'ul', 'ol', 'li',
+            'table', 'thead', 'tbody', 'tr', 'th', 'td',
+            'div', 'span', 'mark', 'input'
+          ],
+          ALLOWED_ATTR: [
+            'href', 'title', 'target', 'rel', 'src', 'alt',
+            'id', 'class', 'type', 'checked', 'disabled'
+          ]
+        });
+
+      } catch (error) {
+        return `<div class="error-preview">⚠️ Markdown syntax error: ${error.message}</div>`;
+      }
+    }
+
+    function updatePreview() {
+      preview.innerHTML = renderMarkdown(input.value);
+    }
+
+    // Real-time preview updates
+    input.addEventListener('input', updatePreview);
+
+    // Initial render
+    updatePreview();
+  </script>
+</body>
+
+</html>

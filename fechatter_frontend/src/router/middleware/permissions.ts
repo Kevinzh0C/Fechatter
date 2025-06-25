@@ -1,30 +1,29 @@
 import type { RouterMiddleware } from '../types';
 import { useAuthStore } from '../../stores/auth';
 
-export const permissionsMiddleware: RouterMiddleware = async (to, from, next) => {
+export const permissionsMiddleware: RouterMiddleware = async (to, _from, next) => {
   const authStore = useAuthStore();
-  
-  // 检查角色权限
-  const requiredRoles = to.meta?.roles;
+
+  const requiredRoles = to.meta?.roles as string[] | undefined;
   if (requiredRoles?.length) {
-    const userRoles = authStore.user?.roles || [];
-    const hasRole = requiredRoles.some(role => userRoles.includes(role));
-    
+    const userRoles: string[] = authStore.user?.roles || [];
+    const hasRole = requiredRoles.some((role: string) => userRoles.includes(role));
     if (!hasRole) {
-      return next('/error/403');
+      next('/unauthorized');
+      return;
     }
   }
 
-  // 检查具体权限
-  const requiredPermissions = to.meta?.permissions;
+  // Check permissions
+  const requiredPermissions = to.meta?.permissions as string[] | undefined;
   if (requiredPermissions?.length) {
-    const userPermissions = authStore.user?.permissions || [];
-    const hasPermission = requiredPermissions.every(permission => 
+    const userPermissions: string[] = authStore.user?.permissions || [];
+    const hasPermission = requiredPermissions.every((permission: string) =>
       userPermissions.includes(permission)
     );
-    
     if (!hasPermission) {
-      return next('/error/403');
+      next('/forbidden');
+      return;
     }
   }
 

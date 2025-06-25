@@ -24,9 +24,9 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-export const progressMiddleware: RouterMiddleware = async (to, from, next) => {
+export const progressMiddleware: RouterMiddleware = async (_to, _from, next) => {
   // 开始进度条
   NProgress.start();
-  
+
   next();
 };

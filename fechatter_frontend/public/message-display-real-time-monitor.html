@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🛡️ Real-time Message Display Monitor</title>
+  <style>
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0;
+      padding: 20px;
+      color: #2d3748;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: #1a202c;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .monitor-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .monitor-card {
+      background: #f7fafc;
+      border-radius: 12px;
+      padding: 20px;
+      border-left: 4px solid #4299e1;
+    }
+
+    .status-good {
+      border-left-color: #48bb78;
+      background: #c6f6d5;
+    }
+
+    .status-warning {
+      border-left-color: #ed8936;
+      background: #feebc8;
+    }
+
+    .status-error {
+      border-left-color: #f56565;
+      background: #fed7d7;
+    }
+
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 8px 0;
+      padding: 8px 12px;
+      background: white;
+      border-radius: 6px;
+    }
+
+    .metric-label {
+      font-weight: 600;
+      color: #2d3748;
+    }
+
+    .metric-value {
+      font-family: monospace;
+      font-weight: 700;
+    }
+
+    .log-container {
+      grid-column: 1 / -1;
+      background: #1a202c;
+      color: #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 14px;
+    }
+
+    .log-entry {
+      margin: 4px 0;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .log-success {
+      background: rgba(72, 187, 120, 0.2);
+      color: #9ae6b4;
+    }
+
+    .log-error {
+      background: rgba(245, 101, 101, 0.2);
+      color: #feb2b2;
+    }
+
+    .log-warning {
+      background: rgba(237, 137, 54, 0.2);
+      color: #f6e05e;
+    }
+
+    .log-info {
+      background: rgba(66, 153, 225, 0.2);
+      color: #90cdf4;
+    }
+
+    button {
+      background: #4299e1;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 5px;
+      font-weight: 600;
+    }
+
+    button:hover {
+      background: #3182ce;
+    }
+
+    .success {
+      background: #48bb78;
+    }
+
+    .success:hover {
+      background: #38a169;
+    }
+
+    .auto-refresh {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="auto-refresh" id="auto-refresh">
+    🔄 Auto-refresh: ON
+  </div>
+
+  <div class="container">
+    <h1>🛡️ Real-time Message Display Monitor</h1>
+
+    <div class="monitor-grid">
+      <!-- System Status -->
+      <div class="monitor-card" id="system-status">
+        <h3>📊 System Status</h3>
+        <div class="metric">
+          <span class="metric-label">MessageDisplayGuarantee</span>
+          <span class="metric-value" id="guarantee-status">Checking...</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Active Tracking</span>
+          <span class="metric-value" id="active-tracking">-</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Success Rate</span>
+          <span class="metric-value" id="success-rate">-</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">DOM Elements</span>
+          <span class="metric-value" id="dom-elements">-</span>
+        </div>
+      </div>
+
+      <!-- Current Chat -->
+      <div class="monitor-card" id="chat-status">
+        <h3>💬 Current Chat</h3>
+        <div class="metric">
+          <span class="metric-label">Chat ID</span>
+          <span class="metric-value" id="current-chat">-</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Messages Expected</span>
+          <span class="metric-value" id="messages-expected">-</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Messages Displayed</span>
+          <span class="metric-value" id="messages-displayed">-</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Registration Rate</span>
+          <span class="metric-value" id="registration-rate">-</span>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="monitor-card">
+        <h3>🔧 Controls</h3>
+        <button onclick="runDiagnostics()">🔍 Full Diagnostics</button>
+        <button onclick="forceRegistration()" class="success">🛠️ Force Registration</button>
+        <button onclick="clearLog()">🧹 Clear Log</button>
+        <button onclick="toggleAutoRefresh()">⏯️ Toggle Auto-refresh</button>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="monitor-card">
+        <h3>⚡ Quick Actions</h3>
+        <button onclick="testMessageRegistration()">🧪 Test Registration</button>
+        <button onclick="debugCurrentChat()">🔍 Debug Current Chat</button>
+        <button onclick="exportDiagnostics()">📤 Export Data</button>
+        <button onclick="resetSystem()">🔄 Reset System</button>
+      </div>
+    </div>
+
+    <!-- Real-time Log -->
+    <div class="log-container" id="log">
+      <div class="log-entry log-info">🛡️ [Monitor] Real-time monitoring started...</div>
+    </div>
+  </div>
+
+  <script>
+    let autoRefreshInterval;
+    let isAutoRefreshing = true;
+
+    function log(message, type = 'info') {
+      const logContainer = document.getElementById('log');
+      const timestamp = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `[${timestamp}] ${message}`;
+      logContainer.appendChild(entry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    function updateSystemStatus() {
+      // Check MessageDisplayGuarantee
+      if (window.messageDisplayGuarantee) {
+        const metrics = window.messageDisplayGuarantee.getMetrics();
+
+        document.getElementById('guarantee-status').textContent = 'ACTIVE';
+        document.getElementById('active-tracking').textContent = metrics.activeTracking || 0;
+        document.getElementById('success-rate').textContent = metrics.successRate + '%';
+
+        // Update card status based on success rate
+        const systemCard = document.getElementById('system-status');
+        const successRate = parseFloat(metrics.successRate);
+
+        systemCard.className = 'monitor-card';
+        if (successRate >= 95) {
+          systemCard.classList.add('status-good');
+        } else if (successRate >= 80) {
+          systemCard.classList.add('status-warning');
+        } else {
+          systemCard.classList.add('status-error');
+        }
+      } else {
+        document.getElementById('guarantee-status').textContent = 'NOT FOUND';
+        document.getElementById('system-status').className = 'monitor-card status-error';
+      }
+
+      // Check DOM elements
+      const messageElements = document.querySelectorAll('[data-message-id]');
+      document.getElementById('dom-elements').textContent = messageElements.length;
+
+      // Check current chat
+      const chatId = window.location.pathname.match(/\/chat\/(\d+)/)?.[1];
+      document.getElementById('current-chat').textContent = chatId || 'None';
+
+      if (chatId && window.messageDisplayGuarantee) {
+        // Find tracking context for current chat
+        const contexts = Array.from(window.messageDisplayGuarantee.verificationQueue.entries());
+        const currentContext = contexts.find(([_, ctx]) => ctx.chatId == chatId);
+
+        if (currentContext) {
+          const [trackingId, context] = currentContext;
+          const expected = context.messageIds.size;
+          const displayed = context.displayedIds.size;
+          const rate = expected > 0 ? ((displayed / expected) * 100).toFixed(1) : '0';
+
+          document.getElementById('messages-expected').textContent = expected;
+          document.getElementById('messages-displayed').textContent = displayed;
+          document.getElementById('registration-rate').textContent = rate + '%';
+
+          // Update chat card status
+          const chatCard = document.getElementById('chat-status');
+          chatCard.className = 'monitor-card';
+          if (rate >= 95) {
+            chatCard.classList.add('status-good');
+          } else if (rate >= 80) {
+            chatCard.classList.add('status-warning');
+          } else {
+            chatCard.classList.add('status-error');
+          }
+        } else {
+          document.getElementById('messages-expected').textContent = '0';
+          document.getElementById('messages-displayed').textContent = '0';
+          document.getElementById('registration-rate').textContent = '100%';
+          document.getElementById('chat-status').className = 'monitor-card status-good';
+        }
+      }
+    }
+
+    function runDiagnostics() {
+      log('🔍 Running comprehensive diagnostics...', 'info');
+
+      if (!window.messageDisplayGuarantee) {
+        log('❌ MessageDisplayGuarantee not available', 'error');
+        return;
+      }
+
+      const metrics = window.messageDisplayGuarantee.getMetrics();
+      log(`📊 Success Rate: ${metrics.successRate}%`, 'info');
+      log(`🔄 Active Tracking: ${metrics.activeTracking}`, 'info');
+
+      const contexts = Array.from(window.messageDisplayGuarantee.verificationQueue.entries());
+      if (contexts.length > 0) {
+        log(`📋 Active Contexts:`, 'info');
+        contexts.forEach(([id, ctx]) => {
+          log(`  - ${id}: ${ctx.displayedIds.size}/${ctx.messageIds.size} (${ctx.status})`, 'info');
+        });
+      } else {
+        log('✅ No active tracking contexts', 'success');
+      }
+
+      const elements = document.querySelectorAll('[data-message-id]');
+      log(`🔍 DOM Elements: ${elements.length} message elements found`, 'info');
+
+      updateSystemStatus();
+    }
+
+    function forceRegistration() {
+      log('🛠️ Force registering all visible messages...', 'info');
+
+      if (!window.messageDisplayGuarantee) {
+        log('❌ MessageDisplayGuarantee not available', 'error');
+        return;
+      }
+
+      const chatId = window.location.pathname.match(/\/chat\/(\d+)/)?.[1];
+      if (!chatId) {
+        log('❌ No chat ID found in URL', 'error');
+        return;
+      }
+
+      const elements = document.querySelectorAll('[data-message-id]');
+      let registered = 0;
+
+      elements.forEach(el => {
+        const messageId = el.getAttribute('data-message-id');
+        if (messageId && el.offsetParent !== null) {
+          try {
+            window.messageDisplayGuarantee.markMessageDisplayed(
+              parseInt(messageId), el, parseInt(chatId)
+            );
+            registered++;
+          } catch (error) {
+            log(`❌ Failed to register message ${messageId}: ${error.message}`, 'error');
+          }
+        }
+      });
+
+      log(`✅ Force registration complete: ${registered} messages`, 'success');
+      updateSystemStatus();
+    }
+
+    function testMessageRegistration() {
+      log('🧪 Testing message registration system...', 'info');
+
+      // Test individual component registration
+      const messageItems = document.querySelectorAll('.discord-message-item, [data-message-id]');
+      log(`🔍 Found ${messageItems.length} message components`, 'info');
+
+      messageItems.forEach((item, index) => {
+        const messageId = item.getAttribute('data-message-id');
+        const isVisible = item.offsetParent !== null;
+        log(`Message ${messageId}: ${isVisible ? 'visible' : 'hidden'}`, isVisible ? 'success' : 'warning');
+      });
+    }
+
+    function debugCurrentChat() {
+      const chatId = window.location.pathname.match(/\/chat\/(\d+)/)?.[1];
+      if (!chatId) {
+        log('❌ No current chat to debug', 'error');
+        return;
+      }
+
+      log(`🔍 Debugging chat ${chatId}...`, 'info');
+
+      if (window.debugMessageGuarantee) {
+        window.debugMessageGuarantee();
+        log('✅ Debug info printed to console', 'success');
+      }
+
+      if (window.messageDisplayGuarantee) {
+        const contexts = Array.from(window.messageDisplayGuarantee.verificationQueue.entries());
+        const chatContext = contexts.find(([_, ctx]) => ctx.chatId == chatId);
+
+        if (chatContext) {
+          const [id, ctx] = chatContext;
+          log(`📋 Context ${id}: ${ctx.displayedIds.size}/${ctx.messageIds.size} registered`, 'info');
+          log(`⏱️ Age: ${Date.now() - ctx.fetchTimestamp}ms`, 'info');
+          log(`📊 Status: ${ctx.status}`, 'info');
+        } else {
+          log(`⚠️ No tracking context found for chat ${chatId}`, 'warning');
+        }
+      }
+    }
+
+    function exportDiagnostics() {
+      const data = {
+        timestamp: new Date().toISOString(),
+        url: window.location.href,
+        chatId: window.location.pathname.match(/\/chat\/(\d+)/)?.[1],
+        messageElements: document.querySelectorAll('[data-message-id]').length,
+        guarantee: window.messageDisplayGuarantee ? {
+          metrics: window.messageDisplayGuarantee.getMetrics(),
+          debugInfo: window.messageDisplayGuarantee.exportDebugInfo()
+        } : null
+      };
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `message-diagnostics-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      log('📤 Diagnostics data exported', 'success');
+    }
+
+    function resetSystem() {
+      log('🔄 Resetting message display system...', 'warning');
+
+      if (window.messageDisplayGuarantee) {
+        window.messageDisplayGuarantee.verificationQueue.clear();
+        log('✅ Cleared all tracking contexts', 'success');
+      }
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
+
+    function clearLog() {
+      document.getElementById('log').innerHTML = '<div class="log-entry log-info">🛡️ [Monitor] Log cleared</div>';
+    }
+
+    function toggleAutoRefresh() {
+      isAutoRefreshing = !isAutoRefreshing;
+      const indicator = document.getElementById('auto-refresh');
+
+      if (isAutoRefreshing) {
+        startAutoRefresh();
+        indicator.textContent = '🔄 Auto-refresh: ON';
+      } else {
+        clearInterval(autoRefreshInterval);
+        indicator.textContent = '⏸️ Auto-refresh: OFF';
+      }
+    }
+
+    function startAutoRefresh() {
+      autoRefreshInterval = setInterval(() => {
+        updateSystemStatus();
+
+        // Check for critical issues
+        if (window.messageDisplayGuarantee) {
+          const metrics = window.messageDisplayGuarantee.getMetrics();
+          if (parseFloat(metrics.successRate) < 80) {
+            log(`⚠️ Low success rate detected: ${metrics.successRate}%`, 'warning');
+          }
+        }
+      }, 2000); // Update every 2 seconds
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      updateSystemStatus();
+      startAutoRefresh();
+      log('✅ Real-time monitoring initialized', 'success');
+    });
+  </script>
+</body>
+
+</html>
