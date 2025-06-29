@@ -1,20 +1,31 @@
 version: '3.8'
 
 # ============================================================================
-# Fechatter VCR Deployment - Using Vultr Container Registry Images
+# Fechatter Local Development Docker Compose - x86_64 Cross-compiled
 # ============================================================================
 #
-# 🎯 PURPOSE: Production deployment using VCR pre-built images
-# 🔧 STRATEGY: Pull images from nrt.vultrcr.com/fechatter instead of building
+# 🎯 PURPOSE: Local development with pre-compiled x86_64 binaries
+# 🔧 STRATEGY: Cross-compilation first, then fast Docker packaging
 # 🚀 WORKFLOW:
-# 1. docker-compose -f docker-compose.vcr.yml pull
-# 2. docker-compose -f docker-compose.vcr.yml up -d
+# 1. ./build-cross.sh --profile release
+# 2. docker compose -f docker-compose.local.yml build
+# 3. docker compose -f docker-compose.local.yml up -d
+#
+# 🛠️ CONFLICT RESOLUTION:
+# - Use --force-recreate to rebuild containers
+# - Use --remove-orphans to clean up unused containers
+# - Proper depends_on chains prevent dependency conflicts
+#
+# 🔄 RECOMMENDED COMMANDS:
+# docker compose -f docker-compose.local.yml down --remove-orphans
+# docker compose -f docker-compose.local.yml up -d --force-recreate --remove-orphans
 #
 # ============================================================================
 
 x-common-env: &common-env
-  RUST_LOG: ${RUST_LOG:-info,sqlx=warn}
+  RUST_LOG: ${RUST_LOG:-debug,sqlx=warn}
   RUST_BACKTRACE: ${RUST_BACKTRACE:-1}
+  ARCHITECTURE: x86_64
 
 x-database-env: &database-env
   DATABASE_URL: postgresql://fechatter:fechatter_password@postgres:5432/fechatter
@@ -33,9 +44,14 @@ x-clickhouse-env: &clickhouse-env
   CLICKHOUSE_HOST: clickhouse
   CLICKHOUSE_PORT: 8123
   CLICKHOUSE_URL: http://clickhouse:8123
+  CLICKHOUSE_NATIVE_URL: clickhouse://clickhouse:9000/fechatter_analytics
   CLICKHOUSE_DATABASE: fechatter_analytics
   CLICKHOUSE_USER: default
   CLICKHOUSE_PASSWORD: ""
+
+x-supervisor-env: &supervisor-env
+  ENV_BOT_ENABLED: ${BOT_ENABLED:-false}
+  ENV_GATEWAY_ENABLED: ${GATEWAY_ENABLED:-false}
 
 x-health-check: &default-health-check
   interval: 30s
@@ -45,12 +61,12 @@ x-health-check: &default-health-check
 
 services:
   # ============================================================================
-  # Infrastructure Services (same as local)
+  # Infrastructure Services
   # ============================================================================
   
   postgres:
     image: pgvector/pgvector:pg17
-    container_name: fechatter-postgres-vcr
+    container_name: fechatter-postgres-local
     environment:
       POSTGRES_DB: fechatter
       POSTGRES_USER: fechatter
@@ -71,10 +87,11 @@ services:
       - infrastructure
       - core
       - full
+      - gateway
 
   redis:
     image: redis:7-alpine
-    container_name: fechatter-redis-vcr
+    container_name: fechatter-redis-local
     command: redis-server --appendonly yes --requirepass fechatter_redis_pass
     volumes:
       - redis_data:/data
@@ -92,10 +109,11 @@ services:
       - infrastructure
       - core
       - full
+      - gateway
 
   nats:
     image: nats:2.10-alpine
-    container_name: fechatter-nats-vcr
+    container_name: fechatter-nats-local
     command: [
       "--jetstream", 
       "--store_dir=/data",
@@ -116,16 +134,20 @@ services:
       - infrastructure
       - core
       - full
+      - gateway
 
   meilisearch:
     image: getmeili/meilisearch:v1.6
-    container_name: fechatter-meilisearch-vcr
+    container_name: fechatter-meilisearch-local
     environment:
       MEILI_MASTER_KEY: fechatter_search_key
       MEILI_ENV: development
       MEILI_DB_PATH: /meili_data
       MEILI_HTTP_ADDR: 0.0.0.0:7700
       MEILI_LOG_LEVEL: WARN
+      MEILI_MAX_INDEXING_MEMORY: 512mb
+      MEILI_MAX_INDEXING_THREADS: 2
+      # MEILI_EXPERIMENTAL_ENABLE_METRICS: true  # Commented out due to startup issues
     volumes:
       - meilisearch_data:/meili_data
     ports:
@@ -139,37 +161,36 @@ services:
       retries: 5
       start_period: 45s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
     profiles:
       - infrastructure
       - full
       - core
+      - gateway
 
   clickhouse:
     image: clickhouse/clickhouse-server:latest
-    container_name: fechatter-clickhouse-vcr
+    container_name: fechatter-clickhouse-local
     environment:
       CLICKHOUSE_DB: fechatter_analytics
       CLICKHOUSE_USER: default
       CLICKHOUSE_PASSWORD: ""
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
-      # Performance settings
-      CLICKHOUSE_CONFIG_FILE: /etc/clickhouse-server/config.xml
     volumes:
       - clickhouse_data:/var/lib/clickhouse
+      - ./fechatter_protos/storage/analytics.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "8123:8123"
       - "9000:9000"
     networks:
       - fechatter-network
-    # Resource limits to prevent CPU overuse
-    deploy:
-      resources:
-        limits:
-          cpus: '0.3'        # 进一步限制到30% CPU
-          memory: 256M       # 减少到256MB RAM
-        reservations:
-          cpus: '0.1'        # 减少保留资源
-          memory: 128M       # 减少保留内存
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
       <<: *default-health-check
@@ -178,23 +199,32 @@ services:
       - infrastructure
       - full
       - core
+      - gateway
 
   # ============================================================================
-  # Application Services - Using VCR Images
+  # Application Services - Using x86_64 Cross-compiled Binaries
   # ============================================================================
 
   fechatter-server:
-    image: nrt.vultrcr.com/fechatter/server:prod
-    container_name: fechatter-server-vcr
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+      target: fechatter-server
+      platforms:
+        - linux/amd64
+    image: fechatter/server:local-x86_64
+    container_name: fechatter-server-local
+    working_dir: /app
     environment:
       <<: [*common-env, *database-env, *redis-env, *nats-env, *search-env]
       SERVER_PORT: 6688
+      BASE_DIR: /app/uploads
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-key}
       ANALYTICS_ENABLED: "true"
     volumes:
+      - .:/app:ro
       - uploads_data:/app/uploads
       - app_logs:/app/logs
-      - ./docker/configs/chat-ip.yml:/app/fechatter_server/chat.yml:ro
     ports:
       - "6688:6688"
     networks:
@@ -209,22 +239,30 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:6688/health"]
       <<: *default-health-check
-    restart: unless-stopped
     profiles:
       - core
       - full
+      - gateway
 
   analytics-server:
-    image: nrt.vultrcr.com/fechatter/analytics:prod
-    container_name: analytics-server-vcr
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+      target: analytics-server
+      platforms:
+        - linux/amd64
+    image: fechatter/analytics:local-x86_64
+    container_name: analytics-server-local
+    working_dir: /app
     environment:
       <<: [*common-env, *database-env, *nats-env, *clickhouse-env]
       SERVER_PORT: 6690
       ANALYTICS_ENABLED: "true"
     volumes:
+      - .:/app:ro
+      - ./config/analytics.yml:/app/config/analytics.yml:ro
       - app_logs:/app/logs
       - analytics_data:/app/data
-      - ./docker/configs/analytics-ip.yml:/app/analytics_server/analytics.yml:ro
     ports:
       - "6690:6690"
     networks:
@@ -239,20 +277,27 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:6690/health"]
       <<: *default-health-check
-    restart: unless-stopped
     profiles:
       - core
       - full
+      - gateway
 
   notify-server:
-    image: nrt.vultrcr.com/fechatter/notify:prod
-    container_name: notify-server-vcr
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+      target: notify-server
+      platforms:
+        - linux/amd64
+    image: fechatter/notify:local-x86_64
+    container_name: notify-server-local
+    working_dir: /app
     environment:
       <<: [*common-env, *database-env, *redis-env, *nats-env]
       SERVER_PORT: 6687
       SSE_ENABLED: "true"
     volumes:
-      - ./docker/configs/notify-ip.yml:/app/notify_server/notify.yml:ro
+      - .:/app:ro
     ports:
       - "6687:6687"
     networks:
@@ -267,35 +312,33 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:6687/health"]
       <<: *default-health-check
-    restart: unless-stopped
     profiles:
       - core
       - full
+      - gateway
 
   bot-server:
-    image: nrt.vultrcr.com/fechatter/bot:prod
-    container_name: bot-server-vcr
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+      target: bot-server
+      platforms:
+        - linux/amd64
+    image: fechatter/bot:local-x86_64
+    container_name: bot-server-local
+    working_dir: /app
     environment:
       <<: [*common-env, *database-env, *redis-env, *nats-env, *search-env]
       SERVER_PORT: 6686
-      OPENAI_API_KEY: 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
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       RAG_ENABLED: "true"
     volumes:
+      - .:/app:ro
       - bot_data:/app/data
-      - ./docker/configs/bot-ip.yml:/app/bot_server/bot.yml:ro
     ports:
       - "6686:6686"
     networks:
       - fechatter-network
-    # 添加资源限制优化性能
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'       # 限制CPU使用
-          memory: 512M      # 限制内存使用
-        reservations:
-          cpus: '0.1'       # 保留最小CPU
-          memory: 128M      # 保留最小内存
     depends_on:
       postgres:
         condition: service_healthy
@@ -305,38 +348,42 @@ services:
         condition: service_healthy
       meilisearch:
         condition: service_healthy
-    # 禁用健康检查 - bot服务健康检查过于复杂且不影响核心功能
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "--max-time", "2", "http://localhost:6686/health"]
-    #   interval: 45s
-    #   timeout: 5s
-    #   retries: 3
-    #   start_period: 120s
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6686/health"]
+      <<: *default-health-check
     profiles:
       - full
       - core
+      - gateway
 
   fechatter-gateway:
-    image: nrt.vultrcr.com/fechatter/gateway:prod
-    container_name: fechatter-gateway-vcr
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+      target: fechatter-gateway
+      platforms:
+        - linux/amd64
+    image: fechatter/gateway:local-x86_64
+    container_name: fechatter-gateway-local
+    working_dir: /app
     environment:
+      # Gateway configuration
       GATEWAY_CONFIG_PATH: /app/config/gateway.yml
     networks:
       - fechatter-network
     volumes:
+      - .:/app:ro
       - ./fechatter_gateway/gateway.yml:/app/config/gateway.yml:ro
     ports:
       - "8080:8080"
     profiles:
-      - full
+      - gateway
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       start_period: 30s
       retries: 3
-    restart: unless-stopped
     depends_on:
       fechatter-server:
         condition: service_healthy
@@ -344,6 +391,62 @@ services:
         condition: service_healthy
       notify-server:
         condition: service_healthy
+    # Use production mode for stable operation with config file
+    command: ["/usr/local/bin/fechatter_gateway", "--config", "/app/config/gateway.yml", "--production-mode", "--debug"]
+
+  # ============================================================================
+  # All-in-One Service with Supervisor - For Quick Development
+  # ============================================================================
+
+  fechatter-all-in-one:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+      target: all-in-one
+      platforms:
+        - linux/amd64
+    image: fechatter/all-in-one:local-x86_64
+    container_name: fechatter-all-in-one-local
+    working_dir: /app
+    environment:
+      <<: [*common-env, *database-env, *redis-env, *nats-env, *search-env, *clickhouse-env, *supervisor-env]
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-key}
+      ANALYTICS_ENABLED: "true"
+      SSE_ENABLED: "true"
+      RAG_ENABLED: ${RAG_ENABLED:-false}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    volumes:
+      - .:/app:ro
+      - uploads_data:/app/uploads
+      - app_logs:/app/logs
+      - analytics_data:/app/data
+      - bot_data:/app/data
+    ports:
+      - "6688:6688"   # Fechatter Server
+      - "6690:6690"   # Analytics Server
+      - "6687:6687"   # Notify Server
+      - "6686:6686"   # Bot Server (if enabled)
+      - "8080:8080"   # Gateway (if enabled)
+    networks:
+      - fechatter-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6688/health", "&&", "curl", "-f", "http://localhost:6690/health", "&&", "curl", "-f", "http://localhost:6687/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 90s
+    profiles:
+      - allinone
+    restart: unless-stopped
 
 volumes:
   postgres_data:
@@ -370,24 +473,49 @@ networks:
     driver: bridge
 
 # ============================================================================
-# VCR Deployment Usage Examples:
+# x86_64 Cross-compilation Local Development Usage Examples:
 # ============================================================================
 #
-# 🚀 Complete VCR Deployment:
-#    docker-compose -f docker-compose.vcr.yml pull
-#    docker-compose -f docker-compose.vcr.yml --profile full up -d
+# 🔧 Prerequisites (must run first):
+#    ./build-cross.sh --profile release
 #
-# 🎯 Core services only:
-#    docker-compose -f docker-compose.vcr.yml --profile core up -d
+# 🚀 One-Click Complete Startup (RECOMMENDED):
+#    docker compose -f docker-compose.local.yml --profile gateway up -d
+#    ↳ Starts ALL services including gateway (complete Fechatter ecosystem)
+#
+# 🚀 Alternative Complete Startup:
+#    docker compose -f docker-compose.local.yml --profile full up -d
+#    ↳ Starts ALL services including gateway (same as above)
+#
+# 🎯 Core services only (no gateway):
+#    docker compose -f docker-compose.local.yml --profile core up -d
+#    ↳ Starts: postgres, redis, nats, meilisearch, clickhouse, fechatter-server, analytics-server, notify-server, bot-server
 #
 # 🔧 Infrastructure only:
-#    docker-compose -f docker-compose.vcr.yml --profile infrastructure up -d
+#    docker compose -f docker-compose.local.yml --profile infrastructure up -d
+#    ↳ Starts: postgres, redis, nats, meilisearch, clickhouse
 #
-# 🔄 Update to latest images:
-#    docker-compose -f docker-compose.vcr.yml pull
-#    docker-compose -f docker-compose.vcr.yml --profile full up -d
+# ⚡ All-in-One service (alternative approach):
+#    BOT_ENABLED=true GATEWAY_ENABLED=true docker compose -f docker-compose.local.yml --profile allinone up -d
+#    ↳ Single container with supervisor managing all services
+#
+# 🔄 Rebuild after code changes:
+#    ./build-cross.sh --profile release
+#    docker compose -f docker-compose.local.yml build --no-cache
+#    docker compose -f docker-compose.local.yml --profile gateway up -d
 #
 # 🛑 Stop all services:
-#    docker-compose -f docker-compose.vcr.yml down
+#    docker compose -f docker-compose.local.yml down
 #
-# ============================================================================ 
+# 📝 Service URLs (after startup):
+#    🌐 Gateway (API Entry):  http://localhost:8080 
+#    🎯 Main Server:          http://localhost:6688
+#    📊 Analytics:            http://localhost:6690  
+#    📣 Notifications:        http://localhost:6687
+#    🤖 Bot Service:          http://localhost:6686
+#    🗄️  Database:             postgresql://fechatter:fechatter_password@localhost:5432/fechatter
+#    📦 Redis:                redis://:fechatter_redis_pass@localhost:6379
+#    🔍 Search:               http://localhost:7700
+#    📈 ClickHouse:           http://localhost:8123
+#
+# ============================================================================
