@@ -21,7 +21,7 @@
       <img src="https://img.shields.io/badge/built%20with-Rust-orange.svg" alt="Built with Rust">
     </a>
     <a href="https://github.com/Kevinzh0C/Fechatter/actions">
-      <img src="https://github.com/Kevinzh0C/Fechatter/workflows/CI/badge.svg" alt="CI Status">
+      <img src="https://github.com/Kevinzh0C/Fechatter/workflows/build/badge.svg" alt="Build Status">
     </a>
   </p>
 
