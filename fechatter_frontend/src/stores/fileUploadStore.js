@@ -13,7 +13,7 @@ export const useFileUploadStore = defineStore('fileUpload', () => {
 
   // Upload configuration
   const uploadConfig = {
-    maxFileSize: 2 * 1024 * 1024, // 🔧 FILE UPLOAD FIX: 2MB max file size (matching nginx limit)
+    maxFileSize: 100 * 1024 * 1024, // 🔧 FILE UPLOAD FIX: 100MB max file size (matching nginx limit)
     maxFiles: 10, // Max 10 files at once
     allowedTypes: [
       'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
@@ -23,7 +23,7 @@ export const useFileUploadStore = defineStore('fileUpload', () => {
       'text/plain', 'application/json', 'text/yaml', 'application/x-yaml'
     ],
     compressionOptions: {
-      maxSizeMB: 1.8, // 🔧 Slightly less than 2MB to account for compression variations
+      maxSizeMB: 95, // 🔧 Slightly less than 100MB to account for compression variations
       maxWidthOrHeight: 1920,
       useWebWorker: true,
       fileType: 'image/jpeg',
@@ -63,11 +63,11 @@ export const useFileUploadStore = defineStore('fileUpload', () => {
     if (file.size > uploadConfig.maxFileSize) {
       const fileSize = formatFileSize(file.size);
       const maxSize = formatFileSize(uploadConfig.maxFileSize);
-      errors.push(`File "${file.name}" (${fileSize}) exceeds the 2MB limit. Maximum allowed size is ${maxSize}.`);
+      errors.push(`File "${file.name}" (${fileSize}) exceeds the 100MB limit. Maximum allowed size is ${maxSize}.`);
     } else if (file.size > uploadConfig.maxFileSize * 0.9) {
       // Warning for files close to limit
       const fileSize = formatFileSize(file.size);
-      warnings.push(`File "${file.name}" (${fileSize}) is close to the 2MB limit. Consider compressing if upload fails.`);
+      warnings.push(`File "${file.name}" (${fileSize}) is close to the 100MB limit. Consider compressing if upload fails.`);
     }
 
     // Check file type with better error message
@@ -401,9 +401,9 @@ export const useFileUploadStore = defineStore('fileUpload', () => {
             errorType = 'network';
             file.error = 'Network connection failed. Server may be down.';
           } else if (error.message?.includes('exceeds')) {
-            errorMessage = `❌ ${file.name}: File too large (max 2MB)`;
+            errorMessage = `❌ ${file.name}: File too large (max 100MB)`;
             errorType = 'size';
-            file.error = 'File size exceeds 2MB limit';
+            file.error = 'File size exceeds 100MB limit';
           } else if (error.message?.includes('type')) {
             errorMessage = `❌ ${file.name}: File type not supported`;
             errorType = 'type';
@@ -442,7 +442,7 @@ export const useFileUploadStore = defineStore('fileUpload', () => {
           suggestions.push('🔄 Server may be temporarily down - please retry later');
         }
         if (sizeErrors.length > 0) {
-          suggestions.push('📏 Compress large files or use files under 2MB');
+          suggestions.push('📏 Compress large files or use files under 100MB');
         }
         if (otherErrors.length > 0) {
           suggestions.push('🔧 Check file format and try again');

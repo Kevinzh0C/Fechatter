@@ -474,7 +474,12 @@ onMounted(() => {
 
     // 延迟显示开发提示（避免阻塞初始渲染）
     setTimeout(() => {
-      showDevHints.value = import.meta.env.DEV;
+      // 🔧 ENHANCED: Support dev accounts in production for demo/testing
+      showDevHints.value = import.meta.env.DEV ||
+        import.meta.env.VITE_SHOW_DEV_ACCOUNTS === 'true' ||
+        window.location.hostname.includes('vercel.app') ||
+        window.location.hostname.includes('demo') ||
+        window.location.hostname.includes('test');
 
       // 开发环境下显示性能分析
       if (import.meta.env.DEV) {

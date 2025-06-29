@@ -163,10 +163,38 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         timeout: 10000,
+        // 🚀 ENHANCED: Better ngrok compatibility
+        headers: {
+          'X-Forwarded-Proto': 'https',
+          'X-Forwarded-Host': 'localhost'
+        },
         // 不需要rewrite，保持/files前缀
         configure: (proxy, options) => {
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            // 🔍 Enhanced logging for debugging
+            console.log(`📁 [Files Proxy] ${req.method} ${sanitizeUrl(req.url)} → http://45.77.178.85:8080`);
+
+            // 🚀 NGROK FIX: Ensure proper headers for ngrok environment
+            proxyReq.setHeader('Accept', 'image/*, */*');
+            proxyReq.setHeader('User-Agent', 'Fechatter-Frontend/1.0');
+
+            // Remove any conflicting headers that might cause issues
+            proxyReq.removeHeader('Origin');
+            proxyReq.removeHeader('Referer');
+          });
+
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            console.log(`📁 [Files Response] ${proxyRes.statusCode} ${proxyRes.statusMessage} - Type: ${proxyRes.headers['content-type']} - Size: ${proxyRes.headers['content-length']}`);
+
+            // 🚀 CORS fix for file access
+            proxyRes.headers['access-control-allow-origin'] = '*';
+            proxyRes.headers['access-control-allow-methods'] = 'GET, HEAD, OPTIONS';
+            proxyRes.headers['access-control-allow-headers'] = '*';
+          });
+
           proxy.on('error', (err, req, res) => {
             console.error('🚨 Files Proxy error:', err.message);
+            console.error('🚨 File request details:', { url: sanitizeUrl(req.url), method: req.method });
             if (!res.headersSent) {
               res.writeHead(503, {
                 'Content-Type': 'application/json',
@@ -174,7 +202,9 @@ export default defineConfig({
               });
               res.end(JSON.stringify({
                 error: 'File service temporarily unavailable',
-                code: 'SERVICE_UNAVAILABLE'
+                code: 'SERVICE_UNAVAILABLE',
+                url: sanitizeUrl(req.url),
+                development: true
               }));
             }
           });

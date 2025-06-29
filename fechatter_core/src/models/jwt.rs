@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use base64::prelude::*;
 use chrono::{DateTime, Utc};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
@@ -69,7 +70,7 @@ pub struct RefreshToken {
 
 #[derive(Clone)]
 pub struct TokenManager {
-  encoding_key: EncodingKey,
+  encoding_key: Option<EncodingKey>, // Optional for verification-only mode
   decoding_key: DecodingKey,
   validation: Validation,
   refresh_token_repo: Arc<dyn RefreshTokenRepository + Send + Sync>,
@@ -207,9 +208,10 @@ impl TokenManager {
   pub fn new<C: TokenConfigProvider>(config: &C) -> Result<Self, CoreError> {
     let mut validation = Validation::new(Algorithm::EdDSA);
     validation.leeway = config.get_jwt_leeway();
-    validation.reject_tokens_expiring_in_less_than = 300;
+    validation.reject_tokens_expiring_in_less_than = 0;
     validation.set_required_spec_claims(&["exp", "iss", "aud", "sub"]);
     validation.validate_aud = true;
+    validation.validate_exp = true;
     if let Some(aud) = config.get_jwt_audience() {
       validation.set_audience(&[aud]);
     }
@@ -222,9 +224,16 @@ impl TokenManager {
 
     let refresh_token_repo = Arc::new(DummyRefreshTokenRepository);
 
+    // 🔧 FIX: Support verification-only mode (no encoding key needed)
+    let encoding_key = if sk_pem.is_empty() {
+      None // Verification-only mode
+    } else {
+      Some(EncodingKey::from_ed_pem(sk_pem.as_bytes())
+        .map_err(|e| CoreError::Internal(e.to_string()))?)
+    };
+
     Ok(Self {
-      encoding_key: EncodingKey::from_ed_pem(sk_pem.as_bytes())
-        .map_err(|e| CoreError::Internal(e.to_string()))?,
+      encoding_key,
       decoding_key: DecodingKey::from_ed_pem(pk_pem.as_bytes())
         .map_err(|e| CoreError::Internal(e.to_string()))?,
       validation,
@@ -238,9 +247,10 @@ impl TokenManager {
   ) -> Result<Self, CoreError> {
     let mut validation = Validation::new(Algorithm::EdDSA);
     validation.leeway = config.get_jwt_leeway();
-    validation.reject_tokens_expiring_in_less_than = 300;
+    validation.reject_tokens_expiring_in_less_than = 0;
     validation.set_required_spec_claims(&["exp", "iss", "aud", "sub"]);
     validation.validate_aud = true;
+    validation.validate_exp = true;
     if let Some(aud) = config.get_jwt_audience() {
       validation.set_audience(&[aud]);
     }
@@ -251,9 +261,16 @@ impl TokenManager {
     let sk_pem = config.get_encoding_key_pem().replace("\\n", "\n");
     let pk_pem = config.get_decoding_key_pem().replace("\\n", "\n");
 
+    // 🔧 FIX: Support verification-only mode (no encoding key needed)
+    let encoding_key = if sk_pem.is_empty() {
+      None // Verification-only mode
+    } else {
+      Some(EncodingKey::from_ed_pem(sk_pem.as_bytes())
+        .map_err(|e| CoreError::Internal(e.to_string()))?)
+    };
+
     Ok(Self {
-      encoding_key: EncodingKey::from_ed_pem(sk_pem.as_bytes())
-        .map_err(|e| CoreError::Internal(e.to_string()))?,
+      encoding_key,
       decoding_key: DecodingKey::from_ed_pem(pk_pem.as_bytes())
         .map_err(|e| CoreError::Internal(e.to_string()))?,
       validation,
@@ -277,15 +294,19 @@ impl TokenManager {
   }
 
   pub fn generate_token_for_user(&self, user: &User) -> Result<String, CoreError> {
+    let encoding_key = self.encoding_key.as_ref()
+      .ok_or_else(|| CoreError::Internal("TokenManager is in verification-only mode, cannot generate tokens".to_string()))?;
     let claims = self.create_claims_from_user(user);
     let header = Header::new(Algorithm::EdDSA);
-    encode(&header, &claims, &self.encoding_key).map_err(|e| CoreError::Validation(e.to_string()))
+    encode(&header, &claims, encoding_key).map_err(|e| CoreError::Validation(e.to_string()))
   }
 
   pub fn internal_generate_token(&self, user_claims: &UserClaims) -> Result<String, CoreError> {
+    let encoding_key = self.encoding_key.as_ref()
+      .ok_or_else(|| CoreError::Internal("TokenManager is in verification-only mode, cannot generate tokens".to_string()))?;
     let claims = self.create_claims_from_user_claims(user_claims);
     let header = Header::new(Algorithm::EdDSA);
-    encode(&header, &claims, &self.encoding_key).map_err(|e| CoreError::Validation(e.to_string()))
+    encode(&header, &claims, encoding_key).map_err(|e| CoreError::Validation(e.to_string()))
   }
 
   pub async fn internal_generate_auth_tokens(
@@ -325,27 +346,26 @@ impl TokenManager {
   }
 
   pub fn internal_verify_token(&self, token: &str) -> Result<UserClaims, CoreError> {
+    // 🔧 RESTORE PROPER SIGNATURE VERIFICATION
+    // We need to find the real root cause instead of bypassing security
     let token_data = decode::<Claims>(token, &self.decoding_key, &self.validation)
       .map_err(|e| CoreError::Validation(e.to_string()))?;
     Ok(token_data.claims.user)
   }
 
   pub fn gen_jwt_token(&self, claims: &UserClaims) -> Result<String, CoreError> {
-    // Create JWT with given claims
-    // Uses RS256 algorithm with private key
+    let encoding_key = self.encoding_key.as_ref()
+      .ok_or_else(|| CoreError::Internal("TokenManager is in verification-only mode, cannot generate tokens".to_string()))?;
+    let full_claims = self.create_claims_from_user_claims(claims);
     let header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::EdDSA);
-    jsonwebtoken::encode(&header, claims, &self.encoding_key)
+    jsonwebtoken::encode(&header, &full_claims, encoding_key)
       .map_err(|e| CoreError::Authentication(e.to_string()))
   }
 
   pub fn verify_jwt_token(&self, token: &str) -> Result<UserClaims, CoreError> {
-    let validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::EdDSA);
-    match jsonwebtoken::decode::<UserClaims>(token, &self.decoding_key, &validation) {
-      Ok(token_data) => Ok(token_data.claims),
-      Err(_) => Err(CoreError::Authentication(
-        "Invalid or expired refresh token".to_string(),
-      )),
-    }
+    let token_data = decode::<Claims>(token, &self.decoding_key, &self.validation)
+      .map_err(|e| CoreError::Authentication(format!("JWT verification failed: {}", e)))?;
+    Ok(token_data.claims.user)
   }
 }
 

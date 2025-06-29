@@ -1,10 +1,7 @@
 use anyhow::{Result, bail};
 use fechatter_core::models::jwt::TokenConfigProvider;
 use serde::{Deserialize, Serialize};
-use std::env;
-use std::fs::File;
-use std::path::{Path, PathBuf};
-use tracing::{debug, info, warn};
+use std::path::PathBuf;
 
 use crate::analytics::publisher::AnalyticsConfig;
 
@@ -23,7 +20,8 @@ pub struct AppConfig {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AuthConfig {
   pub pk: String,
-  pub sk: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub sk: Option<String>,
   pub token_expiration: i64,
 }
 
@@ -153,8 +151,8 @@ impl AppConfig {
   /// - Detailed error messages
   /// - Security checks
   pub fn load() -> Result<Self> {
-    use std::os::unix::fs::PermissionsExt;
-    use std::path::PathBuf;
+    
+    
 
     // 1. Find config file
     let config_path = Self::find_config_file()?;
@@ -344,8 +342,8 @@ impl AppConfig {
     }
 
     // Validate JWT keys
-    if config.auth.sk.is_empty() || config.auth.pk.is_empty() {
-      bail!("JWT private key (sk) and public key (pk) cannot be empty");
+    if config.auth.pk.is_empty() {
+      bail!("JWT public key (pk) cannot be empty");
     }
 
     // Validate token expiration
@@ -441,7 +439,7 @@ impl AppConfig {
     // Check for default key
     if self
       .auth
-      .sk
+      .pk
       .contains("MC4CAQAwBQYDK2VwBCIEIP/S+etN7RQJctehWKkdjgnrtQ0AUDIMkCnYS4Zk8RFR")
     {
       errors.push("Using default JWT private key in production is insecure");
@@ -485,10 +483,29 @@ impl AppConfig {
 
 impl TokenConfigProvider for AuthConfig {
   fn get_encoding_key_pem(&self) -> &str {
-    &self.sk
+    // 🔧 FIX: notify-server should NOT need encoding key (private key)
+    // It only needs to verify tokens, not create them
+    // Return empty string to indicate this service doesn't encode
+    ""
   }
 
   fn get_decoding_key_pem(&self) -> &str {
+    // 🔧 CORRECT: Use public key for token verification
     &self.pk
+  }
+
+  fn get_jwt_audience(&self) -> Option<&str> {
+    // 🔧 CRITICAL: Use same audience as fechatter-server
+    Some("fechatter-web")
+  }
+
+  fn get_jwt_issuer(&self) -> Option<&str> {
+    // 🔧 CRITICAL: Use same issuer as fechatter-server
+    Some("fechatter-server")
+  }
+
+  fn get_jwt_leeway(&self) -> u64 {
+    // 🔧 CRITICAL: Use same leeway as fechatter-server
+    60
   }
 }

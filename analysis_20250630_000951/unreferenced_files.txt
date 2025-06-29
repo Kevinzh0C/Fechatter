@@ -1,0 +1,14 @@
+./fechatter_frontend/test-auth.js
+./fechatter_frontend/test_presence_fix.js
+./fechatter_frontend/tests/integration/criticalPaths.test.js
+./fechatter_frontend/tests/integration/dmPreCreation.test.js
+./fechatter_frontend/server/bot-mock.js
+./fechatter_frontend/public/console-fix.js
+./fechatter_frontend/public/emergency-menu-fix.js
+./fechatter_frontend/public/emergency-message-fix.js
+./fechatter_frontend/public/emergency-sse-fix.js
+./fechatter_frontend/test-navigation-fix.js
+./fechatter_frontend/src-tauri/target/debug/build/fechatter_frontend-f63e1f2b587b30fa/out/__global-api-script.js
+./fechatter_frontend/test_message_flow.js
+./fechatter_frontend/src/test/protobuf-analytics.test.js
+./fechatter_frontend/src/test/stores/chat.test.js

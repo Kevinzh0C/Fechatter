@@ -1,0 +1,16 @@
+=== js 文件引用分析 ===
+./fechatter_frontend/test-auth.js:        0 个引用
+./fechatter_frontend/test_presence_fix.js:        0 个引用
+./fechatter_frontend/tests/integration/criticalPaths.test.js:        0 个引用
+./fechatter_frontend/tests/integration/dmPreCreation.test.js:        0 个引用
+./fechatter_frontend/server/bot-mock.js:        0 个引用
+./fechatter_frontend/vitest.config.js:        1 个引用
+./fechatter_frontend/public/console-fix.js:        0 个引用
+./fechatter_frontend/public/emergency-menu-fix.js:        0 个引用
+./fechatter_frontend/public/emergency-message-fix.js:        0 个引用
+./fechatter_frontend/public/emergency-sse-fix.js:        0 个引用
+./fechatter_frontend/test-navigation-fix.js:        0 个引用
+./fechatter_frontend/src-tauri/target/debug/build/fechatter_frontend-f63e1f2b587b30fa/out/__global-api-script.js:        0 个引用
+./fechatter_frontend/test_message_flow.js:        0 个引用
+./fechatter_frontend/src/test/protobuf-analytics.test.js:        0 个引用
+./fechatter_frontend/src/test/stores/chat.test.js:        0 个引用

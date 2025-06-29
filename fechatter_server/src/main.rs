@@ -1,41 +1,36 @@
-use anyhow::Result;
-use fechatter_server::services::infrastructure::observability::{
-  init_telemetry, shutdown_telemetry,
-};
-use fechatter_server::{AppConfig, AppState, get_router};
+//! # Fechatter Server - Main Entry Point
+//!
+//! **Responsibility**: Initializes and runs the Axum web server.
+
+use fechatter_server::{config::AppConfig, error::AppError, get_router, AppState};
+use std::net::SocketAddr;
 use tokio::net::TcpListener;
-use tracing::{debug, info};
+use tracing::info;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
-async fn main() -> Result<()> {
-  // Load app configuration FIRST
-  let config = AppConfig::load()?;
+async fn main() -> Result<(), AppError> {
+    // Load configuration
+    let config = AppConfig::load().expect("Failed to load configuration.");
 
-  // Initialize global OpenTelemetry tracing and metrics
-  init_telemetry(&config.features.observability)
-    .await
-    .expect("Failed to initialize OpenTelemetry");
+    // Initialize tracing
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer())
+        .with(tracing_subscriber::EnvFilter::new(&config.features.observability.log_level))
+        .init();
 
-  debug!("OpenTelemetry and tracing initialized");
+    // Create AppState
+    let app_state = AppState::try_new(config.clone()).await?;
 
-  let addr = format!("0.0.0.0:{}", config.server.port);
+    // Get the application router
+    let app = get_router(app_state).await?;
 
-  let state = AppState::try_new(config).await?;
-  let app = get_router(state).await?;
-  let listener = TcpListener::bind(&addr).await?;
-  info!("Fechatter server starting on: {}", addr);
+    // Start the server
+    let addr = SocketAddr::from(([0, 0, 0, 0], config.server.port));
+    info!("🚀 Server listening on {}", addr);
 
-  // Graceful shutdown handling
-  let result = axum::serve(
-    listener,
-    app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
-  )
-  .await;
+    let listener = TcpListener::bind(addr).await?;
+    axum::serve(listener, app.into_make_service()).await?;
 
-  // Shutdown OpenTelemetry
-  shutdown_telemetry().await;
-  info!("Server shutdown completed");
-
-  result?;
-  Ok(())
+    Ok(())
 }

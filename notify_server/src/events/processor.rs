@@ -328,13 +328,13 @@ impl EventProcessor {
                             "chat".to_string(),
                             true,
                             None,
-                        );
-                        publisher.publish(event);
+                        );                   publisher.publish(event);
                     }
                 }
             }
         }
 
+     
         Ok(())
     }
 
@@ -342,6 +342,14 @@ impl EventProcessor {
     async fn handle_realtime_event(&self, payload: Value) -> Result<(), NotifyError> {
         debug!("Processing realtime event: {:?}", payload);
 
+        // 🔧 CRITICAL FIX: Handle MessageReceived events from fechatter-server
+        // Check if this is a MessageReceived event (from fechatter-server enum format)
+        if let Some(message_received_data) = payload.get("MessageReceived") {
+            info!("📨 [REALTIME] Processing MessageReceived event");
+            return self.handle_message_received_realtime(message_received_data).await;
+        }
+
+        // Handle standard event_type format
         let event_type = payload
             .get("event_type")
             .and_then(|v| v.as_str())
@@ -388,6 +396,52 @@ impl EventProcessor {
             }
         }
 
+        Ok(())
+    }
+
+    /// 🔧 CRITICAL FIX: Handle MessageReceived events from fechatter-server
+    async fn handle_message_received_realtime(&self, payload: &Value) -> Result<(), NotifyError> {
+        let chat_id = payload.get("chat_id").and_then(|v| v.as_i64()).map(ChatId);
+        let message = payload.get("message");
+        let recipients = payload.get("recipients").and_then(|v| v.as_array());
+        
+        if let (Some(chat_id), Some(message), Some(recipients)) = (chat_id, message, recipients) {
+            info!("📨 [REALTIME] Processing MessageReceived for chat {} with {} recipients", 
+                  chat_id.0, recipients.len());
+            
+            // Extract message details
+            let message_id = message.get("id").and_then(|v| v.as_str()).unwrap_or("unknown");
+            let sender_id = message.get("sender_id").and_then(|v| v.as_i64()).map(UserId);
+            let content = message.get("content").and_then(|v| v.as_str()).unwrap_or("");
+            
+            info!("📨 [REALTIME] Message {} from user {:?} in chat {}: {}", 
+                  message_id, sender_id, chat_id.0, 
+                  if content.len() > 50 { format!("{}...", &content[..50]) } else { content.to_string() });
+            
+            // 🚀 CRITICAL: Send SSE to ALL recipients INCLUDING the sender for message confirmation
+            for recipient_value in recipients {
+                if let Some(user_id) = recipient_value.as_i64() {
+                    let user_id = UserId(user_id);
+                    
+                    let notification = json!({
+                        "type": "new_message",
+                        "chat_id": chat_id.0,
+                        "message": message,
+                        "timestamp": Utc::now(),
+                        "realtime_source": "fechatter_server"
+                    });
+                    
+                    if let Err(e) = self.state.send_notification_to_user(user_id, notification).await {
+                        warn!("Failed to send SSE to user {}: {}", user_id.0, e);
+                    } else {
+                        info!("✅ [REALTIME] Sent SSE notification to user {} for message {}", user_id.0, message_id);
+                    }
+                }
+            }
+        } else {
+            warn!("❌ [REALTIME] Invalid MessageReceived payload: missing required fields");
+        }
+        
         Ok(())
     }
 

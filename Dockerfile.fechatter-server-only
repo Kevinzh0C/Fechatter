@@ -1,0 +1,42 @@
+# Dockerfile for fechatter_server only
+FROM alpine:3.20
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    openssl \
+    libgcc \
+    curl \
+    tini \
+    tzdata \
+    && rm -rf /var/cache/apk/*
+
+# Create app user
+RUN adduser -D -s /bin/sh -u 1001 appuser && \
+    mkdir -p /app/uploads /app/logs /app/config /app/data && \
+    chown -R appuser:appuser /app && \
+    chmod 755 /app && \
+    chmod 750 /app/config
+
+# Copy fechatter_server binary from the correct path within the build context
+COPY --chown=appuser:appuser target/main/x86_64-unknown-linux-musl/release/fechatter_server /usr/local/bin/fechatter_server
+RUN chmod +x /usr/local/bin/fechatter_server
+
+# Set environment
+ENV RUST_LOG=info
+ENV APP_ENV=production
+
+# Use non-root user
+USER appuser
+WORKDIR /app
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:6688/health || exit 1
+
+# Expose port
+EXPOSE 6688
+
+# Use tini as init
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["/usr/local/bin/fechatter_server"] 

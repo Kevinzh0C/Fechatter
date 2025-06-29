@@ -59,7 +59,57 @@ upstreams:
 
 routes:
 # ============================================================================
-# HEALTH CHECK ENDPOINTS
+# SEARCH FUNCTIONALITY - 🔧 CRITICAL FIX: MOVED TO TOP FOR HIGHEST PRIORITY
+# ============================================================================
+
+# Global search endpoints - CRITICAL: Must be before health check routes
+- path: "/api/search/messages"
+  methods: [ "GET", "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://localhost:3000"
+  - "http://localhost:5173"
+  - "http://127.0.0.1:1420"
+  - "http://127.0.0.1:3000"
+  - "http://127.0.0.1:5173"
+
+- path: "/api/search/suggestions"
+  methods: [ "GET", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://localhost:3000"
+  - "http://localhost:5173"
+  - "http://127.0.0.1:1420"
+  - "http://127.0.0.1:3000"
+  - "http://127.0.0.1:5173"
+
+# Chat-specific search - CRITICAL: Must be before health check routes
+- path: "/api/chat/{id}/messages/search"
+  methods: [ "GET", "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+  - "http://localhost:3000"
+  - "http://localhost:5173"
+  - "http://127.0.0.1:1420"
+  - "http://127.0.0.1:3000"
+  - "http://127.0.0.1:5173"
+
+# Admin search operations
+- path: "/api/admin/chat/{id}/reindex"
+  methods: [ "POST", "OPTIONS" ]
+  upstream: "fechatter-server"
+  cors_enabled: true
+  cors_origins:
+  - "http://localhost:1420"
+
+# ============================================================================
+# HEALTH CHECK ENDPOINTS - 🔧 MOVED AFTER SEARCH TO PREVENT CONFLICTS
 # ============================================================================
 
 # Gateway's own health check (internal)
@@ -193,41 +243,6 @@ routes:
 # Workspace file management
 - path: "/api/workspaces/"
   methods: [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ]
-  upstream: "fechatter-server"
-  cors_enabled: true
-  cors_origins:
-  - "http://localhost:1420"
-
-# ============================================================================
-# SEARCH FUNCTIONALITY - fechatter-server
-# ============================================================================
-
-# Global search endpoints
-- path: "/api/search/messages"
-  methods: [ "GET", "POST", "OPTIONS" ]
-  upstream: "fechatter-server"
-  cors_enabled: true
-  cors_origins:
-  - "http://localhost:1420"
-
-- path: "/api/search/suggestions"
-  methods: [ "GET", "OPTIONS" ]
-  upstream: "fechatter-server"
-  cors_enabled: true
-  cors_origins:
-  - "http://localhost:1420"
-
-# Chat-specific search
-- path: "/api/chat/{id}/messages/search"
-  methods: [ "GET", "POST", "OPTIONS" ]
-  upstream: "fechatter-server"
-  cors_enabled: true
-  cors_origins:
-  - "http://localhost:1420"
-
-# Admin search operations
-- path: "/api/admin/chat/{id}/reindex"
-  methods: [ "POST", "OPTIONS" ]
   upstream: "fechatter-server"
   cors_enabled: true
   cors_origins:

@@ -38,7 +38,7 @@
         <!-- File Preview -->
         <FilePreview v-else-if="formatMode === 'file' && files.length > 0" :file="files[0]"
           @file-uploaded="handleFileUploaded" @upload-error="handleFileUploadError" @file-removed="handleFileRemoved"
-          @trigger-upload="triggerFileUpload" />
+          @trigger-upload="handleTriggerUpload" />
       </div>
     </div>
 
@@ -250,26 +250,48 @@ const emojiPickerRef = ref(null);
 
 // Computed properties
 const canSend = computed(() => {
-  // 🎯 可以发送如果：有文本内容 或者 有文件 或者 有上传成功的文件URL
+  // 🎯 严格的发送逻辑：必须先上传文件到远端获取URL
   const hasContent = messageContent.value.trim().length > 0;
-  const hasFiles = files.value.length > 0;
-  const hasUploadedFile = uploadedFileUrl.value.trim().length > 0;
+  const hasLocalFiles = files.value.length > 0;
+  const hasUploadedFileUrl = uploadedFileUrl.value.trim().length > 0;
   const notSending = !isSending.value;
 
-  const result = (hasContent || hasFiles || hasUploadedFile) && notSending;
+  // 🚨 CRITICAL: 如果有本地文件但没有远端URL，绝对不能发送
+  if (hasLocalFiles && !hasUploadedFileUrl) {
+    return false;
+  }
 
-  // 🔍 仅在状态变化时记录关键信息
-  if (hasUploadedFile && result) {
-    console.log('✅ [MessageInput] Send button activated - file ready:', uploadedFileUrl.value);
+  // ✅ 只有这两种情况可以发送：
+  // 1. 纯文本消息（没有任何文件）
+  // 2. 有远端文件URL（无论是否有文本内容）
+  const canSendText = hasContent && !hasLocalFiles && !hasUploadedFileUrl;
+  const canSendFile = hasUploadedFileUrl;
+  
+  const result = (canSendText || canSendFile) && notSending;
+
+  // 🔍 详细状态日志
+  if (hasLocalFiles && !hasUploadedFileUrl) {
+    console.log('🚫 [MessageInput] Send BLOCKED: Local files need remote upload first');
+  } else if (canSendFile) {
+    console.log('✅ [MessageInput] Send ENABLED: Remote file URL ready');
+  } else if (canSendText) {
+    console.log('✅ [MessageInput] Send ENABLED: Text-only message');
+  } else {
+    console.log('⚪ [MessageInput] Send DISABLED: No content or files');
   }
 
   return result;
 });
 
 const placeholderText = computed(() => {
-  // 🎯 如果有上传成功的文件URL，显示简洁提示
-  if (uploadedFileUrl.value) {
-    return 'File ready to send...';
+  const hasLocalFiles = files.value.length > 0;
+  const hasUploadedFileUrl = uploadedFileUrl.value.trim().length > 0;
+
+  // 🎯 根据文件上传状态显示不同提示
+  if (hasUploadedFileUrl) {
+    return 'File uploaded! Ready to send...';
+  } else if (hasLocalFiles) {
+    return 'Files selected - upload to remote first...';
   }
 
   if (formatMode.value === 'markdown') {
@@ -822,6 +844,12 @@ const handleFileRemoved = () => {
   });
 };
 
+// 🎯 处理FilePreview触发的文件上传事件
+const handleTriggerUpload = () => {
+  console.log('📁 [MessageInput] Triggering new file upload');
+  triggerFileUpload();
+};
+
 // Input handling
 const handleKeyDown = (event) => {
   if (event.key === 'Enter' && !event.shiftKey) {
@@ -864,19 +892,31 @@ const handleInput = () => {
 };
 
 const sendMessage = async () => {
-  if (!canSend.value) return;
+  if (!canSend.value) {
+    console.log('⚠️ [MessageInput] Send blocked - requirements not met');
+    return;
+  }
+
+  // 🚨 严格验证：如果有本地文件但没有远端URL，拒绝发送
+  const hasLocalFiles = files.value.length > 0;
+  const hasUploadedFileUrl = uploadedFileUrl.value.trim().length > 0;
+  
+  if (hasLocalFiles && !hasUploadedFileUrl) {
+    console.error('❌ [MessageInput] Cannot send: Files selected but not uploaded to remote');
+    // 可以显示用户提示
+    alert('Please upload files to remote server first before sending');
+    return;
+  }
 
   isSending.value = true;
 
   try {
-    // 🎯 构建消息数据，优先使用上传成功的文件URL
+    // 🎯 构建消息数据
     let content = messageContent.value.trim();
 
-    // 🚀 CRITICAL FIX: Code模式下自动包装为代码块
+    // 🚀 Code模式下自动包装为代码块
     if (formatMode.value === 'code' && content) {
-      // 检测代码语言
       const language = selectedLanguage.value || 'plaintext';
-      // 将代码内容包装为Markdown代码块格式
       content = `\`\`\`${language}\n${content}\n\`\`\``;
       console.log(`🔧 [MessageInput] Code mode: wrapping content as ${language} code block`);
     }
@@ -887,18 +927,12 @@ const sendMessage = async () => {
       reply_to: props.replyToMessage?.id
     };
 
-    // 🎯 如果有上传成功的文件URL，优先使用它
-    if (uploadedFileUrl.value) {
+    // 🎯 只发送已上传到远端的文件URL
+    if (hasUploadedFileUrl) {
       messageData.files = [uploadedFileInfo.value];
-      console.log('📨 [MessageInput] Sending message with uploaded file URL:', uploadedFileUrl.value);
-    } else if (files.value.length > 0) {
-      // 如果没有上传的URL但有文件，使用原来的逻辑
-      messageData.files = files.value.map(file => ({
-        name: file.name,
-        size: file.size,
-        type: file.type
-      }));
-      console.log('📨 [MessageInput] Sending message with local files');
+      console.log('📨 [MessageInput] Sending message with remote file URL:', uploadedFileUrl.value);
+    } else {
+      console.log('📨 [MessageInput] Sending text-only message');
     }
 
     emit('message-sent', messageData);
@@ -918,7 +952,7 @@ const sendMessage = async () => {
     });
 
   } catch (error) {
-    console.error('Failed to send message:', error);
+    console.error('❌ [MessageInput] Failed to send message:', error);
   } finally {
     isSending.value = false;
   }

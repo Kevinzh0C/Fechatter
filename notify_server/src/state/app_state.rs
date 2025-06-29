@@ -5,7 +5,7 @@ use tokio::sync::broadcast;
 use tracing::{debug, info, warn};
 
 use crate::{
-  analytics::{AnalyticsPublisher, publisher::AnalyticsConfig},
+  analytics::AnalyticsPublisher,
   config::AppConfig,
   connections::manager::{ConnectionManager, ConnectionStats},
   error::NotifyError,
@@ -37,11 +37,26 @@ impl TokenVerifier for AppState {
   type Error = NotifyError;
 
   fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error> {
-    self
+    debug!("🔍 [NOTIFY] Starting JWT token verification");
+    debug!("🔍 [NOTIFY] Token length: {} chars", token.len());
+    debug!("🔍 [NOTIFY] Token preview: {}...", &token[..std::cmp::min(30, token.len())]);
+    
+    match self
       .inner
       .token_manager
       .verify_token(token)
-      .map_err(NotifyError::map_error)
+    {
+      Ok(claims) => {
+        debug!("✅ [NOTIFY] JWT verification SUCCESS for user {}", claims.id.0);
+        debug!("🔍 [NOTIFY] Claims: email={}, workspace_id={}", claims.email, claims.workspace_id.0);
+        Ok(claims)
+      }
+      Err(e) => {
+        warn!("❌ [NOTIFY] JWT verification FAILED: {:?}", e);
+        warn!("🔍 [NOTIFY] Token that failed: {}...", &token[..std::cmp::min(50, token.len())]);
+        Err(NotifyError::map_error(e))
+      }
+    }
   }
 }
 
@@ -141,6 +156,22 @@ impl AppState {
       chat_ids.len()
     );
     Ok(chat_ids)
+  }
+
+  /// Get the number of chats a user is in (from database)
+  pub async fn get_user_chat_count(&self, user_id: UserId) -> Result<usize, anyhow::Error> {
+    use sqlx::Row;
+
+    let pool = sqlx::PgPool::connect(&self.config.server.db_url).await?;
+
+    let row = sqlx::query("SELECT COUNT(*) as count FROM chat_members WHERE user_id = $1 AND left_at IS NULL")
+        .bind(user_id.0 as i64)
+        .fetch_one(&pool)
+        .await?;
+
+    let count = row.get::<i64, _>("count") as usize;
+    debug!("📊 User {} is a member of {} chats", user_id.0, count);
+    Ok(count)
   }
 
   /// Get all members of a chat (from database)

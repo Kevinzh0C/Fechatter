@@ -85,13 +85,6 @@ const routes = [
         component: () => import('../components/common/WelcomeContent.vue'),
         meta: { requiresAuth: true }
       },
-      // 聊天页面 (嵌套在Home布局内)
-      {
-        path: '/chat/:id',
-        name: 'Chat',
-        component: Chat,
-        meta: { requiresAuth: true }
-      },
       // 管理员页面 (嵌套在Home布局内)
       {
         path: '/admin',
@@ -100,6 +93,14 @@ const routes = [
         meta: { requiresAuth: true, requiresAdmin: true }
       }
     ]
+  },
+
+  // 🔧 CRITICAL FIX: 独立的聊天路由 (不嵌套在Home内)
+  {
+    path: '/chat/:id',
+    name: 'Chat',
+    component: Chat,
+    meta: { requiresAuth: true }
   },
 
   // 独立功能页面 (不需要侧边栏)
@@ -314,10 +315,11 @@ router.beforeEach(async (to, from, next) => {
 router.afterEach((to, from, failure) => {
   if (failure) {
     if (import.meta.env.DEV) {
-      console.error('Navigation failed:', failure);
+      console.error('❌ Navigation failed:', failure);
     }
   } else {
-    if (import.meta.env.VITE_DEBUG === 'true') {
+    if (import.meta.env.DEV) {
+      console.log('🔍 [ROUTER] Navigation completed:', { from: from.path, to: to.path });
     }
 
     // 跟踪导航事件
@@ -331,14 +333,31 @@ router.afterEach((to, from, failure) => {
   }
 });
 
-// 全局错误处理
+// 🔧 CRITICAL FIX: 简化错误处理，避免无限重定向
 router.onError((error) => {
   if (import.meta.env.DEV) {
-    console.error('Router error:', error);
+    console.error('🔍 [ROUTER] Router error:', error);
   }
-  // 避免无限重定向
-  if (window.location.pathname !== '/error/500') {
-    router.push('/error/500');
+
+  // 🔧 忽略常见的无害错误
+  if (error.name === 'NavigationDuplicated' ||
+    error.message?.includes('redundant navigation') ||
+    error.message?.includes('Avoided redundant')) {
+    console.log('ℹ️ [ROUTER] Ignoring redundant navigation error');
+    return;
+  }
+
+  if (error.name === 'NavigationAborted' || error.name === 'NavigationCancelled') {
+    console.log('ℹ️ [ROUTER] Navigation was cancelled or aborted');
+    return;
+  }
+
+  // 🔧 只有在真正严重的错误时才重定向，并且避免循环
+  if (!window.location.pathname.startsWith('/error/')) {
+    console.error('❌ [ROUTER] Serious error, redirecting to error page:', error);
+    router.push('/error/500').catch(() => {
+      console.error('❌ [ROUTER] Failed to navigate to error page');
+    });
   }
 });
 

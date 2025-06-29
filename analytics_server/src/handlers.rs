@@ -350,7 +350,7 @@ pub(crate) async fn create_batch_events_handler(
 }
 
 /// Insert analytics event into ClickHouse with proper error handling
-async fn insert_analytics_event(state: &AppState, row: &AnalyticsEventRow) -> Result<(), AppError> {
+pub(crate) async fn insert_analytics_event(state: &AppState, row: &AnalyticsEventRow) -> Result<(), AppError> {
   let mut insert = state.client.insert("analytics_events")?;
   insert.write(row).await?;
   insert.end().await?;
@@ -358,7 +358,7 @@ async fn insert_analytics_event(state: &AppState, row: &AnalyticsEventRow) -> Re
 }
 
 /// Insert batch analytics events into ClickHouse with proper error handling
-async fn insert_batch_analytics_events(state: &AppState, rows: &[AnalyticsEventRow]) -> Result<(), AppError> {
+pub(crate) async fn insert_batch_analytics_events(state: &AppState, rows: &[AnalyticsEventRow]) -> Result<(), AppError> {
   let mut insert = state.client.insert("analytics_events")?;
   for row in rows {
     insert.write(row).await?;

@@ -13,10 +13,8 @@
 //! 8. Security headers and validation
 
 use anyhow::Result;
-use fechatter_gateway::{config::GatewayConfig, FechatterProxy, PingoraGateway, UpstreamManager};
-use serde_json::Value;
+use fechatter_gateway::{config::GatewayConfig, PingoraGateway};
 use std::collections::HashMap;
-use std::sync::Arc;
 use tokio::time::{timeout, Duration};
 
 // ============================================================================

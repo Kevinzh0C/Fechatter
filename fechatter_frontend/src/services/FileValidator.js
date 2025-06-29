@@ -8,7 +8,7 @@
 // File validation states following DAG pattern
 export const FILE_STATES = {
   INITIAL: 'initial',
-  VALIDATING: 'validating', 
+  VALIDATING: 'validating',
   VALID: 'valid',
   INVALID: 'invalid',
   COMPRESSING: 'compressing',
@@ -32,7 +32,7 @@ export const ERROR_TYPES = {
 // Recovery strategies following DAG flow
 export const RECOVERY_STRATEGIES = {
   COMPRESS: 'compress',
-  REMOVE: 'remove', 
+  REMOVE: 'remove',
   RETRY: 'retry',
   MANUAL: 'manual'
 };
@@ -40,13 +40,13 @@ export const RECOVERY_STRATEGIES = {
 class FileValidator {
   constructor(config = {}) {
     this.config = {
-      maxFileSize: 2 * 1024 * 1024, // 2MB
+      maxFileSize: 100 * 1024 * 1024, // 100MB
       maxFiles: 10,
       allowedTypes: [
         'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
         'video/mp4', 'video/avi', 'video/mov', 'video/wmv', 'video/webm',
         'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/m4a', 'audio/aac',
-        'application/pdf', 'application/msword', 
+        'application/pdf', 'application/msword',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'text/plain', 'application/json', 'text/yaml', 'application/x-yaml'
       ],
@@ -83,7 +83,7 @@ class FileValidator {
 
     for (const file of files) {
       const validation = await this.validateSingleFile(file, currentFileCount + result.valid.length);
-      
+
       if (validation.isValid) {
         result.valid.push({
           file,
@@ -146,7 +146,7 @@ class FileValidator {
       } else if (file.size > this.config.maxFileSize) {
         validation.errors.push({
           type: ERROR_TYPES.SIZE_EXCEEDED,
-          message: `File "${file.name}" (${validation.fileSize}) exceeds the 2MB limit.`,
+          message: `File "${file.name}" (${validation.fileSize}) exceeds the 100MB limit.`,
           severity: 'error',
           details: {
             fileSize: file.size,
@@ -158,7 +158,7 @@ class FileValidator {
         validation.isNearLimit = true;
         validation.warnings.push({
           type: 'size_warning',
-          message: `File "${file.name}" (${validation.fileSize}) is close to the 2MB limit.`,
+          message: `File "${file.name}" (${validation.fileSize}) is close to the 100MB limit.`,
           severity: 'warning'
         });
       }
@@ -201,7 +201,7 @@ class FileValidator {
         message: `Validation failed: ${error.message}`,
         severity: 'error'
       });
-      
+
       this.setFileState(fileId, FILE_STATES.ERROR);
       return validation;
     }
@@ -235,7 +235,7 @@ class FileValidator {
   setFileState(fileId, state) {
     const oldState = this.fileStates.get(fileId);
     this.fileStates.set(fileId, state);
-    
+
     this.emit('state:changed', { fileId, oldState, newState: state });
   }
 
@@ -282,11 +282,11 @@ class FileValidator {
   generateWarnings(validFiles) {
     const warnings = [];
     const nearLimitFiles = validFiles.filter(f => f.validation.isNearLimit);
-    
+
     if (nearLimitFiles.length > 0) {
       warnings.push({
         type: 'size_warning',
-        message: `${nearLimitFiles.length} file(s) are close to the 2MB limit.`,
+        message: `${nearLimitFiles.length} file(s) are close to the 100MB limit.`,
         files: nearLimitFiles.map(f => f.file.name)
       });
     }

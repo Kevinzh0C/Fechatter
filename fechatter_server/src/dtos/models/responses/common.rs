@@ -169,3 +169,13 @@ pub struct ServiceHealth {
   #[schema(example = "Connected successfully")]
   pub message: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct UploadResponse {
+    pub id: String,
+    pub filename: String,
+    pub url: String,
+    pub mime_type: String,
+    pub size: u64,
+    pub created_at: String,
+}

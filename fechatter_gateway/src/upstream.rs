@@ -5,10 +5,7 @@
 use crate::config::{GatewayConfig, LoadBalancingType};
 use anyhow::Result;
 use pingora_core::upstreams::peer::HttpPeer;
-use pingora_load_balancing::{
-  selection::{Consistent, Random, RoundRobin},
-  Backend,
-};
+use pingora_load_balancing::Backend;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::net::SocketAddr;

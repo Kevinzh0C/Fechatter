@@ -4,7 +4,7 @@ use fechatter_protos::fechatter::v1::{
     EventContext, SystemInfo,
 };
 use std::sync::Arc;
-use tracing::{debug, error, warn};
+use tracing::{debug, error};
 
 /// Unified NATS + Protobuf analytics publisher for bot_server
 /// Compatible with analytics_server architecture

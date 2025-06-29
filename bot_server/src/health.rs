@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tracing::{error, info, warn};
+use tracing::info;
 
 use crate::AppConfig;
 
@@ -196,36 +196,76 @@ async fn check_nats(state: &HealthState) -> ServiceStatus {
 
     match &state.nats_client {
         Some(client) => {
-            // Try to publish a test message
-            match client.publish("test.health.check", "ping".into()).await {
-                Ok(_) => {
-                    let latency = start.elapsed().as_millis() as u64;
+            // Check connection state first
+            match client.connection_state() {
+                async_nats::connection::State::Connected => {
+                    // Try to publish a test message to verify connectivity
+                    match client.publish("test.health.check", "ping".into()).await {
+                        Ok(_) => {
+                            let latency = start.elapsed().as_millis() as u64;
+                            ServiceStatus {
+                                status: "healthy".to_string(),
+                                message: "NATS connection successful".to_string(),
+                                latency_ms: Some(latency),
+                                details: Some(serde_json::json!({
+                                    "url": state.config.messaging.nats.url,
+                                    "subjects": state.config.messaging.nats.subscription_subjects,
+                                    "connection_state": "Connected"
+                                })),
+                            }
+                        }
+                        Err(e) => ServiceStatus {
+                            status: "unhealthy".to_string(),
+                            message: format!("NATS publish failed: {}", e),
+                            latency_ms: Some(start.elapsed().as_millis() as u64),
+                            details: Some(serde_json::json!({
+                                "error": e.to_string(),
+                                "connection_state": "Connected"
+                            })),
+                        },
+                    }
+                }
+                other_state => {
                     ServiceStatus {
-                        status: "healthy".to_string(),
-                        message: "NATS connection successful".to_string(),
-                        latency_ms: Some(latency),
+                        status: "unhealthy".to_string(),
+                        message: format!("NATS connection state: {:?}", other_state),
+                        latency_ms: Some(start.elapsed().as_millis() as u64),
                         details: Some(serde_json::json!({
-                            "url": state.config.messaging.nats.url,
-                            "subjects": state.config.messaging.nats.subscription_subjects
+                            "connection_state": format!("{:?}", other_state),
+                            "url": state.config.messaging.nats.url
                         })),
                     }
                 }
-                Err(e) => ServiceStatus {
-                    status: "unhealthy".to_string(),
-                    message: format!("NATS publish failed: {}", e),
-                    latency_ms: Some(start.elapsed().as_millis() as u64),
-                    details: Some(serde_json::json!({
-                        "error": e.to_string()
-                    })),
-                },
             }
         }
-        None => ServiceStatus {
-            status: "unhealthy".to_string(),
-            message: "NATS client not initialized".to_string(),
-            latency_ms: Some(start.elapsed().as_millis() as u64),
-            details: None,
-        },
+        None => {
+            // NATS client not initialized - check if this is expected
+            if state.config.messaging.enabled {
+                // This is an error - messaging is enabled but client is not initialized
+                ServiceStatus {
+                    status: "unhealthy".to_string(),
+                    message: "NATS client not initialized despite messaging being enabled".to_string(),
+                    latency_ms: Some(start.elapsed().as_millis() as u64),
+                    details: Some(serde_json::json!({
+                        "messaging_enabled": true,
+                        "client_initialized": false,
+                        "url": state.config.messaging.nats.url,
+                        "error": "This indicates a bug in the bot_server initialization process"
+                    })),
+                }
+            } else {
+                // This is expected - messaging is disabled
+                ServiceStatus {
+                    status: "disabled".to_string(),
+                    message: "NATS messaging is disabled".to_string(),
+                    latency_ms: None,
+                    details: Some(serde_json::json!({
+                        "messaging_enabled": false,
+                        "client_initialized": false
+                    })),
+                }
+            }
+        }
     }
 }
 
