@@ -14,19 +14,19 @@ path = "src/indexer.rs"
 
 [dependencies]
 anyhow = { workspace = true }
-async-nats = "0.37"
+async-nats = "0.41"
 axum = { workspace = true }
 chrono = { workspace = true }
 fechatter_core = { workspace = true }
 fechatter_protos = { path = "../fechatter_protos" }
 futures = { workspace = true }
-prost = "0.13"
+prost = "0.14"
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
 sqlx = { workspace = true }
-swiftide = { version = "0.13.3", features = ["openai", "tree-sitter"] }
+swiftide = { version = "0.27.2", features = ["openai", "tree-sitter"] }
 swiftide-pgvector = "0.1.1"
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
@@ -39,5 +39,5 @@ http = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
 # Metrics
-metrics = "0.24.0"
+metrics = "0.24.2"
 metrics-exporter-prometheus = "0.17.0"

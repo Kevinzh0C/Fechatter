@@ -9,7 +9,7 @@ path = "src/lib.rs"
 
 [dependencies]
 anyhow = { workspace = true }
-async-nats = "0.38.0"
+async-nats = "0.41.0"
 async-trait = { workspace = true }
 axum = { workspace = true }
 fechatter_core = { workspace = true }
@@ -18,8 +18,8 @@ chrono = { workspace = true }
 clickhouse = "0.13.0"
 dashmap = { workspace = true }
 futures = { workspace = true }
-prost = "0.13.3"
-prost-types = "0.13.3"
+prost = "0.14.1"
+prost-types = "0.14.1"
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
@@ -37,11 +37,11 @@ utoipa-redoc = { workspace = true }
 utoipa-swagger-ui = { workspace = true }
 uuid = { workspace = true }
 # Metrics
-metrics = "0.24.0"
+metrics = "0.24.2"
 metrics-exporter-prometheus = "0.17.0"
 
 [build-dependencies]
-prost-build = "0.13.3"
+prost-build = "0.14.1"
 
 [dev-dependencies]
 reqwest = { workspace = true }
