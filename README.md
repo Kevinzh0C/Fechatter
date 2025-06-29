@@ -77,7 +77,7 @@ cp .env.example .env
 docker-compose up -d
 
 # Open in your browser
-open http://localhost:8080
+open http://localhost:5173
 ```
 
 That's it! 🎉
@@ -87,7 +87,7 @@ That's it! 🎉
 - Docker 20.10 or higher
 - Docker Compose 2.0 or higher
 - 4GB RAM minimum
-- Port 8080 available
+- Port 5173 available
 
 Need help? Check our [Quick Start Guide](./docs/QUICK_START.md).
 

@@ -77,7 +77,7 @@ cp .env.example .env
 docker-compose up -d
 
 # 在浏览器中打开
-open http://localhost:8080
+open http://localhost:5173
 ```
 
 就是这样！🎉
@@ -87,7 +87,7 @@ open http://localhost:8080
 - Docker 20.10 或更高版本
 - Docker Compose 2.0 或更高版本
 - 最少 4GB 内存
-- 端口 8080 可用
+- 端口 5173 可用
 
 需要帮助？查看我们的[快速开始指南](./docs/QUICK_START.md)。
 

@@ -77,7 +77,7 @@ cp .env.example .env
 docker-compose up -d
 
 # ブラウザで開く
-open http://localhost:8080
+open http://localhost:5173
 ```
 
 これで完了です！🎉
@@ -87,7 +87,7 @@ open http://localhost:8080
 - Docker 20.10以上
 - Docker Compose 2.0以上
 - 最低4GBのRAM
-- ポート8080が利用可能
+- ポート5173が利用可能
 
 サポートが必要ですか？[クイックスタートガイド](./docs/QUICK_START.md)をご確認ください。
 
