@@ -64,13 +64,13 @@ const fetchImage = async (url) => {
       console.log('🖼️ [SecureImage] Fetching image with cache:', url)
     }
 
-    // 🚀 使用缓存服务获取图片
+    // 使用缓存服务获取图片
     const cachedImageUrl = await imageCacheService.getCachedImageUrl(url, {
       skipAuthRefresh: false
     })
 
     if (cachedImageUrl) {
-      // 🎯 如果是blob URL，保存引用用于清理
+      // 如果是blob URL，保存引用用于清理
       if (cachedImageUrl.startsWith('blob:')) {
         objectUrl.value = cachedImageUrl
       }
@@ -78,14 +78,14 @@ const fetchImage = async (url) => {
       imageUrl.value = cachedImageUrl
 
       if (import.meta.env.DEV) {
-        console.log('✅ [SecureImage] Image loaded from cache/remote')
+        console.log('[SecureImage] Image loaded from cache/remote')
       }
     } else {
       throw new Error('Failed to get image URL from cache service')
     }
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('❌ [SecureImage] Failed to fetch image:', error)
+      console.error('ERROR: [SecureImage] Failed to fetch image:', error)
     }
 
     hasError.value = true
@@ -108,14 +108,14 @@ const cleanup = () => {
 
 const handleLoad = (event) => {
   if (import.meta.env.DEV) {
-    console.log('✅ [SecureImage] Image loaded successfully')
+    console.log('[SecureImage] Image loaded successfully')
   }
   emit('load', event)
 }
 
 const handleError = (event) => {
   if (import.meta.env.DEV) {
-    console.error('❌ [SecureImage] Image load error:', event)
+    console.error('ERROR: [SecureImage] Image load error:', event)
   }
   hasError.value = true
   emit('error', event)

@@ -1,0 +1,182 @@
+# API Gateway - Japan region optimized configuration
+# Pingora high-performance gateway
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: fechatter
+  labels:
+    app: gateway
+    version: v1
+    region: japan
+spec:
+  replicas: 2  # 200 DAU, 2 gateway replicas sufficient
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+        version: v1
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - gateway
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: gateway
+        image: ghcr.io/your-org/fechatter/fechatter_gateway:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: REGION
+          value: "japan"
+        - name: TZ
+          valueFrom:
+            configMapKeyRef:
+              name: timezone-config
+              key: TZ
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: redis-config
+              key: REDIS_URL
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: fechatter-secrets
+              key: jwt-secret
+        - name: RUST_LOG
+          value: "info,fechatter_gateway=debug"
+        # 日本地区特定配置
+        - name: MAX_CONNECTIONS
+          value: "1000"      # 支持1000并发连接
+        - name: WORKER_PROCESSES
+          value: "4"         # 4个工作进程
+        - name: RATE_LIMIT_REQUESTS
+          value: "100"       # 每分钟100请求限制
+        - name: RATE_LIMIT_WINDOW
+          value: "60"        # 60秒窗口
+        - name: CORS_ALLOWED_ORIGINS
+          value: "https://fechatter-japan.com,https://www.fechatter-japan.com"
+        - name: PROXY_TIMEOUT
+          value: "30s"       # 代理超时30秒
+        - name: KEEPALIVE_TIMEOUT
+          value: "65s"       # Keep-alive 超时
+        # 上游服务配置
+        - name: FECHATTER_SERVER_URL
+          value: "http://fechatter-server:6688"
+        - name: NOTIFY_SERVER_URL
+          value: "http://notify-server:6687"
+        - name: BOT_SERVER_URL
+          value: "http://bot-server:6686"
+        - name: ANALYTICS_SERVER_URL
+          value: "http://analytics-server:6690"
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 500m        # 网关需要较少CPU
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 2
+          failureThreshold: 2
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 5"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: fechatter
+  labels:
+    app: gateway
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "http"
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  - port: 443
+    targetPort: 8080
+    protocol: TCP
+    name: https
+  selector:
+    app: gateway
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: gateway-hpa
+  namespace: fechatter
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: gateway
+  minReplicas: 2   # 最低2个副本
+  maxReplicas: 6   # 最高6个副本
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70  # CPU 70% 触发扩容
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 75  # 内存 75% 触发扩容
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30    # 快速扩容响应流量
+      policies:
+      - type: Percent
+        value: 100   # 一次性翻倍
+        periodSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 300   # 缓慢缩容避免抖动
+      policies:
+      - type: Percent
+        value: 25    # 每次减少25%
+        periodSeconds: 60

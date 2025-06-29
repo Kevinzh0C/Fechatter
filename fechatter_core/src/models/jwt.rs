@@ -224,7 +224,7 @@ impl TokenManager {
 
     let refresh_token_repo = Arc::new(DummyRefreshTokenRepository);
 
-    // 🔧 FIX: Support verification-only mode (no encoding key needed)
+    // FIX: Support verification-only mode (no encoding key needed)
     let encoding_key = if sk_pem.is_empty() {
       None // Verification-only mode
     } else {
@@ -261,7 +261,7 @@ impl TokenManager {
     let sk_pem = config.get_encoding_key_pem().replace("\\n", "\n");
     let pk_pem = config.get_decoding_key_pem().replace("\\n", "\n");
 
-    // 🔧 FIX: Support verification-only mode (no encoding key needed)
+    // FIX: Support verification-only mode (no encoding key needed)
     let encoding_key = if sk_pem.is_empty() {
       None // Verification-only mode
     } else {
@@ -346,7 +346,7 @@ impl TokenManager {
   }
 
   pub fn internal_verify_token(&self, token: &str) -> Result<UserClaims, CoreError> {
-    // 🔧 RESTORE PROPER SIGNATURE VERIFICATION
+    // RESTORE PROPER SIGNATURE VERIFICATION
     // We need to find the real root cause instead of bypassing security
     let token_data = decode::<Claims>(token, &self.decoding_key, &self.validation)
       .map_err(|e| CoreError::Validation(e.to_string()))?;

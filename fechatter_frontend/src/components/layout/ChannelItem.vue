@@ -160,7 +160,7 @@ const handleClick = async () => {
     preloadTimer.value = null
   }
 
-  // 🔧 FIXED: Emit click event to parent AND handle navigation
+  // FIXED: Emit click event to parent AND handle navigation
   emit('click', props.channel);
 
   try {
@@ -201,7 +201,7 @@ const handleMouseLeave = () => {
 </script>
 
 <style scoped>
-/* 🎨 Modern Channel Item - Discord & Linear Inspired */
+/* Modern Channel Item - Discord & Linear Inspired */
 .channel-item {
   display: flex;
   align-items: center;
@@ -270,7 +270,7 @@ const handleMouseLeave = () => {
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* 📝 Channel Content */
+/* Channel Content */
 .channel-content {
   flex: 1;
   min-width: 0;
@@ -425,7 +425,7 @@ const handleMouseLeave = () => {
     font-size: 12px;
   }
 
-  /* 🎯 Touch-friendly */
+  /* Touch-friendly */
   @media (hover: none) and (pointer: coarse) {
     .channel-item {
       min-height: 44px;
@@ -446,7 +446,7 @@ const handleMouseLeave = () => {
         outline-offset: 2px;
       }
 
-      /* 🎨 High Contrast */
+      /* High Contrast */
       @media (prefers-contrast: high) {
         .channel-item {
           border: 1px solid transparent;

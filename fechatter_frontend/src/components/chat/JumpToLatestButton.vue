@@ -44,7 +44,7 @@ const showButton = ref(false);
 let observer = null;
 let latestAnchor = null;
 
-// 🎯 NEW: 动态位置计算
+// NEW: 动态位置计算
 const buttonPosition = ref({
   bottom: 24,
   right: 24
@@ -56,7 +56,7 @@ const FAB_MARGIN = 24; // px
 const MIN_BOTTOM_CLEARANCE = 80; // 最小底部间距
 
 /**
- * 🎯 动态计算按钮位置，避开其他组件
+ * 动态计算按钮位置，避开其他组件
  */
 const calculateOptimalPosition = () => {
   const viewport = {
@@ -114,11 +114,11 @@ const calculateOptimalPosition = () => {
   };
 
   if (import.meta.env.DEV) {
-    console.log('🎯 [JumpToLatest] Position calculated:', buttonPosition.value);
+    console.log('[JumpToLatest] Position calculated:', buttonPosition.value);
   }
 };
 
-// 🎯 监听布局变化
+// 监听布局变化
 let resizeObserver = null;
 let mutationObserver = null;
 
@@ -275,7 +275,7 @@ onMounted(() => {
     setupObserver();
     updateAnchorPosition();
 
-    // 🎯 NEW: 设置位置跟踪
+    // NEW: 设置位置跟踪
     setupPositionTracking();
 
     // 监听消息变化
@@ -290,7 +290,7 @@ onMounted(() => {
         messagesObserver.disconnect();
       }
 
-      // 🎯 NEW: 清理位置跟踪
+      // NEW: 清理位置跟踪
       window.removeEventListener('resize', calculateOptimalPosition);
 
       if (resizeObserver) {

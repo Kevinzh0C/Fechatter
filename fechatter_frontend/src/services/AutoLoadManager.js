@@ -1,11 +1,11 @@
 /**
- * 🔄 AutoLoadManager - 100%可靠的历史消息自动加载管理器
+ * AutoLoadManager - Reliable historical message auto-load manager
  * 
- * 确保"Loading earlier messages..."功能完整生命周期管理：
- * 1. 自动检测和加载历史消息
- * 2. 100%保证在所有消息加载完成后停止
- * 3. 提供用户友好的完成提示
- * 4. 防止用户继续尝试刷新
+ * Ensures complete lifecycle management for "Loading earlier messages..." functionality:
+ * 1. Automatically detect and load historical messages
+ * 2. Guarantee to stop after all messages are loaded
+ * 3. Provide user-friendly completion notifications
+ * 4. Prevent users from continuing to attempt refresh
  */
 
 export class AutoLoadManager {
@@ -19,7 +19,7 @@ export class AutoLoadManager {
       COMPLETED: 'completed',
       ERROR: 'error',
       DISABLED: 'disabled',
-      WAITING_FOR_SCROLL: 'waiting_for_scroll' // 🔄 NEW: 等待用户滚动状态
+      WAITING_FOR_SCROLL: 'waiting_for_scroll' // Waiting for user scroll state
     };
 
     this.currentState = this.states.IDLE;
@@ -31,19 +31,19 @@ export class AutoLoadManager {
     this.maxRetries = 3;
     this.isActive = false;
 
-    // 🔄 NEW: 加载模式配置 (默认滚动触发模式)
+    // Loading mode configuration (default scroll-triggered mode)
     this.loadingMode = 'scroll-triggered'; // 'auto' | 'scroll-triggered'
     this.waitingForScroll = false;
     this.scrollTriggerCallback = null;
-    this.batchSize = 20; // 默认每批加载20条消息
-    this.userControlEnabled = true; // 用户控制开关
+    this.batchSize = 20; // Default 20 messages per batch
+    this.userControlEnabled = true; // User control switch
 
-    // 用户交互状态
+    // User interaction state
     this.userNotified = false;
     this.completionShown = false;
     this.userDismissed = false;
 
-    // 性能和调试
+    // Performance and debugging
     this.startTime = 0;
     this.metrics = {
       totalSessions: 0,
@@ -53,16 +53,16 @@ export class AutoLoadManager {
       errorCount: 0
     };
 
-    // 事件系统
+    // Event system
     this.eventListeners = new Map();
 
     if (import.meta.env.DEV) {
-      console.log('🔄 [AutoLoadManager] 初始化完成');
+      console.log('[AutoLoadManager] Initialization complete');
     }
   }
 
   /**
-   * 🎯 启动自动加载会话
+   * Start auto-load session
    */
   async startAutoLoadSession({
     chatId,
@@ -71,21 +71,21 @@ export class AutoLoadManager {
     onProgress = null,
     onComplete = null,
     onError = null,
-    // 🔄 NEW: 加载模式配置 (默认滚动触发模式)
+    // Loading mode configuration (default scroll-triggered mode)
     loadingMode = 'scroll-triggered', // 'auto' | 'scroll-triggered'
-    onScrollNeeded = null, // 滚动触发模式的回调
-    batchSize = 20, // 每批加载数量 (性能控制)
-    userControlEnabled = true // 用户控制开关
+    onScrollNeeded = null, // Callback for scroll-triggered mode
+    batchSize = 20, // Number of messages per batch (performance control)
+    userControlEnabled = true // User control switch
   }) {
-    // 防止重复启动
+    // Prevent duplicate activation
     if (this.isActive && this.chatId === chatId) {
       if (import.meta.env.DEV) {
-        console.warn('🔄 [AutoLoadManager] 会话已激活，忽略重复启动');
+        console.warn('[AutoLoadManager] Session already active, ignoring duplicate start');
       }
       return false;
     }
 
-    // 重置状态
+    // Reset state
     this.reset();
     this.chatId = chatId;
     this.loadCallback = loadCallback;
@@ -93,27 +93,27 @@ export class AutoLoadManager {
     this.startTime = Date.now();
     this.metrics.totalSessions++;
 
-    // 🔄 NEW: 设置加载模式和用户控制配置
+    // Set loading mode and user control configuration
     this.loadingMode = loadingMode;
     this.scrollTriggerCallback = onScrollNeeded;
     this.waitingForScroll = false;
     this.batchSize = batchSize;
     this.userControlEnabled = userControlEnabled;
 
-    // 注册回调
+    // Register callbacks
     if (onProgress) this.on('progress', onProgress);
     if (onComplete) this.on('complete', onComplete);
     if (onError) this.on('error', onError);
 
     if (import.meta.env.DEV) {
-      console.log(`🔄 [AutoLoadManager] 开始自动加载会话 - Chat ${chatId}`);
+      console.log(`[AutoLoadManager] Starting auto-load session - Chat ${chatId}`);
     }
 
     try {
-      // 第一步：检测是否需要加载
+      // Step 1: Detect if loading is needed
       await this.detectLoadingNeed(hasMoreMessages);
 
-      // 第二步：开始加载循环
+      // Step 2: Start loading loop
       if (this.currentState === this.states.LOADING) {
         await this.executeLoadingLoop();
       }
@@ -121,7 +121,7 @@ export class AutoLoadManager {
       return this.currentState === this.states.COMPLETED;
 
     } catch (error) {
-      console.error('🚨 [AutoLoadManager] 自动加载会话失败:', error);
+      console.error('[AutoLoadManager] Auto-load session failed:', error);
       this.transitionTo(this.states.ERROR);
       this.emit('error', { error: error.message, chatId });
       return false;
@@ -129,14 +129,14 @@ export class AutoLoadManager {
   }
 
   /**
-   * 🔍 第一阶段：检测加载需求
+   * Phase 1: Detect loading need
    */
   async detectLoadingNeed(hasMoreMessages) {
     this.transitionTo(this.states.DETECTING_NEED);
 
     if (!hasMoreMessages) {
       if (import.meta.env.DEV) {
-        console.log('🔄 [AutoLoadManager] 检测到无更多消息，直接完成');
+        console.log('[AutoLoadManager] No more messages detected, completing directly');
       }
       this.transitionTo(this.states.ALL_LOADED);
       await this.handleAllLoaded();
@@ -144,44 +144,44 @@ export class AutoLoadManager {
     }
 
     if (import.meta.env.DEV) {
-      console.log('🔄 [AutoLoadManager] 检测到有更多消息，开始加载');
+      console.log('[AutoLoadManager] More messages detected, starting load');
     }
     this.transitionTo(this.states.LOADING);
   }
 
   /**
- * 🔄 第二阶段：执行加载循环
- */
+   * Phase 2: Execute loading loop
+   */
   async executeLoadingLoop() {
     while (this.currentState === this.states.LOADING && this.isActive) {
       try {
-        // 执行单次加载
+        // Execute single load
         const result = await this.performSingleLoad();
 
         if (!result.success) {
-          throw new Error(result.error || '加载失败');
+          throw new Error(result.error || 'Load failed');
         }
 
-        // 处理加载结果
+        // Process load result
         await this.processLoadResult(result);
 
-        // 检查是否需要继续
+        // Check if continuation is needed
         if (!result.hasMore) {
           break;
         }
 
-        // 🔄 NEW: 根据加载模式决定是否继续
+        // Decide whether to continue based on loading mode
         if (this.loadingMode === 'scroll-triggered') {
-          // 滚动触发模式：等待用户滚动到顶部
+          // Scroll-triggered mode: wait for user to scroll to top
           await this.waitForUserScroll();
 
-          // 如果用户没有继续滚动或会话被取消，退出循环
+          // If user doesn't continue scrolling or session is cancelled, exit loop
           if (!this.isActive || this.currentState !== this.states.LOADING) {
             break;
           }
         } else {
-          // 自动模式：直接继续加载
-          await this.wait(100); // 避免过快的连续请求
+          // Auto mode: continue loading directly
+          await this.wait(100); // Avoid rapid consecutive requests
         }
 
       } catch (error) {
@@ -192,20 +192,20 @@ export class AutoLoadManager {
         }
 
         if (import.meta.env.DEV) {
-          console.warn(`⚠️ [AutoLoadManager] 加载失败，重试 ${this.loadingAttempts}/${this.maxRetries}:`, error);
+          console.warn(`[AutoLoadManager] Load failed, retrying ${this.loadingAttempts}/${this.maxRetries}:`, error);
         }
 
-        await this.wait(1000 * this.loadingAttempts); // 递增延迟
+        await this.wait(1000 * this.loadingAttempts); // Incremental delay
       }
     }
   }
 
   /**
-   * 📦 执行单次加载
+   * Execute single load
    */
   async performSingleLoad() {
     if (!this.loadCallback) {
-      throw new Error('加载回调未设置');
+      throw new Error('Load callback not set');
     }
 
     this.emit('progress', {
@@ -215,29 +215,29 @@ export class AutoLoadManager {
     });
 
     if (import.meta.env.DEV) {
-      console.log(`📦 [AutoLoadManager] 执行第 ${this.loadingAttempts + 1} 次加载`);
+      console.log(`[AutoLoadManager] Executing load attempt ${this.loadingAttempts + 1}`);
     }
 
-    // 调用外部加载函数
+    // Call external load function
     const result = await this.loadCallback();
 
-    // 验证结果格式
+    // Validate result format
     if (!this.isValidLoadResult(result)) {
-      throw new Error('加载回调返回了无效的结果格式');
+      throw new Error('Load callback returned invalid result format');
     }
 
     return result;
   }
 
   /**
-   * 🔧 处理加载结果
+   * Process load result
    */
   async processLoadResult(result) {
     this.transitionTo(this.states.PROCESSING);
 
     const { messages = [], hasMore = false, totalCount = 0 } = result;
 
-    // 更新计数
+    // Update counters
     this.messageCount += messages.length;
     this.totalLoadedMessages += messages.length;
     this.metrics.totalMessagesLoaded += messages.length;
@@ -251,48 +251,48 @@ export class AutoLoadManager {
     });
 
     if (import.meta.env.DEV) {
-      console.log(`🔧 [AutoLoadManager] 处理加载结果: +${messages.length} 消息, 总计: ${this.totalLoadedMessages}, 还有更多: ${hasMore}`);
+      console.log(`[AutoLoadManager] Processing load result: +${messages.length} messages, total: ${this.totalLoadedMessages}, has more: ${hasMore}`);
     }
 
-    // 检查是否全部加载完成
+    // Check if all loading is complete
     if (!hasMore || messages.length === 0) {
       this.transitionTo(this.states.ALL_LOADED);
       await this.handleAllLoaded();
     } else {
-      // 继续加载
+      // Continue loading
       this.transitionTo(this.states.LOADING);
     }
   }
 
   /**
-   * 🔄 ENHANCED: 等待用户滚动到顶部 (用户控制式加载)
+   * Wait for user to scroll to top (user-controlled loading)
    */
   async waitForUserScroll() {
     return new Promise((resolve, reject) => {
       if (import.meta.env.DEV) {
-        console.log(`⏳ [AutoLoadManager] 等待用户控制 - 已加载 ${this.totalLoadedMessages} 条消息`);
+        console.log(`[AutoLoadManager] Waiting for user control - ${this.totalLoadedMessages} messages loaded`);
       }
 
-      // 转换到等待滚动状态
+      // Transition to waiting for scroll state
       this.transitionTo(this.states.WAITING_FOR_SCROLL);
       this.waitingForScroll = true;
 
-      // 🎯 通知UI层需要用户控制 (增强用户控制感)
+      // Notify UI layer that user control is needed (enhance user control feeling)
       this.emit('scroll-needed', {
         chatId: this.chatId,
         totalLoaded: this.totalLoadedMessages,
         batchSize: this.batchSize,
         userControlEnabled: this.userControlEnabled,
-        message: `已加载 ${this.totalLoadedMessages} 条消息，继续加载下 ${this.batchSize} 条？`,
+        message: `Loaded ${this.totalLoadedMessages} messages, continue loading next ${this.batchSize}?`,
         options: {
-          canScroll: true,    // ✅ 用户可以滚动继续
-          canClick: true,     // ✅ 用户可以点击继续  
-          canStop: true,      // ✅ 用户可以随时停止
-          canAdjustBatch: true // ✅ 用户可以调整批次大小
+          canScroll: true,    // User can scroll to continue
+          canClick: true,     // User can click to continue  
+          canStop: true,      // User can stop at any time
+          canAdjustBatch: true // User can adjust batch size
         }
       });
 
-      // 调用外部滚动回调
+      // Call external scroll callback
       if (this.scrollTriggerCallback) {
         try {
           this.scrollTriggerCallback({
@@ -307,7 +307,7 @@ export class AutoLoadManager {
         }
       }
 
-      // 🎯 设置较长的超时时间，给用户更多控制时间
+      // 设置较长的超时时间，给用户更多控制时间
       const scrollTimeout = setTimeout(() => {
         if (this.waitingForScroll) {
           if (import.meta.env.DEV) {
@@ -336,7 +336,7 @@ export class AutoLoadManager {
     }
 
     if (import.meta.env.DEV) {
-      console.log('✅ [AutoLoadManager] 用户滚动检测到，继续加载');
+      console.log('[AutoLoadManager] 用户滚动检测到，继续加载');
     }
 
     this.waitingForScroll = false;
@@ -379,7 +379,7 @@ export class AutoLoadManager {
       this._scrollTimeout = null;
     }
 
-    // 🎯 根据停止原因采取不同行动
+    // 根据停止原因采取不同行动
     if (reason === 'user-stop') {
       // 用户主动停止 - 保存进度，显示友好提示
       this.transitionTo(this.states.COMPLETED);
@@ -403,11 +403,11 @@ export class AutoLoadManager {
   }
 
   /**
-   * 🎯 NEW: 用户主动停止加载 (任意位置停止)
+   * NEW: 用户主动停止加载 (任意位置停止)
    */
   userStopLoading() {
     if (import.meta.env.DEV) {
-      console.log('👤 [AutoLoadManager] 用户主动停止加载');
+      console.log('USER: [AutoLoadManager] 用户主动停止加载');
     }
 
     if (this.waitingForScroll) {
@@ -432,14 +432,14 @@ export class AutoLoadManager {
   }
 
   /**
-   * 🎯 NEW: 调整批次大小 (性能控制)
+   * NEW: 调整批次大小 (性能控制)
    */
   adjustBatchSize(newBatchSize) {
     if (newBatchSize > 0 && newBatchSize <= 100) {
       this.batchSize = newBatchSize;
 
       if (import.meta.env.DEV) {
-        console.log(`📊 [AutoLoadManager] 批次大小调整为: ${newBatchSize}`);
+        console.log(`[AutoLoadManager] 批次大小调整为: ${newBatchSize}`);
       }
 
       this.emit('batch-size-changed', {
@@ -455,11 +455,11 @@ export class AutoLoadManager {
   }
 
   /**
-   * ✅ 处理全部加载完成
+   * 处理全部加载完成
    */
   async handleAllLoaded() {
     if (import.meta.env.DEV) {
-      console.log('✅ [AutoLoadManager] 所有消息已加载完成');
+      console.log('[AutoLoadManager] 所有消息已加载完成');
     }
 
     this.transitionTo(this.states.COMPLETED);
@@ -485,7 +485,7 @@ export class AutoLoadManager {
   }
 
   /**
-   * 🎨 显示完成通知
+   * 显示完成通知
    */
   async showCompletionNotification() {
     if (this.completionShown || this.userDismissed) {
@@ -505,7 +505,7 @@ export class AutoLoadManager {
     });
 
     if (import.meta.env.DEV) {
-      console.log(`🎨 [AutoLoadManager] 显示完成通知: ${this.totalLoadedMessages} 条消息`);
+      console.log(`[AutoLoadManager] 显示完成通知: ${this.totalLoadedMessages} 条消息`);
     }
   }
 
@@ -568,7 +568,7 @@ export class AutoLoadManager {
   }
 
   /**
-   * 📊 验证加载结果格式
+   * 验证加载结果格式
    */
   isValidLoadResult(result) {
     return (
@@ -587,7 +587,7 @@ export class AutoLoadManager {
   }
 
   /**
-   * 📊 更新平均加载时间
+   * 更新平均加载时间
    */
   updateAverageLoadTime(duration) {
     const totalTime = this.metrics.averageLoadTime * (this.metrics.successfulSessions - 1) + duration;
@@ -644,7 +644,7 @@ export class AutoLoadManager {
   }
 
   /**
-   * 🎯 获取当前状态
+   * 获取当前状态
    */
   getState() {
     return {
@@ -659,14 +659,14 @@ export class AutoLoadManager {
   }
 
   /**
-   * 👤 用户交互方法
+   * USER: 用户交互方法
    */
   userDismissCompletion() {
     this.userDismissed = true;
     this.emit('user-dismissed', { chatId: this.chatId });
 
     if (import.meta.env.DEV) {
-      console.log('👤 [AutoLoadManager] 用户关闭了完成提示');
+      console.log('USER: [AutoLoadManager] 用户关闭了完成提示');
     }
   }
 
@@ -699,7 +699,7 @@ export class AutoLoadManager {
 // 🌍 创建全局单例
 export const autoLoadManager = new AutoLoadManager();
 
-// 🔧 开发环境调试函数
+// 开发环境调试函数
 if (typeof window !== 'undefined' && import.meta.env.DEV) {
   window.autoLoadManager = autoLoadManager;
 

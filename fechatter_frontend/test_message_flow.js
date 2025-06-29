@@ -1,17 +1,17 @@
-// 🔍 完整消息流测试脚本
+// 完整消息流测试脚本
 // 在浏览器Console中执行此脚本来测试完整的消息流
 
-console.log('🔍 开始完整消息流测试...');
+console.log('开始完整消息流测试...');
 
 // 1. 检查后端API是否有消息数据
 async function testBackendAPI() {
-  console.log('📡 1. 测试后端API...');
+  console.log('SUBSCRIPTION: 1. 测试后端API...');
 
   try {
     // 获取当前token
     const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
     if (!token) {
-      console.error('❌ 没有找到认证token');
+      console.error('ERROR: 没有找到认证token');
       return false;
     }
 
@@ -35,18 +35,18 @@ async function testBackendAPI() {
         });
 
         if (data.messages && data.messages.length > 0) {
-          console.log(`✅ Chat ${chatId} 有 ${data.messages.length} 条消息`);
+          console.log(`Chat ${chatId} 有 ${data.messages.length} 条消息`);
           return { chatId, messages: data.messages };
         }
       } catch (error) {
-        console.log(`⚠️ Chat ${chatId} API调用失败:`, error.message);
+        console.log(`WARNING: Chat ${chatId} API调用失败:`, error.message);
       }
     }
 
     console.log('📋 所有测试的聊天都没有消息数据');
     return false;
   } catch (error) {
-    console.error('❌ 后端API测试失败:', error);
+    console.error('ERROR: 后端API测试失败:', error);
     return false;
   }
 }
@@ -61,11 +61,11 @@ async function testChatStore() {
       (await import('/src/stores/chat.js')).useChatStore();
 
     if (!chatStore) {
-      console.error('❌ 无法获取chatStore');
+      console.error('ERROR: 无法获取chatStore');
       return false;
     }
 
-    console.log('📊 当前chatStore状态:', {
+    console.log('当前chatStore状态:', {
       currentChatId: chatStore.currentChatId,
       messagesCount: chatStore.messages?.length || 0,
       loading: chatStore.loading,
@@ -77,21 +77,21 @@ async function testChatStore() {
     console.log(`📥 测试fetchMessagesWithSignal(${testChatId})...`);
 
     const messages = await chatStore.fetchMessagesWithSignal(testChatId, null, 15);
-    console.log(`✅ fetchMessagesWithSignal返回:`, {
+    console.log(`fetchMessagesWithSignal返回:`, {
       messageCount: messages?.length || 0,
       messages: messages
     });
 
     return { chatStore, messages };
   } catch (error) {
-    console.error('❌ chatStore测试失败:', error);
+    console.error('ERROR: chatStore测试失败:', error);
     return false;
   }
 }
 
 // 3. 测试消息标准化
 function testMessageNormalization() {
-  console.log('🔧 3. 测试消息标准化...');
+  console.log('3. 测试消息标准化...');
 
   try {
     const testMessage = {
@@ -119,14 +119,14 @@ function testMessageNormalization() {
       _timestamp: new Date(testMessage.created_at).getTime()
     };
 
-    console.log('✅ 消息标准化测试:', {
+    console.log('消息标准化测试:', {
       original: testMessage,
       normalized: normalized
     });
 
     return normalized;
   } catch (error) {
-    console.error('❌ 消息标准化测试失败:', error);
+    console.error('ERROR: 消息标准化测试失败:', error);
     return false;
   }
 }
@@ -141,26 +141,26 @@ function testVueComponents() {
       document.querySelector('.chat-content-container');
 
     if (!chatComponent) {
-      console.error('❌ 无法找到Chat组件');
+      console.error('ERROR: 无法找到Chat组件');
       return false;
     }
 
-    console.log('✅ 找到Chat组件:', chatComponent);
+    console.log('找到Chat组件:', chatComponent);
 
     // 查找MessageList组件
     const messageList = document.querySelector('.message-list-stable') ||
       document.querySelector('.messages-container');
 
     if (!messageList) {
-      console.error('❌ 无法找到MessageList组件');
+      console.error('ERROR: 无法找到MessageList组件');
       return false;
     }
 
-    console.log('✅ 找到MessageList组件:', messageList);
+    console.log('找到MessageList组件:', messageList);
 
     // 检查消息元素
     const messageElements = messageList.querySelectorAll('[data-message-id]');
-    console.log(`📝 找到 ${messageElements.length} 个消息元素`);
+    console.log(`找到 ${messageElements.length} 个消息元素`);
 
     return {
       chatComponent,
@@ -168,7 +168,7 @@ function testVueComponents() {
       messageCount: messageElements.length
     };
   } catch (error) {
-    console.error('❌ Vue组件测试失败:', error);
+    console.error('ERROR: Vue组件测试失败:', error);
     return false;
   }
 }
@@ -184,11 +184,11 @@ async function simulateChannelClick() {
       document.querySelectorAll('a[href*="/chat/"]');
 
     if (channelButtons.length === 0) {
-      console.error('❌ 无法找到channel按钮');
+      console.error('ERROR: 无法找到channel按钮');
       return false;
     }
 
-    console.log(`✅ 找到 ${channelButtons.length} 个channel按钮`);
+    console.log(`找到 ${channelButtons.length} 个channel按钮`);
 
     // 点击第一个channel
     const firstChannel = channelButtons[0];
@@ -202,14 +202,14 @@ async function simulateChannelClick() {
 
     return true;
   } catch (error) {
-    console.error('❌ 模拟点击失败:', error);
+    console.error('ERROR: 模拟点击失败:', error);
     return false;
   }
 }
 
 // 6. 添加测试消息
 async function addTestMessage() {
-  console.log('📝 6. 添加测试消息...');
+  console.log('6. 添加测试消息...');
 
   try {
     const chatStore = window.Vue?.config?.globalProperties?.$chatStore ||
@@ -217,31 +217,31 @@ async function addTestMessage() {
       (await import('/src/stores/chat.js')).useChatStore();
 
     if (!chatStore) {
-      console.error('❌ 无法获取chatStore');
+      console.error('ERROR: 无法获取chatStore');
       return false;
     }
 
     const currentChatId = chatStore.currentChatId || 1;
-    console.log(`📝 为chat ${currentChatId} 添加测试消息...`);
+    console.log(`为chat ${currentChatId} 添加测试消息...`);
 
     // 使用addTestMessage方法
     if (typeof chatStore.addTestMessage === 'function') {
       const testMessage = chatStore.addTestMessage(currentChatId);
-      console.log('✅ 测试消息已添加:', testMessage);
+      console.log('测试消息已添加:', testMessage);
       return testMessage;
     } else {
-      console.error('❌ addTestMessage方法不存在');
+      console.error('ERROR: addTestMessage方法不存在');
       return false;
     }
   } catch (error) {
-    console.error('❌ 添加测试消息失败:', error);
+    console.error('ERROR: 添加测试消息失败:', error);
     return false;
   }
 }
 
 // 主测试函数
 async function runCompleteTest() {
-  console.log('🚀 开始完整的消息流测试...');
+  console.log('开始完整的消息流测试...');
 
   const results = {
     backendAPI: false,
@@ -271,17 +271,17 @@ async function runCompleteTest() {
   results.testMessage = await addTestMessage();
 
   // 输出测试结果
-  console.log('📊 完整测试结果:', results);
+  console.log('完整测试结果:', results);
 
   const passedTests = Object.values(results).filter(Boolean).length;
   const totalTests = Object.keys(results).length;
 
-  console.log(`🎯 测试完成: ${passedTests}/${totalTests} 通过`);
+  console.log(`测试完成: ${passedTests}/${totalTests} 通过`);
 
   if (passedTests === totalTests) {
     console.log('🎉 所有测试通过！消息流正常工作');
   } else {
-    console.log('⚠️ 部分测试失败，需要进一步调试');
+    console.log('WARNING: 部分测试失败，需要进一步调试');
   }
 
   return results;

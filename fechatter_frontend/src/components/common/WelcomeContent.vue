@@ -85,7 +85,7 @@
             <p>Share documents, images, and files with your colleagues</p>
           </div>
           <div class="slack-feature-card">
-            <div class="slack-feature-icon">🔍</div>
+            <div class="slack-feature-icon"></div>
             <h4>Smart Search</h4>
             <p>Find any message, file, or conversation instantly with powerful search</p>
           </div>

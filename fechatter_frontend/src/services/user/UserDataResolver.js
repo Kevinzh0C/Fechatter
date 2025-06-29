@@ -10,13 +10,13 @@
 
 export class UserDataResolver {
   constructor(dependencies = {}) {
-    // 🔧 Dependency Injection instead of global access
+    // Dependency Injection instead of global access
     this.userStore = dependencies.userStore;
     this.workspaceStore = dependencies.workspaceStore;
     this.cacheProvider = dependencies.cacheProvider || new Map();
     this.logger = dependencies.logger || console;
 
-    // 🔧 Strategy Pattern for user resolution
+    // Strategy Pattern for user resolution
     this.resolutionStrategies = [
       new EmbeddedUserStrategy(),
       new UserStoreStrategy(this.userStore),
@@ -25,12 +25,12 @@ export class UserDataResolver {
       new FallbackStrategy()
     ];
 
-    // 🔧 Performance: TTL Cache with 5-minute expiration
+    // Performance: TTL Cache with 5-minute expiration
     this.cache = new Map();
     this.cacheTTL = 5 * 60 * 1000; // 5 minutes
     this.cacheCleanupInterval = setInterval(() => this.cleanupCache(), 60000);
 
-    // 🔧 Metrics for monitoring
+    // Metrics for monitoring
     this.metrics = {
       totalQueries: 0,
       cacheHits: 0,
@@ -52,14 +52,14 @@ export class UserDataResolver {
     try {
       const cacheKey = this.generateCacheKey(message);
 
-      // 🔧 Check cache first
+      // Check cache first
       const cached = this.getCachedResult(cacheKey);
       if (cached) {
         this.metrics.cacheHits++;
         return cached;
       }
 
-      // 🔧 Try strategies in order
+      // Try strategies in order
       for (const strategy of this.resolutionStrategies) {
         try {
           const result = await strategy.resolve(message, context);
@@ -74,11 +74,11 @@ export class UserDataResolver {
             // Cache result
             this.setCachedResult(cacheKey, result);
 
-            this.logger.debug(`✅ [UserDataResolver] Resolved via ${strategyName}: ${result}`);
+            this.logger.debug(`[UserDataResolver] Resolved via ${strategyName}: ${result}`);
             return result;
           }
         } catch (error) {
-          this.logger.warn(`⚠️ [UserDataResolver] Strategy ${strategy.constructor.name} failed:`, error);
+          this.logger.warn(`WARNING: [UserDataResolver] Strategy ${strategy.constructor.name} failed:`, error);
           continue; // Try next strategy
         }
       }
@@ -104,7 +104,7 @@ export class UserDataResolver {
     const uniqueUsers = new Map();
     const results = new Map();
 
-    // 🔧 Deduplicate users to reduce queries
+    // Deduplicate users to reduce queries
     for (const message of messages) {
       const key = this.generateCacheKey(message);
       if (!uniqueUsers.has(key)) {
@@ -112,7 +112,7 @@ export class UserDataResolver {
       }
     }
 
-    // 🔧 Resolve unique users in parallel
+    // Resolve unique users in parallel
     const resolutionPromises = Array.from(uniqueUsers.values()).map(async (message) => {
       const name = await this.resolveUserName(message);
       return { messageId: message.id, name };
@@ -120,12 +120,12 @@ export class UserDataResolver {
 
     const resolved = await Promise.all(resolutionPromises);
 
-    // 🔧 Build result map
+    // Build result map
     for (const { messageId, name } of resolved) {
       results.set(messageId, name);
     }
 
-    this.logger.debug(`✅ [UserDataResolver] Batch resolved ${uniqueUsers.size} unique users for ${messages.length} messages`);
+    this.logger.debug(`[UserDataResolver] Batch resolved ${uniqueUsers.size} unique users for ${messages.length} messages`);
     return results;
   }
 

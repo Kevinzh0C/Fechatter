@@ -479,9 +479,9 @@ impl ServiceProvider {
     let config = crate::domains::messaging::messaging_domain::MessageConfig::production_optimized();
     let domain_service = Arc::new(MessageDomainServiceImpl::new(repository, config));
 
-    // 🔧 CRITICAL FIX: Use real NATS connection instead of in-memory
+    // CRITICAL FIX: Use real NATS connection instead of in-memory
     let dispatcher = if let Some(ref nats_url) = self.nats_url {
-      info!("🚀 Creating DualStreamDispatcher with real NATS connection: {}", nats_url);
+      info!("Creating DualStreamDispatcher with real NATS connection: {}", nats_url);
       // Try to connect to NATS
       match tokio::runtime::Handle::try_current() {
         Ok(_) => {
@@ -490,23 +490,23 @@ impl ServiceProvider {
             tokio::runtime::Handle::current().block_on(async_nats::connect(nats_url))
           }) {
             Ok(nats_client) => {
-              info!("✅ Successfully connected to NATS for message service dispatcher");
+              info!("Successfully connected to NATS for message service dispatcher");
               Arc::new(DualStreamDispatcher::new(nats_client))
             }
             Err(e) => {
-              error!("❌ Failed to connect to NATS: {}, falling back to in-memory", e);
+              error!("ERROR: Failed to connect to NATS: {}, falling back to in-memory", e);
               Arc::new(DualStreamDispatcher::new_in_memory())
             }
           }
         }
         Err(_) => {
           // No async runtime available, use in-memory fallback
-          warn!("⚠️ No async runtime available, using in-memory dispatcher");
+          warn!("WARNING: No async runtime available, using in-memory dispatcher");
           Arc::new(DualStreamDispatcher::new_in_memory())
         }
       }
     } else {
-      warn!("⚠️ No NATS URL configured, using in-memory dispatcher");
+      warn!("WARNING: No NATS URL configured, using in-memory dispatcher");
       Arc::new(DualStreamDispatcher::new_in_memory())
     };
 
@@ -529,7 +529,7 @@ impl ServiceProvider {
       message_event_publisher,
     );
 
-    info!("✅ Optimized message service created with NATS support");
+    info!("Optimized message service created with NATS support");
     service
   }
 }

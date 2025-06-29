@@ -53,10 +53,10 @@ class SystemHealthValidator {
       // Generate recommendations
       results.recommendations = this._generateRecommendations(results.checks);
 
-      console.log('📊 Validation Results:', results);
+      console.log('Validation Results:', results);
 
     } catch (error) {
-      console.error('❌ Validation failed:', error);
+      console.error('ERROR: Validation failed:', error);
       results.overall = 'error';
       results.error = error.message;
     } finally {
@@ -281,7 +281,7 @@ class SystemHealthValidator {
     const overallHealth = Object.values(checks).every(check => check);
 
     console.log('🏥 Quick Health Check:', {
-      overall: overallHealth ? '✅ Healthy' : '❌ Unhealthy',
+      overall: overallHealth ? 'Healthy' : 'ERROR: Unhealthy',
       services: checks
     });
 

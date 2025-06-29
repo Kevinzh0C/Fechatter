@@ -7,33 +7,33 @@ use anyhow::Result;
 use fechatter_core::{CreateUser, SigninUser};
 use log::info;
 
-/// 测试用户注册流程
+/// Test user registration flow
 #[tokio::test]
 async fn test_user_registration() -> Result<()> {
   let env = TestEnvironment::new().await?;
 
-  // 创建用户数据
+  // Create user data
   let user_data = TestFixtures::create_user("auth_test");
 
-  // 注册用户
+  // Register user
   let user = env.app_state.create_user(&user_data, None).await?;
 
-  // 验证用户创建成功
+  // Verify user creation success
   assert!(user.id > fechatter_core::UserId(0));
   assert_eq!(user.email, user_data.email);
   assert_eq!(user.fullname, user_data.fullname);
   assert!(user.workspace_id > fechatter_core::WorkspaceId(0));
 
-  info!("✅ User registration test passed");
+  info!("User registration test passed");
   Ok(())
 }
 
-/// 测试用户登录流程
+/// Test user signin flow
 #[tokio::test]
 async fn test_user_signin() -> Result<()> {
   let mut env = TestEnvironment::new().await?;
 
-  // 创建测试用户
+  // Create test user
   let password = "test_password123";
   let email = format!("signin_test_{}@test.com", uuid::Uuid::new_v4());
   let user_data = CreateUser {
@@ -45,7 +45,7 @@ async fn test_user_signin() -> Result<()> {
 
   let _user = env.app_state.create_user(&user_data, None).await?;
 
-  // 测试登录
+  // Test signin
   let signin_payload = SigninUser {
     email,
     password: password.to_string(),
@@ -56,20 +56,20 @@ async fn test_user_signin() -> Result<()> {
     .await?
     .ok_or_else(|| anyhow::anyhow!("Signin failed to return tokens"))?;
 
-  // 验证令牌
+  // Verify tokens
   assert!(!tokens.access_token.is_empty());
   assert!(!tokens.refresh_token.token.is_empty());
 
-  info!("✅ User signin test passed");
+  info!("User signin test passed");
   Ok(())
 }
 
-/// 测试错误的登录凭据
+/// Test invalid signin credentials
 #[tokio::test]
 async fn test_invalid_signin() -> Result<()> {
   let env = TestEnvironment::new().await?;
 
-  // 尝试使用不存在的用户登录
+  // Try signin with non-existent user
   let signin_payload_nonexistent = SigninUser {
     email: "nonexistent@test.com".to_string(),
     password: "password123".to_string(),
@@ -84,7 +84,7 @@ async fn test_invalid_signin() -> Result<()> {
     "Signin with non-existent user should return None or an error that leads to None"
   );
 
-  // 创建用户然后使用错误密码登录
+  // Create user then try signin with wrong password
   let user_data = TestFixtures::create_user("invalid_signin");
   let _user = env.app_state.create_user(&user_data, None).await?;
 
@@ -102,7 +102,7 @@ async fn test_invalid_signin() -> Result<()> {
     "Signin with wrong password should return None or an error that leads to None"
   );
 
-  info!("✅ Invalid signin test passed");
+  info!("Invalid signin test passed");
   Ok(())
 }
 
@@ -143,7 +143,7 @@ async fn test_token_refresh() -> Result<()> {
     initial_tokens.refresh_token.token
   );
 
-  info!("✅ Token refresh test passed");
+  info!("Token refresh test passed");
   Ok(())
 }
 
@@ -161,7 +161,7 @@ async fn test_duplicate_registration() -> Result<()> {
 
   assert!(result.is_err(), "Duplicate email registration should fail");
 
-  info!("✅ Duplicate registration test passed");
+  info!("Duplicate registration test passed");
   Ok(())
 }
 
@@ -216,7 +216,7 @@ async fn test_password_security() -> Result<()> {
   assert!(!tokens2.access_token.is_empty());
   assert_ne!(tokens1.access_token, tokens2.access_token);
 
-  info!("✅ Password security test passed");
+  info!("Password security test passed");
   Ok(())
 }
 
@@ -284,6 +284,6 @@ async fn test_session_management() -> Result<()> {
 
   assert!(!new_tokens2.access_token.is_empty());
 
-  info!("✅ Session management test passed");
+  info!("Session management test passed");
   Ok(())
 }

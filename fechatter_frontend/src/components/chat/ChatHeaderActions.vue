@@ -15,7 +15,7 @@
     <!-- Primary Action Zone: Most Important Functions -->
     <div class="primary-actions">
 
-      <!-- 🔍 Universal Search - Jobs believed in universal search as core UX -->
+      <!-- Universal Search - Jobs believed in universal search as core UX -->
       <ActionButton @click="handleSearch" :active="searchActive" icon="search" label="Search"
         tooltip="Search messages (⌘K)" variant="search" :badge="searchResultsCount" />
 

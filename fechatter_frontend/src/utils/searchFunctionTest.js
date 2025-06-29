@@ -7,7 +7,7 @@ class SearchFunctionTest {
   constructor() {
     this.testResults = [];
     if (import.meta.env.DEV) {
-      console.log('🔍 Search Function Test Tool initialized');
+      console.log('Search Function Test Tool initialized');
     }
 
   /**
@@ -15,7 +15,7 @@ class SearchFunctionTest {
    */
   async runTest() {
     if (import.meta.env.DEV) {
-      console.log('\n🔍 SEARCH FUNCTION TEST');
+      console.log('\nSEARCH FUNCTION TEST');
     if (import.meta.env.DEV) {
       console.log('======================');
     }
@@ -40,7 +40,7 @@ class SearchFunctionTest {
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Search test failed:', error);
+        console.error('ERROR: Search test failed:', error);
       }
 
   /**
@@ -59,11 +59,11 @@ class SearchFunctionTest {
 
       if (typeof SearchService.search === 'function') {
         if (import.meta.env.DEV) {
-          console.log('✅ SearchService.search method exists');
+          console.log('SearchService.search method exists');
         this.testResults.push({ test: 'SearchService availability', status: 'PASS' });
       } else {
         if (import.meta.env.DEV) {
-          console.log('❌ SearchService.search method not found');
+          console.log('ERROR: SearchService.search method not found');
         this.testResults.push({ test: 'SearchService availability', status: 'FAIL' });
 
       // Test search parameters validation
@@ -79,7 +79,7 @@ class SearchFunctionTest {
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Basic search test failed:', error);
+        console.error('ERROR: Basic search test failed:', error);
       this.testResults.push({ test: 'Basic search', status: 'FAIL', error: error.message });
 
   /**
@@ -99,7 +99,7 @@ class SearchFunctionTest {
 
       if (!currentChatId) {
         if (import.meta.env.DEV) {
-          console.log('⚠️ No current chat selected, skipping API test');
+          console.log('WARNING: No current chat selected, skipping API test');
         this.testResults.push({ test: 'Search API', status: 'SKIP', reason: 'No current chat' });
         return;
       }
@@ -119,7 +119,7 @@ class SearchFunctionTest {
       };
 
       if (import.meta.env.DEV) {
-        console.log('📡 Making search API call...');
+        console.log('SUBSCRIPTION: Making search API call...');
       const startTime = performance.now();
 
       try {
@@ -127,7 +127,7 @@ class SearchFunctionTest {
         const elapsed = performance.now() - startTime;
 
         if (import.meta.env.DEV) {
-          console.log('✅ Search API call successful:', {
+          console.log('Search API call successful:', {
         resultsCount: results.results?.length || 0,
           total: results.total || 0,
           elapsed: `${elapsed.toFixed(2)}ms`
@@ -144,13 +144,13 @@ class SearchFunctionTest {
 
       } catch (apiError) {
         if (import.meta.env.DEV) {
-          console.log('⚠️ Search API call failed (expected if no search service):', apiError.message);
+          console.log('WARNING: Search API call failed (expected if no search service):', apiError.message);
         }
 
         // Check if it's a service unavailable error (expected)
         if (apiError.response?.status === 503 || apiError.message.includes('Search service')) {
           if (import.meta.env.DEV) {
-            console.log('ℹ️ This is expected if search service is not configured');
+            console.log('INFO: This is expected if search service is not configured');
           this.testResults.push({
             test: 'Search API call',
             status: 'EXPECTED_FAIL',
@@ -165,7 +165,7 @@ class SearchFunctionTest {
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Search API test failed:', error);
+        console.error('ERROR: Search API test failed:', error);
       this.testResults.push({ test: 'Search API', status: 'FAIL', error: error.message });
 
   /**
@@ -184,11 +184,11 @@ class SearchFunctionTest {
 
       if (searchButton) {
         if (import.meta.env.DEV) {
-          console.log('✅ Search button found in UI');
+          console.log('Search button found in UI');
         this.testResults.push({ test: 'Search button UI', status: 'PASS' });
       } else {
         if (import.meta.env.DEV) {
-          console.log('❌ Search button not found in UI');
+          console.log('ERROR: Search button not found in UI');
         this.testResults.push({ test: 'Search button UI', status: 'FAIL' });
 
       // Test keyboard shortcut
@@ -213,17 +213,17 @@ class SearchFunctionTest {
 
         if (modal) {
           if (import.meta.env.DEV) {
-            console.log('✅ Search modal opened via keyboard shortcut');
+            console.log('Search modal opened via keyboard shortcut');
           this.testResults.push({ test: 'Keyboard shortcut', status: 'PASS' });
         } else {
           if (import.meta.env.DEV) {
-            console.log('⚠️ Search modal not detected (may be using different selector)');
+            console.log('WARNING: Search modal not detected (may be using different selector)');
           this.testResults.push({ test: 'Keyboard shortcut', status: 'PARTIAL' });
       }, 100);
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Search modal test failed:', error);
+        console.error('ERROR: Search modal test failed:', error);
       this.testResults.push({ test: 'Search modal', status: 'FAIL', error: error.message });
 
   /**
@@ -252,17 +252,17 @@ class SearchFunctionTest {
         });
 
         if (import.meta.env.DEV) {
-          console.log('⚠️ Expected error not thrown for invalid parameters');
+          console.log('WARNING: Expected error not thrown for invalid parameters');
         this.testResults.push({ test: 'Error handling', status: 'PARTIAL' });
 
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.log('✅ Error properly handled for invalid parameters:', error.message);
+          console.log('Error properly handled for invalid parameters:', error.message);
         this.testResults.push({ test: 'Error handling', status: 'PASS' });
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Error handling test failed:', error);
+        console.error('ERROR: Error handling test failed:', error);
       this.testResults.push({ test: 'Error handling', status: 'FAIL', error: error.message });
 
   /**
@@ -280,7 +280,7 @@ class SearchFunctionTest {
    */
   showSummary() {
     if (import.meta.env.DEV) {
-      console.log('\n📊 SEARCH FUNCTION TEST SUMMARY');
+      console.log('\nSEARCH FUNCTION TEST SUMMARY');
     if (import.meta.env.DEV) {
       console.log('===============================');
     }
@@ -292,11 +292,11 @@ class SearchFunctionTest {
     const expectedFail = this.testResults.filter(r => r.status === 'EXPECTED_FAIL').length;
 
     if (import.meta.env.DEV) {
-      console.log(`✅ Passed: ${passed}`);
+      console.log(`Passed: ${passed}`);
     if (import.meta.env.DEV) {
-      console.log(`❌ Failed: ${failed}`);
+      console.log(`ERROR: Failed: ${failed}`);
     if (import.meta.env.DEV) {
-      console.log(`⚠️ Partial: ${partial}`);
+      console.log(`WARNING: Partial: ${partial}`);
     if (import.meta.env.DEV) {
       console.log(`⏭️ Skipped: ${skipped}`);
     if (import.meta.env.DEV) {
@@ -307,7 +307,7 @@ class SearchFunctionTest {
       console.log('\nDetailed Results:');
     this.testResults.forEach(result => {
       const icon = {
-        'PASS': '✅',
+        'PASS': '',
         'FAIL': '❌',
         'SKIP': '⏭️',
         'PARTIAL': '⚠️',
@@ -335,7 +335,7 @@ class SearchFunctionTest {
       }
     } else if (failed > 0) {
       if (import.meta.env.DEV) {
-        console.log('\n⚠️ Some search functionality issues detected. Check the details above.');
+        console.log('\nWARNING: Some search functionality issues detected. Check the details above.');
       }
     } else {
       if (import.meta.env.DEV) {
@@ -343,7 +343,7 @@ class SearchFunctionTest {
       }
 
     if (import.meta.env.DEV) {
-      console.log('\n💡 To fix search issues:');
+      console.log('\nTo fix search issues:');
     if (import.meta.env.DEV) {
       console.log('   1. Check if backend search service is running');
     if (import.meta.env.DEV) {
@@ -367,7 +367,7 @@ if (typeof window !== 'undefined') {
 }
 
 if (import.meta.env.DEV) {
-  console.log('🔍 Search Function Test loaded');
+  console.log('Search Function Test loaded');
 if (import.meta.env.DEV) {
   console.log('   Commands:');
 if (import.meta.env.DEV) {

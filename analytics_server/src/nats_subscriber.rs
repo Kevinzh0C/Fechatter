@@ -85,7 +85,7 @@ impl AnalyticsNatsSubscriber {
   ) -> Result<(), AppError> {
     match jetstream.get_stream(&config.stream_name).await {
       Ok(mut stream) => {
-        info!("✅ Using existing analytics stream: {}", config.stream_name);
+        info!("Using existing analytics stream: {}", config.stream_name);
 
         // Check if configuration needs updating
         let stream_info = stream
@@ -106,7 +106,7 @@ impl AnalyticsNatsSubscriber {
             .await
             .map_err(|e| AppError::AnyError(anyhow::anyhow!("Failed to update stream: {}", e)))?;
 
-          info!("✅ Stream configuration updated successfully");
+          info!("Stream configuration updated successfully");
         }
       }
       Err(_) => {
@@ -121,7 +121,7 @@ impl AnalyticsNatsSubscriber {
           .await
           .map_err(|e| AppError::AnyError(anyhow::anyhow!("Failed to create stream: {}", e)))?;
 
-        info!("✅ Analytics stream created successfully");
+        info!("Analytics stream created successfully");
       }
     }
     Ok(())
@@ -148,7 +148,7 @@ impl AnalyticsNatsSubscriber {
       .jetstream
       .stream_name;
     info!(
-      "🚀 [ANALYTICS] Starting NATS analytics subscriber for stream: {}",
+      "[ANALYTICS] Starting NATS analytics subscriber for stream: {}",
       stream_name
     );
 
@@ -161,7 +161,7 @@ impl AnalyticsNatsSubscriber {
       ..Default::default()
     };
 
-    info!("🔧 [ANALYTICS] Creating consumer with config: durable_name=analytics-processor, max_deliver=3, ack_wait=30s");
+    info!("[ANALYTICS] Creating consumer with config: durable_name=analytics-processor, max_deliver=3, ack_wait=30s");
 
     let stream = self
       .jetstream
@@ -170,7 +170,7 @@ impl AnalyticsNatsSubscriber {
       .map_err(|e| AppError::AnyError(anyhow::anyhow!("Failed to get stream: {}", e)))?;
 
     info!(
-      "✅ [ANALYTICS] Successfully connected to JetStream: {}",
+      "[ANALYTICS] Successfully connected to JetStream: {}",
       stream_name
     );
 
@@ -179,7 +179,7 @@ impl AnalyticsNatsSubscriber {
       .await
       .map_err(|e| AppError::AnyError(anyhow::anyhow!("Failed to create consumer: {}", e)))?;
 
-    info!("✅ [ANALYTICS] Analytics consumer created successfully");
+    info!("[ANALYTICS] Analytics consumer created successfully");
 
     // Start processing messages
     let mut messages = consumer
@@ -187,7 +187,7 @@ impl AnalyticsNatsSubscriber {
       .await
       .map_err(|e| AppError::AnyError(anyhow::anyhow!("Failed to get messages: {}", e)))?;
 
-    info!("📡 [ANALYTICS] Analytics subscriber started, waiting for events...");
+    info!("SUBSCRIPTION: [ANALYTICS] Analytics subscriber started, waiting for events...");
 
     let mut processed_count = 0;
     let mut error_count = 0;
@@ -198,7 +198,7 @@ impl AnalyticsNatsSubscriber {
           processed_count += 1;
           if processed_count % 100 == 0 {
             info!(
-              "📊 [ANALYTICS] Processed {} events so far (errors: {})",
+              "[ANALYTICS] Processed {} events so far (errors: {})",
               processed_count, error_count
             );
           }
@@ -206,7 +206,7 @@ impl AnalyticsNatsSubscriber {
         }
         Err(e) => {
           error_count += 1;
-          error!("❌ [ANALYTICS] Error receiving message: {}", e);
+          error!("ERROR: [ANALYTICS] Error receiving message: {}", e);
           continue;
         }
       };
@@ -215,13 +215,13 @@ impl AnalyticsNatsSubscriber {
       let subscriber = Arc::clone(&self);
       tokio::spawn(async move {
         if let Err(e) = subscriber.process_message(msg).await {
-          error!("❌ [ANALYTICS] Failed to process analytics event: {}", e);
+          error!("ERROR: [ANALYTICS] Failed to process analytics event: {}", e);
         }
       });
     }
 
     warn!(
-      "⚠️ [ANALYTICS] Analytics subscriber stopped (processed: {}, errors: {})",
+      "WARNING: [ANALYTICS] Analytics subscriber stopped (processed: {}, errors: {})",
       processed_count, error_count
     );
     Ok(())
@@ -234,7 +234,7 @@ impl AnalyticsNatsSubscriber {
     let payload_size = msg.payload.len();
 
     info!(
-      "📨 [ANALYTICS] Received NATS event from subject: {} (size: {} bytes)",
+      "EVENT: [ANALYTICS] Received NATS event from subject: {} (size: {} bytes)",
       subject, payload_size
     );
 
@@ -242,7 +242,7 @@ impl AnalyticsNatsSubscriber {
     let mut row = match self.parse_protobuf_event(&msg.payload) {
       Ok(row) => {
         info!(
-          "✅ [ANALYTICS] Successfully parsed protobuf event: {} for user: {}",
+          "[ANALYTICS] Successfully parsed protobuf event: {} for user: {}",
           row.event_type,
           row.user_id.as_ref().unwrap_or(&"unknown".to_string())
         );
@@ -253,7 +253,7 @@ impl AnalyticsNatsSubscriber {
         match self.parse_json_event(&msg.payload, subject) {
           Ok(row) => {
             info!(
-              "✅ [ANALYTICS] Successfully parsed JSON event: {} for user: {}",
+              "[ANALYTICS] Successfully parsed JSON event: {} for user: {}",
               row.event_type,
               row.user_id.as_ref().unwrap_or(&"unknown".to_string())
             );
@@ -261,7 +261,7 @@ impl AnalyticsNatsSubscriber {
           }
           Err(e) => {
             error!(
-              "❌ [ANALYTICS] Failed to parse both protobuf and JSON from subject {}: {}",
+              "ERROR: [ANALYTICS] Failed to parse both protobuf and JSON from subject {}: {}",
               subject, e
             );
             return Err(e);
@@ -273,7 +273,7 @@ impl AnalyticsNatsSubscriber {
     // Update session information
     row.set_session_id(&self.state);
     info!(
-      "🔧 [ANALYTICS] Session info updated for event: {}",
+      "[ANALYTICS] Session info updated for event: {}",
       row.event_type
     );
 
@@ -287,7 +287,7 @@ impl AnalyticsNatsSubscriber {
         );
       }
       Err(e) => {
-        error!("❌ [ANALYTICS] Failed to store event in ClickHouse: {}", e);
+        error!("ERROR: [ANALYTICS] Failed to store event in ClickHouse: {}", e);
         return Err(e);
       }
     }
@@ -296,13 +296,13 @@ impl AnalyticsNatsSubscriber {
     match msg.ack().await {
       Ok(()) => {
         info!(
-          "✅ [ANALYTICS] Successfully processed and acknowledged event from: {}",
+          "[ANALYTICS] Successfully processed and acknowledged event from: {}",
           subject
         );
       }
       Err(e) => {
         error!(
-          "❌ [ANALYTICS] Failed to acknowledge message from {}: {}",
+          "ERROR: [ANALYTICS] Failed to acknowledge message from {}: {}",
           subject, e
         );
         return Err(AppError::AnyError(anyhow::anyhow!(
@@ -313,7 +313,7 @@ impl AnalyticsNatsSubscriber {
     }
 
     debug!(
-      "🎯 [ANALYTICS] Event processing completed for subject: {}",
+      "[ANALYTICS] Event processing completed for subject: {}",
       subject
     );
     Ok(())
@@ -325,21 +325,21 @@ impl AnalyticsNatsSubscriber {
     use prost::Message;
 
     debug!(
-      "🔍 [ANALYTICS] Parsing protobuf payload of {} bytes",
+      "[ANALYTICS] Parsing protobuf payload of {} bytes",
       payload.len()
     );
 
     // Decode protobuf
     let event = AnalyticsEvent::decode(payload).map_err(|e| {
       error!(
-        "❌ [ANALYTICS] Failed to decode protobuf analytics event: {}",
+        "ERROR: [ANALYTICS] Failed to decode protobuf analytics event: {}",
         e
       );
       AppError::AnyError(anyhow::anyhow!("Protobuf decode error: {}", e))
     })?;
 
     debug!(
-      "✅ [ANALYTICS] Successfully decoded protobuf event with context: {}",
+      "[ANALYTICS] Successfully decoded protobuf event with context: {}",
       event
         .context
         .as_ref()
@@ -350,7 +350,7 @@ impl AnalyticsNatsSubscriber {
     // Convert to analytics row using existing conversion logic
     let row = AnalyticsEventRow::try_from(event).map_err(|e| {
       error!(
-        "❌ [ANALYTICS] Failed to convert protobuf event to database row: {}",
+        "ERROR: [ANALYTICS] Failed to convert protobuf event to database row: {}",
         e
       );
       e
@@ -370,17 +370,17 @@ impl AnalyticsNatsSubscriber {
     use serde_json::Value;
 
     debug!(
-      "🔍 [ANALYTICS] Parsing JSON payload of {} bytes",
+      "[ANALYTICS] Parsing JSON payload of {} bytes",
       payload.len()
     );
 
     // Parse JSON payload
     let json: Value = serde_json::from_slice(payload).map_err(|e| {
-      error!("❌ [ANALYTICS] Failed to parse JSON: {}", e);
+      error!("ERROR: [ANALYTICS] Failed to parse JSON: {}", e);
       AppError::AnyError(anyhow::anyhow!("JSON parse error: {}", e))
     })?;
 
-    debug!("✅ [ANALYTICS] Successfully parsed JSON payload");
+    debug!("[ANALYTICS] Successfully parsed JSON payload");
 
     // Extract basic fields from JSON
     let user_id = json
@@ -516,14 +516,14 @@ pub async fn start_nats_subscriber(nats_url: String, state: Arc<AppState>) -> Re
 
   let nats_client = async_nats::connect(&nats_url).await.map_err(|e| {
     error!(
-      "❌ [ANALYTICS] Failed to connect to NATS at {}: {}",
+      "ERROR: [ANALYTICS] Failed to connect to NATS at {}: {}",
       nats_url, e
     );
     AppError::AnyError(anyhow::anyhow!("Failed to connect to NATS: {}", e))
   })?;
 
   info!(
-    "✅ [ANALYTICS] Successfully connected to NATS: {}",
+    "[ANALYTICS] Successfully connected to NATS: {}",
     nats_url
   );
 
@@ -531,27 +531,27 @@ pub async fn start_nats_subscriber(nats_url: String, state: Arc<AppState>) -> Re
   let subjects = state.config.analytics_subjects();
 
   info!(
-    "🔧 [ANALYTICS] Creating analytics subscriber for stream: {}",
+    "[ANALYTICS] Creating analytics subscriber for stream: {}",
     stream_name
   );
-  info!("📡 [ANALYTICS] Subscribing to subjects: {:?}", subjects);
+  info!("SUBSCRIPTION: [ANALYTICS] Subscribing to subjects: {:?}", subjects);
 
   let subscriber = Arc::new(AnalyticsNatsSubscriber::new(nats_client, state.clone()).await?);
 
-  info!("✅ [ANALYTICS] Analytics subscriber created successfully");
+  info!("[ANALYTICS] Analytics subscriber created successfully");
 
   // Start subscriber in background task
   tokio::spawn(async move {
-    info!("🚀 [ANALYTICS] Starting analytics subscriber background task...");
+    info!("[ANALYTICS] Starting analytics subscriber background task...");
     if let Err(e) = subscriber.start().await {
-      error!("❌ [ANALYTICS] Analytics NATS subscriber failed: {}", e);
+      error!("ERROR: [ANALYTICS] Analytics NATS subscriber failed: {}", e);
     } else {
       info!("🏁 [ANALYTICS] Analytics subscriber task completed");
     }
   });
 
   info!(
-    "✅ [ANALYTICS] NATS analytics subscriber started successfully with stream: {}",
+    "[ANALYTICS] NATS analytics subscriber started successfully with stream: {}",
     stream_name
   );
   Ok(())

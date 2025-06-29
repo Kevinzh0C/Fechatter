@@ -23,7 +23,7 @@ export class MessageTrackingLogger {
     this.maxBufferSize = 1000;
     this.metricsCollector = new MessageMetricsCollector();
 
-    // 🔧 Structured logging categories
+    // Structured logging categories
     this.categories = {
       FETCH: 'message_fetch',
       TRACKING: 'message_tracking',
@@ -52,7 +52,7 @@ export class MessageTrackingLogger {
     if (!this.shouldLog('fetching', 'info')) return;
 
     this.log('info', this.categories.FETCH, 'fetch-success', {
-      message: `✅ Fetched ${messageCount} messages for chat ${chatId} in ${duration}ms`,
+      message: `Fetched ${messageCount} messages for chat ${chatId} in ${duration}ms`,
       chatId: parseInt(chatId),
       messageCount,
       duration,
@@ -65,7 +65,7 @@ export class MessageTrackingLogger {
     if (!this.shouldLog('fetching', 'info')) return;
 
     this.log('info', this.categories.FETCH, 'fetch-skipped', {
-      message: `⚠️ Skipping tracking for chat ${chatId}: ${reason}`,
+      message: `WARNING: Skipping tracking for chat ${chatId}: ${reason}`,
       chatId: parseInt(chatId),
       reason,
       messageCount,
@@ -95,7 +95,7 @@ export class MessageTrackingLogger {
     if (!this.shouldLog('tracking', 'info')) return;
 
     this.log('info', this.categories.TRACKING, 'tracking-success', {
-      message: `✅ Successfully tracked ${displayedCount}/${totalCount} messages for chat ${chatId}`,
+      message: `Successfully tracked ${displayedCount}/${totalCount} messages for chat ${chatId}`,
       trackingId,
       chatId: parseInt(chatId),
       displayedCount,
@@ -109,7 +109,7 @@ export class MessageTrackingLogger {
     if (!this.shouldLog('tracking', 'debug')) return;
 
     this.log('debug', this.categories.TRACKING, 'context-state', {
-      message: `🔍 Active tracking contexts`,
+      message: `Active tracking contexts`,
       activeContexts: contextData.map(ctx => ({
         trackingId: ctx.trackingId,
         chatId: ctx.chatId,
@@ -127,7 +127,7 @@ export class MessageTrackingLogger {
     if (!this.shouldLog('tracking', 'error')) return;
 
     this.log('error', this.categories.TRACKING, 'context-not-found', {
-      message: `❌ No tracking context found for message ${messageId} in chat ${chatId}`,
+      message: `ERROR: No tracking context found for message ${messageId} in chat ${chatId}`,
       messageId: parseInt(messageId),
       chatId: parseInt(chatId),
       activeContexts: activeContexts.map(ctx => ({
@@ -163,7 +163,7 @@ export class MessageTrackingLogger {
     if (!this.shouldLog('clearing', 'info')) return;
 
     this.log('info', this.categories.CLEANUP, 'clear-complete', {
-      message: `✅ Cleared ${clearedContexts} tracking contexts for chat ${chatId}`,
+      message: `Cleared ${clearedContexts} tracking contexts for chat ${chatId}`,
       chatId: parseInt(chatId),
       clearedContexts,
       timestamp: Date.now()
@@ -171,13 +171,13 @@ export class MessageTrackingLogger {
   }
 
   /**
-   * ⚠️ ERROR LOGS: Centralized error tracking
+   * WARNING: ERROR LOGS: Centralized error tracking
    */
   logError(category, error, context = {}) {
     if (!this.shouldLog('errors', 'error')) return;
 
     this.log('error', this.categories.ERROR, 'error-occurred', {
-      message: `❌ Error in ${category}: ${error.message}`,
+      message: `ERROR: Error in ${category}: ${error.message}`,
       category,
       error: {
         name: error.name,
@@ -190,7 +190,7 @@ export class MessageTrackingLogger {
   }
 
   /**
-   * 🎯 CORE LOGGING METHOD
+   * CORE LOGGING METHOD
    */
   log(level, category, eventType, data) {
     if (!this.shouldLog(level)) return;
@@ -222,7 +222,7 @@ export class MessageTrackingLogger {
   }
 
   /**
-   * 🎨 CONSOLE OUTPUT: Formatted for development
+   * CONSOLE OUTPUT: Formatted for development
    */
   outputToConsole(logEntry) {
     if (!this.config.enableConsoleLogging) return;
@@ -248,7 +248,7 @@ export class MessageTrackingLogger {
   }
 
   /**
-   * 📊 BUFFER OUTPUT: For production batch sending
+   * BUFFER OUTPUT: For production batch sending
    */
   outputToBuffer(logEntry) {
     this.logBuffer.push(logEntry);
@@ -270,7 +270,7 @@ export class MessageTrackingLogger {
   }
 
   /**
-   * 🔧 UTILITY METHODS
+   * UTILITY METHODS
    */
   shouldLog(level) {
     const levels = {
@@ -286,14 +286,14 @@ export class MessageTrackingLogger {
   getEmojiForEvent(eventType) {
     const emojiMap = {
       'fetch-start': '📥',
-      'fetch-success': '✅',
+      'fetch-success': '',
       'fetch-skipped': '⚠️',
       'tracking-start': '🛡️',
-      'tracking-success': '✅',
-      'context-state': '🔍',
+      'tracking-success': '',
+      'context-state': '',
       'context-not-found': '❌',
       'clear-start': '🧹',
-      'clear-complete': '✅',
+      'clear-complete': '',
       'error-occurred': '❌'
     };
     return emojiMap[eventType] || '📋';
@@ -356,7 +356,7 @@ export class MessageTrackingLogger {
     // Future: Send to external monitoring service
     // For now, just store locally or send to console in batches
     if (this.config.environment === 'development') {
-      console.log('📊 [MONITORING] Batch log data:', logs);
+      console.log('[MONITORING] Batch log data:', logs);
     }
   }
 

@@ -52,7 +52,7 @@ export class ScrollToBottomValidator {
       await this.testConcurrentChatSwitches();
 
       const summary = this.generateTestSummary();
-      console.log('✅ [ScrollValidator] 验证测试完成:', summary);
+      console.log('[ScrollValidator] 验证测试完成:', summary);
 
       return {
         summary,
@@ -288,7 +288,7 @@ export class ScrollToBottomValidator {
   }
 
   /**
-   * 🏗️ 创建模拟消息容器
+   * 创建模拟消息容器
    */
   createMockMessageContainer(messages) {
     const container = document.createElement('div');
@@ -325,7 +325,7 @@ export class ScrollToBottomValidator {
   }
 
   /**
-   * 🏗️ 创建消息元素
+   * 创建消息元素
    */
   createMessageElement(message) {
     const el = document.createElement('div');
@@ -343,7 +343,7 @@ export class ScrollToBottomValidator {
   }
 
   /**
-   * 📨 生成模拟消息
+   * EVENT: 生成模拟消息
    */
   generateMockMessages(count, chatPrefix = 'test') {
     const messages = [];
@@ -420,7 +420,7 @@ export class ScrollToBottomValidator {
   }
 
   /**
-   * 🎨 渲染消息到DOM
+   * 渲染消息到DOM
    */
   renderMessages(messageList) {
     const wrapper = messageList.messagesWrapper;
@@ -433,7 +433,7 @@ export class ScrollToBottomValidator {
   }
 
   /**
-   * ✅ 验证滚动位置
+   * 验证滚动位置
    */
   verifyScrollPosition(container) {
     const { scrollTop, scrollHeight, clientHeight } = container;
@@ -443,7 +443,7 @@ export class ScrollToBottomValidator {
     const isAtBottom = Math.abs(scrollTop - maxScrollTop) <= tolerance;
 
     if (import.meta.env.DEV) {
-      console.log('🔍 [ScrollValidator] 滚动位置验证:', {
+      console.log('[ScrollValidator] 滚动位置验证:', {
         scrollTop: Math.round(scrollTop),
         maxScrollTop: Math.round(maxScrollTop),
         difference: Math.round(Math.abs(scrollTop - maxScrollTop)),
@@ -456,7 +456,7 @@ export class ScrollToBottomValidator {
   }
 
   /**
-   * 📊 记录测试结果
+   * 记录测试结果
    */
   recordTestResult(testName, passed, details = {}) {
     const result = {
@@ -468,7 +468,7 @@ export class ScrollToBottomValidator {
 
     this.testResults.push(result);
 
-    const icon = passed ? '✅' : '❌';
+    const icon = passed ? '' : '❌';
     console.log(`${icon} [ScrollValidator] ${testName}: ${result.status}`);
 
     if (!passed && details.error) {
@@ -528,7 +528,7 @@ export class ScrollToBottomValidator {
 // 🌍 创建全局实例
 export const scrollToBottomValidator = new ScrollToBottomValidator();
 
-// 🔧 开发环境调试函数
+// 开发环境调试函数
 if (typeof window !== 'undefined' && import.meta.env.DEV) {
   window.validateScrollToBottom = () => scrollToBottomValidator.runCompleteValidation();
   window.exportScrollValidationReport = () => scrollToBottomValidator.exportTestReport();

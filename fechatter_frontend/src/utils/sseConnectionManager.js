@@ -28,7 +28,7 @@ class SSEConnectionManager {
     // Watch auth state changes
     this.setupAuthWatcher();
 
-    // console.log('✅ SSE Connection Manager initialized');
+    // console.log('SSE Connection Manager initialized');
   }
 
   /**

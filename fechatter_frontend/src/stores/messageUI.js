@@ -1,6 +1,6 @@
 /**
- * 🎯 Message UI State Store - 消息UI统一状态管理
- * 解决状态分散、冲突等问题
+ * Message UI State Store - Unified Message UI State Management
+ * Solves state fragmentation and conflict issues
  */
 
 import { ref, readonly, computed } from 'vue'
@@ -10,49 +10,49 @@ import { ZIndexManager, useZIndex } from '@/utils/ZIndexManager'
 export const useMessageUIStore = defineStore('messageUI', () => {
   
   // ================================
-  // 🎯 Core State
+  // Core State
   // ================================
   
-  // 当前活跃的上下文菜单
+  // Currently active context menu
   const activeContextMenu = ref(null)
   
-  // 当前活跃的翻译面板
+  // Currently active translation panel
   const activeTranslationPanel = ref(null)
   
-  // 当前活跃的Bot面板
+  // Currently active Bot panel
   const activeBotPanel = ref(null)
   
-  // 模态框堆栈
+  // Modal stack
   const modalStack = ref([])
   
-  // 消息选择状态
+  // Message selection state
   const selectedMessages = ref(new Set())
   
-  // 消息编辑状态
+  // Message editing state
   const editingMessage = ref(null)
   
   // ================================
-  // 🎯 Z-Index Integration
+  // Z-Index Integration
   // ================================
   
   const { allocate: allocateZIndex, release: releaseZIndex } = useZIndex()
   
   // ================================
-  // 🎯 Context Menu Management
+  // Context Menu Management
   // ================================
   
   /**
-   * 打开上下文菜单
+   * Open context menu
    */
   const openContextMenu = (messageId, position, menuType = 'default', options = {}) => {
-    // 关闭其他UI面板，确保上下文菜单优先显示
+    // Close other UI panels to ensure context menu has priority
     closeAllPanels()
     
-    // 分配z-index
+    // Allocate z-index
     const componentId = `context-menu-${messageId}`
     const zIndex = allocateZIndex(componentId, 'contextMenu')
     
-    // 设置菜单状态
+    // Set menu state
     activeContextMenu.value = {
       messageId,
       position: { ...position },
@@ -65,7 +65,7 @@ export const useMessageUIStore = defineStore('messageUI', () => {
   }
   
   /**
-   * 关闭上下文菜单
+   * Close context menu
    */
   const closeContextMenu = () => {
     if (activeContextMenu.value) {
@@ -76,27 +76,27 @@ export const useMessageUIStore = defineStore('messageUI', () => {
   }
   
   // ================================
-  // 🎯 Translation Panel Management  
+  // Translation Panel Management  
   // ================================
   
   /**
-   * 打开翻译面板
+   * Open translation panel
    */
   const openTranslationPanel = (messageId, options = {}) => {
-    // 如果是同一个消息，则切换状态
+    // If same message, toggle state
     if (activeTranslationPanel.value?.messageId === messageId) {
       closeTranslationPanel()
       return
     }
     
-    // 关闭其他面板
+    // Close other panels
     closeOtherPanels('translation')
     
-    // 分配z-index
+    // Allocate z-index
     const componentId = `translation-panel-${messageId}`
     const zIndex = allocateZIndex(componentId, 'translation')
     
-    // 设置面板状态
+    // Set panel state
     activeTranslationPanel.value = {
       messageId,
       zIndex,
@@ -112,7 +112,7 @@ export const useMessageUIStore = defineStore('messageUI', () => {
   }
   
   /**
-   * 关闭翻译面板
+   * Close translation panel
    */
   const closeTranslationPanel = () => {
     if (activeTranslationPanel.value) {
@@ -123,27 +123,27 @@ export const useMessageUIStore = defineStore('messageUI', () => {
   }
   
   // ================================
-  // 🎯 Bot Panel Management
+  // Bot Panel Management
   // ================================
   
   /**
-   * 打开Bot面板
+   * Open Bot panel
    */
   const openBotPanel = (panelType, options = {}) => {
-    // 如果是同一个面板，则切换状态
+    // If same panel, toggle state
     if (activeBotPanel.value?.type === panelType) {
       closeBotPanel()
       return
     }
     
-    // 关闭其他面板
+    // Close other panels
     closeOtherPanels('bot')
     
-    // 分配z-index
+    // Allocate z-index
     const componentId = `bot-panel-${panelType}`
     const zIndex = allocateZIndex(componentId, 'botPanel')
     
-    // 设置面板状态
+    // Set panel state
     activeBotPanel.value = {
       type: panelType,
       zIndex,
@@ -159,7 +159,7 @@ export const useMessageUIStore = defineStore('messageUI', () => {
   }
   
   /**
-   * 关闭Bot面板
+   * Close Bot panel
    */
   const closeBotPanel = () => {
     if (activeBotPanel.value) {
@@ -170,11 +170,11 @@ export const useMessageUIStore = defineStore('messageUI', () => {
   }
   
   // ================================
-  // 🎯 Panel Coordination
+  // Panel Coordination
   // ================================
   
   /**
-   * 关闭其他面板（除了指定类型）
+   * Close other panels (except specified type)
    */
   const closeOtherPanels = (exceptType = null) => {
     if (exceptType !== 'context') {
@@ -191,17 +191,17 @@ export const useMessageUIStore = defineStore('messageUI', () => {
   }
   
   /**
-   * 关闭所有面板
+   * Close all panels
    */
   const closeAllPanels = () => {
     closeOtherPanels()
   }
   
   // ================================
-  // 🎯 Computed Properties
+  // Computed Properties
   // ================================
   
-  // 是否有活跃的面板
+  // Whether there are active panels
   const hasActivePanels = computed(() => {
     return !!(
       activeContextMenu.value ||
@@ -211,13 +211,13 @@ export const useMessageUIStore = defineStore('messageUI', () => {
     )
   })
   
-  // 选中消息数量
+  // Selected message count
   const selectedCount = computed(() => {
     return selectedMessages.value.size
   })
   
   // ================================
-  // 🎯 Return API
+  // Return API
   // ================================
   
   return {
@@ -249,7 +249,7 @@ export const useMessageUIStore = defineStore('messageUI', () => {
   }
 })
 
-// 🌐 Global Debug Access
+// Global Debug Access
 if (typeof window !== 'undefined' && import.meta.env.DEV) {
   window.messageUIStore = useMessageUIStore
 }

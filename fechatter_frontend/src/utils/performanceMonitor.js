@@ -25,7 +25,7 @@ class PerformanceMonitor {
     this.initialized = true;
 
     if (this.enabled) {
-      console.log('📊 Performance Monitor initialized');
+      console.log('Performance Monitor initialized');
 
       // Start tracking app initialization
       this.startOperation('app-initialization', {
@@ -123,9 +123,9 @@ class PerformanceMonitor {
    */
   logReport(report) {
     const emoji = {
-      excellent: '🚀',
-      good: '✅',
-      fair: '⚡',
+      excellent: '',
+      good: '',
+      fair: '',
       poor: '🐌',
       critical: '❌'
     };
@@ -220,7 +220,7 @@ class PerformanceMonitor {
   clearReports() {
     localStorage.removeItem('perf_reports');
     if (import.meta.env.DEV) {
-      console.log('✅ [PERF] Performance reports cleared');
+      console.log('[PERF] Performance reports cleared');
     }
   }
 }
@@ -237,10 +237,10 @@ if (process.env.NODE_ENV === 'development') {
   window.perfAnalytics = () => {
     const analytics = performanceMonitor.getAnalytics();
     if (import.meta.env.DEV) {
-      console.log('📊 Performance Analytics:', analytics);
+      console.log('Performance Analytics:', analytics);
     }
     return analytics;
   };
 
-  console.log('📊 Performance Monitor loaded - use window.perfAnalytics() to view stats');
+  console.log('Performance Monitor loaded - use window.perfAnalytics() to view stats');
 } 

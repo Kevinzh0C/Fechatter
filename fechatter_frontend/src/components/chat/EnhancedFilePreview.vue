@@ -1,6 +1,6 @@
 <template>
   <div class="enhanced-file-preview">
-    <!-- 🔧 CRITICAL: Add error boundary and conditional rendering -->
+    <!-- CRITICAL: Add error boundary and conditional rendering -->
     <div v-if="fileUploadStore && fileUploadStore.hasPendingFiles && fileUploadStore.hasPendingFiles()"
       class="files-container">
       <div class="files-header">

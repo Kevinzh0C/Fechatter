@@ -14,13 +14,13 @@ class ModalDebugFix {
     if (this.initialized) return;
     this.initialized = true;
     if (import.meta.env.DEV) {
-      console.log('🔧 Modal Debug Fix initialized');
+      console.log('Modal Debug Fix initialized');
     }
 
   // Comprehensive modal state diagnosis
   diagnose() {
     if (import.meta.env.DEV) {
-      console.log('🔍 Modal Diagnosis Starting...');
+      console.log('Modal Diagnosis Starting...');
     }
 
     const diagnosis = {
@@ -261,7 +261,7 @@ class ModalDebugFix {
     }
 
     diagnosis.checks.forEach((check, index) => {
-      const icon = check.status === 'success' ? '✅' : check.status === 'error' ? '❌' : '⏳';
+      const icon = check.status === 'success' ? '' : check.status === 'error' ? '❌' : '⏳';
       if (import.meta.env.DEV) {
         console.log(`${index + 1}. ${icon} ${check.name}`);
       }
@@ -282,7 +282,7 @@ class ModalDebugFix {
   // Auto-fix common modal issues
   autoFix() {
     if (import.meta.env.DEV) {
-      console.log('🔧 Auto-fixing modal issues...');
+      console.log('Auto-fixing modal issues...');
     }
 
     const fixes = [];
@@ -420,7 +420,7 @@ class ModalDebugFix {
 
   verifyFixes() {
     if (import.meta.env.DEV) {
-      console.log('🔍 Verifying fixes...');
+      console.log('Verifying fixes...');
     }
 
     const container = document.querySelector('.dev-accounts-floating-container');
@@ -440,7 +440,7 @@ class ModalDebugFix {
 
     const allFixed = Object.values(verification).every(v => v === true);
     if (import.meta.env.DEV) {
-      console.log(allFixed ? '✅ All fixes successful!' : '⚠️ Some issues remain');
+      console.log(allFixed ? 'All fixes successful!' : 'WARNING: Some issues remain');
     }
 
     return verification;
@@ -453,7 +453,7 @@ class ModalDebugFix {
       setTimeout(() => this.verifyFixes(), 500);
     } else {
       if (import.meta.env.DEV) {
-        console.log('❌ window.showDevModal not available');
+        console.log('ERROR: window.showDevModal not available');
       }
 
   hide() {
@@ -481,7 +481,7 @@ if (import.meta.env.DEV) {
   window.diagnoseModal = () => modalDebugFix.diagnose();
 
   if (import.meta.env.DEV) {
-    console.log('🛠️ Modal Debug Fix loaded');
+    console.log('Modal Debug Fix loaded');
   if (import.meta.env.DEV) {
     console.log('   - window.modalDebugFix - Full API');
   if (import.meta.env.DEV) {

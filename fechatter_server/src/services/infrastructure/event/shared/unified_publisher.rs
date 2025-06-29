@@ -275,7 +275,7 @@ impl EnhancedEventPublisher {
         match nats_client.publish(subject.to_string(), payload_bytes.into()).await {
             Ok(_) => {
                 debug!("Successfully published event to subject: {}", subject);
-                info!("📡 Event published to notify_server: {}", subject);
+                info!("SUBSCRIPTION: Event published to notify_server: {}", subject);
                 Ok(())
             }
             Err(e) => {
@@ -325,11 +325,11 @@ pub async fn create_enhanced_publisher_with_nats(
 ) -> Result<EnhancedEventPublisher, AppError> {
     match async_nats::connect(nats_url).await {
         Ok(client) => {
-            info!("✅ Connected to NATS for notify_server integration: {}", nats_url);
+            info!("Connected to NATS for notify_server integration: {}", nats_url);
             Ok(EnhancedEventPublisher::new(Some(client), config))
         }
         Err(e) => {
-            warn!("⚠️ Failed to connect to NATS, creating disabled publisher: {}", e);
+            warn!("WARNING: Failed to connect to NATS, creating disabled publisher: {}", e);
             Ok(EnhancedEventPublisher::disabled())
         }
     }

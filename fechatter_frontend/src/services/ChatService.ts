@@ -31,7 +31,7 @@ class ChatService {
 
       throw new Error(response.data.error?.message || 'Failed to get workspace chats');
     } catch (error) {
-      console.error('❌ [ChatService] Get workspace chats failed:', error);
+      console.error('ERROR: [ChatService] Get workspace chats failed:', error);
       throw this.handleError(error);
     }
   }
@@ -49,7 +49,7 @@ class ChatService {
 
       throw new Error(response.data.error?.message || 'Failed to create chat');
     } catch (error) {
-      console.error('❌ [ChatService] Create chat failed:', error);
+      console.error('ERROR: [ChatService] Create chat failed:', error);
       throw this.handleError(error);
     }
   }
@@ -67,7 +67,7 @@ class ChatService {
 
       throw new Error(response.data.error?.message || 'Failed to get chat details');
     } catch (error) {
-      console.error(`❌ [ChatService] Get chat details failed for chat ${chatId}:`, error);
+      console.error(`ERROR: [ChatService] Get chat details failed for chat ${chatId}:`, error);
       throw this.handleError(error);
     }
   }
@@ -85,7 +85,7 @@ class ChatService {
 
       throw new Error(response.data.error?.message || 'Failed to update chat');
     } catch (error) {
-      console.error(`❌ [ChatService] Update chat failed for chat ${chatId}:`, error);
+      console.error(`ERROR: [ChatService] Update chat failed for chat ${chatId}:`, error);
       throw this.handleError(error);
     }
   }
@@ -101,7 +101,7 @@ class ChatService {
         throw new Error(response.data.error?.message || 'Failed to delete chat');
       }
     } catch (error) {
-      console.error(`❌ [ChatService] Delete chat failed for chat ${chatId}:`, error);
+      console.error(`ERROR: [ChatService] Delete chat failed for chat ${chatId}:`, error);
       throw this.handleError(error);
     }
   }
@@ -119,7 +119,7 @@ class ChatService {
 
       throw new Error(response.data.error?.message || 'Failed to get chat members');
     } catch (error) {
-      console.error(`❌ [ChatService] Get chat members failed for chat ${chatId}:`, error);
+      console.error(`ERROR: [ChatService] Get chat members failed for chat ${chatId}:`, error);
       throw this.handleError(error);
     }
   }
@@ -137,7 +137,7 @@ class ChatService {
 
       throw new Error(response.data.error?.message || 'Failed to add chat members');
     } catch (error) {
-      console.error(`❌ [ChatService] Add chat members failed for chat ${chatId}:`, error);
+      console.error(`ERROR: [ChatService] Add chat members failed for chat ${chatId}:`, error);
       throw this.handleError(error);
     }
   }
@@ -153,7 +153,7 @@ class ChatService {
         throw new Error(response.data.error?.message || 'Failed to remove chat member');
       }
     } catch (error) {
-      console.error(`❌ [ChatService] Remove chat member failed for chat ${chatId}, user ${userId}:`, error);
+      console.error(`ERROR: [ChatService] Remove chat member failed for chat ${chatId}, user ${userId}:`, error);
       throw this.handleError(error);
     }
   }
@@ -171,7 +171,7 @@ class ChatService {
 
       throw new Error(response.data.error?.message || 'Failed to join chat');
     } catch (error) {
-      console.error(`❌ [ChatService] Join chat failed for chat ${chatId}:`, error);
+      console.error(`ERROR: [ChatService] Join chat failed for chat ${chatId}:`, error);
       throw this.handleError(error);
     }
   }
@@ -187,7 +187,7 @@ class ChatService {
         throw new Error(response.data.error?.message || 'Failed to leave chat');
       }
     } catch (error) {
-      console.error(`❌ [ChatService] Leave chat failed for chat ${chatId}:`, error);
+      console.error(`ERROR: [ChatService] Leave chat failed for chat ${chatId}:`, error);
       throw this.handleError(error);
     }
   }
@@ -234,7 +234,7 @@ class ChatService {
 
       throw new Error(response.data.error?.message || 'Failed to get chat messages');
     } catch (error) {
-      console.error(`❌ [ChatService] Get chat messages failed for chat ${chatId}:`, error);
+      console.error(`ERROR: [ChatService] Get chat messages failed for chat ${chatId}:`, error);
       throw this.handleError(error);
     }
   }
@@ -290,7 +290,7 @@ class ChatService {
       };
 
       if (import.meta.env.DEV) {
-        console.log(`🚀 [ChatService] Sending request payload:`, requestPayload);
+        console.log(`[ChatService] Sending request payload:`, requestPayload);
       }
 
       // 5. 发送到后端API
@@ -300,7 +300,7 @@ class ChatService {
         const sentMessage = response.data.data;
 
         if (import.meta.env.DEV) {
-          console.log(`✅ [ChatService] Message sent successfully:`, sentMessage);
+          console.log(`[ChatService] Message sent successfully:`, sentMessage);
         }
 
         return sentMessage;
@@ -309,13 +309,13 @@ class ChatService {
       // 处理API错误响应
       const errorMessage = response.data.error?.message || 'Failed to send message';
       if (import.meta.env.DEV) {
-        console.error(`❌ [ChatService] API error response:`, response.data);
+        console.error(`ERROR: [ChatService] API error response:`, response.data);
       }
 
       throw new Error(errorMessage);
 
     } catch (error: any) {
-      console.error(`❌ [ChatService] Send message failed for chat ${chatId}:`, error);
+      console.error(`ERROR: [ChatService] Send message failed for chat ${chatId}:`, error);
 
       // 增强错误处理，提供用户友好的错误信息
       if (error?.response?.status === 401) {
@@ -336,12 +336,12 @@ class ChatService {
    * 生成幂等性密钥 - 使用标准UUID v4格式
    */
   private generateIdempotencyKey(): string {
-    // 🔧 CRITICAL FIX: Use crypto.randomUUID() for standard UUID format
+    // CRITICAL FIX: Use crypto.randomUUID() for standard UUID format
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
       return crypto.randomUUID();
     }
 
-    // 🔧 Fallback for older browsers - ensure standard UUID v4 format
+    // Fallback for older browsers - ensure standard UUID v4 format
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
       const r = Math.random() * 16 | 0;
       const v = c == 'x' ? r : (r & 0x3 | 0x8);
@@ -365,7 +365,7 @@ class ChatService {
 
       throw new Error(response.data.error?.message || 'Failed to edit message');
     } catch (error) {
-      console.error(`❌ [ChatService] Edit message failed for chat ${chatId}, message ${messageId}:`, error);
+      console.error(`ERROR: [ChatService] Edit message failed for chat ${chatId}, message ${messageId}:`, error);
       throw this.handleError(error);
     }
   }
@@ -381,7 +381,7 @@ class ChatService {
         throw new Error(response.data.error?.message || 'Failed to delete message');
       }
     } catch (error) {
-      console.error(`❌ [ChatService] Delete message failed for chat ${chatId}, message ${messageId}:`, error);
+      console.error(`ERROR: [ChatService] Delete message failed for chat ${chatId}, message ${messageId}:`, error);
       throw this.handleError(error);
     }
   }
@@ -401,7 +401,7 @@ class ChatService {
         throw new Error(response.data.error?.message || 'Failed to mark as read');
       }
     } catch (error) {
-      console.error(`❌ [ChatService] Mark as read failed for chat ${chatId}:`, error);
+      console.error(`ERROR: [ChatService] Mark as read failed for chat ${chatId}:`, error);
       throw this.handleError(error);
     }
   }
@@ -420,7 +420,7 @@ class ChatService {
       }
     } catch (error) {
       // 打字状态失败不需要抛出错误，只记录日志
-      console.warn(`⚠️ [ChatService] Send typing status failed for chat ${chatId}:`, error);
+      console.warn(`WARNING: [ChatService] Send typing status failed for chat ${chatId}:`, error);
     }
   }
 
@@ -439,7 +439,7 @@ class ChatService {
 
       return [];
     } catch (error) {
-      console.warn('⚠️ [ChatService] Search chats failed:', error);
+      console.warn('WARNING: [ChatService] Search chats failed:', error);
       return [];
     }
   }
@@ -465,7 +465,7 @@ class ChatService {
 
       throw new Error(response.data.error?.message || 'Failed to create direct message');
     } catch (error) {
-      console.error(`❌ [ChatService] Create direct message failed for user ${userId}:`, error);
+      console.error(`ERROR: [ChatService] Create direct message failed for user ${userId}:`, error);
       throw this.handleError(error);
     }
   }
@@ -551,7 +551,7 @@ class ChatService {
 
       throw new Error(response.data.error?.message || 'Failed to get unread count');
     } catch (error) {
-      console.error(`❌ [ChatService] Get unread count failed:`, error);
+      console.error(`ERROR: [ChatService] Get unread count failed:`, error);
       // 优雅降级：返回空数组而不是抛出错误
       return [];
     }
@@ -571,7 +571,7 @@ class ChatService {
         throw new Error(response.data.error?.message || 'Failed to mark messages as read');
       }
     } catch (error) {
-      console.error(`❌ [ChatService] Batch mark as read failed for chat ${chatId}:`, error);
+      console.error(`ERROR: [ChatService] Batch mark as read failed for chat ${chatId}:`, error);
       throw this.handleError(error);
     }
   }
@@ -605,7 +605,7 @@ class ChatService {
 
       throw new Error(response.data.error?.message || 'Failed to search messages');
     } catch (error) {
-      console.error(`❌ [ChatService] Search messages failed for chat ${chatId}:`, error);
+      console.error(`ERROR: [ChatService] Search messages failed for chat ${chatId}:`, error);
       throw this.handleError(error);
     }
   }
@@ -625,7 +625,7 @@ class ChatService {
 
       return [];
     } catch (error) {
-      console.warn(`⚠️ [ChatService] Get search suggestions failed:`, error);
+      console.warn(`WARNING: [ChatService] Get search suggestions failed:`, error);
       // 优雅降级：返回空数组
       return [];
     }
@@ -639,7 +639,7 @@ class ChatService {
       await api.post<ApiResponse<void>>(`/chat/${chatId}/typing/start`);
     } catch (error) {
       // 输入状态失败不影响用户体验，只记录警告
-      console.warn(`⚠️ [ChatService] Start typing failed for chat ${chatId}:`, error);
+      console.warn(`WARNING: [ChatService] Start typing failed for chat ${chatId}:`, error);
     }
   }
 
@@ -650,7 +650,7 @@ class ChatService {
     try {
       await api.post<ApiResponse<void>>(`/chat/${chatId}/typing/stop`);
     } catch (error) {
-      console.warn(`⚠️ [ChatService] Stop typing failed for chat ${chatId}:`, error);
+      console.warn(`WARNING: [ChatService] Stop typing failed for chat ${chatId}:`, error);
     }
   }
 
@@ -667,7 +667,7 @@ class ChatService {
 
       return [];
     } catch (error) {
-      console.warn(`⚠️ [ChatService] Get typing users failed for chat ${chatId}:`, error);
+      console.warn(`WARNING: [ChatService] Get typing users failed for chat ${chatId}:`, error);
       return [];
     }
   }
@@ -685,7 +685,7 @@ class ChatService {
 
       return [];
     } catch (error) {
-      console.warn(`⚠️ [ChatService] Get message receipts failed for message ${messageId}:`, error);
+      console.warn(`WARNING: [ChatService] Get message receipts failed for message ${messageId}:`, error);
       return [];
     }
   }
@@ -731,26 +731,26 @@ class ChatService {
           },
         });
 
-        // 🎯 SMART RESPONSE PARSING: Auto-adapt to any backend format
+        // SMART RESPONSE PARSING: Auto-adapt to any backend format
         try {
           const uploadedFile = ResponseAdapter.parseUploadResponse(response.data, file);
 
           if (import.meta.env.DEV) {
-            console.log(`✅ [Smart Upload] Success: ${file.name} -> ${uploadedFile.url}`);
+            console.log(`[Smart Upload] Success: ${file.name} -> ${uploadedFile.url}`);
           }
 
           return uploadedFile;
         } catch (parseError) {
           if (import.meta.env.DEV) {
-            console.error("❌ [Smart Upload] Response parsing failed:", parseError);
-            console.log("📊 Raw response:", response.data);
+            console.error("ERROR: [Smart Upload] Response parsing failed:", parseError);
+            console.log("Raw response:", response.data);
           }
           throw parseError;
         }
 
       } catch (error: any) {
         if (import.meta.env.DEV) {
-          console.error(`❌ [Smart Upload] Attempt ${attempt} failed:`, error.message);
+          console.error(`ERROR: [Smart Upload] Attempt ${attempt} failed:`, error.message);
         }
 
         // Smart error handling

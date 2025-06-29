@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("🚀 Simple AI Demo - Everything delegated to LLM");
+    println!("Simple AI Demo - Everything delegated to LLM");
     println!("===============================================");
     
     // Mock chat data
@@ -47,11 +47,11 @@ async fn demo_with_real_ai(messages: Vec<(i64, i64, String, chrono::DateTime<chr
     match topic_extractor.extract_topics(&message_data, 3).await {
         Ok(topics) => {
             for topic in topics {
-                println!("✅ Topic: {} (Keywords: {:?}, Messages: {})", 
+                println!("Topic: {} (Keywords: {:?}, Messages: {})", 
                     topic.name, topic.keywords, topic.message_ids.len());
             }
         },
-        Err(e) => println!("❌ Topic extraction failed: {}", e),
+        Err(e) => println!("ERROR: Topic extraction failed: {}", e),
     }
     
     // Demo 2: Complete workflow
@@ -62,8 +62,8 @@ async fn demo_with_real_ai(messages: Vec<(i64, i64, String, chrono::DateTime<chr
     
     match workflow.analyze_chat_complete(123, messages).await {
         Ok(result) => {
-            println!("✅ Chat Analysis Complete:");
-            println!("   📝 Summary: {}", result.summary);
+            println!("Chat Analysis Complete:");
+            println!("   Summary: {}", result.summary);
             println!("   🏷️  Topics: {:?}", result.topics);
             println!("   😊 Sentiment: {} ({})", result.sentiment.overall_label, result.sentiment.overall_score);
             println!("   📅 Timeline Events: {}", result.timeline.len());
@@ -72,30 +72,30 @@ async fn demo_with_real_ai(messages: Vec<(i64, i64, String, chrono::DateTime<chr
                 println!("      - {}: {}", event.title, event.description);
             }
         },
-        Err(e) => println!("❌ Workflow failed: {}", e),
+        Err(e) => println!("ERROR: Workflow failed: {}", e),
     }
     
     Ok(())
 }
 
 async fn demo_without_api(messages: Vec<(i64, i64, String, chrono::DateTime<chrono::Utc>)>) -> Result<()> {
-    println!("⚠️  OPENAI_API_KEY not found - showing structure only");
+    println!("WARNING: OPENAI_API_KEY not found - showing structure only");
     println!();
     
     println!("📋 Would extract topics from {} messages", messages.len());
     println!("🔄 Would run complete workflow analysis");
-    println!("📝 Would generate summary, topics, sentiment, and timeline");
+    println!("Would generate summary, topics, sentiment, and timeline");
     println!();
     
-    println!("💡 Key Features:");
-    println!("   ✅ Topic extraction (LLM-powered)");
-    println!("   ✅ Sentiment analysis (delegated to OpenAI)");  
-    println!("   ✅ Timeline generation (simple + LLM enhancement)");
-    println!("   ✅ Complete workflow orchestration");
-    println!("   ✅ Fallback implementations (when LLM fails)");
+    println!("Key Features:");
+    println!("   Topic extraction (LLM-powered)");
+    println!("   Sentiment analysis (delegated to OpenAI)");  
+    println!("   Timeline generation (simple + LLM enhancement)");
+    println!("   Complete workflow orchestration");
+    println!("   Fallback implementations (when LLM fails)");
     println!();
     
-    println!("🎯 Design Philosophy:");
+    println!("Design Philosophy:");
     println!("   - Delegate complex logic to LLM");
     println!("   - Keep local processing minimal");
     println!("   - Simple data structures");

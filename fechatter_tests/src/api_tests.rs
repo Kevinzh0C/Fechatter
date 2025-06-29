@@ -31,7 +31,7 @@ async fn test_user_authentication_flow() -> Result<(), Box<dyn std::error::Error
 
   // This test will fail without an actual running server
   // This is just to demonstrate integration test structure
-  info!("⚠️ This test requires a running server to complete");
+  info!("WARNING: This test requires a running server to complete");
 
   Ok(())
 }
@@ -102,7 +102,7 @@ async fn test_chat_and_messaging_flow() -> Result<(), Box<dyn std::error::Error>
   // Cleanup explicitly
   env.cleanup().await?;
 
-  info!("✅ Chat and messaging flow test passed");
+  info!("Chat and messaging flow test passed");
   Ok(())
 }
 
@@ -175,7 +175,7 @@ async fn test_chat_member_management() -> Result<(), Box<dyn std::error::Error>>
   let final_members = env.app_state.list_chat_members(chat.id.into()).await?;
   assert_eq!(final_members.len(), 3);
 
-  info!("✅ Chat member management test passed");
+  info!("Chat member management test passed");
   Ok(())
 }
 
@@ -200,7 +200,7 @@ async fn test_file_upload_download() -> Result<(), Box<dyn std::error::Error>> {
   let file_meta =
     fechatter_server::models::ChatFile::new(user.workspace_id.into(), filename, test_content);
 
-  info!("✅ Created file metadata: {}", file_meta.url());
+  info!("Created file metadata: {}", file_meta.url());
 
   // TODO: Actual file upload/download requires HTTP client and running server
 
@@ -277,7 +277,7 @@ async fn test_concurrent_operations() -> Result<(), Box<dyn std::error::Error>> 
   // Cleanup explicitly
   env.cleanup().await?;
 
-  info!("✅ Concurrent operations test passed");
+  info!("Concurrent operations test passed");
   Ok(())
 }
 
@@ -357,7 +357,7 @@ async fn test_error_handling() -> Result<(), Box<dyn std::error::Error>> {
 
   assert!(empty_result.is_err());
 
-  info!("✅ Error handling test passed");
+  info!("Error handling test passed");
   Ok(())
 }
 
@@ -432,7 +432,7 @@ async fn test_data_consistency() -> Result<(), Box<dyn std::error::Error>> {
   // Cleanup explicitly
   env.cleanup().await?;
 
-  info!("✅ Data consistency test passed");
+  info!("Data consistency test passed");
   Ok(())
 }
 
@@ -453,7 +453,7 @@ async fn test_api_connectivity() -> Result<(), Box<dyn std::error::Error>> {
     "password": "password123"
   });
 
-  info!("✅ API connectivity test passed");
+  info!("API connectivity test passed");
   Ok(())
 }
 
@@ -505,7 +505,7 @@ async fn test_chat_creation_and_messaging_with_context() -> Result<(), Box<dyn s
   assert!(!messages.is_empty(), "Should have at least one message");
   assert_eq!(messages[0].id, message.id, "First message should match");
 
-  info!("✅ Chat creation and messaging with context test passed");
+  info!("Chat creation and messaging with context test passed");
   Ok(())
 }
 
@@ -571,7 +571,7 @@ async fn test_bulk_message_creation() -> Result<(), Box<dyn std::error::Error>> 
     .await?;
   assert_eq!(messages.len(), message_count);
 
-  info!("✅ Bulk message creation test passed");
+  info!("Bulk message creation test passed");
   Ok(())
 }
 
@@ -637,6 +637,6 @@ async fn test_message_persistence() -> Result<(), Box<dyn std::error::Error>> {
   assert_eq!(retrieved_message.content, created_message.content);
   assert_eq!(retrieved_message.sender_id, created_message.sender_id);
 
-  info!("✅ Message persistence test passed");
+  info!("Message persistence test passed");
   Ok(())
 }

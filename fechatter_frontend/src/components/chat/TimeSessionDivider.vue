@@ -57,7 +57,7 @@ const dividerClasses = computed(() => {
 </script>
 
 <style scoped>
-/* 🎯 基础容器 - 最小化垂直空间占用 */
+/* 基础容器 - 最小化垂直空间占用 */
 .time-session-divider {
   margin: 0.25rem 0;
   position: relative;
@@ -130,7 +130,7 @@ const dividerClasses = computed(() => {
   font-style: normal;
 }
 
-/* 🎨 特殊状态 - 保持低调但有意义的差异 */
+/* 特殊状态 - 保持低调但有意义的差异 */
 .divider-today .date-text {
   color: #059669; /* 绿色但不过分鲜艳 */
   font-weight: 600; /* 今天可以稍微突出 */
@@ -242,7 +242,7 @@ const dividerClasses = computed(() => {
   }
 }
 
-/* 🔧 辅助功能优化 */
+/* 辅助功能优化 */
 @media (prefers-reduced-motion: reduce) {
   .time-session-divider {
     animation: none;

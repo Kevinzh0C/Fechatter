@@ -20,7 +20,7 @@ pub async fn init_metrics() -> Result<(), NotifyError> {
         .install()
         .map_err(|e| NotifyError::Internal(format!("Failed to install Prometheus exporter: {}", e)))?;
 
-    info!("📊 [NOTIFY] Prometheus metrics server started on {}", bind_address);
+    info!("[NOTIFY] Prometheus metrics server started on {}", bind_address);
     Ok(())
 }
 

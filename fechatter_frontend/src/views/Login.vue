@@ -79,14 +79,14 @@
         </button>
       </div>
 
-      <!-- 🎯 Developer Accounts - 浮动弹窗，不影响布局 -->
+      <!-- Developer Accounts Floating Panel -->
       <div v-if="showDevHints" class="dev-accounts-floating-container">
         <Transition enter-active-class="transition-all ease-out duration-300" enter-from-class="opacity-0 translate-y-2"
           enter-to-class="opacity-100 translate-y-0" leave-active-class="transition-all ease-in duration-200"
           leave-from-class="opacity-100 translate-y-0" leave-to-class="opacity-0 translate-y-2">
           <div v-if="showDevAccounts"
             class="dev-accounts-dropdown mt-4 bg-white border border-gray-200 rounded-lg shadow-xl">
-            <!-- 人体工学设计的头部：醒目的关闭按钮 -->
+            <!-- Header with Close Button -->
             <div class="px-3 py-2 flex items-center justify-between">
               <span class="text-xs font-medium text-gray-500 select-none">Developer Accounts</span>
               <button @click="toggleDevAccounts"
@@ -98,7 +98,7 @@
               </button>
             </div>
 
-            <!-- 账户滚动容器 -->
+            <!-- Accounts Container -->
             <div class="accounts-scroll-container">
               <!-- Super User Account -->
               <div class="account-card">
@@ -182,7 +182,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const analytics = useAnalytics();
 
-// 使用 shallowRef 优化性能
+// Performance optimized refs
 const email = ref('');
 const password = ref('');
 const isSubmitting = ref(false);
@@ -191,19 +191,18 @@ const showDevHints = ref(false);
 const showDevAccounts = ref(false); // Initially hide dev accounts
 const ErrorComponent = shallowRef(null);
 
-// 不再需要轮播状态，改为滚动容器
 
-// 预加载进度状态 - 简化版
+// Preload progress state
 const preloadProgress = ref({
   isVisible: false,
   message: ''
 });
 
-// 计算属性优化
+// Optimized computed properties
 const isLoading = computed(() => authStore.loading || isSubmitting.value);
 const showError = computed(() => !!authStore.error);
 
-// 动态按钮文本
+// Dynamic button text
 const getButtonText = () => {
   if (!isLoading.value) return 'Sign in';
   if (preloadProgress.value.isVisible) {
@@ -223,12 +222,12 @@ const dismissError = () => {
   authStore.error = null;
 };
 
-// 优化的凭据填充函数
+// Optimized credential filling
 const fillCredentials = (emailVal, passwordVal) => {
   email.value = emailVal;
   password.value = passwordVal;
 
-  // 使用 requestAnimationFrame 优化 DOM 操作
+  // Optimize DOM operations with requestAnimationFrame
   requestAnimationFrame(() => {
     const loginButton = document.querySelector('[data-testid="login-button"]');
     loginButton?.focus();
@@ -250,9 +249,9 @@ const handleKeyDown = (event) => {
   }
 };
 
-// 简化版登录处理
+// Simplified login handling
 const handleSubmit = async () => {
-  // 防止重复提交
+  // Prevent duplicate submissions
   if (!email.value || !password.value || isLoading.value) {
     return;
   }
@@ -261,16 +260,16 @@ const handleSubmit = async () => {
     isSubmitting.value = true;
     authStore.error = null;
 
-    // 显示简洁的登录状态
+    // Show login status
     preloadProgress.value = {
       isVisible: true,
-      message: '正在登录...'
+      message: 'Signing in...'
     };
 
     // Track login attempt
     const loginStartTime = Date.now();
 
-    // 使用简化的登录方法
+    // Use simplified login method
     const success = await authStore.login(email.value.trim(), password.value);
 
     if (success) {
@@ -284,65 +283,65 @@ const handleSubmit = async () => {
         to: 'authenticated',
         duration_ms: loginDuration
       });
-      // 显示成功状态
+      // Show success status
       preloadProgress.value = {
         isVisible: true,
-        message: '登录成功，验证状态...'
+        message: 'Login successful, verifying...'
       };
 
-      // 🔧 ENHANCED: Wait for auth state to be fully ready
+      // Wait for auth state to be fully ready
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // 🔧 ENHANCED: Pre-verification wait with improved timing
-      // 🔧 REFACTORED: Simplified verification - trust the refactored login process
+      // Pre-verification wait
+      // Simplified verification
       if (import.meta.env.DEV) {
-        console.log('🔍 [LOGIN] Verifying refactored auth state...');
+        console.log('[LOGIN] Verifying auth state...');
       }
 
-      // 🔧 CRITICAL: Brief stabilization for UI state updates
+      // Brief stabilization for UI state updates
       await new Promise(resolve => {
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            setTimeout(resolve, 150); // Brief stabilization only
+            setTimeout(resolve, 150);
           });
         });
       });
 
-      // 🔧 CRITICAL FIX: Simplified verification approach to avoid blocking
+      // Simplified verification to avoid blocking
       const isAuthReady = await verifyAuthStateReady();
 
       if (!isAuthReady) {
-        // 🔧 SINGLE RETRY: One simple retry if the first check fails
+        // Single retry if first check fails
         if (import.meta.env.DEV) {
-          console.warn('🚨 [LOGIN] Initial auth verification failed, attempting one retry...');
+          console.warn('[LOGIN] Initial auth verification failed, retrying...');
         }
 
-        await new Promise(resolve => setTimeout(resolve, 100)); // Brief wait
+        await new Promise(resolve => setTimeout(resolve, 100));
         const retryResult = await verifyAuthStateReady();
 
         if (!retryResult) {
-          // 🔧 TOLERANT: Check if we at least have basic auth data
+          // Check if we have basic auth data
           const hasBasicAuth = authStore.token && authStore.user;
           if (!hasBasicAuth) {
             throw new Error('Authentication failed - no valid auth data found');
           } else {
             if (import.meta.env.DEV) {
-              console.warn('⚠️ [LOGIN] Verification failed but basic auth exists - proceeding');
+              console.warn('[LOGIN] Verification failed but basic auth exists - proceeding');
             }
           }
         }
       }
 
-      // 显示导航状态
+      // Show navigation status
       preloadProgress.value = {
         isVisible: true,
-        message: '正在跳转...'
+        message: 'Redirecting...'
       };
 
-      // 短暂延迟确保UI状态更新
+      // Brief delay to ensure UI state updates
       await new Promise(resolve => setTimeout(resolve, 150));
 
-      // 🔧 ENHANCED: Better navigation logic with duplicate check
+      // Enhanced navigation logic with duplicate check
       const currentPath = window.location.pathname;
       const redirectPath = sessionStorage.getItem('redirectPath');
       let targetPath = '/home';
@@ -351,33 +350,33 @@ const handleSubmit = async () => {
       if (redirectPath && redirectPath !== '/login' && redirectPath !== '/') {
         sessionStorage.removeItem('redirectPath');
         targetPath = redirectPath;
-        console.log('🔍 [LOGIN] Redirecting to stored path:', redirectPath);
+        console.log('[LOGIN] Redirecting to stored path:', redirectPath);
       } else {
-        console.log('🔍 [LOGIN] Redirecting to home');
+        console.log('[LOGIN] Redirecting to home');
       }
 
-      // 🔧 CRITICAL FIX: Simplified navigation with better error handling
+      // Simplified navigation with error handling
       if (currentPath !== targetPath) {
         try {
-          console.log('🚀 [LOGIN] Navigating from', currentPath, 'to', targetPath);
+          console.log('[LOGIN] Navigating from', currentPath, 'to', targetPath);
 
           await router.push(targetPath);
-          console.log('✅ [LOGIN] Navigation successful to:', targetPath);
+          console.log('[LOGIN] Navigation successful to:', targetPath);
         } catch (error) {
           const errorName = error?.name || 'Unknown';
           const errorMessage = error?.message || '';
 
           if (errorName === 'NavigationDuplicated' || errorMessage.includes('Avoided redundant navigation')) {
-            console.log('🔍 [LOGIN] Navigation duplicate detected - user already at target');
-            return; // This is success, not failure
+            console.log('[LOGIN] Navigation duplicate detected - user already at target');
+            return;
           } else {
-            console.warn('⚠️ [LOGIN] Router navigation failed:', error);
-            // Fallback to location.assign for any other navigation issues
+            console.warn('[LOGIN] Router navigation failed:', error);
+            // Fallback navigation
             window.location.assign(targetPath);
           }
         }
       } else {
-        console.log('🔍 [LOGIN] Already at target path, no navigation needed');
+        console.log('[LOGIN] Already at target path, no navigation needed');
       }
     }
   } catch (error) {
@@ -405,7 +404,7 @@ const handleSubmit = async () => {
     }
   } finally {
     isSubmitting.value = false;
-    // 清除进度显示
+    // Clear progress display
     setTimeout(() => {
       preloadProgress.value = {
         isVisible: false,
@@ -416,27 +415,26 @@ const handleSubmit = async () => {
 };
 
 /**
- * 🔧 SIMPLIFIED: Practical auth state verification - focus on essentials only
+ * Practical auth state verification
  */
 const verifyAuthStateReady = async () => {
   try {
-    // 🔧 ENHANCED: Longer wait for state synchronization stability
-    // Give auth.js setImmediateAuthState more time to complete
+    // Wait for state synchronization
     await new Promise(resolve => setTimeout(resolve, 200));
 
-    // 🔧 ESSENTIAL CHECKS: Only verify what's absolutely necessary
+    // Essential checks
     const hasToken = !!authStore.token && authStore.token.length > 10;
     const hasUser = !!authStore.user && !!authStore.user.id;
     const isAuthReported = authStore.isAuthenticated;
 
-    // 🔧 SIMPLIFIED: Basic functional requirements
+    // Basic functional requirements
     const hasFunctionalAuth = hasToken && hasUser;
 
-    // 🔧 TOLERANT: Accept if we have functional auth OR store reports auth
+    // Accept if we have functional auth OR store reports auth
     const isReady = hasFunctionalAuth || isAuthReported;
 
     if (import.meta.env.DEV) {
-      console.log('🔍 [LOGIN] Simplified auth verification:', {
+      console.log('[LOGIN] Auth verification:', {
         hasToken,
         hasUser,
         isAuthReported,
@@ -449,7 +447,7 @@ const verifyAuthStateReady = async () => {
 
     return isReady;
   } catch (error) {
-    console.error('🚨 [LOGIN] Auth verification error:', error);
+    console.error('[LOGIN] Auth verification error:', error);
     return false;
   }
 };
@@ -457,31 +455,31 @@ const verifyAuthStateReady = async () => {
 onMounted(() => {
   mounted.value = true;
 
-  // 🚀 启用性能优化
+  // Enable performance optimizations
   optimizeLoginPerformance();
 
-  // 清除错误状态
+  // Clear error state
   authStore.error = null;
 
-  // 🎯 添加键盘事件监听器
+  // Add keyboard event listener
   document.addEventListener('keydown', handleKeyDown);
 
-  // 使用 requestAnimationFrame 优化初始化
+  // Optimize initialization with requestAnimationFrame
   requestAnimationFrame(() => {
-    // 聚焦邮箱输入框
+    // Focus email input
     const emailInput = document.querySelector('[data-testid="email-input"]');
     if (emailInput) emailInput.focus();
 
-    // 延迟显示开发提示（避免阻塞初始渲染）
+    // Delayed dev hints display
     setTimeout(() => {
-      // 🔧 ENHANCED: Support dev accounts in production for demo/testing
+      // Support dev accounts in production for demo/testing
       showDevHints.value = import.meta.env.DEV ||
         import.meta.env.VITE_SHOW_DEV_ACCOUNTS === 'true' ||
         window.location.hostname.includes('vercel.app') ||
         window.location.hostname.includes('demo') ||
         window.location.hostname.includes('test');
 
-      // 开发环境下显示性能分析
+      // Show performance analysis in dev
       if (import.meta.env.DEV) {
         setTimeout(() => {
           analyzeLoginPerformance();
@@ -490,7 +488,7 @@ onMounted(() => {
     }, 100);
   });
 
-  // 预加载错误组件（在空闲时间）
+  // Preload error component during idle time
   if ('requestIdleCallback' in window) {
     requestIdleCallback(() => {
       loadErrorComponent();
@@ -503,11 +501,11 @@ onMounted(() => {
 onUnmounted(() => {
   mounted.value = false;
 
-  // 🧹 清理键盘事件监听器
+  // Clean up keyboard event listener
   document.removeEventListener('keydown', handleKeyDown);
 });
 
-// 延迟加载 AuthError 组件
+// Lazy load AuthError component
 const loadErrorComponent = async () => {
   if (!ErrorComponent.value) {
     try {
@@ -521,103 +519,84 @@ const loadErrorComponent = async () => {
 </script>
 
 <style scoped>
-/* 🎯 Developer Accounts 浮动容器 - 绝对定位，不影响布局 */
+/* Developer Accounts floating container - absolute positioning */
 .dev-accounts-floating-container {
-  /* 绝对定位，脱离文档流 */
+  /* Absolute positioning */
   position: absolute;
   top: calc(100% - 5rem);
-  /* 向上移动更多，覆盖更多按钮区域 */
   left: 0;
   right: 0;
   z-index: 50;
-  /* 确保在其他元素之上 */
 
-  /* 不占用任何空间，不影响登录框位置 */
+  /* No layout impact */
   pointer-events: none;
-  /* 容器本身不响应点击 */
 }
 
-/* 浮动弹窗内容可以响应点击 */
+/* Floating panel content responds to clicks */
 .dev-accounts-floating-container .dev-accounts-dropdown {
   pointer-events: auto;
 }
 
-/* 人体工学关闭按钮 */
+/* Close button */
 .close-button {
-  /* 确保足够的点击区域 (44px是移动端推荐的最小触摸目标) */
+  /* Adequate click area for mobile */
   min-width: 36px;
   min-height: 36px;
 
-  /* 清晰的视觉反馈 */
   border: 1px solid transparent;
 
-  /* 平滑的交互动画 */
   transform: scale(1);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .close-button:hover {
-  /* 放大效果，增强可发现性 */
   transform: scale(1.05);
   border-color: #e5e7eb;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .close-button:active {
-  /* 按下反馈 */
   transform: scale(0.95);
   background-color: #f3f4f6;
 }
 
 .close-button:focus {
-  /* 可访问性焦点指示器 */
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
 }
 
 /* Developer accounts 下拉内容 */
 .dev-accounts-dropdown {
-  /* 硬件加速和优化 */
+  /* Hardware acceleration */
   transform: translateZ(0);
   will-change: transform, opacity;
 
-  /* 调整总高度，考虑人体工学头部 */
   height: 320px;
-  /* 增加高度以容纳更好的头部设计 */
   overflow: hidden;
 
-  /* 去掉顶部留白，头部自带合理间距 */
   padding-top: 0;
   margin-top: 0;
 
-  /* 增强的阴影效果，更明显的浮动感 */
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 
-  /* 统一的背景色 */
   background-color: #ffffff;
 
-  /* 添加边框增强视觉分离 */
   border: 1px solid #e5e7eb;
 
-  /* 稍微增加圆角 */
   border-radius: 10px;
 }
 
-/* 🎯 账户滚动容器样式 */
+/* Account scroll container */
 .accounts-scroll-container {
-  /* 调整高度以适应新的头部设计 */
   height: 260px;
   overflow-y: auto;
   overflow-x: hidden;
 
-  /* 更subtle的滚动条样式 */
   scrollbar-width: thin;
   scrollbar-color: rgba(107, 114, 128, 0.4) rgba(107, 114, 128, 0.1);
 
-  /* 减少内边距 */
   padding: 6px 12px;
 
-  /* 滚动行为 */
   scroll-behavior: smooth;
   scroll-snap-type: y mandatory;
 }
@@ -641,7 +620,7 @@ const loadErrorComponent = async () => {
   background: rgba(59, 130, 246, 0.8);
 }
 
-/* 账户卡片 - 优化用户体验，清晰布局 */
+/* Account cards */
 .account-card {
   min-height: 200px;
   max-height: 200px;
@@ -654,13 +633,10 @@ const loadErrorComponent = async () => {
   flex-direction: column;
   justify-content: space-between;
 
-  /* 滚动捕捉 */
   scroll-snap-align: start;
 
-  /* 防止内容溢出 */
   overflow: hidden;
 
-  /* 统一的阴影风格，与登录表单一致 */
   transition: all 200ms ease;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 }
@@ -671,7 +647,7 @@ const loadErrorComponent = async () => {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-/* 账户头部 - 平衡的间距 */
+/* Account header */
 .account-header {
   display: flex;
   justify-content: space-between;
@@ -698,9 +674,7 @@ const loadErrorComponent = async () => {
   font-weight: 700;
   font-size: 1.375rem;
   letter-spacing: 0.025em;
-  /* 添加微妙阴影增强立体感 */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  /* 平滑动画 */
   transition: all 0.2s ease;
 }
 
@@ -734,7 +708,7 @@ const loadErrorComponent = async () => {
   line-height: 1.4;
 }
 
-/* 账户标签 - 更小更轻 */
+/* Account badges */
 .account-badge {
   font-size: 0.5rem;
   font-weight: 500;
@@ -757,7 +731,7 @@ const loadErrorComponent = async () => {
   border: 1px solid #dbeafe;
 }
 
-/* 账户内容 - 清晰可读布局 */
+/* Account content */
 .account-content {
   flex: 1;
   font-size: 0.875rem;
@@ -776,7 +750,6 @@ const loadErrorComponent = async () => {
   color: #9ca3af;
   font-weight: 500;
   font-size: 0.8rem;
-  /* 稍微增大标签字体以提高可读性 */
   line-height: 1.3;
 }
 
@@ -786,7 +759,6 @@ const loadErrorComponent = async () => {
   cursor: pointer;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
   font-size: 0.9rem;
-  /* 增大值字体以提高可读性 */
   line-height: 1.4;
   padding: 8px 12px;
   border-radius: 6px;
@@ -801,7 +773,7 @@ const loadErrorComponent = async () => {
   color: #111827;
 }
 
-/* 人体工学填充按钮 */
+/* Fill button */
 .fill-button {
   width: 100%;
   padding: 14px 20px;
@@ -817,11 +789,8 @@ const loadErrorComponent = async () => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  /* 确保足够的触摸目标 */
   min-height: 44px;
-  /* 添加微妙阴影 */
   box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
-  /* 文字平滑渲染 */
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -843,38 +812,32 @@ const loadErrorComponent = async () => {
   outline-offset: 2px;
 }
 
-/* 最后一个账户卡片样式 */
+/* Last account card */
 .account-card:last-child {
   margin-bottom: 0;
 }
 
-/* 🎯 确保整体页面布局的稳定性 */
+/* Page layout stability */
 .min-h-screen {
-  /* 恢复完全居中布局 */
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
-  /* 均匀的上下padding */
 
-  /* 防止布局污染 */
   contain: layout;
 }
 
 .max-w-md {
-  /* 确保登录表单容器稳定 */
   contain: layout style;
 
-  /* 添加相对定位，为绝对定位的弹窗提供定位上下文 */
   position: relative;
   width: 100%;
 }
 
-/* 🎯 响应式优化 - 小屏幕适配 */
+/* Responsive optimization */
 @media (max-width: 640px) {
   .dev-accounts-dropdown {
     height: 392px;
-    /* 280px内容 + 112px padding */
   }
 
   .accounts-scroll-container {
@@ -896,41 +859,36 @@ const loadErrorComponent = async () => {
 
   .min-h-screen {
     padding: 1rem;
-    /* 小屏幕上使用固定padding */
   }
 
-  /* 🎯 高度受限时的优化 */
+  /* Height-constrained optimization */
   @media (max-height: 700px) {
     .dev-accounts-dropdown {
       height: 342px;
-      /* 230px内容 + 112px padding */
     }
 
     .min-h-screen {
       padding: 1rem;
-      /* 高度受限时保持简单的padding */
     }
 
-    /* 🎯 确保非常小的屏幕也能正常使用 */
+    /* Very small screen support */
     @media (max-height: 600px) {
       .dev-accounts-dropdown {
         height: 292px;
-        /* 180px内容 + 112px padding */
       }
 
       .min-h-screen {
         padding: 0.5rem;
-        /* 极小屏幕使用最小padding */
       }
 
-      /* 🎯 高对比度支持 */
+      /* High contrast support */
       @media (prefers-contrast: high) {
         .dev-accounts-dropdown {
           border: 2px solid #1e40af;
           box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
         }
 
-        /* 🎯 减少动画效果 */
+        /* Reduced motion */
         @media (prefers-reduced-motion: reduce) {
           .dev-accounts-dropdown {
             transition: none !important;
@@ -940,7 +898,7 @@ const loadErrorComponent = async () => {
             transition: none !important;
           }
 
-          /* 🎯 滚动条样式优化 */
+          /* Scrollbar optimization */
           .dev-accounts-dropdown::-webkit-scrollbar {
             width: 4px;
           }

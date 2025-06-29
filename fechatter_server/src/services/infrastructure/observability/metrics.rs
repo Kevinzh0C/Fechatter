@@ -29,7 +29,7 @@ pub async fn init_metrics(
     .install()
     .map_err(|e| AppError::Internal(format!("Failed to install Prometheus exporter: {}", e)))?;
 
-  tracing::info!("📊 Prometheus metrics server started on {}", bind_address);
+  tracing::info!("Prometheus metrics server started on {}", bind_address);
 
   Ok(MetricsGuard)
 }

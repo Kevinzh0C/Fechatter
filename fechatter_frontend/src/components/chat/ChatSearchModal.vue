@@ -85,10 +85,10 @@ const performSearch = async () => {
       chat_id: hit.chat_id || props.chatId
     }));
     
-    console.log(`✅ Backend search successful: ${results.value.length} results`);
+    console.log(`Backend search successful: ${results.value.length} results`);
     
   } catch (error) {
-    console.warn('❌ Backend search failed, trying local fallback:', error);
+    console.warn('ERROR: Backend search failed, trying local fallback:', error);
     
     // Fallback: Local search in current chat messages
     try {
@@ -139,16 +139,16 @@ const performSearch = async () => {
         chat_id: msg.chat_id || props.chatId
       }));
       
-      console.log(`✅ Local fallback search: ${results.value.length} results from ${localMessages.length} total messages`);
+      console.log(`Local fallback search: ${results.value.length} results from ${localMessages.length} total messages`);
       
       // If still no results, show helpful message
       if (results.value.length === 0 && localMessages.length === 0) {
-        console.log('💡 No local messages available for search');
+        console.log('No local messages available for search');
         // Don't set results to show "No messages found" instead of error
       }
       
     } catch (fallbackError) {
-      console.error('❌ Local fallback search also failed:', fallbackError);
+      console.error('ERROR: Local fallback search also failed:', fallbackError);
       results.value = [];
     }
   } finally {

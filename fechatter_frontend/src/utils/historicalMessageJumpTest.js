@@ -54,7 +54,7 @@ export class HistoricalMessageJumpTest {
    */
   async runTestScenario(scenario) {
     const testId = ++this.currentTestId
-    console.log(`🎯 [Test ${testId}] Running: ${scenario.name}`)
+    console.log(`[Test ${testId}] Running: ${scenario.name}`)
 
     const startTime = Date.now()
     let testResult = {
@@ -83,12 +83,12 @@ export class HistoricalMessageJumpTest {
 
     } catch (error) {
       testResult.error = error.message
-      console.error(`❌ [Test ${testId}] Failed:`, error)
+      console.error(`ERROR: [Test ${testId}] Failed:`, error)
     } finally {
       testResult.duration = Date.now() - startTime
       this.testResults.push(testResult)
 
-      console.log(`${testResult.success ? '✅' : '❌'} [Test ${testId}] ${scenario.name}: ${testResult.duration}ms`)
+      console.log(`${testResult.success ? '' : '❌'} [Test ${testId}] ${scenario.name}: ${testResult.duration}ms`)
     }
   }
 
@@ -129,7 +129,7 @@ export class HistoricalMessageJumpTest {
       if (loadedElement) {
         console.log('📦 [Navigation] Message successfully loaded into DOM')
       } else {
-        console.warn('⚠️ [Navigation] Message failed to load')
+        console.warn('WARNING: [Navigation] Message failed to load')
       }
     } else {
       verificationSteps.messageLoading = true // Already present
@@ -244,7 +244,7 @@ export class HistoricalMessageJumpTest {
       recommendations: this.generateRecommendations()
     }
 
-    console.log('📊 [HistoricalJumpTest] Test Results Summary:')
+    console.log('[HistoricalJumpTest] Test Results Summary:')
     console.log(`  Total Tests: ${totalTests}`)
     console.log(`  Successful: ${successfulTests}`)
     console.log(`  Failed: ${failedTests}`)
@@ -309,7 +309,7 @@ export class HistoricalMessageJumpTest {
    * Run a quick validation test
    */
   async quickValidation() {
-    console.log('⚡ [HistoricalJumpTest] Running quick validation...')
+    console.log('[HistoricalJumpTest] Running quick validation...')
 
     // Test with a known message if available
     const existingMessage = document.querySelector('[data-message-id]')
@@ -324,10 +324,10 @@ export class HistoricalMessageJumpTest {
         source: 'quick_test'
       })
 
-      console.log('⚡ Quick validation result:', result.success ? '✅ PASS' : '❌ FAIL')
+      console.log('Quick validation result:', result.success ? 'PASS' : 'ERROR: FAIL')
       return result
     } else {
-      console.warn('⚡ No messages available for quick validation')
+      console.warn('No messages available for quick validation')
       return { success: false, error: 'No messages in DOM' }
     }
   }

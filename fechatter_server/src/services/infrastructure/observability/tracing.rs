@@ -77,7 +77,7 @@ pub async fn init_tracing(
       service_version = %config.service_version,
       environment = %config.environment,
       log_level = %config.log_level,
-      "🔍 Tracing initialized - Debug logs should now be visible!"
+      "Tracing initialized - Debug logs should now be visible!"
   );
 
   Ok(TracingGuard {

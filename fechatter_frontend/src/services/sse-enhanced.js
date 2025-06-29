@@ -64,14 +64,14 @@ class EnhancedRealtimeCommunicationService {
     this.lastPingTime = null;
     this.latency = null;
 
-    // 🚀 Enhanced: 连接质量监控
+    // Enhanced: 连接质量监控
     this.connectionQuality = 'GOOD';
     this.latencyHistory = [];
     this.errorHistory = [];
     this.connectionStartTime = null;
     this.connectionAttempts = 0;
 
-    // 🚀 Enhanced: 智能重连配置
+    // Enhanced: 智能重连配置
     this.reconnectStrategies = RECONNECT_STRATEGIES;
     this.currentStrategy = null;
     this.lastErrorType = null;
@@ -88,7 +88,7 @@ class EnhancedRealtimeCommunicationService {
       qualityBasedRetries: true      // 基于连接质量的重试策略
     };
 
-    // 🚀 Enhanced: Pingora兼容性检测
+    // Enhanced: Pingora兼容性检测
     this.proxyType = 'unknown';
     this.sseEndpointFallbacks = [
       '/events',
@@ -98,22 +98,22 @@ class EnhancedRealtimeCommunicationService {
     ];
     this.fallbackIndex = 0;
 
-    // 🔧 网络状态检测
+    // 网络状态检测
     this.networkStatus = {
       isOnline: navigator.onLine,
       lastOnlineTime: Date.now(),
       offlineStartTime: null
     };
 
-    // 🔧 心跳机制 - 优化间隔
+    // 心跳机制 - 优化间隔
     this.heartbeat = {
       interval: null,
-      intervalMs: 30000, // ✅ 减少到30秒，匹配后端25秒keep-alive
+      intervalMs: 30000, // 减少到30秒，匹配后端25秒keep-alive
       missedBeats: 0,
-      maxMissedBeats: 3  // ✅ 增加到3次，提供更好的网络容错性（90秒总容忍时间）
+      maxMissedBeats: 3  // 增加到3次，提供更好的网络容错性（90秒总容忍时间）
     };
 
-    // 🔧 长期重连策略
+    // 长期重连策略
     this.longTermReconnect = {
       enabled: false,
       intervalMinutes: 10, // 增加到10分钟 (vs 原来的5分钟)
@@ -122,17 +122,17 @@ class EnhancedRealtimeCommunicationService {
       timeout: null
     };
 
-    // 🔧 活动时间跟踪
+    // 活动时间跟踪
     this.lastActivityTime = Date.now();
 
-    // 🔧 增强的错误处理器
+    // 增强的错误处理器
     this.errorHandler = createSSEErrorHandler({
       maxErrorsPerMinute: 1,      // 更严格：每分钟1个错误
       suppressionDurationMs: 300000, // 5分钟抑制期
       resetCounterMs: 900000      // 15分钟重置计数器
     });
 
-    // 🔧 绑定事件处理器方法
+    // 绑定事件处理器方法
     this.boundHandlers = {
       handleNetworkOnline: this.handleNetworkOnline.bind(this),
       handleNetworkOffline: this.handleNetworkOffline.bind(this),
@@ -142,7 +142,7 @@ class EnhancedRealtimeCommunicationService {
       handleBeforeUnload: this.handleBeforeUnload.bind(this)
     };
 
-    // 🔧 设置网络和页面状态监听器
+    // 设置网络和页面状态监听器
     if (typeof window !== 'undefined') {
       window.addEventListener('online', this.boundHandlers.handleNetworkOnline);
       window.addEventListener('offline', this.boundHandlers.handleNetworkOffline);
@@ -153,7 +153,7 @@ class EnhancedRealtimeCommunicationService {
     }
 
     /**
-     * 🚀 Enhanced: 智能错误分类
+     * Enhanced: 智能错误分类
      */
     classifyError(error, response = null) {
       // HTTP状态码检测
@@ -189,7 +189,7 @@ class EnhancedRealtimeCommunicationService {
                 }
 
                 /**
-                 * 🚀 Enhanced: 连接质量评估
+                 * Enhanced: 连接质量评估
                  */
                 assessConnectionQuality() {
                   if (this.latencyHistory.length < 3) return;
@@ -210,7 +210,7 @@ class EnhancedRealtimeCommunicationService {
                     connectionDuration / 60000; // 连接稳定性因子
 
                   if (import.meta.env.DEV) {
-                    console.log(`📊 [SSE] Quality assessment: latency=${avgLatency.toFixed(0)}ms, errors=${recentErrors.length}, stability=${connectionStability.toFixed(2)}`);
+                    console.log(`[SSE] Quality assessment: latency=${avgLatency.toFixed(0)}ms, errors=${recentErrors.length}, stability=${connectionStability.toFixed(2)}`);
                   }
 
                   if (avgLatency < 100 && errorRate < 0.1 && connectionStability > 0.8) {
@@ -224,11 +224,11 @@ class EnhancedRealtimeCommunicationService {
                   }
 
   /**
-   * 🚀 Enhanced: Pingora兼容性检测和端点选择
+   * Enhanced: Pingora兼容性检测和端点选择
    */
   async detectProxyAndSelectEndpoint() {
                     if (import.meta.env.DEV) {
-                      console.log('🔍 [SSE] Detecting proxy type and testing endpoints...');
+                      console.log('[SSE] Detecting proxy type and testing endpoints...');
                     }
 
                     for (let i = 0; i < this.sseEndpointFallbacks.length; i++) {
@@ -255,7 +255,7 @@ class EnhancedRealtimeCommunicationService {
                         if (server.includes('pingora') || via.includes('pingora')) {
                           this.proxyType = 'pingora';
                           if (import.meta.env.DEV) {
-                            console.log('🔍 [SSE] Detected Pingora proxy');
+                            console.log('[SSE] Detected Pingora proxy');
                           }
                         } else if (server.includes('nginx')) {
                           this.proxyType = 'nginx';
@@ -266,17 +266,17 @@ class EnhancedRealtimeCommunicationService {
                         // 检查端点可用性
                         if (response.ok || response.status === 401) {
                           if (import.meta.env.DEV) {
-                            console.log(`✅ [SSE] Found working endpoint: ${endpoint} (${latency}ms)`);
+                            console.log(`[SSE] Found working endpoint: ${endpoint} (${latency}ms)`);
                             this.fallbackIndex = i;
                             return endpoint;
                           }
 
                           if (import.meta.env.DEV) {
-                            console.log(`⚠️ [SSE] Endpoint ${endpoint} returned ${response.status}`);
+                            console.log(`WARNING: [SSE] Endpoint ${endpoint} returned ${response.status}`);
                           }
                         } catch (error) {
                           if (import.meta.env.DEV) {
-                            console.log(`❌ [SSE] Endpoint ${endpoint} failed:`, error.message);
+                            console.log(`ERROR: [SSE] Endpoint ${endpoint} failed:`, error.message);
                             continue;
                           }
 
@@ -287,7 +287,7 @@ class EnhancedRealtimeCommunicationService {
                           }
 
                           /**
-                           * 🚀 Enhanced: WebSocket降级方案
+                           * Enhanced: WebSocket降级方案
                            */
                           enableWebSocketFallback() {
                             if (import.meta.env.DEV) {
@@ -314,26 +314,26 @@ class EnhancedRealtimeCommunicationService {
                               this.retryControl.lastAttemptTime = Date.now();
 
                               try {
-                                // 🔧 首先确保配置已加载
+                                // 首先确保配置已加载
                                 const { getApiConfig, getConfig, initializeConfig } = await import('@/utils/configLoader');
 
                                 let config = getConfig();
                                 if (!config) {
                                   if (import.meta.env.DEV) {
-                                    console.log('🔧 SSE: Configuration not loaded yet, initializing...');
+                                    console.log('SSE: Configuration not loaded yet, initializing...');
                                     await initializeConfig();
                                     config = getConfig();
                                   }
 
                                   const apiConfig = getApiConfig();
 
-                                  // 🔧 检查是否禁用SSE连接（默认在开发环境下禁用）
+                                  // 检查是否禁用SSE连接（默认在开发环境下禁用）
                                   const shouldDisableSSE = apiConfig.disable_sse ||
                                     (config?.app?.environment === 'development' && apiConfig.disable_sse !== false);
 
                                   if (shouldDisableSSE) {
                                     if (import.meta.env.DEV) {
-                                      console.log('🔧 [SSE] SSE连接已在开发模式下禁用，使用模拟模式');
+                                      console.log('[SSE] SSE连接已在开发模式下禁用，使用模拟模式');
                                       this.isConnected = true;
                                       this.connectionState = 'connected';
                                       this.emit('connected');
@@ -347,7 +347,7 @@ class EnhancedRealtimeCommunicationService {
                                     }
                                   } catch (configError) {
                                     if (import.meta.env.DEV) {
-                                      console.error('🔧 [SSE] 配置加载失败，默认禁用SSE:', configError);
+                                      console.error('[SSE] 配置加载失败，默认禁用SSE:', configError);
                                       this.isConnected = true;
                                       this.connectionState = 'connected';
                                       this.emit('connected');
@@ -366,14 +366,14 @@ class EnhancedRealtimeCommunicationService {
                                       let config = getConfig();
                                       if (!config) {
                                         if (import.meta.env.DEV) {
-                                          console.log('🔧 SSE: Configuration not loaded yet, initializing...');
+                                          console.log('SSE: Configuration not loaded yet, initializing...');
                                           await initializeConfig();
                                           config = getConfig();
                                         }
 
                                         const apiConfig = getApiConfig();
 
-                                        // 🚀 Enhanced: 智能端点选择
+                                        // Enhanced: 智能端点选择
                                         let sseUrl;
                                         if (this.fallbackIndex === 0) {
                                           // 首次连接或检测端点
@@ -498,7 +498,7 @@ class EnhancedRealtimeCommunicationService {
                                             // 重置重试控制
                                             this.retryControl.consecutiveFailures = 0;
                                             if (import.meta.env.DEV) {
-                                              console.log(`✅ [SSE Enhanced] Connected successfully (Total attempts: ${this.retryControl.totalAttempts})`);
+                                              console.log(`[SSE Enhanced] Connected successfully (Total attempts: ${this.retryControl.totalAttempts})`);
                                             }
 
                                             // 记录连接成功的延迟
@@ -506,7 +506,7 @@ class EnhancedRealtimeCommunicationService {
                                               const connectionLatency = Date.now() - this.connectionStartTime;
                                               this.latencyHistory.push(connectionLatency);
                                               if (import.meta.env.DEV) {
-                                                console.log(`✅ [SSE] Connected successfully in ${connectionLatency}ms`);
+                                                console.log(`[SSE] Connected successfully in ${connectionLatency}ms`);
                                               }
 
                                               // 重置长期重连策略
@@ -557,15 +557,15 @@ class EnhancedRealtimeCommunicationService {
                                                   sender_fullname: message.sender_fullname,
                                                   sender: message.sender,
                                                   realtime: true,
-                                                  status: 'delivered' // ✅ SSE messages are delivered by definition
+                                                  status: 'delivered' // SSE messages are delivered by definition
                                                 };
 
-                                                // 🔧 CRITICAL FIX: Check if this is a delivery confirmation for our own message
+                                                // CRITICAL FIX: Check if this is a delivery confirmation for our own message
                                                 const authStore = useAuthStore();
                                                 const isOwnMessage = formattedMessage.sender_id === authStore.user?.id;
 
                                                 if (isOwnMessage) {
-                                                  // 🚀 Try to update existing message status first (delivery confirmation)
+                                                  // Try to update existing message status first (delivery confirmation)
                                                   const updated = chatStore.updateRealtimeMessage(formattedMessage.id, {
                                                     status: 'delivered',
                                                     delivered_at: formattedMessage.created_at,
@@ -574,7 +574,7 @@ class EnhancedRealtimeCommunicationService {
 
                                                   if (updated) {
                                                     if (import.meta.env.DEV) {
-                                                      console.log(`✅ [SSE] Own message ${formattedMessage.id} marked as delivered via SSE`);
+                                                      console.log(`[SSE] Own message ${formattedMessage.id} marked as delivered via SSE`);
                                                     }
                                                     // Don't add as new message if we successfully updated existing one
                                                     this.emit('message_delivered', formattedMessage);
@@ -644,7 +644,7 @@ class EnhancedRealtimeCommunicationService {
                                                   }
 
   /**
-   * 🚀 Enhanced Error handler with intelligent classification
+   * Enhanced Error handler with intelligent classification
    */
   async handleError(error) {
                                                     // 更新重试控制
@@ -725,7 +725,7 @@ class EnhancedRealtimeCommunicationService {
                                                       }
 
                                                       /**
-                                                       * 🚀 Enhanced: 智能重连调度
+                                                       * Enhanced: 智能重连调度
                                                        */
                                                       scheduleIntelligentReconnect(errorType, error) {
                                                         // 检查是否已永久失败
@@ -892,12 +892,12 @@ class EnhancedRealtimeCommunicationService {
                                                                   });
 
                                                                   if (import.meta.env.DEV) {
-                                                                    console.log(`✅ Presence updated to: ${status}`);
+                                                                    console.log(`Presence updated to: ${status}`);
                                                                   }
                                                                 } catch (error) {
                                                                   // Don't use errorHandler here to avoid circular dependency
                                                                   if (import.meta.env.DEV) {
-                                                                    console.warn('🔧 Failed to send presence update:', error.message);
+                                                                    console.warn('Failed to send presence update:', error.message);
                                                                   }
 
                                                                   // For development/testing, emit a fake presence event
@@ -1171,7 +1171,7 @@ class EnhancedRealtimeCommunicationService {
                                                                                                           }
 
                                                                                                           /**
-                                                                                                           * 🚀 Enhanced: Get connection state with quality metrics
+                                                                                                           * Enhanced: Get connection state with quality metrics
                                                                                                            */
                                                                                                           getConnectionState() {
                                                                                                             return {
@@ -1207,7 +1207,7 @@ class EnhancedRealtimeCommunicationService {
                                                                                                           }
 
                                                                                                           /**
-                                                                                                           * 🚀 Enhanced: Debug information
+                                                                                                           * Enhanced: Debug information
                                                                                                            */
                                                                                                           getDebugInfo() {
                                                                                                             return {
@@ -1221,18 +1221,18 @@ class EnhancedRealtimeCommunicationService {
                                                                                                           }
 
                                                                                                           /**
-                                                                                                           * 🔧 模拟心跳 - 用于开发模式下SSE禁用时
+                                                                                                           * 模拟心跳 - 用于开发模式下SSE禁用时
                                                                                                            */
                                                                                                           startMockHeartbeat() {
                                                                                                             if (import.meta.env.DEV) {
-                                                                                                              console.log('🔧 [SSE] 启动模拟心跳 (开发模式)');
+                                                                                                              console.log('[SSE] 启动模拟心跳 (开发模式)');
                                                                                                             }
 
                                                                                                             // 模拟定期更新活动时间
                                                                                                             setInterval(() => {
                                                                                                               this.lastActivityTime = Date.now();
                                                                                                               if (import.meta.env.DEV) {
-                                                                                                                console.log('💓 [SSE] 模拟心跳 - 连接正常');
+                                                                                                                console.log('HEARTBEAT: [SSE] 模拟心跳 - 连接正常');
                                                                                                               }
                                                                                                             }, 10000); // 每10秒更新一次
 

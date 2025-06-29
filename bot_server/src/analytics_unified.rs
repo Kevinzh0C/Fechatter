@@ -108,7 +108,7 @@ impl UnifiedBotAnalyticsPublisher {
         let mut buf = Vec::new();
         event.encode(&mut buf)?;
 
-        debug!("📊 Publishing bot analytics event to NATS: {}", subject);
+        debug!("Publishing bot analytics event to NATS: {}", subject);
 
         self.client
             .publish(subject.to_string(), buf.into())

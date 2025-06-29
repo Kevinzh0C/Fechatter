@@ -13,7 +13,7 @@ class SearchFixFinal {
    */
   async runFix() {
     if (import.meta.env.DEV) {
-      console.log('🔍 [SEARCH FIX] Starting comprehensive search fix...');
+      console.log('[SEARCH FIX] Starting comprehensive search fix...');
     if (import.meta.env.DEV) {
       console.log('=================================================');
     }
@@ -29,12 +29,12 @@ class SearchFixFinal {
       await this.applyPermanentFix();
 
       if (import.meta.env.DEV) {
-        console.log('\n✅ [SEARCH FIX] Complete!');
+        console.log('\n[SEARCH FIX] Complete!');
       }
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ [SEARCH FIX] Failed:', error);
+        console.error('ERROR: [SEARCH FIX] Failed:', error);
       }
 
   /**
@@ -73,7 +73,7 @@ class SearchFixFinal {
           });
 
           if (import.meta.env.DEV) {
-            console.log('✅ Token refreshed and saved to tokenManager');
+            console.log('Token refreshed and saved to tokenManager');
           }
 
         // Also save to localStorage as backup
@@ -86,7 +86,7 @@ class SearchFixFinal {
           authStore.token = token;
           authStore.user = data.data.user;
           if (import.meta.env.DEV) {
-            console.log('✅ Auth store updated');
+            console.log('Auth store updated');
           }
 
         return token;
@@ -96,7 +96,7 @@ class SearchFixFinal {
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Auth refresh failed:', error);
+        console.error('ERROR: Auth refresh failed:', error);
       throw error;
     }
 
@@ -127,7 +127,7 @@ class SearchFixFinal {
 
       const data = await response.json();
       if (import.meta.env.DEV) {
-        console.log('📊 Direct API response:', data);
+        console.log('Direct API response:', data);
       }
 
       // Test through SearchService
@@ -139,14 +139,14 @@ class SearchFixFinal {
         });
 
         if (import.meta.env.DEV) {
-          console.log('📊 SearchService response:', serviceResponse);
+          console.log('SearchService response:', serviceResponse);
         }
 
       return true;
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Search test failed:', error);
+        console.error('ERROR: Search test failed:', error);
       return false;
     }
 
@@ -167,14 +167,14 @@ class SearchFixFinal {
       if (updateApiInstance) {
         updateApiInstance();
         if (import.meta.env.DEV) {
-          console.log('✅ API instance updated');
+          console.log('API instance updated');
         }
 
     // Fix 2: Clear search state manager cache
     if (window.searchStateManager) {
       window.searchStateManager.reset();
       if (import.meta.env.DEV) {
-        console.log('✅ Search state manager reset');
+        console.log('Search state manager reset');
       }
 
     // Fix 3: Reload chat data if in chat view
@@ -186,11 +186,11 @@ class SearchFixFinal {
         if (chatStore && chatStore.fetchChatDataParallel) {
           await chatStore.fetchChatDataParallel(parseInt(chatId));
           if (import.meta.env.DEV) {
-            console.log('✅ Chat data reloaded');
+            console.log('Chat data reloaded');
           }
 
     if (import.meta.env.DEV) {
-      console.log('✅ All fixes applied');
+      console.log('All fixes applied');
     }
 
   /**
@@ -198,7 +198,7 @@ class SearchFixFinal {
    */
   async quickFix() {
     if (import.meta.env.DEV) {
-      console.log('⚡ [QUICK FIX] Running quick search fix...');
+      console.log('[QUICK FIX] Running quick search fix...');
     }
 
     try {
@@ -211,21 +211,21 @@ class SearchFixFinal {
       await this.refreshAuth();
 
       if (import.meta.env.DEV) {
-        console.log('✅ Quick fix complete! Try searching again.');
+        console.log('Quick fix complete! Try searching again.');
       }
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Quick fix failed:', error);
+        console.error('ERROR: Quick fix failed:', error);
       }
 
 // Create global instance
 window.searchFixFinal = new SearchFixFinal();
 
 if (import.meta.env.DEV) {
-  console.log('🔍 Search Fix Final loaded');
+  console.log('Search Fix Final loaded');
 if (import.meta.env.DEV) {
-  console.log('💡 Commands:');
+  console.log('Commands:');
 if (import.meta.env.DEV) {
   console.log('   window.searchFixFinal.runFix() - Run complete fix');
 if (import.meta.env.DEV) {

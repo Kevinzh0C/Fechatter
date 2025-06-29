@@ -1,6 +1,6 @@
 <template>
   <div ref="scrollContainer" class="simple-message-list" @scroll="handleScroll">
-    <!-- 🔧 SIMPLIFIED: Loading indicator without complex transitions -->
+    <!-- SIMPLIFIED: Loading indicator without complex transitions -->
     <div v-if="isLoading" class="loading-indicator">
       <div class="spinner"></div>
       <span>Loading messages...</span>
@@ -13,7 +13,7 @@
       </div>
     </div>
 
-    <!-- 🔧 FIXED: Simple scroll to bottom button -->
+    <!-- FIXED: Simple scroll to bottom button -->
     <Transition name="fade">
       <button v-if="showScrollButton" @click="scrollToBottom" class="scroll-to-bottom-btn">
         ↓
@@ -60,7 +60,7 @@ const showScrollButton = ref(false);
 const isAutoScrollEnabled = ref(true);
 const lastScrollTop = ref(0);
 
-// 🔧 FIX: Debounce mechanism to prevent excessive calls
+// FIX: Debounce mechanism to prevent excessive calls
 const scrollDebounceTimer = ref(null);
 const loadMoreDebounceTimer = ref(null);
 const scrollButtonDebounceTimer = ref(null);
@@ -68,7 +68,7 @@ const scrollButtonDebounceTimer = ref(null);
 // Computed
 const currentUserId = computed(() => authStore.user?.id);
 
-// 🔧 FIXED: Simplified scroll handler with debouncing
+// FIXED: Simplified scroll handler with debouncing
 const handleScroll = () => {
   if (!scrollContainer.value) return;
 
@@ -84,7 +84,7 @@ const handleScroll = () => {
 
     const { scrollTop, scrollHeight, clientHeight } = container;
 
-    // 🔧 Check if user scrolled up (show scroll button)
+    // Check if user scrolled up (show scroll button)
     if (scrollButtonDebounceTimer.value) {
       clearTimeout(scrollButtonDebounceTimer.value);
     }
@@ -94,7 +94,7 @@ const handleScroll = () => {
       showScrollButton.value = !isAtBottom && props.messages.length > 5;
     }, 100);
 
-    // 🔧 Load more messages when scrolled to top
+    // Load more messages when scrolled to top
     if (scrollTop < 100 && props.hasMoreMessages && !isLoading.value) {
       handleLoadMore();
     }
@@ -103,7 +103,7 @@ const handleScroll = () => {
   }, 50); // 50ms debounce
 };
 
-// 🔧 FIXED: Promise-based load more (no event listening)
+// FIXED: Promise-based load more (no event listening)
 const handleLoadMore = () => {
   if (isLoading.value || !props.hasMoreMessages) return;
 
@@ -123,7 +123,7 @@ const handleLoadMore = () => {
     // Emit load more event and handle Promise completion
     const loadPromise = emit('load-more');
 
-    // 🔧 FIXED: Handle Promise completion without events
+    // FIXED: Handle Promise completion without events
     if (loadPromise && typeof loadPromise.then === 'function') {
       loadPromise
         .then(() => {
@@ -151,7 +151,7 @@ const handleLoadMore = () => {
   }, 300); // 300ms debounce for load more
 };
 
-// 🔧 Simple scroll to bottom
+// Simple scroll to bottom
 const scrollToBottom = (smooth = true) => {
   if (!scrollContainer.value) return;
 
@@ -165,7 +165,7 @@ const scrollToBottom = (smooth = true) => {
   showScrollButton.value = false;
 };
 
-// 🔧 Watch for new messages and auto-scroll if at bottom
+// Watch for new messages and auto-scroll if at bottom
 watch(() => props.messages?.length, (newLength, oldLength) => {
   if (!newLength || newLength <= (oldLength || 0)) return;
 
@@ -183,7 +183,7 @@ watch(() => props.messages?.length, (newLength, oldLength) => {
   });
 });
 
-// 🔧 Watch chat changes and reset state
+// Watch chat changes and reset state
 watch(() => props.chatId, (newChatId, oldChatId) => {
   if (newChatId !== oldChatId) {
     // Reset state for new chat
@@ -206,7 +206,7 @@ watch(() => props.chatId, (newChatId, oldChatId) => {
   }
 });
 
-// 🔧 Component lifecycle
+// Component lifecycle
 onMounted(() => {
   // Initial scroll to bottom if messages exist
   if (props.messages && props.messages.length > 0) {
@@ -217,7 +217,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  // 🔧 CRITICAL: Clear all timers to prevent memory leaks
+  // CRITICAL: Clear all timers to prevent memory leaks
   [scrollDebounceTimer, loadMoreDebounceTimer, scrollButtonDebounceTimer].forEach(timer => {
     if (timer.value) {
       clearTimeout(timer.value);

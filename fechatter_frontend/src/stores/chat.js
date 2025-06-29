@@ -1,5 +1,5 @@
 /**
- * 🎯 Refactored Chat Store - Using Unified Message Service
+ * Refactored Chat Store - Using Unified Message Service
  * 
  * Simplified chat store that delegates message management to UnifiedMessageService
  * Provides clean interface for chat management with complete closed-loop message logic
@@ -13,7 +13,7 @@ import { useUserStore } from '@/stores/user';
 import { errorHandler } from '@/utils/errorHandler';
 import { unifiedMessageService, MessageState } from '@/services/messageSystem/UnifiedMessageService.js';
 import messageConfirmationService from '@/services/messageConfirmationService';
-// 🚀 CRITICAL FIX: Import SSE service for real-time message handling
+// CRITICAL FIX: Import SSE service for real-time message handling
 import minimalSSE from '@/services/sse-minimal';
 
 export const useChatStore = defineStore('chat', {
@@ -26,7 +26,7 @@ export const useChatStore = defineStore('chat', {
 
     // UI state
     isInitialized: false,
-    _forceUpdate: 0, // 🚀 Force Vue reactivity trigger for message updates
+    _forceUpdate: 0, // Force Vue reactivity trigger for message updates
 
     // Cache for chat metadata
     chatMembers: {},
@@ -57,7 +57,7 @@ export const useChatStore = defineStore('chat', {
     // Get messages for current chat using unified service
     messages: (state) => {
       if (!state.currentChatId) return [];
-      // 🚀 Include _forceUpdate in dependency to trigger reactivity
+      // Include _forceUpdate in dependency to trigger reactivity
       state._forceUpdate; // Touch the reactive property
       return unifiedMessageService.getMessagesForChat(state.currentChatId);
     },
@@ -86,7 +86,7 @@ export const useChatStore = defineStore('chat', {
     hasMoreMessages: (state) => {
       if (!state.currentChatId) return false;
 
-      // 🔧 CRITICAL FIX: Use UnifiedMessageService's hasMoreMessages method
+      // CRITICAL FIX: Use UnifiedMessageService's hasMoreMessages method
       try {
         return unifiedMessageService.hasMoreMessages(state.currentChatId);
       } catch (error) {
@@ -112,7 +112,7 @@ export const useChatStore = defineStore('chat', {
 
       try {
         if (import.meta.env.DEV) {
-          console.log('🎯 Initializing Chat Store (Refactored)...');
+          console.log('Initializing Chat Store (Refactored)...');
         }
 
         // Wait for unified message service to initialize
@@ -131,7 +131,7 @@ export const useChatStore = defineStore('chat', {
           });
         }
 
-        // 🚀 CRITICAL FIX: Setup SSE message listeners for real-time updates
+        // CRITICAL FIX: Setup SSE message listeners for real-time updates
         this.setupSSEMessageListeners();
 
         // Fetch initial chat list
@@ -139,7 +139,7 @@ export const useChatStore = defineStore('chat', {
 
         this.isInitialized = true;
         if (import.meta.env.DEV) {
-          console.log('✅ Chat Store (Refactored) initialized with SSE listeners');
+          console.log('Chat Store (Refactored) initialized with SSE listeners');
         }
 
       } catch (error) {
@@ -151,7 +151,7 @@ export const useChatStore = defineStore('chat', {
     },
 
     /**
-     * 🚀 NEW: Safe content extraction to prevent [object Object] display issues
+     * NEW: Safe content extraction to prevent [object Object] display issues
      */
     extractSafeContent(rawContent) {
       if (!rawContent) return '';
@@ -198,61 +198,61 @@ export const useChatStore = defineStore('chat', {
     },
 
     /**
-     * 🚀 CRITICAL FIX: Enhanced SSE message listeners with auto-reregistration
+     * CRITICAL FIX: Enhanced SSE message listeners with auto-reregistration
      */
     setupSSEMessageListeners() {
       if (import.meta.env.DEV) {
         console.log('🔗 Setting up SSE message listeners...');
       }
 
-      // 🚀 CRITICAL FIX: Create registrator function for auto-reregistration
+      // CRITICAL FIX: Create registrator function for auto-reregistration
       const registerListeners = () => {
         if (import.meta.env.DEV) {
-          console.log('📡 [SSE] Registering message listeners...');
+          console.log('SUBSCRIPTION: [SSE] Registering message listeners...');
         }
 
         // Listen for new messages via SSE
         minimalSSE.on('message', (data) => {
           try {
             if (import.meta.env.DEV) {
-              console.log('📨 [Real SSE] Raw event received:', data);
+              console.log('EVENT: [Real SSE] Raw event received:', data);
             }
 
             // Check if this is a new message event
             if (data.type === 'new_message' || data.type === 'NewMessage') {
               if (import.meta.env.DEV) {
-                console.log('📨 [Real SSE] New message event:', data);
+                console.log('EVENT: [Real SSE] New message event:', data);
               }
 
               // Convert SSE message to our message format with enhanced content safety
               const formattedMessage = {
-                id: parseInt(data.id),                              // ✅ 后端发送 id
-                chat_id: parseInt(data.chat_id),                   // ✅ 后端发送 chat_id  
-                sender_id: data.sender_id,                         // ✅ 后端发送 sender_id
-                content: this.extractSafeContent(data.content || ''), // ✅ 后端发送 content
-                files: data.files || [],                           // ✅ 后端发送 files (可能为空)
-                created_at: data.created_at || new Date().toISOString(), // ✅ 后端发送 created_at
-                sender_name: 'User',                               // 🔧 暂时使用默认值，后端Message没有sender_name
-                sender: {                                          // 🔧 构造sender对象，后端Message没有sender
+                id: parseInt(data.id),                              // 后端发送 id
+                chat_id: parseInt(data.chat_id),                   // 后端发送 chat_id  
+                sender_id: data.sender_id,                         // 后端发送 sender_id
+                content: this.extractSafeContent(data.content || ''), // 后端发送 content
+                files: data.files || [],                           // 后端发送 files (可能为空)
+                created_at: data.created_at || new Date().toISOString(), // 后端发送 created_at
+                sender_name: 'User',                               // 暂时使用默认值，后端Message没有sender_name
+                sender: {                                          // 构造sender对象，后端Message没有sender
                   id: data.sender_id,
                   fullname: 'User',                                // 暂时使用默认值
                   email: '',                                       // 暂时为空
                   avatar_url: null                                 // 暂时为空
                 },
-                status: 'delivered',                               // ✅ SSE事件代表已送达
-                mentions: [],                                      // 🔧 后端Message没有mentions
-                reply_to: null,                                    // 🔧 后端Message没有reply_to
-                isOptimistic: false,                               // ✅ 真实SSE消息
-                confirmed_via_sse: true,                           // ✅ 通过SSE确认
-                idempotency_key: data.idempotency_key              // ✅ 后端发送 idempotency_key
+                status: 'delivered',                               // SSE事件代表已送达
+                mentions: [],                                      // 后端Message没有mentions
+                reply_to: null,                                    // 后端Message没有reply_to
+                isOptimistic: false,                               // 真实SSE消息
+                confirmed_via_sse: true,                           // 通过SSE确认
+                idempotency_key: data.idempotency_key              // 后端发送 idempotency_key
               };
 
-              // 🚀 CRITICAL FIX: Check if this is our own message for delivery confirmation
+              // CRITICAL FIX: Check if this is our own message for delivery confirmation
               const authStore = useAuthStore();
               const isOwnMessage = formattedMessage.sender_id === authStore.user?.id;
 
               if (import.meta.env.DEV) {
-                console.log(`🔍 [Real SSE] Message analysis - ID: ${formattedMessage.id}, Sender: ${formattedMessage.sender_id}, Current User: ${authStore.user?.id}, IsOwnMessage: ${isOwnMessage}`);
+                console.log(`[Real SSE] Message analysis - ID: ${formattedMessage.id}, Sender: ${formattedMessage.sender_id}, Current User: ${authStore.user?.id}, IsOwnMessage: ${isOwnMessage}`);
               }
 
               if (isOwnMessage) {
@@ -265,7 +265,7 @@ export const useChatStore = defineStore('chat', {
                 });
 
                 if (import.meta.env.DEV) {
-                  console.log(`✅ [Real SSE] Own message ${formattedMessage.id} marked as delivered via REAL SSE, updateResult: ${updated}`);
+                  console.log(`[Real SSE] Own message ${formattedMessage.id} marked as delivered via REAL SSE, updateResult: ${updated}`);
                 }
 
                 // If ID matching failed, try content matching as fallback
@@ -282,7 +282,7 @@ export const useChatStore = defineStore('chat', {
                 // Someone else's message - add to real-time messages
                 this.addRealtimeMessage(formattedMessage);
                 if (import.meta.env.DEV) {
-                  console.log(`📨 [Real SSE] Added someone else's message: ${formattedMessage.id}`);
+                  console.log(`EVENT: [Real SSE] Added someone else's message: ${formattedMessage.id}`);
                 }
               }
             }
@@ -303,31 +303,31 @@ export const useChatStore = defineStore('chat', {
             else {
               if (import.meta.env.DEV) {
                 console.log(`❓ [Real SSE] Unknown event type: ${data.type}`, data);
-                console.log(`💡 [Real SSE] Available event types: NewMessage, TypingStatus, UserPresence`);
-                console.log(`💡 [Real SSE] Raw event data:`, JSON.stringify(data, null, 2));
+                console.log(`[Real SSE] Available event types: NewMessage, TypingStatus, UserPresence`);
+                console.log(`[Real SSE] Raw event data:`, JSON.stringify(data, null, 2));
               }
             }
           } catch (error) {
             if (import.meta.env.DEV) {
-              console.error('❌ [Real SSE] Error processing message:', error, data);
+              console.error('ERROR: [Real SSE] Error processing message:', error, data);
             }
           }
         });
 
         if (import.meta.env.DEV) {
           const totalListeners = Array.from(minimalSSE.listeners.values()).reduce((sum, arr) => sum + arr.length, 0);
-          console.log(`✅ [Real SSE] Message listeners registered. Total SSE listeners: ${totalListeners}`);
+          console.log(`[Real SSE] Message listeners registered. Total SSE listeners: ${totalListeners}`);
         }
       };
 
-      // 🚀 CRITICAL FIX: Register this setup function for auto-reregistration
+      // CRITICAL FIX: Register this setup function for auto-reregistration
       minimalSSE.addListenerRegistrator(registerListeners);
 
       // Initial registration
       registerListeners();
 
       if (import.meta.env.DEV) {
-        console.log('✅ SSE message listeners configured with auto-reregistration');
+        console.log('SSE message listeners configured with auto-reregistration');
       }
     },
 
@@ -381,14 +381,14 @@ export const useChatStore = defineStore('chat', {
     async setCurrentChat(chatId) {
       if (this.currentChatId === chatId) {
         if (import.meta.env.DEV) {
-          console.log(`🎯 Already in chat ${chatId}, but resetting hasMoreMessages state for consistency`);
+          console.log(`Already in chat ${chatId}, but resetting hasMoreMessages state for consistency`);
         }
 
-        // 🔧 CRITICAL FIX: Even for same chat, reset hasMoreMessages for load more functionality
+        // CRITICAL FIX: Even for same chat, reset hasMoreMessages for load more functionality
         try {
           unifiedMessageService.resetHasMoreMessages(parseInt(chatId));
           if (import.meta.env.DEV) {
-            console.log(`✅ Reset hasMoreMessages state for chat ${chatId}`);
+            console.log(`Reset hasMoreMessages state for chat ${chatId}`);
           }
         } catch (error) {
           if (import.meta.env.DEV) {
@@ -399,13 +399,13 @@ export const useChatStore = defineStore('chat', {
       }
 
       if (import.meta.env.DEV) {
-        console.log(`🎯 Switching to chat: ${chatId}`);
+        console.log(`Switching to chat: ${chatId}`);
       }
 
       // Set current chat
       this.currentChatId = parseInt(chatId);
 
-      // 🔧 CRITICAL FIX: Reset hasMoreMessages state when switching chats
+      // CRITICAL FIX: Reset hasMoreMessages state when switching chats
       // This ensures "load more messages" works consistently every time we enter a channel
       try {
         unifiedMessageService.resetHasMoreMessages(parseInt(chatId));
@@ -446,7 +446,7 @@ export const useChatStore = defineStore('chat', {
           console.log(`📤 Sending message to chat ${this.currentChatId}:`, content);
         }
 
-        // 🔧 CRITICAL FIX: Generate proper UUID for idempotency
+        // CRITICAL FIX: Generate proper UUID for idempotency
         const generateUUID = () => {
           if (typeof crypto !== 'undefined' && crypto.randomUUID) {
             return crypto.randomUUID();
@@ -462,7 +462,7 @@ export const useChatStore = defineStore('chat', {
         const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const idempotencyKey = options.idempotency_key || generateUUID();
 
-        // 🔧 CRITICAL FIX: Get real user info from authStore instead of hardcoded 'You'
+        // CRITICAL FIX: Get real user info from authStore instead of hardcoded 'You'
         const authStore = useAuthStore();
         const currentUser = authStore.user;
         const currentUserInfo = {
@@ -478,12 +478,12 @@ export const useChatStore = defineStore('chat', {
           temp_id: tempId,
           content: content.trim(),
           sender_id: currentUserInfo.id,
-          sender_name: currentUserInfo.fullname, // ✅ Use real fullname
+          sender_name: currentUserInfo.fullname, // Use real fullname
           sender: {
             id: currentUserInfo.id,
-            fullname: currentUserInfo.fullname, // ✅ Use real fullname
-            email: currentUserInfo.email, // ✅ Use real email
-            avatar_url: currentUserInfo.avatar_url // ✅ Use real avatar
+            fullname: currentUserInfo.fullname, // Use real fullname
+            email: currentUserInfo.email, // Use real email
+            avatar_url: currentUserInfo.avatar_url // Use real avatar
           },
           created_at: new Date().toISOString(),
           chat_id: this.currentChatId,
@@ -492,20 +492,20 @@ export const useChatStore = defineStore('chat', {
           mentions: options.mentions || [],
           reply_to: options.replyTo || null,
           isOptimistic: true,
-          // 🚀 NEW: Add timeout tracking for SSE confirmation
+          // NEW: Add timeout tracking for SSE confirmation
           sentAt: Date.now(),
           sseTimeout: null,
           retryAttempts: 0,
           maxRetryAttempts: 3
         };
 
-        // 🔧 IMMEDIATE UI UPDATE: Add to UnifiedMessageService to show instantly
+        // IMMEDIATE UI UPDATE: Add to UnifiedMessageService to show instantly
         let currentMessages = unifiedMessageService.getMessagesForChat(this.currentChatId) || [];
         currentMessages.push(optimisticMessage);
         unifiedMessageService.messagesByChat.set(this.currentChatId, currentMessages);
 
         if (import.meta.env.DEV) {
-          console.log('✅ Optimistic message added to UI:', optimisticMessage);
+          console.log('Optimistic message added to UI:', optimisticMessage);
         }
 
         // Send to backend with proper UUID
@@ -521,7 +521,7 @@ export const useChatStore = defineStore('chat', {
         const sentMessage = response.data?.data || response.data;
 
         if (sentMessage) {
-          // 🔧 REPLACE optimistic with real message
+          // REPLACE optimistic with real message
           currentMessages = unifiedMessageService.getMessagesForChat(this.currentChatId) || [];
           const optimisticIndex = currentMessages.findIndex(m => m.temp_id === tempId);
 
@@ -531,16 +531,16 @@ export const useChatStore = defineStore('chat', {
               id: sentMessage.id,
               content: this.extractSafeContent(sentMessage.content),
               sender_id: sentMessage.sender_id,
-              sender_name: sentMessage.sender?.fullname || currentUserInfo.fullname, // ✅ Use real user info as fallback
+              sender_name: sentMessage.sender?.fullname || currentUserInfo.fullname, // Use real user info as fallback
               sender: sentMessage.sender || {
                 id: sentMessage.sender_id || currentUserInfo.id,
-                fullname: currentUserInfo.fullname, // ✅ Use real fullname as fallback
-                email: currentUserInfo.email, // ✅ Use real email as fallback
-                avatar_url: currentUserInfo.avatar_url // ✅ Use real avatar as fallback
+                fullname: currentUserInfo.fullname, // Use real fullname as fallback
+                email: currentUserInfo.email, // Use real email as fallback
+                avatar_url: currentUserInfo.avatar_url // Use real avatar as fallback
               },
               created_at: sentMessage.created_at,
               chat_id: sentMessage.chat_id,
-              // 🚀 CRITICAL FIX: Set to 'delivered' immediately since notify-server doesn't send SSE to sender
+              // CRITICAL FIX: Set to 'delivered' immediately since notify-server doesn't send SSE to sender
               status: 'delivered',
               delivered_at: new Date().toISOString(),
               confirmed_via_api: true, // Mark as API confirmed instead of SSE confirmed
@@ -548,7 +548,7 @@ export const useChatStore = defineStore('chat', {
               mentions: sentMessage.mentions || [],
               reply_to: sentMessage.reply_to || null,
               isOptimistic: false,
-              // 🚀 REMOVED: SSE timeout tracking since we don't need it anymore
+              // REMOVED: SSE timeout tracking since we don't need it anymore
               sentAt: Date.now(),
               retryAttempts: 0,
               maxRetryAttempts: 3
@@ -557,15 +557,15 @@ export const useChatStore = defineStore('chat', {
             currentMessages[optimisticIndex] = realMessage;
             unifiedMessageService.messagesByChat.set(this.currentChatId, currentMessages);
 
-            // 🚀 REMOVED: SSE confirmation timeout since we immediately mark as delivered
+            // REMOVED: SSE confirmation timeout since we immediately mark as delivered
             // this.startSSEConfirmationTimeout(realMessage.id, this.currentChatId);
 
             // Update chat's last message
             this.updateChatLastMessage(realMessage);
 
             if (import.meta.env.DEV) {
-              console.log('✅ Message immediately marked as delivered via API success (notify-server doesn\'t send SSE to sender):', realMessage);
-              console.log('🎯 API confirmed delivery, no SSE needed for own messages');
+              console.log('Message immediately marked as delivered via API success (notify-server doesn\'t send SSE to sender):', realMessage);
+              console.log('API confirmed delivery, no SSE needed for own messages');
             }
 
             return { message: realMessage };
@@ -579,7 +579,7 @@ export const useChatStore = defineStore('chat', {
           console.error('Failed to send message:', error);
         }
 
-        // 🔧 Mark optimistic message as failed
+        // Mark optimistic message as failed
         const currentMessages = unifiedMessageService.getMessagesForChat(this.currentChatId) || [];
         const failedMessage = currentMessages.find(m => m.temp_id && m.status === 'sending');
         if (failedMessage) {
@@ -597,7 +597,7 @@ export const useChatStore = defineStore('chat', {
     },
 
     /**
-     * 🚀 NEW: Start SSE confirmation timeout for message delivery
+     * NEW: Start SSE confirmation timeout for message delivery
      */
     startSSEConfirmationTimeout(messageId, chatId) {
       if (!messageId || !chatId) return;
@@ -628,7 +628,7 @@ export const useChatStore = defineStore('chat', {
               unifiedMessageService.messagesByChat.set(chatId, currentMessages);
 
               if (import.meta.env.DEV) {
-                console.error(`❌ Message ${messageId} failed after ${message.retryAttempts} retry attempts`);
+                console.error(`ERROR: Message ${messageId} failed after ${message.retryAttempts} retry attempts`);
               }
             }
           }
@@ -644,7 +644,7 @@ export const useChatStore = defineStore('chat', {
     },
 
     /**
-     * 🚀 NEW: Retry message delivery (used by timeout mechanism)
+     * NEW: Retry message delivery (used by timeout mechanism)
      */
     async retryMessageDelivery(message, chatId) {
       if (!message || !chatId) return;
@@ -663,7 +663,7 @@ export const useChatStore = defineStore('chat', {
           unifiedMessageService.messagesByChat.set(chatId, currentMessages);
         }
 
-        // 🚀 CRITICAL FIX: Generate proper UUID for idempotency_key
+        // CRITICAL FIX: Generate proper UUID for idempotency_key
         const generateRetryUUID = () => {
           if (typeof crypto !== 'undefined' && crypto.randomUUID) {
             return crypto.randomUUID();
@@ -682,7 +682,7 @@ export const useChatStore = defineStore('chat', {
           files: message.files || [],
           mentions: message.mentions || [],
           reply_to: message.reply_to || null,
-          idempotency_key: generateRetryUUID() // ✅ 使用标准UUID格式
+          idempotency_key: generateRetryUUID() // 使用标准UUID格式
         };
 
         const response = await api.post(`/chat/${chatId}/messages`, payload);
@@ -697,7 +697,7 @@ export const useChatStore = defineStore('chat', {
           this.startSSEConfirmationTimeout(message.id, chatId);
 
           if (import.meta.env.DEV) {
-            console.log(`✅ Message retry successful: ${message.id}`);
+            console.log(`Message retry successful: ${message.id}`);
           }
 
           return true;
@@ -705,7 +705,7 @@ export const useChatStore = defineStore('chat', {
 
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.error(`❌ Message retry failed: ${message.id}`, error);
+          console.error(`ERROR: Message retry failed: ${message.id}`, error);
         }
 
         // Mark as failed if retry fails
@@ -736,7 +736,7 @@ export const useChatStore = defineStore('chat', {
 
         if (result) {
           if (import.meta.env.DEV) {
-            console.log(`✅ Message retry queued: ${messageId}`);
+            console.log(`Message retry queued: ${messageId}`);
           }
         }
 
@@ -759,7 +759,7 @@ export const useChatStore = defineStore('chat', {
      */
     handleIncomingMessage(message) {
       if (import.meta.env.DEV) {
-        console.log(`📨 Handling incoming message for chat ${message.chat_id}`);
+        console.log(`EVENT: Handling incoming message for chat ${message.chat_id}`);
       }
 
       // The unified message service handles all the logic
@@ -785,14 +785,14 @@ export const useChatStore = defineStore('chat', {
     },
 
     /**
-     * 🔧 CRITICAL FIX: Add realtime message to UI (called by SSE service)
+     * CRITICAL FIX: Add realtime message to UI (called by SSE service)
      */
     addRealtimeMessage(message) {
       if (import.meta.env.DEV) {
-        console.log(`📨 Adding realtime message for chat ${message.chat_id}:`, message);
+        console.log(`EVENT: Adding realtime message for chat ${message.chat_id}:`, message);
       }
 
-      // 🔧 Add message to UnifiedMessageService for UI display
+      // Add message to UnifiedMessageService for UI display
       const chatId = parseInt(message.chat_id);
       const currentMessages = unifiedMessageService.getMessagesForChat(chatId) || [];
 
@@ -800,7 +800,7 @@ export const useChatStore = defineStore('chat', {
       const existingMessage = currentMessages.find(m => m.id === message.id);
       if (existingMessage) {
         if (import.meta.env.DEV) {
-          console.log('📨 Message already exists, skipping duplicate:', message.id);
+          console.log('EVENT: Message already exists, skipping duplicate:', message.id);
         }
         return;
       }
@@ -810,7 +810,7 @@ export const useChatStore = defineStore('chat', {
       unifiedMessageService.messagesByChat.set(chatId, currentMessages);
 
       if (import.meta.env.DEV) {
-        console.log(`✅ Realtime message added to chat ${chatId}, total messages: ${currentMessages.length}`);
+        console.log(`Realtime message added to chat ${chatId}, total messages: ${currentMessages.length}`);
       }
 
       // Update chat metadata
@@ -818,14 +818,14 @@ export const useChatStore = defineStore('chat', {
     },
 
     /**
-     * 🚀 ENHANCED: Update message status via SSE (for delivery confirmation)
+     * ENHANCED: Update message status via SSE (for delivery confirmation)
      */
     updateRealtimeMessage(messageId, updates) {
       if (import.meta.env.DEV) {
-        console.log(`📨 [Real SSE] Updating message ${messageId} via REAL SSE:`, updates);
+        console.log(`EVENT: [Real SSE] Updating message ${messageId} via REAL SSE:`, updates);
       }
 
-      // 🔧 Find and update message in all chats where it might exist
+      // Find and update message in all chats where it might exist
       let updated = false;
 
       for (const [chatId, messages] of unifiedMessageService.messagesByChat.entries()) {
@@ -838,7 +838,7 @@ export const useChatStore = defineStore('chat', {
         if (messageIndex !== -1) {
           const message = messages[messageIndex];
 
-          // 🚀 CRITICAL: Clear SSE timeout when confirmation arrives
+          // CRITICAL: Clear SSE timeout when confirmation arrives
           if (message.sseTimeout) {
             clearTimeout(message.sseTimeout);
             message.sseTimeout = null;
@@ -850,30 +850,30 @@ export const useChatStore = defineStore('chat', {
           // Update message properties
           Object.assign(message, updates);
 
-          // 🚀 ENSURE PERMANENT DELIVERY STATUS: Once delivered, always delivered
+          // ENSURE PERMANENT DELIVERY STATUS: Once delivered, always delivered
           if (updates.status === 'delivered' || updates.delivered_at || updates.status === 'read') {
             message.status = 'delivered';
             message.delivered_at = updates.delivered_at || new Date().toISOString();
             message.confirmed_via_sse = true; // Mark as permanently confirmed
 
             if (import.meta.env.DEV) {
-              console.log(`✅ [Real SSE] Message ${messageId} permanently marked as delivered via REAL SSE`);
+              console.log(`[Real SSE] Message ${messageId} permanently marked as delivered via REAL SSE`);
             }
           }
 
-          // 🚀 CRITICAL FIX: Use simplified reactive update with new architecture
+          // CRITICAL FIX: Use simplified reactive update with new architecture
           unifiedMessageService.messagesByChat.set(chatId, messages);
 
           updated = true;
 
           if (import.meta.env.DEV) {
-            console.log(`✅ [Real SSE] Message ${messageId} updated in chat ${chatId} via REAL SSE:`, message);
+            console.log(`[Real SSE] Message ${messageId} updated in chat ${chatId} via REAL SSE:`, message);
           }
           break;
         }
       }
 
-      // 🔧 Also try to match by content for recently sent messages (fallback)
+      // Also try to match by content for recently sent messages (fallback)
       if (!updated) {
         const now = Date.now();
 
@@ -891,7 +891,7 @@ export const useChatStore = defineStore('chat', {
           });
 
           if (recentMessage) {
-            // 🚀 CRITICAL: Clear SSE timeout when confirmation arrives
+            // CRITICAL: Clear SSE timeout when confirmation arrives
             if (recentMessage.sseTimeout) {
               clearTimeout(recentMessage.sseTimeout);
               recentMessage.sseTimeout = null;
@@ -910,13 +910,13 @@ export const useChatStore = defineStore('chat', {
               recentMessage.id = updates.id;
             }
 
-            // 🚀 CRITICAL FIX: Use simplified reactive update
+            // CRITICAL FIX: Use simplified reactive update
             unifiedMessageService.messagesByChat.set(parseInt(chatId), messages);
 
             updated = true;
 
             if (import.meta.env.DEV) {
-              console.log(`✅ [Real SSE] Message matched by content and updated to delivered via REAL SSE:`, recentMessage);
+              console.log(`[Real SSE] Message matched by content and updated to delivered via REAL SSE:`, recentMessage);
             }
             break;
           }
@@ -924,18 +924,18 @@ export const useChatStore = defineStore('chat', {
       }
 
       if (!updated && import.meta.env.DEV) {
-        console.warn(`⚠️ Could not find message ${messageId} to update with:`, updates);
+        console.warn(`WARNING: Could not find message ${messageId} to update with:`, updates);
       }
 
       return updated;
     },
 
     /**
-     * 🚀 NEW: Update message status by content matching (fallback for SSE delivery confirmation)
+     * NEW: Update message status by content matching (fallback for SSE delivery confirmation)
      */
     updateRealtimeMessageByContent(sseMessage) {
       if (import.meta.env.DEV) {
-        console.log(`🔍 [SSE] Attempting content matching for message:`, sseMessage);
+        console.log(`[SSE] Attempting content matching for message:`, sseMessage);
       }
 
       const now = Date.now();
@@ -975,14 +975,14 @@ export const useChatStore = defineStore('chat', {
           matched = true;
 
           if (import.meta.env.DEV) {
-            console.log(`✅ [Real SSE] Message matched by content and updated to delivered via REAL SSE:`, recentMessage);
+            console.log(`[Real SSE] Message matched by content and updated to delivered via REAL SSE:`, recentMessage);
           }
           break;
         }
       }
 
       if (!matched && import.meta.env.DEV) {
-        console.warn(`⚠️ [SSE] Could not match message by content:`, sseMessage);
+        console.warn(`WARNING: [SSE] Could not match message by content:`, sseMessage);
       }
 
       return matched;
@@ -1397,7 +1397,7 @@ export const useChatStore = defineStore('chat', {
         }
 
         if (import.meta.env.DEV) {
-          console.error(`❌ Failed to fetch messages for chat ${chatId}:`, error);
+          console.error(`ERROR: Failed to fetch messages for chat ${chatId}:`, error);
         }
 
         errorHandler.handle(error, {
@@ -1415,7 +1415,7 @@ export const useChatStore = defineStore('chat', {
     async navigateToChat(chatId) {
       try {
         if (import.meta.env.DEV) {
-          console.log(`🚀 Navigating to chat: ${chatId}`);
+          console.log(`Navigating to chat: ${chatId}`);
         }
 
         // Set current chat first
@@ -1425,14 +1425,14 @@ export const useChatStore = defineStore('chat', {
         await unifiedMessageService.loadMessagesForChat(chatId);
 
         if (import.meta.env.DEV) {
-          console.log(`✅ Navigation to chat ${chatId} completed`);
+          console.log(`Navigation to chat ${chatId} completed`);
         }
 
         return true;
 
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.error(`❌ Failed to navigate to chat ${chatId}:`, error);
+          console.error(`ERROR: Failed to navigate to chat ${chatId}:`, error);
         }
 
         errorHandler.handle(error, {
@@ -1460,7 +1460,7 @@ export const useChatStore = defineStore('chat', {
 
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.error(`❌ Failed to fetch more messages for chat ${chatId}:`, error);
+          console.error(`ERROR: Failed to fetch more messages for chat ${chatId}:`, error);
         }
 
         errorHandler.handle(error, {
@@ -1612,7 +1612,7 @@ export const useChatStore = defineStore('chat', {
     },
 
     /**
-     * 🔧 新增：根据ID获取单个chat（Perfect Navigation兼容）
+     * 新增：根据ID获取单个chat（Perfect Navigation兼容）
      */
     async fetchChatById(chatId) {
       try {
@@ -1653,7 +1653,7 @@ export const useChatStore = defineStore('chat', {
     },
 
     /**
-     * 🔧 新增：确保chat存在（兼容方法）
+     * 新增：确保chat存在（兼容方法）
      */
     async ensureChat(chatId) {
       // 先检查本地是否存在
@@ -1668,14 +1668,14 @@ export const useChatStore = defineStore('chat', {
     },
 
     /**
-     * 🔧 新增：加载chat（兼容方法）
+     * 新增：加载chat（兼容方法）
      */
     async loadChat(chatId) {
       return this.ensureChat(chatId);
     },
 
     /**
-     * 🔧 增强：智能chat检查
+     * 增强：智能chat检查
      */
     async smartChatCheck(chatId) {
       const checkResult = {
@@ -1723,7 +1723,7 @@ export const useChatStore = defineStore('chat', {
     },
 
     /**
-     * 🚀 NEW: Get current user ID for message status determination
+     * NEW: Get current user ID for message status determination
      * Helper method used by message status logic
      */
     getCurrentUserId() {
@@ -1743,19 +1743,19 @@ export const useChatStore = defineStore('chat', {
         }
 
         if (import.meta.env.DEV) {
-          console.warn('⚠️ [Chat Store] Could not determine current user ID');
+          console.warn('WARNING: [Chat Store] Could not determine current user ID');
         }
         return null;
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.error('❌ [Chat Store] Error getting current user ID:', error);
+          console.error('ERROR: [Chat Store] Error getting current user ID:', error);
         }
         return null;
       }
     },
 
     /**
-     * 🚀 NEW: Enhanced file message with optimistic updates and progress tracking
+     * NEW: Enhanced file message with optimistic updates and progress tracking
      * Supports both raw File objects and already-uploaded file URLs/objects
      */
     async sendMessageWithFiles(content, files, options = {}) {
@@ -1768,7 +1768,7 @@ export const useChatStore = defineStore('chat', {
       const currentUserInfo = authStore.user || {};
       const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-      // 🚀 CRITICAL FIX: Generate proper UUID for idempotency_key
+      // CRITICAL FIX: Generate proper UUID for idempotency_key
       const generateFileMessageUUID = () => {
         if (typeof crypto !== 'undefined' && crypto.randomUUID) {
           return crypto.randomUUID();
@@ -1781,19 +1781,19 @@ export const useChatStore = defineStore('chat', {
         });
       };
 
-      const idempotencyKey = options.idempotencyKey || generateFileMessageUUID(); // ✅ 使用标准UUID格式
+      const idempotencyKey = options.idempotencyKey || generateFileMessageUUID(); // 使用标准UUID格式
 
       try {
-        // 🔧 CRITICAL FIX: Detect if files are already uploaded URLs or raw File objects
+        // CRITICAL FIX: Detect if files are already uploaded URLs or raw File objects
         const areFilesAlreadyUploaded = files.every(file =>
           typeof file === 'string' ||
           (file && typeof file === 'object' && (file.url || file.file_url) && !file.constructor.name.includes('File'))
         );
 
         if (areFilesAlreadyUploaded) {
-          // 🚀 Fast path: Files already uploaded, send message directly
+          // Fast path: Files already uploaded, send message directly
           if (import.meta.env.DEV) {
-            console.log('🚀 [sendMessageWithFiles] Files already uploaded, using fast path');
+            console.log('[sendMessageWithFiles] Files already uploaded, using fast path');
           }
 
           const fileUrls = files.map(file => {
@@ -1804,9 +1804,9 @@ export const useChatStore = defineStore('chat', {
           return this.sendMessage(content, { ...options, files: fileUrls });
         }
 
-        // 🚀 Full path: Raw File objects, need upload + progress tracking
+        // Full path: Raw File objects, need upload + progress tracking
         if (import.meta.env.DEV) {
-          console.log('🚀 [sendMessageWithFiles] Raw File objects detected, using full upload path');
+          console.log('[sendMessageWithFiles] Raw File objects detected, using full upload path');
         }
 
         // Step 1: Create optimistic message with file previews
@@ -1824,15 +1824,15 @@ export const useChatStore = defineStore('chat', {
           },
           created_at: new Date().toISOString(),
           chat_id: this.currentChatId,
-          status: 'file_uploading', // 🚀 NEW: File uploading status
+          status: 'file_uploading', // NEW: File uploading status
           files: files.map(file => ({
             id: `temp_file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             filename: file.name,
             size: file.size,
             mime_type: file.type,
-            upload_status: 'uploading', // 🚀 NEW: Individual file status
-            upload_progress: 0,         // 🚀 NEW: Progress tracking
-            local_url: URL.createObjectURL(file), // 🚀 Safe: Only called for File objects
+            upload_status: 'uploading', // NEW: Individual file status
+            upload_progress: 0,         // NEW: Progress tracking
+            local_url: URL.createObjectURL(file), // Safe: Only called for File objects
             server_url: null,
             upload_error: null
           })),
@@ -1851,7 +1851,7 @@ export const useChatStore = defineStore('chat', {
         unifiedMessageService.messagesByChat.set(this.currentChatId, currentMessages);
 
         if (import.meta.env.DEV) {
-          console.log('✅ File message added to UI with uploading status:', optimisticMessage);
+          console.log('File message added to UI with uploading status:', optimisticMessage);
         }
 
         // Step 2: Upload files with progress tracking
@@ -1932,8 +1932,8 @@ export const useChatStore = defineStore('chat', {
             this.updateChatLastMessage(realMessage);
 
             if (import.meta.env.DEV) {
-              console.log('✅ Message immediately marked as delivered via API success (notify-server doesn\'t send SSE to sender):', realMessage);
-              console.log('🎯 API confirmed delivery, no SSE needed for own messages');
+              console.log('Message immediately marked as delivered via API success (notify-server doesn\'t send SSE to sender):', realMessage);
+              console.log('API confirmed delivery, no SSE needed for own messages');
             }
 
             return { message: realMessage };
@@ -1965,7 +1965,7 @@ export const useChatStore = defineStore('chat', {
     },
 
     /**
-     * 🚀 NEW: Upload file with progress tracking using XMLHttpRequest
+     * NEW: Upload file with progress tracking using XMLHttpRequest
      */
     async uploadFileWithProgress(file, onProgress) {
       const authStore = useAuthStore();
@@ -2022,7 +2022,7 @@ export const useChatStore = defineStore('chat', {
     },
 
     /**
-     * 🚀 NEW: Update file upload status for a specific file in message
+     * NEW: Update file upload status for a specific file in message
      */
     updateFileUploadStatus(messageId, fileIndex, status, progress = 0, serverUrl = null, error = null) {
       const currentMessages = unifiedMessageService.getMessagesForChat(this.currentChatId) || [];
@@ -2046,14 +2046,14 @@ export const useChatStore = defineStore('chat', {
     },
 
     /**
-     * 🚀 NEW: Update file upload progress for a specific file
+     * NEW: Update file upload progress for a specific file
      */
     updateFileUploadProgress(messageId, fileIndex, progress) {
       this.updateFileUploadStatus(messageId, fileIndex, 'uploading', progress);
     },
 
     /**
-     * 🚀 NEW: Update optimistic message status
+     * NEW: Update optimistic message status
      */
     updateOptimisticMessageStatus(messageId, status, error = null) {
       const currentMessages = unifiedMessageService.getMessagesForChat(this.currentChatId) || [];
@@ -2067,7 +2067,7 @@ export const useChatStore = defineStore('chat', {
         unifiedMessageService.messagesByChat.set(this.currentChatId, currentMessages);
 
         if (import.meta.env.DEV) {
-          console.log(`📨 Message ${messageId} status updated to ${status}`);
+          console.log(`EVENT: Message ${messageId} status updated to ${status}`);
         }
       }
     },

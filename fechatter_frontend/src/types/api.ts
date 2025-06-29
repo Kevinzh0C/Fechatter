@@ -1,9 +1,9 @@
 // Fechatter API Types
-// 基于 fechatter_server/lib.rs 路由分析自动生成
+// Auto-generated based on fechatter_server/lib.rs route analysis
 // Generated at: 2025-06-10T18:00:00.000Z
 
 // ========================================
-// 通用响应类型
+// Common Response Types
 // ========================================
 export interface ApiResponse<T> {
   success: boolean;
@@ -28,7 +28,7 @@ export interface ApiError {
 }
 
 // ========================================
-// 认证相关类型
+// Authentication Related Types
 // ========================================
 export interface SigninRequest {
   email: string;
@@ -109,7 +109,7 @@ export interface ChangePasswordResponse {
 }
 
 // ========================================
-// 用户档案相关类型
+// User Profile Related Types
 // ========================================
 export interface UserSettings {
   email_notifications: boolean;
@@ -161,12 +161,12 @@ export interface ProfileUpdateResponse {
 }
 
 // ========================================
-// 聊天相关类型
+// Chat Related Types
 // ========================================
 export interface Chat {
   id: number;
-  chat_name: string; // 数据库字段名是 chat_name
-  type: string; // 数据库中没有严格限制类型
+  chat_name: string; // Database field name is chat_name
+  type: string; // No strict type constraints in database
   description?: string;
   created_by: number;
   created_at: string;
@@ -175,14 +175,14 @@ export interface Chat {
   max_members?: number;
   is_public?: boolean;
   invite_code?: string;
-  settings?: Record<string, any>; // 数据库中是 jsonb 类型
-  chat_members: number[]; // 数据库中是 bigint[] 类型
+  settings?: Record<string, any>; // JSONB type in database
+  chat_members: number[]; // BIGINT[] type in database
 
-  // 兼容字段（为了向后兼容，前端组件可能仍在使用）
-  name?: string; // 映射到 chat_name
-  chat_type?: 'direct' | 'group' | 'channel'; // 映射到 type
+  // Compatibility fields (for backwards compatibility, frontend components may still use these)
+  name?: string; // Maps to chat_name
+  chat_type?: 'direct' | 'group' | 'channel'; // Maps to type
 
-  // 关联数据（JOIN查询时包含）
+  // Associated data (included in JOIN queries)
   last_message?: ChatMessage;
   unread_count?: number;
   member_count?: number;
@@ -228,7 +228,7 @@ export interface AddChatMembersRequest {
 }
 
 // ========================================
-// 消息相关类型
+// Message Related Types
 // ========================================
 export interface ChatMessage {
   id: number | string; // Allow string for temp IDs
@@ -275,7 +275,7 @@ export interface MessageReaction {
   emoji: string;
   created_at: string;
 
-  // 聚合数据（从数据库查询聚合得出）
+  // Aggregated data (derived from database queries)
   count?: number;
   users?: number[];
   user_names?: string[];
@@ -283,8 +283,8 @@ export interface MessageReaction {
 
 export interface SendMessageRequest {
   content?: string;
-  files?: (File | string | number)[]; // 允许文件对象、路径或ID
-  reply_to?: number; // 数据库字段名是 reply_to
+  files?: (File | string | number)[]; // Allow file objects, paths, or IDs
+  reply_to?: number; // Database field name is reply_to
   mentions?: number[];
   idempotency_key?: string;
   priority?: 'low' | 'normal' | 'high' | 'urgent';
@@ -334,7 +334,7 @@ export interface MessageReceipt {
 }
 
 // ========================================
-// 实时功能类型
+// Real-time Feature Types
 // ========================================
 export interface PresenceUpdate {
   status: 'online' | 'away' | 'busy' | 'offline';
@@ -348,7 +348,7 @@ export interface TypingUser {
 }
 
 // ========================================
-// 搜索相关类型
+// Search Related Types
 // ========================================
 export interface SearchQuery {
   q: string;
@@ -386,7 +386,7 @@ export interface SearchSuggestion {
 }
 
 // ========================================
-// 文件相关类型
+// File Related Types
 // ========================================
 export interface FileUploadResponse {
   id: number;
@@ -409,7 +409,7 @@ export interface FileDownloadInfo {
 }
 
 // ========================================
-// 缓存和系统管理类型
+// Cache and System Management Types
 // ========================================
 export interface CacheStats {
   redis_connected: boolean;
@@ -428,7 +428,7 @@ export interface CacheConfig {
 }
 
 // ========================================
-// 分页类型
+// Pagination Types
 // ========================================
 export interface PaginationParams {
   page?: number;
@@ -451,7 +451,7 @@ export interface PaginatedResponse<T> {
 }
 
 // ========================================
-// WebSocket/SSE 事件类型
+// WebSocket/SSE Event Types
 // ========================================
 export interface RealtimeEvent {
   type: 'message' | 'typing' | 'presence' | 'chat_update' | 'member_update';
@@ -485,7 +485,7 @@ export interface PresenceEvent extends RealtimeEvent {
 }
 
 // ========================================
-// 错误类型
+// Error Types
 // ========================================
 export interface ValidationError {
   field: string;
@@ -527,8 +527,8 @@ export interface User {
 }
 
 // ========================================
-// 导出所有类型
+// Export All Types
 // ========================================
 export type {
-  // 保留一个空的导出以避免语法错误
+  // Keep an empty export to avoid syntax errors
 };

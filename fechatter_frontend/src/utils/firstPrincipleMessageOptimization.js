@@ -11,7 +11,7 @@ class FirstPrincipleMessageOptimization {
     this.directPersistence = null;
 
     if (import.meta.env.DEV) {
-      console.log('🚀 First Principle Message Optimization initialized');
+      console.log('First Principle Message Optimization initialized');
     }
 
   /**
@@ -25,7 +25,7 @@ class FirstPrincipleMessageOptimization {
     this.setupBypassChain();
 
     if (import.meta.env.DEV) {
-      console.log('⚡ Ultra-optimized message system ready');
+      console.log('Ultra-optimized message system ready');
     }
 
   /**
@@ -51,13 +51,13 @@ class FirstPrincipleMessageOptimization {
 
           const endTime = performance.now();
           if (import.meta.env.DEV) {
-            console.log(`⚡ Fast API call: ${endTime - startTime}ms`);
+            console.log(`Fast API call: ${endTime - startTime}ms`);
           }
 
           return response;
         } catch (error) {
           if (import.meta.env.DEV) {
-            console.error('❌ Fast API failed:', error);
+            console.error('ERROR: Fast API failed:', error);
           throw error;
         }
       },
@@ -178,7 +178,7 @@ class FirstPrincipleMessageOptimization {
           chatStore.messages = [...this.messageCache.get(chatId)];
           chatStore.loading = false;
           if (import.meta.env.DEV) {
-            console.log(`⚡ Loaded from memory cache: ${chatStore.messages.length} messages`);
+            console.log(`Loaded from memory cache: ${chatStore.messages.length} messages`);
           return;
         }
 
@@ -238,7 +238,7 @@ class FirstPrincipleMessageOptimization {
         });
 
         if (import.meta.env.DEV) {
-          console.log(`⚡ Optimistic message added in ${performance.now() - startTime}ms`);
+          console.log(`Optimistic message added in ${performance.now() - startTime}ms`);
         }
 
         // 3. Send to backend in parallel (non-blocking)
@@ -265,11 +265,11 @@ class FirstPrincipleMessageOptimization {
             if (pending) {
               const totalTime = performance.now() - pending.startTime;
               if (import.meta.env.DEV) {
-                console.log(`✅ Message sent successfully in ${totalTime}ms`);
+                console.log(`Message sent successfully in ${totalTime}ms`);
               }
         } catch (error) {
           if (import.meta.env.DEV) {
-            console.error('❌ Backend send failed:', error);
+            console.error('ERROR: Backend send failed:', error);
           }
 
           // Mark message as failed
@@ -293,7 +293,7 @@ class FirstPrincipleMessageOptimization {
         this.instantUI.loadMessagesInstantly(chatId);
 
         if (import.meta.env.DEV) {
-          console.log(`⚡ Chat loaded instantly in ${performance.now() - startTime}ms`);
+          console.log(`Chat loaded instantly in ${performance.now() - startTime}ms`);
         }
 
         // 2. Fetch latest in background
@@ -378,14 +378,14 @@ class FirstPrincipleMessageOptimization {
    */
   diagnosePerformance() {
     if (import.meta.env.DEV) {
-      console.log('\n⚡ FIRST PRINCIPLE PERFORMANCE DIAGNOSTICS');
+      console.log('\nFIRST PRINCIPLE PERFORMANCE DIAGNOSTICS');
     if (import.meta.env.DEV) {
       console.log('==========================================');
     }
 
     // Memory cache stats
     if (import.meta.env.DEV) {
-      console.log(`📊 Memory cache: ${this.messageCache.size} chats cached`);
+      console.log(`Memory cache: ${this.messageCache.size} chats cached`);
     }
 
     // Pending messages
@@ -453,7 +453,7 @@ class FirstPrincipleMessageOptimization {
     // Performance targets
     if (saveTime < 1 && getTime < 1) {
       if (import.meta.env.DEV) {
-        console.log('   ✅ Performance: EXCELLENT');
+        console.log('   Performance: EXCELLENT');
       }
     } else if (saveTime < 5 && getTime < 5) {
       if (import.meta.env.DEV) {
@@ -461,7 +461,7 @@ class FirstPrincipleMessageOptimization {
       }
     } else {
       if (import.meta.env.DEV) {
-        console.log('   ⚠️ Performance: NEEDS OPTIMIZATION');
+        console.log('   WARNING: Performance: NEEDS OPTIMIZATION');
       }
 
   /**
@@ -471,7 +471,7 @@ class FirstPrincipleMessageOptimization {
     const chatStore = this.getChatStore();
     if (!chatStore) {
       if (import.meta.env.DEV) {
-        console.error('❌ Cannot replace system - chat store not found');
+        console.error('ERROR: Cannot replace system - chat store not found');
       return;
     }
 
@@ -529,7 +529,7 @@ if (typeof window !== 'undefined') {
   };
 
   if (import.meta.env.DEV) {
-    console.log('⚡ Ultra-Fast Message System loaded');
+    console.log('Ultra-Fast Message System loaded');
   if (import.meta.env.DEV) {
     console.log('   Commands:');
   if (import.meta.env.DEV) {

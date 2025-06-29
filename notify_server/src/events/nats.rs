@@ -37,20 +37,20 @@ impl NatsClient {
 
       match connect_options.connect(url).await {
         Ok(client) => {
-          info!("✅ Successfully connected to NATS: {}", url);
+          info!("Successfully connected to NATS: {}", url);
           return Ok(Self { client });
         }
         Err(e) => {
           retries += 1;
           if retries >= MAX_RETRIES {
             error!(
-              "❌ Failed to connect to NATS after {} retries: {}",
+              "ERROR: Failed to connect to NATS after {} retries: {}",
               MAX_RETRIES, e
             );
             return Err(e.into());
           }
           warn!(
-            "⚠️  Failed to connect to NATS (attempt {}/{}): {}. Retrying in {:?}",
+            "WARNING: Failed to connect to NATS (attempt {}/{}): {}. Retrying in {:?}",
             retries, MAX_RETRIES, e, RETRY_DELAY
           );
           tokio::time::sleep(RETRY_DELAY).await;
@@ -66,7 +66,7 @@ impl NatsClient {
 
   /// Simple subscribe
   pub async fn subscribe(&self, subject: &str) -> Result<async_nats::Subscriber> {
-    info!("📡 Subscribing to subject: {}", subject);
+    info!("SUBSCRIPTION: Subscribing to subject: {}", subject);
     let subscriber = self.client.subscribe(subject.to_string()).await?;
     Ok(subscriber)
   }

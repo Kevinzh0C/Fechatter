@@ -10,11 +10,11 @@
         
         <div class="design-principles">
           <div class="principle">
-            <div class="principle-icon">⚡</div>
+            <div class="principle-icon"></div>
             <span>Instantly responsive</span>
           </div>
           <div class="principle">
-            <div class="principle-icon">🎯</div>
+            <div class="principle-icon"></div>
             <span>Intelligently focused</span>
           </div>
           <div class="principle">
@@ -256,7 +256,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 🎨 Perfect Search Demo - Jobs-inspired Design */
+/* Perfect Search Demo - Jobs-inspired Design */
 
 /* Design System */
 :root {

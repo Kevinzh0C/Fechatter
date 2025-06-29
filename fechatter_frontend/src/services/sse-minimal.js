@@ -6,7 +6,7 @@
  * - Function > Class where possible
  * - One Screen Rule (errors should be unobtrusive)
  * 
- * 🚀 CRITICAL FIX: Auto-reregister listeners on reconnection
+ * CRITICAL FIX: Auto-reregister listeners on reconnection
  */
 
 import { SIMPLE_SSE_CONFIG, getUserFriendlyError } from '@/config/sse-simple-config';
@@ -21,42 +21,42 @@ class MinimalSSEService {
     // No complex state management - just connected or not
     this.connected = false;
 
-    // 🚀 NEW: Store listener registration callbacks for auto-reregistration
+    // NEW: Store listener registration callbacks for auto-reregistration
     this.listenerRegistrators = new Set();
     this.lastToken = null;
   }
 
   /**
-   * 🚀 NEW: Register a listener registrator for auto-reregistration
+   * NEW: Register a listener registrator for auto-reregistration
    */
   addListenerRegistrator(registrator) {
     if (typeof registrator === 'function') {
       this.listenerRegistrators.add(registrator);
 
       if (import.meta.env.DEV) {
-        console.log(`📡 [SSE] Added listener registrator. Total: ${this.listenerRegistrators.size}`);
+        console.log(`SUBSCRIPTION: [SSE] Added listener registrator. Total: ${this.listenerRegistrators.size}`);
       }
     }
   }
 
   /**
-   * 🚀 NEW: Remove a listener registrator
+   * NEW: Remove a listener registrator
    */
   removeListenerRegistrator(registrator) {
     this.listenerRegistrators.delete(registrator);
 
     if (import.meta.env.DEV) {
-      console.log(`📡 [SSE] Removed listener registrator. Total: ${this.listenerRegistrators.size}`);
+      console.log(`SUBSCRIPTION: [SSE] Removed listener registrator. Total: ${this.listenerRegistrators.size}`);
     }
   }
 
   /**
-   * 🚀 NEW: Auto-reregister all listeners after reconnection
+   * NEW: Auto-reregister all listeners after reconnection
    */
   _reregisterAllListeners() {
     if (this.listenerRegistrators.size === 0) {
       if (import.meta.env.DEV) {
-        console.warn('⚠️ [SSE] No listener registrators available for reregistration');
+        console.warn('WARNING: [SSE] No listener registrators available for reregistration');
       }
       return;
     }
@@ -73,18 +73,18 @@ class MinimalSSEService {
       try {
         registrator();
         if (import.meta.env.DEV) {
-          console.log('✅ [SSE] Successfully re-registered listeners via registrator');
+          console.log('[SSE] Successfully re-registered listeners via registrator');
         }
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.error('❌ [SSE] Failed to re-register listeners:', error);
+          console.error('ERROR: [SSE] Failed to re-register listeners:', error);
         }
       }
     });
 
     if (import.meta.env.DEV) {
       const totalListeners = Array.from(this.listeners.values()).reduce((sum, arr) => sum + arr.length, 0);
-      console.log(`✅ [SSE] Reregistration complete. Total listeners: ${totalListeners}`);
+      console.log(`[SSE] Reregistration complete. Total listeners: ${totalListeners}`);
     }
   }
 
@@ -92,7 +92,7 @@ class MinimalSSEService {
    * Connect to SSE - keep it simple
    */
   connect(token) {
-    // 🚀 CRITICAL DEBUG: Add comprehensive logging
+    // CRITICAL DEBUG: Add comprehensive logging
     if (import.meta.env.DEV) {
       console.log('🔗 [SSE] connect() called with token:', token ? `${token.substring(0, 10)}...` : 'null');
     }
@@ -100,18 +100,18 @@ class MinimalSSEService {
     // Store token for reconnection
     this.lastToken = token;
 
-    // 🚀 CRITICAL FIX: Validate token before attempting connection
+    // CRITICAL FIX: Validate token before attempting connection
     if (!token) {
       if (import.meta.env.DEV) {
-        console.error('❌ [SSE] Cannot connect: No token provided');
+        console.error('ERROR: [SSE] Cannot connect: No token provided');
       }
       return;
     }
 
-    // 🚀 CRITICAL FIX: Validate token format
+    // CRITICAL FIX: Validate token format
     if (typeof token !== 'string' || token.length < 10) {
       if (import.meta.env.DEV) {
-        console.error('❌ [SSE] Invalid token format:', typeof token, token?.length);
+        console.error('ERROR: [SSE] Invalid token format:', typeof token, token?.length);
       }
       return;
     }
@@ -119,71 +119,71 @@ class MinimalSSEService {
     // Already connected? Done.
     if (this.connected && this.eventSource) {
       if (import.meta.env.DEV) {
-        console.log('✅ [SSE] Already connected, skipping');
+        console.log('[SSE] Already connected, skipping');
       }
       return;
     }
 
-    // 🚀 CRITICAL FIX: Always try real SSE connection, no mock mode
+    // CRITICAL FIX: Always try real SSE connection, no mock mode
     // Removed offline check that was causing mock mode
 
     try {
-      // 🚀 CRITICAL FIX: Enhanced URL construction with validation
+      // CRITICAL FIX: Enhanced URL construction with validation
       const baseUrl = import.meta.env.VITE_SSE_URL || '/events';
       const fullUrl = `${baseUrl}?access_token=${encodeURIComponent(token)}`;
 
       if (import.meta.env.DEV) {
-        console.log('🚀 [SSE] Creating EventSource with URL:', fullUrl);
-        console.log('🔍 [SSE] Environment check - VITE_SSE_URL:', import.meta.env.VITE_SSE_URL);
-        console.log('🔍 [SSE] Base URL:', baseUrl);
-        console.log('🔍 [SSE] Token length:', token.length);
-        console.log('🔍 [SSE] Full URL length:', fullUrl.length);
+        console.log('[SSE] Creating EventSource with URL:', fullUrl);
+        console.log('[SSE] Environment check - VITE_SSE_URL:', import.meta.env.VITE_SSE_URL);
+        console.log('[SSE] Base URL:', baseUrl);
+        console.log('[SSE] Token length:', token.length);
+        console.log('[SSE] Full URL length:', fullUrl.length);
       }
 
-      // 🚀 CRITICAL FIX: Validate URL before EventSource creation
+      // CRITICAL FIX: Validate URL before EventSource creation
       try {
         new URL(fullUrl, window.location.origin);
         if (import.meta.env.DEV) {
-          console.log('✅ [SSE] URL validation passed');
+          console.log('[SSE] URL validation passed');
         }
       } catch (urlError) {
         if (import.meta.env.DEV) {
-          console.error('❌ [SSE] Invalid URL construction:', urlError);
+          console.error('ERROR: [SSE] Invalid URL construction:', urlError);
         }
         return;
       }
 
       if (import.meta.env.DEV) {
-        console.log('🎯 [SSE] About to create EventSource...');
+        console.log('[SSE] About to create EventSource...');
       }
 
       this.eventSource = new EventSource(fullUrl);
 
       if (import.meta.env.DEV) {
-        console.log('✅ [SSE] EventSource object created successfully');
-        console.log('🔍 [SSE] EventSource initial readyState:', this.eventSource.readyState);
-        console.log('🔍 [SSE] EventSource URL property:', this.eventSource.url);
+        console.log('[SSE] EventSource object created successfully');
+        console.log('[SSE] EventSource initial readyState:', this.eventSource.readyState);
+        console.log('[SSE] EventSource URL property:', this.eventSource.url);
       }
 
-      // Success handler - 🚀 CRITICAL FIX: Defensive against null EventSource
+      // Success handler - CRITICAL FIX: Defensive against null EventSource
       this.eventSource.onopen = (event) => {
         this.connected = true;
         this.retryCount = 0;
 
         if (import.meta.env.DEV) {
-          console.log('✅ [SSE] CONNECTION OPENED! Real-time updates connected');
+          console.log('[SSE] CONNECTION OPENED! Real-time updates connected');
 
-          // 🚀 CRITICAL FIX: Use event.target instead of this.eventSource to avoid null reference
+          // CRITICAL FIX: Use event.target instead of this.eventSource to avoid null reference
           const eventSource = event.target || this.eventSource;
           if (eventSource) {
             console.log('🌐 [SSE] EventSource URL:', eventSource.url);
-            console.log('📡 [SSE] ReadyState:', eventSource.readyState);
+            console.log('SUBSCRIPTION: [SSE] ReadyState:', eventSource.readyState);
           } else {
-            console.log('⚠️ [SSE] EventSource reference is null, but connection opened');
+            console.log('WARNING: [SSE] EventSource reference is null, but connection opened');
           }
         }
 
-        // 🚀 CRITICAL FIX: Auto-reregister listeners on successful connection
+        // CRITICAL FIX: Auto-reregister listeners on successful connection
         if (this.listenerRegistrators.size > 0) {
           setTimeout(() => {
             this._reregisterAllListeners();
@@ -194,20 +194,20 @@ class MinimalSSEService {
       // Message handler - delegate to listeners
       this.eventSource.onmessage = (event) => {
         if (import.meta.env.DEV) {
-          console.log('📨 [SSE] Message received:', event.data.substring(0, 100));
+          console.log('EVENT: [SSE] Message received:', event.data.substring(0, 100));
         }
         this.handleMessage(event);
       };
 
-      // 🚀 CRITICAL FIX: Enhanced error handler with detailed diagnostics
+      // CRITICAL FIX: Enhanced error handler with detailed diagnostics
       this.eventSource.onerror = (error) => {
         if (import.meta.env.DEV) {
-          console.error('❌ [SSE] EventSource error event:', error);
-          console.log('🔍 [SSE] Error event details:');
+          console.error('ERROR: [SSE] EventSource error event:', error);
+          console.log('[SSE] Error event details:');
           console.log('  - Type:', error.type);
           console.log('  - Target:', error.target);
 
-          // 🚀 CRITICAL FIX: Use event.target as fallback if this.eventSource is null
+          // CRITICAL FIX: Use event.target as fallback if this.eventSource is null
           const eventSource = error.target || this.eventSource;
           console.log('  - ReadyState at error:', eventSource?.readyState);
           console.log('  - URL at error:', eventSource?.url);
@@ -223,57 +223,57 @@ class MinimalSSEService {
           // Check if this is an immediate failure (readyState still 0)
           if (eventSource?.readyState === 0) {
             console.error('🚨 [SSE] IMMEDIATE CONNECTION FAILURE - EventSource never connected');
-            console.log('💡 [SSE] This suggests URL, token, or network issues');
-            console.log('💡 [SSE] Check browser Network tab for failed requests');
+            console.log('[SSE] This suggests URL, token, or network issues');
+            console.log('[SSE] Check browser Network tab for failed requests');
           } else if (eventSource?.readyState === 2) {
             console.error('🚨 [SSE] CONNECTION CLOSED - EventSource was closed');
-            console.log('💡 [SSE] This suggests server closed the connection');
+            console.log('[SSE] This suggests server closed the connection');
           }
         }
         this.handleError(error);
       };
 
-      // 🚀 CRITICAL DEBUG: Monitor EventSource state changes
+      // CRITICAL DEBUG: Monitor EventSource state changes
       if (import.meta.env.DEV) {
         setTimeout(() => {
-          console.log('🔍 [SSE] EventSource state after 1 second:');
+          console.log('[SSE] EventSource state after 1 second:');
           console.log(`  - ReadyState: ${this.eventSource?.readyState}`);
           console.log(`  - Connected flag: ${this.connected}`);
 
           if (this.eventSource?.readyState === 0) {
-            console.warn('⚠️ [SSE] Still CONNECTING after 1 second - this may indicate issues');
+            console.warn('WARNING: [SSE] Still CONNECTING after 1 second - this may indicate issues');
           }
         }, 1000);
 
         setTimeout(() => {
-          console.log('🔍 [SSE] EventSource state after 3 seconds:');
+          console.log('[SSE] EventSource state after 3 seconds:');
           console.log(`  - ReadyState: ${this.eventSource?.readyState}`);
           console.log(`  - Connected flag: ${this.connected}`);
 
           if (this.eventSource?.readyState === 0) {
-            console.error('❌ [SSE] STILL CONNECTING after 3 seconds - connection likely failed');
-            console.log('💡 [SSE] Check proxy logs for /events requests');
-            console.log('💡 [SSE] If no /events requests, EventSource creation failed silently');
+            console.error('ERROR: [SSE] STILL CONNECTING after 3 seconds - connection likely failed');
+            console.log('[SSE] Check proxy logs for /events requests');
+            console.log('[SSE] If no /events requests, EventSource creation failed silently');
           }
         }, 3000);
       }
 
     } catch (error) {
-      // 🚀 CRITICAL FIX: Enhanced error handling with detailed diagnostics
+      // CRITICAL FIX: Enhanced error handling with detailed diagnostics
       this.connected = false;
       if (import.meta.env.DEV) {
-        console.error('❌ [SSE] EventSource creation failed with exception:', error);
-        console.log('🔍 [SSE] Exception details:');
+        console.error('ERROR: [SSE] EventSource creation failed with exception:', error);
+        console.log('[SSE] Exception details:');
         console.log('  - Name:', error.name);
         console.log('  - Message:', error.message);
         console.log('  - Stack:', error.stack);
 
         if (error.name === 'SecurityError') {
           console.error('🚨 [SSE] SECURITY ERROR - URL or origin issue');
-          console.log('💡 [SSE] Check CORS configuration or URL format');
+          console.log('[SSE] Check CORS configuration or URL format');
         } else if (error.name === 'SyntaxError') {
           console.error('🚨 [SSE] SYNTAX ERROR - Invalid URL format');
-          console.log('💡 [SSE] Check URL construction logic');
+          console.log('[SSE] Check URL construction logic');
         }
       }
     }
@@ -285,13 +285,13 @@ class MinimalSSEService {
   handleError(error) {
     this.connected = false;
 
-    // 🚀 CRITICAL FIX: Enhanced error classification to prevent endless loops
+    // CRITICAL FIX: Enhanced error classification to prevent endless loops
     const eventSource = error.target || this.eventSource;
     const isImmediateFailure = eventSource?.readyState === 0;
     const isConnectionClosed = eventSource?.readyState === 2;
 
     if (import.meta.env.DEV) {
-      console.log('🔍 [SSE] Error classification:');
+      console.log('[SSE] Error classification:');
       console.log(`  - Immediate failure: ${isImmediateFailure}`);
       console.log(`  - Connection closed: ${isConnectionClosed}`);
       console.log(`  - Current retry count: ${this.retryCount}`);
@@ -303,11 +303,11 @@ class MinimalSSEService {
       this.eventSource = null;
     }
 
-    // 🚀 CRITICAL FIX: Prevent endless retry loops for persistent failures
+    // CRITICAL FIX: Prevent endless retry loops for persistent failures
     if (isImmediateFailure && this.retryCount >= 1) {
       if (import.meta.env.DEV) {
         console.error('🚨 [SSE] PERSISTENT CONNECTION FAILURE - stopping retries');
-        console.log('💡 [SSE] This suggests server/proxy issues that won\'t resolve with retries');
+        console.log('[SSE] This suggests server/proxy issues that won\'t resolve with retries');
       }
       return; // Stop retrying for immediate failures after first attempt
     }
@@ -316,7 +316,7 @@ class MinimalSSEService {
     if (this.retryCount < SIMPLE_SSE_CONFIG.MAX_RETRIES) {
       this.retryCount++;
 
-      // 🚀 ENHANCED: Progressive backoff for different error types
+      // ENHANCED: Progressive backoff for different error types
       let retryDelay = SIMPLE_SSE_CONFIG.RETRY_DELAY;
 
       if (isImmediateFailure) {
@@ -352,10 +352,10 @@ class MinimalSSEService {
         return;
       }
     } else {
-      // 🚀 ENHANCED: Better max retries handling
+      // ENHANCED: Better max retries handling
       if (import.meta.env.DEV) {
-        console.error(`❌ [SSE] Max retries (${SIMPLE_SSE_CONFIG.MAX_RETRIES}) reached, giving up`);
-        console.log('💡 [SSE] SSE will remain disconnected until manual reconnection or page refresh');
+        console.error(`ERROR: [SSE] Max retries (${SIMPLE_SSE_CONFIG.MAX_RETRIES}) reached, giving up`);
+        console.log('[SSE] SSE will remain disconnected until manual reconnection or page refresh');
       }
     }
 
@@ -366,7 +366,7 @@ class MinimalSSEService {
     }
   }
 
-  // 🚀 CRITICAL FIX: Mock mode completely removed
+  // CRITICAL FIX: Mock mode completely removed
   // No fake connections - only real SSE connections allowed
 
   /**
@@ -428,11 +428,11 @@ class MinimalSSEService {
   }
 
   /**
-   * Get token helper - 🚀 ENHANCED with multiple fallback sources
+   * Get token helper - ENHANCED with multiple fallback sources
    */
   getToken() {
     try {
-      // 🚀 CRITICAL FIX: Try multiple token sources in priority order
+      // CRITICAL FIX: Try multiple token sources in priority order
 
       // Priority 1: Pinia authStore (same source used in main.js)
       if (window.__PINIA__?.state?.value?.auth?.token) {
@@ -465,13 +465,13 @@ class MinimalSSEService {
       }
 
       if (import.meta.env.DEV) {
-        console.warn('⚠️ [SSE] No token found in any source!');
+        console.warn('WARNING: [SSE] No token found in any source!');
       }
       return null;
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ [SSE] Error getting token:', error);
+        console.error('ERROR: [SSE] Error getting token:', error);
       }
       return null;
     }

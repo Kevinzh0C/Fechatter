@@ -41,7 +41,7 @@
               已加载 <strong>{{ totalLoaded }}</strong> 条消息
             </div>
 
-            <!-- 🎯 NEW: 批次大小控制 (性能优化) -->
+            <!-- NEW: 批次大小控制 (性能优化) -->
             <div class="batch-control">
               <label class="batch-label">每批加载数量:</label>
               <select v-model="selectedBatchSize" @change="handleBatchSizeChange" class="batch-select">
@@ -55,7 +55,7 @@
           <div class="scroll-actions">
             <!-- 主要操作 -->
             <button @click="handleContinueLoading" class="continue-button">
-              🚀 继续加载 {{ selectedBatchSize }} 条
+              继续加载 {{ selectedBatchSize }} 条
             </button>
 
             <!-- 次要操作 -->
@@ -72,7 +72,7 @@
       </div>
     </Transition>
 
-    <!-- ✅ 完成通知 -->
+    <!-- 完成通知 -->
     <Transition name="completion-fade">
       <div v-if="showCompletion" class="completion-notification">
         <div class="completion-content">
@@ -108,7 +108,7 @@
       </div>
     </Transition>
 
-    <!-- ❌ 错误状态 -->
+    <!-- ERROR: 错误状态 -->
     <Transition name="error-fade">
       <div v-if="showError" class="error-notification">
         <div class="error-content">
@@ -225,7 +225,7 @@ const progressPercentage = ref(0)
 const loadDuration = ref(0)
 const autoHideTimer = ref(null)
 
-// 🎯 NEW: 用户控制状态
+// NEW: 用户控制状态
 const selectedBatchSize = ref(20) // 默认20条
 
 // 显示状态计算
@@ -500,7 +500,7 @@ onUnmounted(() => {
   min-width: 35px;
 }
 
-/* ✅ 完成通知样式 */
+/* 完成通知样式 */
 .completion-notification {
   position: fixed;
   top: 50%;
@@ -607,7 +607,7 @@ onUnmounted(() => {
   color: #374151;
 }
 
-/* ❌ 错误状态样式 */
+/* ERROR: 错误状态样式 */
 .error-notification {
   position: fixed;
   top: 50%;
@@ -749,7 +749,7 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
-/* 🎯 NEW: 批次控制样式 */
+/* NEW: 批次控制样式 */
 .batch-control {
   margin-top: 16px;
   padding: 12px;

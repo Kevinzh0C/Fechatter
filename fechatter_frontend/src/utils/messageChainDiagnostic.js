@@ -10,7 +10,7 @@ class MessageChainDiagnostic {
     this.isTracing = false;
 
     if (import.meta.env.DEV) {
-      console.log('🔍 Message Chain Diagnostic initialized');
+      console.log('Message Chain Diagnostic initialized');
     }
 
   /**
@@ -19,7 +19,7 @@ class MessageChainDiagnostic {
    */
   startTracing() {
     if (import.meta.env.DEV) {
-      console.log('\n🔍 STARTING MESSAGE CHAIN TRACING');
+      console.log('\nSTARTING MESSAGE CHAIN TRACING');
     if (import.meta.env.DEV) {
       console.log('================================\n');
     }
@@ -34,9 +34,9 @@ class MessageChainDiagnostic {
     this.hookUIUpdates();
 
     if (import.meta.env.DEV) {
-      console.log('✅ Tracing hooks installed');
+      console.log('Tracing hooks installed');
     if (import.meta.env.DEV) {
-      console.log('📝 Send a message or switch chats to see the full trace');
+      console.log('Send a message or switch chats to see the full trace');
     }
 
   /**
@@ -212,7 +212,7 @@ class MessageChainDiagnostic {
 
     let orderType = 'unknown';
     if (firstTime < lastTime) {
-      orderType = 'CHRONOLOGICAL (oldest→newest) ✅';
+      orderType = 'CHRONOLOGICAL (oldest→newest) ';
     } else if (firstTime > lastTime) {
       orderType = 'REVERSE (newest→oldest) ❌';
     } else {
@@ -272,7 +272,7 @@ class MessageChainDiagnostic {
 
     this.traceLog.push(entry);
     if (import.meta.env.DEV) {
-      console.log(`🔍 [${timestamp}] ${category}:${method} - ${message}`);
+      console.log(`[${timestamp}] ${category}:${method} - ${message}`);
     }
 
   /**
@@ -280,14 +280,14 @@ class MessageChainDiagnostic {
    */
   generateChainReport() {
     if (import.meta.env.DEV) {
-      console.log('\n📊 MESSAGE CHAIN ANALYSIS REPORT');
+      console.log('\nMESSAGE CHAIN ANALYSIS REPORT');
     if (import.meta.env.DEV) {
       console.log('=================================\n');
     }
 
     if (this.traceLog.length === 0) {
       if (import.meta.env.DEV) {
-        console.log('⚠️ No trace data collected');
+        console.log('WARNING: No trace data collected');
       return;
     }
 
@@ -335,7 +335,7 @@ class MessageChainDiagnostic {
 
     if (orderEntries.length === 0) {
       if (import.meta.env.DEV) {
-        console.log('⚠️ No order analysis data found');
+        console.log('WARNING: No order analysis data found');
       return;
     }
 
@@ -349,14 +349,14 @@ class MessageChainDiagnostic {
     });
 
     if (import.meta.env.DEV) {
-      console.log('\n📊 Order changes through pipeline:');
+      console.log('\nOrder changes through pipeline:');
     Object.keys(stages).forEach(stage => {
       const stageEntries = stages[stage];
       const orderInfo = stageEntries.find(e => e.message.includes('CHRONOLOGICAL') || e.message.includes('REVERSE'));
 
       if (orderInfo) {
-        const isCorrect = orderInfo.message.includes('✅');
-        const status = isCorrect ? '✅ CORRECT' : '❌ WRONG';
+        const isCorrect = orderInfo.message.includes('');
+        const status = isCorrect ? 'CORRECT' : 'ERROR: WRONG';
         if (import.meta.env.DEV) {
           console.log(`   ${stage}: ${status}`);
         }
@@ -372,7 +372,7 @@ class MessageChainDiagnostic {
    */
   generateRecommendations() {
     if (import.meta.env.DEV) {
-      console.log('\n💡 FIX RECOMMENDATIONS:');
+      console.log('\nFIX RECOMMENDATIONS:');
     if (import.meta.env.DEV) {
       console.log('========================');
     }
@@ -396,7 +396,7 @@ class MessageChainDiagnostic {
 
     if (hasAPIIssue) {
       if (import.meta.env.DEV) {
-        console.log('🔧 BACKEND ISSUE: API returns messages in wrong order');
+        console.log('BACKEND ISSUE: API returns messages in wrong order');
       if (import.meta.env.DEV) {
         console.log('   Fix: Backend should sort by created_at ASC');
       if (import.meta.env.DEV) {
@@ -405,7 +405,7 @@ class MessageChainDiagnostic {
 
     if (hasStoreIssue) {
       if (import.meta.env.DEV) {
-        console.log('🔧 STORE ISSUE: Messages sorted incorrectly in store');
+        console.log('STORE ISSUE: Messages sorted incorrectly in store');
       if (import.meta.env.DEV) {
         console.log('   Fix: Update chat store sorting logic');
       if (import.meta.env.DEV) {
@@ -414,19 +414,19 @@ class MessageChainDiagnostic {
 
     if (hasDOMIssue) {
       if (import.meta.env.DEV) {
-        console.log('🔧 UI ISSUE: DOM rendering problem');
+        console.log('UI ISSUE: DOM rendering problem');
       if (import.meta.env.DEV) {
         console.log('   Fix: Check Vue component message rendering order');
       }
 
     if (import.meta.env.DEV) {
-      console.log('\n🚀 IMMEDIATE ACTION:');
+      console.log('\nIMMEDIATE ACTION:');
     if (import.meta.env.DEV) {
       console.log('   1. Run: window.messageChain.fixIdentifiedIssues()');
     if (import.meta.env.DEV) {
       console.log('   2. Test: Send a message and verify order');
     if (import.meta.env.DEV) {
-      console.log('   3. Verify: Check all stages show ✅ CORRECT');
+      console.log('   3. Verify: Check all stages show CORRECT');
     }
 
   /**
@@ -434,7 +434,7 @@ class MessageChainDiagnostic {
    */
   fixIdentifiedIssues() {
     if (import.meta.env.DEV) {
-      console.log('\n🔧 APPLYING CHAIN FIXES');
+      console.log('\nAPPLYING CHAIN FIXES');
     if (import.meta.env.DEV) {
       console.log('=======================');
     }
@@ -442,7 +442,7 @@ class MessageChainDiagnostic {
     const chatStore = this.getChatStore();
     if (!chatStore) {
       if (import.meta.env.DEV) {
-        console.log('❌ Cannot fix - chat store not available');
+        console.log('ERROR: Cannot fix - chat store not available');
       return;
     }
 
@@ -451,7 +451,7 @@ class MessageChainDiagnostic {
     // Fix 1: Sort current messages
     if (chatStore.messages && chatStore.messages.length > 0) {
       if (import.meta.env.DEV) {
-        console.log('🔧 Fixing current messages...');
+        console.log('Fixing current messages...');
       chatStore.messages.sort((a, b) => {
         const timeA = new Date(a.created_at).getTime();
         const timeB = new Date(b.created_at).getTime();
@@ -459,13 +459,13 @@ class MessageChainDiagnostic {
       });
       fixCount++;
       if (import.meta.env.DEV) {
-        console.log('✅ Current messages sorted chronologically');
+        console.log('Current messages sorted chronologically');
       }
 
     // Fix 2: Fix message cache
     if (chatStore.messageCache) {
       if (import.meta.env.DEV) {
-        console.log('🔧 Fixing message cache...');
+        console.log('Fixing message cache...');
       Object.keys(chatStore.messageCache).forEach(chatId => {
         const cache = chatStore.messageCache[chatId];
         if (cache && cache.messages) {
@@ -477,7 +477,7 @@ class MessageChainDiagnostic {
       });
       fixCount++;
       if (import.meta.env.DEV) {
-        console.log('✅ Message cache sorted chronologically');
+        console.log('Message cache sorted chronologically');
       }
 
     // Fix 3: Install permanent sorting interceptor
@@ -485,7 +485,7 @@ class MessageChainDiagnostic {
     fixCount++;
 
     if (import.meta.env.DEV) {
-      console.log(`\n✅ Applied ${fixCount} fixes to the message chain`);
+      console.log(`\nApplied ${fixCount} fixes to the message chain`);
     if (import.meta.env.DEV) {
       console.log('🔄 Refresh the page to see the corrected order');
     }
@@ -495,7 +495,7 @@ class MessageChainDiagnostic {
    */
   installPermanentSortingFix(chatStore) {
     if (import.meta.env.DEV) {
-      console.log('🔧 Installing permanent sorting interceptor...');
+      console.log('Installing permanent sorting interceptor...');
     }
 
     // Hook into fetchMessagesWithSignal permanently
@@ -514,7 +514,7 @@ class MessageChainDiagnostic {
           });
 
           if (import.meta.env.DEV) {
-            console.log('🔧 Auto-sorted fetched messages chronologically');
+            console.log('Auto-sorted fetched messages chronologically');
           }
 
         return result;
@@ -522,7 +522,7 @@ class MessageChainDiagnostic {
 
       chatStore._sortingFixInstalled = true;
       if (import.meta.env.DEV) {
-        console.log('✅ Permanent sorting fix installed');
+        console.log('Permanent sorting fix installed');
       }
 
   /**
@@ -587,14 +587,14 @@ if (typeof window !== 'undefined') {
     analyze: () => {
       messageChainDiagnostic.startTracing();
       if (import.meta.env.DEV) {
-        console.log('🔍 Tracing started - switch chats or send messages to collect data');
+        console.log('Tracing started - switch chats or send messages to collect data');
       if (import.meta.env.DEV) {
         console.log('⏹️ Run window.messageChain.stop() when ready to analyze');
       }
   };
 
   if (import.meta.env.DEV) {
-    console.log('🔍 Message Chain Diagnostic loaded');
+    console.log('Message Chain Diagnostic loaded');
   if (import.meta.env.DEV) {
     console.log('   Commands:');
   if (import.meta.env.DEV) {

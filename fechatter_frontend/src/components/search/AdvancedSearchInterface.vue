@@ -1,5 +1,5 @@
 <template>
-  <!-- 🎨 Advanced Search Interface - Human-Centered Design -->
+  <!-- Advanced Search Interface - Human-Centered Design -->
   <div class="advanced-search-interface" :class="{ 'interface-active': isSearchActive }">
     <!-- Search Input Section - Golden Ratio Layout -->
     <div class="search-input-section">
@@ -598,7 +598,7 @@ defineExpose({
 </script>
 
 <style scoped>
-/* 🎨 Advanced Search Interface Styles - Human-Centered Design */
+/* Advanced Search Interface Styles - Human-Centered Design */
 
 .advanced-search-interface {
   /* Golden Ratio Based Layout */

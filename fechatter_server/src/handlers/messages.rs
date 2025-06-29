@@ -179,12 +179,12 @@ pub async fn send_message_handler(
     {
       tracing::warn!("Failed to publish message to notify_server for SSE: {}", e);
     } else {
-      tracing::info!("📡 Successfully published complete message to notify_server for SSE broadcasting");
+      tracing::info!("SUBSCRIPTION: Successfully published complete message to notify_server for SSE broadcasting");
     }
   }
 
   // ========================================================================
-  // 🔥 LEGACY: Unified Event Publishing - Production-grade NATS Integration
+  // LEGACY: Unified Event Publishing - Production-grade NATS Integration
   // ========================================================================
   
   // Publish unified event using enhanced event publisher
@@ -221,7 +221,7 @@ pub async fn send_message_handler(
     {
       tracing::warn!("Failed to publish unified message created event: {}", e);
     } else {
-      tracing::info!("📡 Successfully published unified message created event for message {}", message_view.id);
+      tracing::info!("SUBSCRIPTION: Successfully published unified message created event for message {}", message_view.id);
     }
   }
 
@@ -332,7 +332,7 @@ pub async fn edit_message_handler(
   }
 
   // ========================================================================
-  // 🔥 LEGACY: Unified Event Publishing for Message Edit
+  // LEGACY: Unified Event Publishing for Message Edit
   // ========================================================================
   
   if let Some(event_publisher) = get_unified_event_publisher(&state) {

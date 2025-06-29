@@ -21,7 +21,7 @@ function isSimpleFilename(str) {
 function constructHashUrl(filename, workspaceId) {
   // 🚨 CRITICAL FIX: Empty filename check to prevent /files/2/ incomplete URLs
   if (!filename || filename.trim() === '') {
-    console.error('❌ [FileUrlHandler] Empty filename provided, cannot construct URL');
+    console.error('ERROR: [FileUrlHandler] Empty filename provided, cannot construct URL');
     return null;
   }
 
@@ -32,7 +32,7 @@ function constructHashUrl(filename, workspaceId) {
 
   // 🚨 CRITICAL FIX: Validate clean filename
   if (!cleanFilename || cleanFilename.trim() === '') {
-    console.error('❌ [FileUrlHandler] Invalid filename after cleaning:', filename);
+    console.error('ERROR: [FileUrlHandler] Invalid filename after cleaning:', filename);
     return null;
   }
 
@@ -49,23 +49,23 @@ function constructHashUrl(filename, workspaceId) {
 function normalizeUrlString(url, workspaceId) {
   // 🚨 CRITICAL FIX: Handle empty/null URLs
   if (!url || url.trim() === '') {
-    console.error('❌ [FileUrlHandler] Empty URL provided');
+    console.error('ERROR: [FileUrlHandler] Empty URL provided');
     return null;
   }
 
-  console.log('🔧 [FileUrlHandler] Normalizing URL:', url, 'workspace:', workspaceId);
+  console.log('[FileUrlHandler] Normalizing URL:', url, 'workspace:', workspaceId);
 
-  // 🔧 CRITICAL FIX: Handle ANY /download/ format FIRST - extract filename and construct proper hash URL
+  // CRITICAL FIX: Handle ANY /download/ format FIRST - extract filename and construct proper hash URL
   if (url.includes('/download/')) {
     const filename = url.split('/download/')[1];
-    console.log('🔧 [FileUrlHandler] Fixing download URL:', url, '-> filename:', filename);
+    console.log('[FileUrlHandler] Fixing download URL:', url, '-> filename:', filename);
     if (filename && filename.length >= 10) {
       const hash1 = filename.substring(0, 3);
       const hash2 = filename.substring(3, 6);
       // 🚨 CRITICAL FIX: Remove hash prefix from filename to match actual storage
       const cleanFilename = filename.substring(6); // Remove first 6 chars (hash1+hash2)
       const fixedUrl = '/api/files/' + workspaceId + '/' + hash1 + '/' + hash2 + '/' + cleanFilename;
-      console.log('🔧 [FileUrlHandler] Fixed URL (removed hash prefix):', fixedUrl);
+      console.log('[FileUrlHandler] Fixed URL (removed hash prefix):', fixedUrl);
       return fixedUrl;
     }
     return constructHashUrl(filename, workspaceId);
@@ -76,23 +76,23 @@ function normalizeUrlString(url, workspaceId) {
   const isFiles = url.startsWith('/files/');
   const hasWorkspace = url.includes(workspacePattern);
 
-  // 🔧 CORRECTED: /api/files/ format is already correct
+  // CORRECTED: /api/files/ format is already correct
   if (isApiFiles && hasWorkspace) {
-    console.log('🔧 [FileUrlHandler] Already correct /api/files/ format:', url);
+    console.log('[FileUrlHandler] Already correct /api/files/ format:', url);
     return url;
   }
 
-  // 🔧 CORRECTED: Convert /files/ to /api/files/
+  // CORRECTED: Convert /files/ to /api/files/
   if (isFiles && hasWorkspace) {
     const converted = url.replace('/files/', '/api/files/');
-    console.log('🔧 [FileUrlHandler] Converted /files/ to /api/files/:', url, '→', converted);
+    console.log('[FileUrlHandler] Converted /files/ to /api/files/:', url, '→', converted);
     return converted;
   }
 
   if (isApiFiles) {
     const pathPart = url.substring(11);
     const result = '/api/files/' + workspaceId + '/' + pathPart;
-    console.log('🔧 [FileUrlHandler] Added workspace:', url, '→', result);
+    console.log('[FileUrlHandler] Added workspace:', url, '→', result);
     return result;
   }
 
@@ -116,12 +116,12 @@ function normalizeUrlString(url, workspaceId) {
   if (url.startsWith('http') || url.startsWith('blob:')) {
     return url;
   }
-  console.warn('⚠️ [FileUrlHandler] Unknown URL format:', url);
+  console.warn('WARNING: [FileUrlHandler] Unknown URL format:', url);
   return constructHashUrl(url, workspaceId);
 }
 
 function normalizeFileObject(file, workspaceId) {
-  console.log('🔧 [FileUrlHandler] Processing file object:', file);
+  console.log('[FileUrlHandler] Processing file object:', file);
 
   const candidates = [
     file.file_url,
@@ -132,17 +132,17 @@ function normalizeFileObject(file, workspaceId) {
     file.name
   ].filter(Boolean);
 
-  console.log('🔧 [FileUrlHandler] URL candidates:', candidates);
+  console.log('[FileUrlHandler] URL candidates:', candidates);
 
   for (const candidate of candidates) {
-    console.log('🔧 [FileUrlHandler] Testing candidate:', candidate);
+    console.log('[FileUrlHandler] Testing candidate:', candidate);
     const result = normalizeUrlString(candidate, workspaceId);
     if (result) {
-      console.log('🔧 [FileUrlHandler] Successfully normalized:', candidate, '→', result);
+      console.log('[FileUrlHandler] Successfully normalized:', candidate, '→', result);
       return result;
     }
   }
-  console.error('❌ [FileUrlHandler] No valid URL found in file object:', file);
+  console.error('ERROR: [FileUrlHandler] No valid URL found in file object:', file);
   return null;
 }
 
@@ -156,7 +156,7 @@ export function getStandardFileUrl(fileInput, options = {}) {
     } else if (typeof fileInput === 'object' && fileInput !== null) {
       result = normalizeFileObject(fileInput, workspaceId);
     } else {
-      console.error('❌ [FileUrlHandler] Invalid file input:', fileInput);
+      console.error('ERROR: [FileUrlHandler] Invalid file input:', fileInput);
       return null;
     }
 
@@ -173,7 +173,7 @@ export function getStandardFileUrl(fileInput, options = {}) {
           const hash2 = filename.substring(3, 6);
           const cleanFilename = filename.substring(6);
           result = '/api/files/' + workspaceId + '/' + hash1 + '/' + hash2 + '/' + cleanFilename;
-          console.log('🔧 EMERGENCY FIX applied:', result);
+          console.log('EMERGENCY FIX applied:', result);
         }
       }
     }
@@ -189,21 +189,21 @@ export function getStandardFileUrl(fileInput, options = {}) {
         if (filename.startsWith(hash1 + hash2)) {
           const cleanFilename = filename.substring(6);
           result = '/api/files/' + workspaceId + '/' + hash1 + '/' + hash2 + '/' + cleanFilename;
-          console.log('🔧 HASH PREFIX FIX applied:', result);
+          console.log('HASH PREFIX FIX applied:', result);
         }
       }
     }
 
-    console.log('✅ [FileUrlHandler] Final output:', result);
+    console.log('[FileUrlHandler] Final output:', result);
     return result;
   } catch (error) {
-    console.error('❌ [FileUrlHandler] Error processing file URL:', error);
+    console.error('ERROR: [FileUrlHandler] Error processing file URL:', error);
     return null;
   }
 }
 
 export function debugFileUrlHandler(fileInput, options = {}) {
-  console.group('🔍 [FileUrlHandler] URL Debug');
+  console.group('[FileUrlHandler] URL Debug');
   console.log('Input:', fileInput);
   const result = getStandardFileUrl(fileInput, options);
   console.log('Output:', result);

@@ -8,7 +8,7 @@ class UltraFastPerformanceTest {
     this.testResults = [];
     this.isRunning = false;
     if (import.meta.env.DEV) {
-      console.log('⚡ Ultra-Fast Performance Test initialized');
+      console.log('Ultra-Fast Performance Test initialized');
     }
 
   /**
@@ -18,7 +18,7 @@ class UltraFastPerformanceTest {
   async runTest() {
     if (this.isRunning) {
       if (import.meta.env.DEV) {
-        console.log('⚠️ Test already running');
+        console.log('WARNING: Test already running');
       return;
     }
 
@@ -26,7 +26,7 @@ class UltraFastPerformanceTest {
     this.testResults = [];
 
     if (import.meta.env.DEV) {
-      console.log('\n⚡ ULTRA-FAST PERFORMANCE TEST');
+      console.log('\nULTRA-FAST PERFORMANCE TEST');
     if (import.meta.env.DEV) {
       console.log('==============================');
     }
@@ -47,7 +47,7 @@ class UltraFastPerformanceTest {
       // Test 3: SSE Processing Speed
       const sseTest = this.testSSEProcessingSpeed();
       if (import.meta.env.DEV) {
-        console.log(`📨 SSE Processing Speed: ${sseTest.average.toFixed(2)}ms`);
+        console.log(`EVENT: SSE Processing Speed: ${sseTest.average.toFixed(2)}ms`);
       }
 
       // Test 4: Cache Update Speed
@@ -73,7 +73,7 @@ class UltraFastPerformanceTest {
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Performance test failed:', error);
+        console.error('ERROR: Performance test failed:', error);
       }
     } finally {
       this.isRunning = false;
@@ -320,7 +320,7 @@ class UltraFastPerformanceTest {
    */
   showSummary(results) {
     if (import.meta.env.DEV) {
-      console.log('\n📊 PERFORMANCE SUMMARY');
+      console.log('\nPERFORMANCE SUMMARY');
     if (import.meta.env.DEV) {
       console.log('======================');
     }
@@ -344,8 +344,8 @@ class UltraFastPerformanceTest {
 
     // Performance rating
     const avgE2E = results.e2e.average;
-    let rating = '🔥 ULTRA-FAST';
-    if (avgE2E > 10) rating = '⚡ FAST';
+    let rating = 'ULTRA-FAST';
+    if (avgE2E > 10) rating = 'FAST';
     if (avgE2E > 50) rating = '🐌 SLOW';
     if (avgE2E > 100) rating = '🚨 VERY SLOW';
 
@@ -358,15 +358,15 @@ class UltraFastPerformanceTest {
     // Recommendations
     if (avgE2E < 5) {
       if (import.meta.env.DEV) {
-        console.log('✅ Excellent performance! System is ultra-fast.');
+        console.log('Excellent performance! System is ultra-fast.');
       }
     } else if (avgE2E < 20) {
       if (import.meta.env.DEV) {
-        console.log('✅ Good performance! System is fast enough.');
+        console.log('Good performance! System is fast enough.');
       }
     } else {
       if (import.meta.env.DEV) {
-        console.log('⚠️ Performance could be improved. Check for bottlenecks.');
+        console.log('WARNING: Performance could be improved. Check for bottlenecks.');
       }
 
   /**
@@ -407,7 +407,7 @@ if (typeof window !== 'undefined') {
 }
 
 if (import.meta.env.DEV) {
-  console.log('⚡ Ultra-Fast Performance Test loaded');
+  console.log('Ultra-Fast Performance Test loaded');
 if (import.meta.env.DEV) {
   console.log('   Commands:');
 if (import.meta.env.DEV) {

@@ -80,7 +80,7 @@ class ConsoleMonitor {
 
     this.isActive = true;
     if (import.meta.env.DEV) {
-      console.log('📊 Console Monitor started');
+      console.log('Console Monitor started');
     }
 
   /**
@@ -134,7 +134,7 @@ class ConsoleMonitor {
     });
 
     this.isActive = false;
-    this.originalMethods.log('📊 Console Monitor stopped');
+    this.originalMethods.log('Console Monitor stopped');
   }
 
   /**
@@ -196,7 +196,7 @@ class ConsoleMonitor {
     const recentErrors = this.getRecentLogs(10, { type: 'error' });
     const suppressedErrors = this.getRecentLogs(10, { suppressed: true });
 
-    console.group('📊 Console Monitor Report');
+    console.group('Console Monitor Report');
     if (import.meta.env.DEV) {
       console.log('Statistics:', stats);
     if (import.meta.env.DEV) {
@@ -234,7 +234,7 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   setTimeout(() => {
     consoleMonitor.start();
     if (import.meta.env.DEV) {
-      console.log('💡 Console Monitor available: window.consoleMonitor');
+      console.log('Console Monitor available: window.consoleMonitor');
     }
   }, 100);
 }

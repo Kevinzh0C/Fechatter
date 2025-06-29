@@ -48,7 +48,7 @@ async fn test_nats_basic_connection() -> Result<(), Box<dyn std::error::Error>> 
   drop(subscriber);
   env.cleanup().await?;
 
-  info!("✅ NATS basic connection test passed");
+  info!("NATS basic connection test passed");
 
   Ok(())
 }
@@ -73,7 +73,7 @@ async fn test_nats_jetstream_integration() -> Result<(), Box<dyn std::error::Err
     }
     Err(e) => {
       warn!("JetStream not available: {}, skipping test", e);
-      info!("✅ NATS JetStream integration test completed (JetStream not available)");
+      info!("NATS JetStream integration test completed (JetStream not available)");
       return Ok(());
     }
   }
@@ -100,7 +100,7 @@ async fn test_nats_jetstream_integration() -> Result<(), Box<dyn std::error::Err
         Ok(stream) => stream,
         Err(e) => {
           warn!("Failed to create JetStream stream: {}, skipping test", e);
-          info!("✅ NATS JetStream integration test completed (stream creation failed)");
+          info!("NATS JetStream integration test completed (stream creation failed)");
           return Ok(());
         }
       }
@@ -120,14 +120,14 @@ async fn test_nats_jetstream_integration() -> Result<(), Box<dyn std::error::Err
     .await
   {
     Ok(_) => {
-      info!("✅ NATS JetStream integration test passed");
+      info!("NATS JetStream integration test passed");
     }
     Err(e) => {
       warn!(
         "JetStream publish failed: {}, but test completed gracefully",
         e
       );
-      info!("✅ NATS JetStream integration test completed (publish failed)");
+      info!("NATS JetStream integration test completed (publish failed)");
     }
   }
 
@@ -224,7 +224,7 @@ async fn test_fechatter_message_event_publishing() -> Result<(), Box<dyn std::er
                 assert_eq!(chat_members.len(), 3);
 
                 found_our_event = true;
-                info!("✅ Found and validated our NATS message event");
+                info!("Found and validated our NATS message event");
                 break;
               } else {
                 info!("Skipping event with different content: {}", content);
@@ -252,7 +252,7 @@ async fn test_fechatter_message_event_publishing() -> Result<(), Box<dyn std::er
   drop(message_subscriber);
   env.cleanup().await?;
 
-  info!("✅ Fechatter message event publishing test passed");
+  info!("Fechatter message event publishing test passed");
 
   Ok(())
 }
@@ -324,7 +324,7 @@ async fn test_chat_member_event_publishing() -> Result<(), Box<dyn std::error::E
     // Validate using NatsEventValidator
     NatsEventValidator::validate_member_joined_event(&event_data, chat.id.into(), user4_id.into())?;
 
-    info!("✅ User join event received");
+    info!("User join event received");
   }
 
   // Cleanup explicitly
@@ -332,7 +332,7 @@ async fn test_chat_member_event_publishing() -> Result<(), Box<dyn std::error::E
   drop(_leave_subscriber);
   env.cleanup().await?;
 
-  info!("✅ Chat member event publishing test passed");
+  info!("Chat member event publishing test passed");
 
   Ok(())
 }
@@ -415,16 +415,16 @@ async fn test_duplicate_message_event() -> Result<(), Box<dyn std::error::Error>
       serde_json::Value::from(i64::from(user1_id))
     );
     assert_eq!(event_data["idempotency_key"], idempotency_key.to_string());
-    info!("✅ Duplicate message event received");
+    info!("Duplicate message event received");
   } else {
-    info!("⚠️ No duplicate message event received (may be expected)");
+    info!("WARNING: No duplicate message event received (may be expected)");
   }
 
   // Cleanup explicitly
   drop(duplicate_subscriber);
   env.cleanup().await?;
 
-  info!("✅ Duplicate message event test completed");
+  info!("Duplicate message event test completed");
 
   Ok(())
 }
@@ -476,7 +476,7 @@ async fn test_nats_performance() -> Result<(), Box<dyn std::error::Error>> {
   let receive_duration = receive_start.elapsed();
 
   info!(
-    "📊 NATS Performance: Published {} messages in {:?} ({:.2} msg/sec), Received {} in {:?} ({:.2} msg/sec)",
+    "NATS Performance: Published {} messages in {:?} ({:.2} msg/sec), Received {} in {:?} ({:.2} msg/sec)",
     MESSAGE_COUNT,
     publish_duration,
     MESSAGE_COUNT as f64 / publish_duration.as_secs_f64(),
@@ -497,7 +497,7 @@ async fn test_nats_performance() -> Result<(), Box<dyn std::error::Error>> {
   drop(subscriber);
   env.cleanup().await?;
 
-  info!("✅ NATS performance test passed");
+  info!("NATS performance test passed");
 
   Ok(())
 }

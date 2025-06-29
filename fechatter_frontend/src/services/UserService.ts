@@ -26,7 +26,7 @@ class UserService {
       
       throw new Error(response.data.error?.message || 'Failed to get user profile');
     } catch (error) {
-      console.error('❌ [UserService] Get current user profile failed:', error);
+      console.error('ERROR: [UserService] Get current user profile failed:', error);
       throw this.handleError(error);
     }
   }
@@ -44,7 +44,7 @@ class UserService {
       
       throw new Error(response.data.error?.message || 'Failed to get user profile');
     } catch (error) {
-      console.error(`❌ [UserService] Get user profile failed for user ${userId}:`, error);
+      console.error(`ERROR: [UserService] Get user profile failed for user ${userId}:`, error);
       throw this.handleError(error);
     }
   }
@@ -62,7 +62,7 @@ class UserService {
       
       throw new Error(response.data.error?.message || 'Failed to update user profile');
     } catch (error) {
-      console.error('❌ [UserService] Update current user profile failed:', error);
+      console.error('ERROR: [UserService] Update current user profile failed:', error);
       throw this.handleError(error);
     }
   }
@@ -80,7 +80,7 @@ class UserService {
       
       throw new Error(response.data.error?.message || 'Failed to update user profile');
     } catch (error) {
-      console.error(`❌ [UserService] Update user profile failed for user ${userId}:`, error);
+      console.error(`ERROR: [UserService] Update user profile failed for user ${userId}:`, error);
       throw this.handleError(error);
     }
   }
@@ -103,7 +103,7 @@ class UserService {
       
       throw new Error(response.data.error?.message || 'Failed to change password');
     } catch (error) {
-      console.error('❌ [UserService] Change password failed:', error);
+      console.error('ERROR: [UserService] Change password failed:', error);
       throw this.handleError(error);
     }
   }
@@ -125,7 +125,7 @@ class UserService {
       
       throw new Error(response.data.error?.message || 'Failed to upload avatar');
     } catch (error) {
-      console.error('❌ [UserService] Upload avatar failed:', error);
+      console.error('ERROR: [UserService] Upload avatar failed:', error);
       throw this.handleError(error);
     }
   }
@@ -144,7 +144,7 @@ class UserService {
       
       return false;
     } catch (error) {
-      console.warn('⚠️ [UserService] Check username availability failed:', error);
+      console.warn('WARNING: [UserService] Check username availability failed:', error);
       // 如果检查失败，假设用户名可用
       return true;
     }
@@ -164,7 +164,7 @@ class UserService {
       
       return false;
     } catch (error) {
-      console.warn('⚠️ [UserService] Check email availability failed:', error);
+      console.warn('WARNING: [UserService] Check email availability failed:', error);
       // 如果检查失败，假设邮箱可用
       return true;
     }
@@ -184,7 +184,7 @@ class UserService {
       
       return [];
     } catch (error) {
-      console.warn('⚠️ [UserService] Search users failed:', error);
+      console.warn('WARNING: [UserService] Search users failed:', error);
       return [];
     }
   }

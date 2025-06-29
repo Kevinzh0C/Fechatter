@@ -182,7 +182,7 @@ class ReadReceiptsService {
       'sent': '📤',
       'delivered': '📩',
       'read-some': '👁️',
-      'read-all': '✅'
+      'read-all': ''
     };
     return iconMap[status] || '📤';
   }

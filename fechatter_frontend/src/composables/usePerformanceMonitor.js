@@ -340,7 +340,7 @@ export function usePerformanceMonitor() {
     const score = getPerformanceScore();
     const suggestions = getOptimizationSuggestions();
 
-    console.group('📊 Performance Metrics');
+    console.group('Performance Metrics');
     if (import.meta.env.DEV) {
       console.log('Overall Score:', score?.overall || 'N/A', `(Grade: ${score?.grade || 'N/A'})`);
     if (import.meta.env.DEV) {

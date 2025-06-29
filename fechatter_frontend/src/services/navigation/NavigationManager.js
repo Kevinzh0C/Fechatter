@@ -1,5 +1,5 @@
 /**
- * 🎯 Navigation Manager - Production-Grade Message Switching
+ * Navigation Manager - Production-Grade Message Switching
  * 
  * Core Constraints Compliance:
  * - Data Consistency: No message list flashing or clearing
@@ -19,7 +19,7 @@ class NavigationManager {
     this.currentNavigation = ref(null);
     this.navigationHistory = [];
 
-    // 🔧 FIXED: Single active navigation to prevent race conditions
+    // FIXED: Single active navigation to prevent race conditions
     this.activeNavigation = null; // Only one navigation at a time
     this.activeChatId = null;
 
@@ -66,7 +66,7 @@ class NavigationManager {
   }
 
   /**
-   * 🔧 CORE FIX: Production-grade navigation with proper concurrency control
+   * CORE FIX: Production-grade navigation with proper concurrency control
    */
   async navigateToChat(chatId, options = {}) {
     if (!this.isInitialized || !this.router || !this.chatStore) {
@@ -76,24 +76,24 @@ class NavigationManager {
 
     const normalizedId = parseInt(chatId);
 
-    // 🔧 BALANCED FIX: Check if we're already in chat AND have messages loaded
+    // BALANCED FIX: Check if we're already in chat AND have messages loaded
     const currentRoute = this.router.currentRoute.value;
     const isOnCorrectRoute = currentRoute.params.id && parseInt(currentRoute.params.id) === normalizedId;
     const hasMessages = unifiedMessageService.getMessagesForChat(normalizedId)?.length > 0;
     const isCurrentChat = this.chatStore.currentChatId === normalizedId;
 
     if (isOnCorrectRoute && hasMessages && isCurrentChat) {
-      console.log(`✅ Already in chat ${normalizedId} with messages loaded`);
+      console.log(`Already in chat ${normalizedId} with messages loaded`);
       return { success: true, cached: true, duration: 0 };
     }
 
-    // 🔧 FIX 2: Cancel any active navigation (only one at a time)
+    // FIX 2: Cancel any active navigation (only one at a time)
     if (this.activeNavigation && this.activeChatId !== normalizedId) {
       console.log(`🚫 Cancelling navigation to chat ${this.activeChatId}, switching to ${normalizedId}`);
       await this.cancelActiveNavigation();
     }
 
-    // 🔧 FIX 3: If same chat navigation is already in progress, wait for it
+    // FIX 3: If same chat navigation is already in progress, wait for it
     if (this.activeNavigation && this.activeChatId === normalizedId) {
       console.log(`🔄 Already navigating to chat ${normalizedId}, waiting...`);
       return this.activeNavigation;
@@ -113,7 +113,7 @@ class NavigationManager {
   }
 
   /**
-   * 🔧 FIXED: Graceful cancellation without errors
+   * FIXED: Graceful cancellation without errors
    */
   async cancelActiveNavigation() {
     if (!this.activeNavigation) return;
@@ -147,7 +147,7 @@ class NavigationManager {
   }
 
   /**
-   * 🔧 CORE FIX: Perform navigation with proper error handling
+   * CORE FIX: Perform navigation with proper error handling
    */
   async _performNavigation(chatId, options = {}) {
     const startTime = Date.now();
@@ -156,19 +156,19 @@ class NavigationManager {
       this.isNavigating.value = true;
       this.currentNavigation.value = { chatId, startTime };
 
-      console.log(`🚀 Starting navigation to chat ${chatId}`);
+      console.log(`Starting navigation to chat ${chatId}`);
 
-      // 🔧 FIX: Immediate UI state update to prevent flashing
+      // FIX: Immediate UI state update to prevent flashing
       await this._updateUIState(chatId);
 
-      // 🔧 FIX: Sequential execution to prevent race conditions
+      // FIX: Sequential execution to prevent race conditions
       await this._navigateRoute(chatId);
       await this._ensureChatData(chatId);
       await this._loadMessagesGracefully(chatId, options);
       await this._loadMembersNonCritical(chatId);
 
       const duration = Date.now() - startTime;
-      console.log(`✅ Navigation to chat ${chatId} completed in ${duration}ms`);
+      console.log(`Navigation to chat ${chatId} completed in ${duration}ms`);
 
       this.navigationHistory.push({
         chatId,
@@ -180,13 +180,13 @@ class NavigationManager {
       return { success: true, duration };
 
     } catch (error) {
-      // 🔧 FIX: Distinguish between cancellation and real errors
+      // FIX: Distinguish between cancellation and real errors
       if (this._isCancellationError(error)) {
         console.log(`🔄 Navigation to chat ${chatId} was cancelled`);
         return { success: false, cancelled: true };
       }
 
-      console.error(`❌ Navigation to chat ${chatId} failed:`, error);
+      console.error(`ERROR: Navigation to chat ${chatId} failed:`, error);
 
       // Only retry for non-cancellation errors
       if (this.shouldRetry(chatId)) {
@@ -206,7 +206,7 @@ class NavigationManager {
   }
 
   /**
-   * 🔧 NEW: Immediate UI state update to prevent flashing
+   * NEW: Immediate UI state update to prevent flashing
    */
   async _updateUIState(chatId) {
     try {
@@ -216,7 +216,7 @@ class NavigationManager {
       // Check if we have cached messages to show immediately
       const cachedMessages = unifiedMessageService.getMessagesForChat(chatId);
       if (cachedMessages && cachedMessages.length > 0) {
-        console.log(`⚡ Using cached messages for immediate display: ${cachedMessages.length} messages`);
+        console.log(`Using cached messages for immediate display: ${cachedMessages.length} messages`);
         // Messages are already available, UI will update automatically
       }
     } catch (error) {
@@ -230,36 +230,36 @@ class NavigationManager {
    */
   async _navigateRoute(chatId) {
     try {
-      // 🔧 ENHANCED: Check current route before attempting navigation
+      // ENHANCED: Check current route before attempting navigation
       const currentRoute = this.router.currentRoute.value;
       const currentChatId = currentRoute.params.id ? parseInt(currentRoute.params.id) : null;
 
       // If we're already on the correct route, skip navigation
       if (currentChatId === parseInt(chatId)) {
-        console.log(`ℹ️ Already on chat ${chatId} route, skipping navigation`);
+        console.log(`INFO: Already on chat ${chatId} route, skipping navigation`);
         return true;
       }
 
       await this.router.push(`/chat/${chatId}`);
       return true;
     } catch (error) {
-      // 🔧 EXPANDED: Handle all possible Vue Router navigation errors
+      // EXPANDED: Handle all possible Vue Router navigation errors
       if (error.name === 'NavigationDuplicated' ||
         error.message?.includes('redundant navigation') ||
         error.message?.includes('Avoided redundant') ||
         error.toString().includes('redundant')) {
-        console.log(`ℹ️ Redundant navigation to chat ${chatId} detected and handled gracefully`);
+        console.log(`INFO: Redundant navigation to chat ${chatId} detected and handled gracefully`);
         return true;
       }
 
-      // 🔧 NEW: Handle navigation cancelled errors
+      // NEW: Handle navigation cancelled errors
       if (error.name === 'NavigationCancelled' ||
         error.message?.includes('Navigation cancelled')) {
-        console.log(`ℹ️ Navigation to chat ${chatId} was cancelled, treating as success`);
+        console.log(`INFO: Navigation to chat ${chatId} was cancelled, treating as success`);
         return true;
       }
 
-      console.error(`❌ Failed to navigate to route /chat/${chatId}:`, error);
+      console.error(`ERROR: Failed to navigate to route /chat/${chatId}:`, error);
       throw error;
     }
   }
@@ -282,7 +282,7 @@ class NavigationManager {
   }
 
   /**
-   * 🔧 FIXED: Load messages with graceful cancellation handling
+   * FIXED: Load messages with graceful cancellation handling
    */
   async _loadMessagesGracefully(chatId, options = {}) {
     const requestType = 'messages';
@@ -328,13 +328,13 @@ class NavigationManager {
     try {
       return await this.chatStore.fetchChatMembers(chatId);
     } catch (error) {
-      console.warn(`⚠️ Failed to load members for chat ${chatId}:`, error);
+      console.warn(`WARNING: Failed to load members for chat ${chatId}:`, error);
       return [];
     }
   }
 
   /**
-   * 🔧 NEW: Check if error is from request cancellation
+   * NEW: Check if error is from request cancellation
    */
   _isCancellationError(error) {
     return error.name === 'AbortError' ||
@@ -389,7 +389,7 @@ class NavigationManager {
   }
 
   /**
-   * 🔧 ENHANCED: Preload with request tracking
+   * ENHANCED: Preload with request tracking
    */
   async preloadChat(chatId) {
     try {
@@ -437,7 +437,7 @@ class NavigationManager {
 // Create and export singleton instance
 export const navigationManager = new NavigationManager();
 
-// 🔧 FIXED: Simplified factory function that requires pre-initialized manager
+// FIXED: Simplified factory function that requires pre-initialized manager
 export function createNavigationHelper(router, chatStore) {
   // Initialize the manager with proper dependencies
   navigationManager.initialize(router, chatStore);

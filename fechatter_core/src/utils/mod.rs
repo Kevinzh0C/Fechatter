@@ -1,9 +1,9 @@
-// 重试策略工具
+// Retry strategy utilities
 pub mod retry;
 
-// 测试工具
+// Test utilities
 pub mod mock;
 
-// 重新导出工具类
+// Re-export utility classes
 pub use mock::*;
 pub use retry::*;

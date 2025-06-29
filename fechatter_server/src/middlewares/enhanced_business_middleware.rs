@@ -45,10 +45,10 @@ pub async fn apply_rate_limiting(
     match check_rate_limit(cache_service, &rate_key, path).await {
       Ok(allowed) => {
         if allowed {
-          debug!("⏱️ [RATE_LIMIT] ✅ Request allowed for IP: {}", client_ip);
+          debug!("⏱️ [RATE_LIMIT] Request allowed for IP: {}", client_ip);
           next.run(req).await
         } else {
-          warn!("⏱️ [RATE_LIMIT] ❌ Rate limit exceeded for IP: {}", client_ip);
+          warn!("⏱️ [RATE_LIMIT] ERROR: Rate limit exceeded for IP: {}", client_ip);
           create_rate_limit_response()
         }
       }
@@ -115,7 +115,7 @@ pub async fn monitor_performance(
       method, path, duration.as_millis(), threshold_ms
     );
   } else {
-    debug!("📈 [PERFORMANCE] ✅ Request completed in {}ms", duration.as_millis());
+    debug!("📈 [PERFORMANCE] Request completed in {}ms", duration.as_millis());
   }
   
   response
@@ -129,17 +129,17 @@ pub async fn validate_request_data(
   let method = req.method().clone();
   let path = req.uri().path().to_string();
   
-  debug!("🔍 [VALIDATION] Validating request data for {} {}", method, path);
+  debug!("[VALIDATION] Validating request data for {} {}", method, path);
   
   // Enhanced validation for specific endpoints
   if requires_enhanced_validation(&method, &path) {
     match perform_request_validation(req).await {
       Ok(validated_req) => {
-        debug!("🔍 [VALIDATION] ✅ Request validation passed");
+        debug!("[VALIDATION] Request validation passed");
         next.run(validated_req).await
       }
       Err(validation_error) => {
-        warn!("🔍 [VALIDATION] ❌ Request validation failed: {}", validation_error);
+        warn!("[VALIDATION] ERROR: Request validation failed: {}", validation_error);
         create_validation_error_response(&validation_error)
       }
     }
@@ -171,14 +171,14 @@ pub async fn handle_errors(
     create_server_error_response()
   } else if response.status().is_client_error() {
     warn!(
-      "⚠️ [ERROR] Client error: {} {} -> {} ({}ms)",
+      "WARNING: [ERROR] Client error: {} {} -> {} ({}ms)",
       method, path, response.status().as_u16(), duration.as_millis()
     );
     
     response // Return original client error response
   } else {
     debug!(
-      "✅ [REQUEST] Successful: {} {} -> {} ({}ms)",
+      "[REQUEST] Successful: {} {} -> {} ({}ms)",
       method, path, response.status().as_u16(), duration.as_millis()
     );
     

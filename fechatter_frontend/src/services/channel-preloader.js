@@ -1,5 +1,5 @@
 /**
- * 🚀 Channel Preloader Service
+ * Channel Preloader Service
  * 频道预加载服务 - 快速首屏加载
  */
 
@@ -58,7 +58,7 @@ class ChannelPreloaderService {
       return result;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ [PRELOADER] Preloading failed:', error);
+        console.error('ERROR: [PRELOADER] Preloading failed:', error);
         throw error;
       } finally {
         this.isPreloading = false;
@@ -161,7 +161,7 @@ class ChannelPreloaderService {
           chat && (chat.chat_type === 'PublicChannel' || chat.chat_type === 'PrivateChannel')
         ) : [];
 
-        // 🔥 获取真实的未读计数
+        // 获取真实的未读计数
         let realUnreadCounts = {};
         try {
           const { useAuthStore } = await import('@/stores/auth');
@@ -214,11 +214,11 @@ class ChannelPreloaderService {
     }
 
   /**
-   * 预加载SSE实时连接 - 🚀 ENHANCED: 只在聊天页面连接
+   * 预加载SSE实时连接 - ENHANCED: 只在聊天页面连接
    */
   async preloadSSEConnection(token) {
       try {
-        // 🚀 CRITICAL FIX: 只在聊天页面建立SSE连接
+        // CRITICAL FIX: 只在聊天页面建立SSE连接
         const currentPath = window.location.pathname;
         const isOnChatPage = currentPath.startsWith('/chat/') && currentPath !== '/chat';
         const isOnAuthPage = currentPath.includes('/login') ||
@@ -226,16 +226,16 @@ class ChannelPreloaderService {
           currentPath === '/';
 
         if (import.meta.env.DEV) {
-          console.log('🔍 [PRELOADER] SSE connection check:');
+          console.log('[PRELOADER] SSE connection check:');
           console.log('  - currentPath:', currentPath);
           console.log('  - isOnChatPage:', isOnChatPage);
           console.log('  - isOnAuthPage:', isOnAuthPage);
         }
 
-        // 🚀 只在聊天页面才建立SSE连接
+        // 只在聊天页面才建立SSE连接
         if (!isOnChatPage || isOnAuthPage) {
           if (import.meta.env.DEV) {
-            console.log('⚠️ [PRELOADER] SKIPPING SSE connection - not on chat page');
+            console.log('WARNING: [PRELOADER] SKIPPING SSE connection - not on chat page');
           }
           return false;
         }
@@ -243,7 +243,7 @@ class ChannelPreloaderService {
         // 确保有有效 token
         if (!token || token.length < 50) {
           if (import.meta.env.DEV) {
-            console.warn('⚠️ [PRELOADER] SKIPPING SSE - invalid token');
+            console.warn('WARNING: [PRELOADER] SKIPPING SSE - invalid token');
           }
           return false;
         }
@@ -259,7 +259,7 @@ class ChannelPreloaderService {
         await Promise.race([connectPromise, timeoutPromise]);
 
         if (import.meta.env.DEV) {
-          console.log('✅ [PRELOADER] SSE connection established on chat page');
+          console.log('[PRELOADER] SSE connection established on chat page');
         }
 
         return true;
@@ -269,7 +269,7 @@ class ChannelPreloaderService {
           console.warn('🔌 [PRELOADER] SSE connection failed:', error);
         }
 
-        // 🚀 ENHANCED: 只在聊天页面才重试
+        // ENHANCED: 只在聊天页面才重试
         const currentPath = window.location.pathname;
         if (currentPath.startsWith('/chat/') && !currentPath.includes('/login')) {
           setTimeout(() => {
@@ -448,14 +448,14 @@ class ChannelPreloaderService {
     }
 
   /**
-   * 🚀 并行加载：预加载数据 + SSE连接 
+   * 并行加载：预加载数据 + SSE连接 
    */
   async startParallelLoading(authStore, chatStore) {
       const startTime = performance.now();
 
       const token = authStore.token;
 
-      // 🔥 并行启动：数据预加载 + SSE连接
+      // 并行启动：数据预加载 + SSE连接
       const [dataPromise, connectPromise] = await Promise.allSettled([
         this.preloadChannels(chatStore),
         minimalSSE.connect(token)
@@ -465,14 +465,14 @@ class ChannelPreloaderService {
       if (dataPromise.status === 'fulfilled') {
       } else {
         if (import.meta.env.DEV) {
-          console.warn('⚠️ [PRELOADER] Data preloading failed:', dataPromise.reason);
+          console.warn('WARNING: [PRELOADER] Data preloading failed:', dataPromise.reason);
         }
 
         // 检查SSE连接结果
         if (connectPromise.status === 'fulfilled') {
         } else {
           if (import.meta.env.DEV) {
-            console.warn('⚠️ [PRELOADER] Real-time connection failed:', connectPromise.reason);
+            console.warn('WARNING: [PRELOADER] Real-time connection failed:', connectPromise.reason);
           }
           // SSE连接失败时，仍然可以尝试在后台重连
           minimalSSE.connect(token).catch(console.warn);

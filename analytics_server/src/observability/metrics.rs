@@ -17,7 +17,7 @@ pub async fn init_metrics(bind_address: SocketAddr) -> Result<(), AppError> {
         .install()
         .map_err(|e| AppError::AnyError(anyhow::anyhow!("Failed to install Prometheus exporter: {}", e)))?;
 
-    info!("📊 [ANALYTICS] Prometheus metrics server started on {}", bind_address);
+    info!("[ANALYTICS] Prometheus metrics server started on {}", bind_address);
     Ok(())
 }
 

@@ -122,7 +122,7 @@ const loadingProgress = ref(0);
 const naturalWidth = ref(0);
 const naturalHeight = ref(0);
 
-// 🔧 CRITICAL FIX: Use unified file URL handler for correct test.rest format
+// CRITICAL FIX: Use unified file URL handler for correct test.rest format
 const getCorrectFileUrl = (file) => {
   return getStandardFileUrl(file, {
     workspaceId: authStore.user?.workspace_id || 2
@@ -136,10 +136,10 @@ const thumbnailSrc = computed(() => {
     return props.file.thumbnail_url;
   }
 
-  // 🔧 CRITICAL FIX: Use unified URL handler instead of direct file properties
+  // CRITICAL FIX: Use unified URL handler instead of direct file properties
   const correctUrl = getCorrectFileUrl(props.file);
   if (!correctUrl) {
-    console.error('❌ [EnhancedImageThumbnail] No valid URL for file:', props.file);
+    console.error('ERROR: [EnhancedImageThumbnail] No valid URL for file:', props.file);
     return '';
   }
 
@@ -151,7 +151,7 @@ const thumbnailSrc = computed(() => {
 });
 
 const fullImageSrc = computed(() => {
-  // 🔧 CRITICAL FIX: Use unified URL handler for full image as well
+  // CRITICAL FIX: Use unified URL handler for full image as well
   return getCorrectFileUrl(props.file) || '';
 });
 
@@ -330,7 +330,7 @@ const download = async () => {
   try {
     const fileUrl = getCorrectFileUrl(props.file);
     if (!fileUrl) {
-      console.error('❌ No URL available for download:', fileName);
+      console.error('ERROR: No URL available for download:', fileName);
       return;
     }
 
@@ -361,7 +361,7 @@ const download = async () => {
         // Clean up blob URL
         setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-        console.log('✅ [EnhancedImageThumbnail] Downloaded:', fileName);
+        console.log('[EnhancedImageThumbnail] Downloaded:', fileName);
       }
     } else {
       // 🔗 For direct URLs, use standard download
@@ -376,7 +376,7 @@ const download = async () => {
 
     emit('download', props.file);
   } catch (error) {
-    console.error('❌ [EnhancedImageThumbnail] Download failed:', error);
+    console.error('ERROR: [EnhancedImageThumbnail] Download failed:', error);
   }
 };
 

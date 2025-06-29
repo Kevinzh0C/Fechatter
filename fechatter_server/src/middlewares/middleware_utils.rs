@@ -222,7 +222,7 @@ pub fn has_required_extension<T: Clone + Send + Sync + 'static>(req: &Request<Bo
 /// Log middleware entry with context
 pub fn log_middleware_entry(middleware_name: &str, method: &Method, path: &str) {
   debug!(
-    "🔧 [{}] Processing {} {}", 
+    "[{}] Processing {} {}", 
     middleware_name.to_uppercase(), 
     method, 
     path
@@ -232,15 +232,15 @@ pub fn log_middleware_entry(middleware_name: &str, method: &Method, path: &str) 
 /// Log middleware success
 pub fn log_middleware_success(middleware_name: &str, user_id: Option<i64>) {
   if let Some(id) = user_id {
-    debug!("✅ [{}] Success for user {}", middleware_name.to_uppercase(), id);
+    debug!("[{}] Success for user {}", middleware_name.to_uppercase(), id);
   } else {
-    debug!("✅ [{}] Success", middleware_name.to_uppercase());
+    debug!("[{}] Success", middleware_name.to_uppercase());
   }
 }
 
 /// Log middleware failure
 pub fn log_middleware_failure(middleware_name: &str, reason: &str) {
-  warn!("❌ [{}] Failed: {}", middleware_name.to_uppercase(), reason);
+  warn!("ERROR: [{}] Failed: {}", middleware_name.to_uppercase(), reason);
 }
 
 // ============================================================================

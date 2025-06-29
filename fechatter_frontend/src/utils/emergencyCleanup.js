@@ -19,14 +19,14 @@ function emergencyCleanup() {
       delete console._logManagerOverridden;
       delete console._originalConsole;
       if (import.meta.env.DEV) {
-        console.log('✅ Console methods restored');
+        console.log('Console methods restored');
       }
 
     // 2. Clear navigation fix state
     if (window.navigationFix) {
       window.navigationFix.resetLogCounts();
       if (import.meta.env.DEV) {
-        console.log('✅ Navigation fix state reset');
+        console.log('Navigation fix state reset');
       }
 
     // 3. Clear any problematic intervals/timers
@@ -40,34 +40,34 @@ function emergencyCleanup() {
       clearInterval(i);
     clearInterval(highestIntervalId);
     if (import.meta.env.DEV) {
-      console.log('✅ Timers and intervals cleared');
+      console.log('Timers and intervals cleared');
     }
 
     // 4. Force garbage collection if available
     if (window.gc) {
       window.gc();
       if (import.meta.env.DEV) {
-        console.log('✅ Garbage collection triggered');
+        console.log('Garbage collection triggered');
       }
 
     // 5. Reset any global error handlers
     window.onerror = null;
     window.onunhandledrejection = null;
     if (import.meta.env.DEV) {
-      console.log('✅ Error handlers reset');
+      console.log('Error handlers reset');
     }
 
     if (import.meta.env.DEV) {
       console.log('🎉 Emergency cleanup completed successfully!');
     if (import.meta.env.DEV) {
-      console.log('💡 You may want to refresh the page for a clean start');
+      console.log('You may want to refresh the page for a clean start');
     }
 
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('❌ Emergency cleanup failed:', error);
+      console.error('ERROR: Emergency cleanup failed:', error);
     if (import.meta.env.DEV) {
-      console.log('💡 Try refreshing the page manually');
+      console.log('Try refreshing the page manually');
     }
 
 // Export for global use

@@ -21,7 +21,7 @@ const routes = [
     path: '/',
     redirect: (to) => {
       if (import.meta.env.DEV) {
-        console.log('🔍 [ROUTER] Root redirect triggered, checking auth state...');
+        console.log('[ROUTER] Root redirect triggered, checking auth state...');
       }
 
       // 避免在路由初始化时调用 store，直接检查 localStorage
@@ -42,7 +42,7 @@ const routes = [
 
       const redirectTarget = isTokenValid ? '/home' : '/login';
 
-      console.log('🔍 [ROUTER] Root redirect decision:', {
+      console.log('[ROUTER] Root redirect decision:', {
         hasLocalToken: !!token,
         hasSessionToken: !!sessionToken,
         hasExpiry: !!finalExpiry,
@@ -95,7 +95,7 @@ const routes = [
     ]
   },
 
-  // 🔧 CRITICAL FIX: 独立的聊天路由 (不嵌套在Home内)
+  // CRITICAL FIX: 独立的聊天路由 (不嵌套在Home内)
   {
     path: '/chat/:id',
     name: 'Chat',
@@ -159,14 +159,14 @@ const router = createRouter({
 
 // 路由初始化日志
 if (import.meta.env.DEV) {
-  console.log('🔍 [ROUTER] Router initialized with routes:', routes.length);
+  console.log('[ROUTER] Router initialized with routes:', routes.length);
 }
 
 // Global navigation guard
 // 存储导航开始时间
 let navigationStartTime = 0;
 
-// 🔧 PERFORMANCE: 认证初始化缓存
+// PERFORMANCE: 认证初始化缓存
 let authInitPromise = null;
 let isAuthInitialized = false;
 
@@ -175,38 +175,38 @@ router.beforeEach(async (to, from, next) => {
   navigationStartTime = Date.now();
 
   if (import.meta.env.DEV) {
-    console.log('🔍 [ROUTER] Navigation:', { from: from.path, to: to.path });
+    console.log('[ROUTER] Navigation:', { from: from.path, to: to.path });
   }
 
-  // 🔧 PERFORMANCE: 公开路由快速通道
+  // PERFORMANCE: 公开路由快速通道
   const publicRoutes = ['/login', '/register', '/demo', '/test', '/error', '/debug', '/simple-login'];
   const isPublicRoute = publicRoutes.some(route => to.path.startsWith(route));
 
   if (isPublicRoute) {
     if (import.meta.env.DEV) {
-      console.log('🔍 [ROUTER] Public route, allowing access');
+      console.log('[ROUTER] Public route, allowing access');
     }
     return next();
   }
 
-  // 🔧 PERFORMANCE: 避免重复初始化认证
+  // PERFORMANCE: 避免重复初始化认证
   const authStore = useAuthStore();
 
   if (!isAuthInitialized && !authInitPromise) {
     if (import.meta.env.DEV) {
-      console.log('🔍 [ROUTER] Initializing auth store...');
+      console.log('[ROUTER] Initializing auth store...');
     }
 
     authInitPromise = authStore.initialize()
       .then(() => {
         isAuthInitialized = true;
         if (import.meta.env.DEV) {
-          console.log('🔍 [ROUTER] ✅ Auth store initialized');
+          console.log('[ROUTER] Auth store initialized');
         }
       })
       .catch(error => {
         if (import.meta.env.DEV) {
-          console.error('🔍 [ROUTER] ❌ Auth store initialization failed:', error);
+          console.error('[ROUTER] ERROR: Auth store initialization failed:', error);
         }
         isAuthInitialized = false; // 允许重试
         throw error;
@@ -222,26 +222,26 @@ router.beforeEach(async (to, from, next) => {
       await authInitPromise;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('🔍 [ROUTER] Auth initialization failed, redirecting to login');
+        console.error('[ROUTER] Auth initialization failed, redirecting to login');
       }
       return next('/login');
     }
   }
 
-  // 🔧 SIMPLIFIED: 基本认证检查
+  // SIMPLIFIED: 基本认证检查
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
 
   if (requiresAuth) {
-    // 🔧 CRITICAL FIX: Simplified auth check - remove complex consensus logic
+    // CRITICAL FIX: Simplified auth check - remove complex consensus logic
     let authState = authStore.isAuthenticated;
     let hasToken = !!authStore.token;
     let hasUser = !!authStore.user;
     let isTokenExpired = authStore.isTokenExpired;
 
-    // 🔧 SIMPLIFIED: Direct functional check - if we have token + user, accept it
+    // SIMPLIFIED: Direct functional check - if we have token + user, accept it
     const hasFunctionalAuth = hasToken && hasUser && !isTokenExpired;
 
-    // 🔧 FALLBACK: Check storage consistency for edge cases
+    // FALLBACK: Check storage consistency for edge cases
     let hasStorageBackup = false;
     if (!hasFunctionalAuth) {
       try {
@@ -249,17 +249,17 @@ router.beforeEach(async (to, from, next) => {
         const storageUser = localStorage.getItem('auth_user');
         hasStorageBackup = !!(storageToken && storageUser);
       } catch (error) {
-        console.warn('🔍 [ROUTER] Storage check failed:', error);
+        console.warn('[ROUTER] Storage check failed:', error);
       }
     }
 
-    // 🔧 TOLERANT: Accept authentication if we have functional auth OR authStore says we're auth OR storage backup
+    // TOLERANT: Accept authentication if we have functional auth OR authStore says we're auth OR storage backup
     const isAuthenticated = hasFunctionalAuth || authState || hasStorageBackup;
 
     if (!isAuthenticated) {
       if (import.meta.env.DEV) {
-        console.warn('🔍 [ROUTER] Access denied - redirecting to login');
-        console.warn('🔍 [ROUTER] Auth state:', {
+        console.warn('[ROUTER] Access denied - redirecting to login');
+        console.warn('[ROUTER] Auth state:', {
           authState,
           hasToken,
           hasUser,
@@ -271,7 +271,7 @@ router.beforeEach(async (to, from, next) => {
         });
       }
 
-      // 🔧 ENHANCED: Prevent redirect loops and save target path
+      // ENHANCED: Prevent redirect loops and save target path
       if (to.path !== '/login') {
         sessionStorage.setItem('redirectPath', to.fullPath);
         return next('/login');
@@ -281,31 +281,31 @@ router.beforeEach(async (to, from, next) => {
       }
     } else {
       if (import.meta.env.DEV) {
-        console.log('✅ [ROUTER] Authentication verified successfully');
+        console.log('[ROUTER] Authentication verified successfully');
       }
     }
   }
 
-  // 🔧 SIMPLIFIED: 管理员权限检查
+  // SIMPLIFIED: 管理员权限检查
   const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
   if (requiresAdmin && !authStore.isAuthenticated) {
     if (import.meta.env.DEV) {
-      console.warn('🔍 [ROUTER] Admin access denied - not authenticated');
+      console.warn('[ROUTER] Admin access denied - not authenticated');
     }
     return next('/login');
   }
 
-  // 🔧 SIMPLIFIED: 访客路由检查
+  // SIMPLIFIED: 访客路由检查
   const requiresGuest = to.matched.some(record => record.meta.requiresGuest);
   if (requiresGuest && authStore.isAuthenticated) {
     if (import.meta.env.DEV) {
-      console.log('🔍 [ROUTER] Guest route but user is authenticated, redirecting to home');
+      console.log('[ROUTER] Guest route but user is authenticated, redirecting to home');
     }
     return next('/home');
   }
 
   if (import.meta.env.DEV) {
-    console.log('🔍 [ROUTER] ✅ Navigation allowed');
+    console.log('[ROUTER] Navigation allowed');
   }
 
   next();
@@ -315,11 +315,11 @@ router.beforeEach(async (to, from, next) => {
 router.afterEach((to, from, failure) => {
   if (failure) {
     if (import.meta.env.DEV) {
-      console.error('❌ Navigation failed:', failure);
+      console.error('ERROR: Navigation failed:', failure);
     }
   } else {
     if (import.meta.env.DEV) {
-      console.log('🔍 [ROUTER] Navigation completed:', { from: from.path, to: to.path });
+      console.log('[ROUTER] Navigation completed:', { from: from.path, to: to.path });
     }
 
     // 跟踪导航事件
@@ -333,30 +333,30 @@ router.afterEach((to, from, failure) => {
   }
 });
 
-// 🔧 CRITICAL FIX: 简化错误处理，避免无限重定向
+// CRITICAL FIX: 简化错误处理，避免无限重定向
 router.onError((error) => {
   if (import.meta.env.DEV) {
-    console.error('🔍 [ROUTER] Router error:', error);
+    console.error('[ROUTER] Router error:', error);
   }
 
-  // 🔧 忽略常见的无害错误
+  // 忽略常见的无害错误
   if (error.name === 'NavigationDuplicated' ||
     error.message?.includes('redundant navigation') ||
     error.message?.includes('Avoided redundant')) {
-    console.log('ℹ️ [ROUTER] Ignoring redundant navigation error');
+    console.log('INFO: [ROUTER] Ignoring redundant navigation error');
     return;
   }
 
   if (error.name === 'NavigationAborted' || error.name === 'NavigationCancelled') {
-    console.log('ℹ️ [ROUTER] Navigation was cancelled or aborted');
+    console.log('INFO: [ROUTER] Navigation was cancelled or aborted');
     return;
   }
 
-  // 🔧 只有在真正严重的错误时才重定向，并且避免循环
+  // 只有在真正严重的错误时才重定向，并且避免循环
   if (!window.location.pathname.startsWith('/error/')) {
-    console.error('❌ [ROUTER] Serious error, redirecting to error page:', error);
+    console.error('ERROR: [ROUTER] Serious error, redirecting to error page:', error);
     router.push('/error/500').catch(() => {
-      console.error('❌ [ROUTER] Failed to navigate to error page');
+      console.error('ERROR: [ROUTER] Failed to navigate to error page');
     });
   }
 });

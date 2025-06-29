@@ -9,7 +9,7 @@ class MessageNavigationManager {
     this.scrollContainers = new Map()
     this.chatRouterInstance = null
 
-    // 🎯 Navigation analytics
+    // Navigation analytics
     this.analytics = {
       totalNavigations: 0,
       successfulNavigations: 0,
@@ -18,16 +18,16 @@ class MessageNavigationManager {
       navigationHistory: []
     }
 
-    console.log('🎯 [MessageNavigationManager] Initialized')
+    console.log('[MessageNavigationManager] Initialized')
   }
 
   /**
-   * 🎯 Core Navigation Function - Entry Point
+   * Core Navigation Function - Entry Point
    */
   async navigateToMessage(params) {
     const startTime = Date.now()
 
-    // 📊 Validation
+    // Validation
     if (!this.validateNavigationParams(params)) {
       return { success: false, error: 'Invalid navigation parameters' }
     }
@@ -45,7 +45,7 @@ class MessageNavigationManager {
     this.navigationQueue.push(navigationTask)
     this.analytics.totalNavigations++
 
-    console.log('🎯 [MessageNavigation] Starting navigation:', {
+    console.log('[MessageNavigation] Starting navigation:', {
       navigationId,
       messageId: params.messageId,
       chatId: params.chatId,
@@ -55,13 +55,13 @@ class MessageNavigationManager {
     try {
       const result = await this.executeNavigation(navigationTask)
 
-      // 📊 Analytics update
+      // Analytics update
       const duration = Date.now() - startTime
       this.updateAnalytics(result.success, duration)
 
       return result
     } catch (error) {
-      console.error('🎯 [MessageNavigation] Navigation failed:', error)
+      console.error('[MessageNavigation] Navigation failed:', error)
       this.analytics.failedNavigations++
       return { success: false, error: error.message }
     } finally {
@@ -71,14 +71,14 @@ class MessageNavigationManager {
   }
 
   /**
-   * 🔍 Step 1: Parameter Validation
+   * Step 1: Parameter Validation
    */
   validateNavigationParams(params) {
     const required = ['messageId', 'chatId']
     const missing = required.filter(field => !params[field])
 
     if (missing.length > 0) {
-      console.error('🎯 [Validation] Missing required fields:', missing)
+      console.error('[Validation] Missing required fields:', missing)
       return false
     }
 
@@ -86,7 +86,7 @@ class MessageNavigationManager {
   }
 
   /**
-   * 🚀 Step 2: Execute Navigation Process
+   * Step 2: Execute Navigation Process
    */
   async executeNavigation(navigationTask) {
     const { params } = navigationTask
@@ -106,7 +106,7 @@ class MessageNavigationManager {
         return contextResult
       }
 
-      // 🎯 Step 2.3: Scroll to Message
+      // Step 2.3: Scroll to Message
       const scrollResult = await this.performScrollToMessage(params)
       if (!scrollResult.success) {
         return scrollResult
@@ -274,7 +274,7 @@ class MessageNavigationManager {
   }
 
   /**
-   * 🔧 Load via Message Service
+   * Load via Message Service
    */
   async loadViaMessageService(params) {
     try {
@@ -364,7 +364,7 @@ class MessageNavigationManager {
   }
 
   /**
-   * 🎯 Step 2.3: Scroll to Message
+   * Step 2.3: Scroll to Message
    */
   async performScrollToMessage(params) {
     try {
@@ -446,7 +446,7 @@ class MessageNavigationManager {
   }
 
   /**
-   * 🎨 Apply Search Term Highlighting
+   * Apply Search Term Highlighting
    */
   applySearchHighlight(messageElement, searchQuery) {
     const contentElements = messageElement.querySelectorAll(
@@ -485,7 +485,7 @@ class MessageNavigationManager {
   }
 
   /**
-   * 🎯 Add Visual Navigation Indicator
+   * Add Visual Navigation Indicator
    */
   addNavigationIndicator(messageElement, params) {
     // Remove existing indicators
@@ -499,7 +499,7 @@ class MessageNavigationManager {
     indicator.className = 'navigation-indicator'
     indicator.innerHTML = `
       <div class="indicator-pulse"></div>
-      <div class="indicator-label">${params.source === 'search' ? '🔍 Found' : '📍 Located'}</div>
+      <div class="indicator-label">${params.source === 'search' ? 'Found' : '📍 Located'}</div>
     `
 
     // Insert indicator
@@ -536,7 +536,7 @@ class MessageNavigationManager {
   }
 
   /**
-   * 🔍 Highlight Search Terms
+   * Highlight Search Terms
    */
   highlightSearchTerms(text, searchQuery) {
     if (!searchQuery || !text) return text
@@ -599,7 +599,7 @@ class MessageNavigationManager {
   }
 
   /**
-   * 🔧 Utility Functions
+   * Utility Functions
    */
   calculateScrollPosition(messageElement, scrollContainer, params) {
     const messageRect = messageElement.getBoundingClientRect()
@@ -662,7 +662,7 @@ class MessageNavigationManager {
   }
 
   /**
-   * 🔧 Configuration and State Management
+   * Configuration and State Management
    */
   registerScrollContainer(chatId, container) {
     this.scrollContainers.set(chatId, container)
@@ -688,13 +688,13 @@ class MessageNavigationManager {
       const { useChatStore } = await import('@/stores/chat')
       return useChatStore()
     } catch (error) {
-      console.warn('🎯 [MessageNavigation] Chat store not available:', error)
+      console.warn('[MessageNavigation] Chat store not available:', error)
       return null
     }
   }
 
   /**
-   * 📊 Analytics and Monitoring
+   * Analytics and Monitoring
    */
   updateAnalytics(success, duration) {
     if (success) {
@@ -753,14 +753,14 @@ class MessageNavigationManager {
     this.highlightTimeouts.clear()
     this.scrollContainers.clear()
     this.navigationQueue = []
-    console.log('🎯 [MessageNavigationManager] Destroyed')
+    console.log('[MessageNavigationManager] Destroyed')
   }
 }
 
-// 🌟 Global Instance
+// Global Instance
 export const messageNavigationManager = new MessageNavigationManager()
 
-// 🎯 Vue Integration Helper
+// Vue Integration Helper
 export function useMessageNavigation() {
   return {
     navigateToMessage: (params) => messageNavigationManager.navigateToMessage(params),

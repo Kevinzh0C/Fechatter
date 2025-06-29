@@ -1,0 +1,27 @@
+<svg width="120" height="120" viewBox="0 0 120 120"
+    xmlns="http://www.w3.org/2000/svg">
+    <!-- Fechatter Logo Placeholder -->
+    <defs>
+        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+
+    <!-- Background Circle -->
+    <circle cx="60" cy="60" r="55" fill="url(#gradient)"/>
+
+    <!-- Chat Bubble Icon -->
+    <path d="M35 40 Q35 30 45 30 L75 30 Q85 30 85 40 L85 60 Q85 70 75 70 L50 70 L40 80 L40 70 L45 70 Q35 70 35 60 Z" fill="white" opacity="0.9"/>
+
+    <!-- Dots representing typing -->
+    <circle cx="50" cy="50" r="3" fill="#667eea">
+        <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" repeatCount="indefinite" begin="0s"/>
+    </circle>
+    <circle cx="60" cy="50" r="3" fill="#667eea">
+        <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" repeatCount="indefinite" begin="0.3s"/>
+    </circle>
+    <circle cx="70" cy="50" r="3" fill="#667eea">
+        <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" repeatCount="indefinite" begin="0.6s"/>
+    </circle>
+</svg> 

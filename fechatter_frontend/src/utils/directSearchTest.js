@@ -4,7 +4,7 @@
 
 async function directSearchTest() {
   if (import.meta.env.DEV) {
-    console.log('🔍 [DIRECT SEARCH TEST] Starting...');
+    console.log('[DIRECT SEARCH TEST] Starting...');
   }
 
   try {
@@ -15,7 +15,7 @@ async function directSearchTest() {
 
     if (!token) {
       if (import.meta.env.DEV) {
-        console.error('❌ No token found. Please login first.');
+        console.error('ERROR: No token found. Please login first.');
       return;
     }
 
@@ -37,11 +37,11 @@ async function directSearchTest() {
 
       const backendData = await backendResponse.json();
       if (import.meta.env.DEV) {
-        console.log('✅ Backend response:', backendData);
+        console.log('Backend response:', backendData);
       }
     } catch (e) {
       if (import.meta.env.DEV) {
-        console.error('❌ Backend direct test failed:', e);
+        console.error('ERROR: Backend direct test failed:', e);
       }
 
     // Test 2: Through Vite proxy
@@ -58,11 +58,11 @@ async function directSearchTest() {
 
       const proxyData = await proxyResponse.json();
       if (import.meta.env.DEV) {
-        console.log('✅ Proxy response:', proxyData);
+        console.log('Proxy response:', proxyData);
       }
     } catch (e) {
       if (import.meta.env.DEV) {
-        console.error('❌ Proxy test failed:', e);
+        console.error('ERROR: Proxy test failed:', e);
       }
 
     // Test 3: Using axios directly
@@ -78,11 +78,11 @@ async function directSearchTest() {
       });
 
       if (import.meta.env.DEV) {
-        console.log('✅ Axios response:', axiosResponse.data);
+        console.log('Axios response:', axiosResponse.data);
       }
     } catch (e) {
       if (import.meta.env.DEV) {
-        console.error('❌ Axios test failed:', e);
+        console.error('ERROR: Axios test failed:', e);
       if (e.response) {
         if (import.meta.env.DEV) {
           console.error('Response data:', e.response.data);
@@ -101,27 +101,27 @@ async function directSearchTest() {
       });
 
       if (import.meta.env.DEV) {
-        console.log('✅ SearchService response:', serviceResponse);
+        console.log('SearchService response:', serviceResponse);
       }
     } catch (e) {
       if (import.meta.env.DEV) {
-        console.error('❌ SearchService test failed:', e);
+        console.error('ERROR: SearchService test failed:', e);
       }
 
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('❌ Test suite failed:', error);
+      console.error('ERROR: Test suite failed:', error);
     }
 
   if (import.meta.env.DEV) {
-    console.log('\n🔍 [DIRECT SEARCH TEST] Complete');
+    console.log('\n[DIRECT SEARCH TEST] Complete');
   }
 
 // Make available globally
 window.directSearchTest = directSearchTest;
 
 if (import.meta.env.DEV) {
-  console.log('🔍 Direct Search Test loaded. Run window.directSearchTest()');
+  console.log('Direct Search Test loaded. Run window.directSearchTest()');
 }
 
 export default directSearchTest; 

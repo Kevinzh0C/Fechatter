@@ -8,7 +8,7 @@ class SSEStartupGuard {
    * 检查是否应该建立SSE连接
    */
   static shouldConnectSSE(authStore = null) {
-    // 🚀 检查路径
+    // 检查路径
     const currentPath = window.location.pathname;
     const isOnChatPage = currentPath.startsWith('/chat/') && currentPath !== '/chat';
     const isOnAuthPage = currentPath.includes('/login') ||
@@ -22,15 +22,15 @@ class SSEStartupGuard {
       console.log('  - isOnAuthPage:', isOnAuthPage);
     }
 
-    // 🚀 路径检查
+    // 路径检查
     if (!isOnChatPage || isOnAuthPage) {
       if (import.meta.env.DEV) {
-        console.log('⚠️ [SSE GUARD] BLOCKING SSE - not on chat page');
+        console.log('WARNING: [SSE GUARD] BLOCKING SSE - not on chat page');
       }
       return false;
     }
 
-    // 🚀 认证检查
+    // 认证检查
     if (authStore) {
       const hasValidAuth = authStore.isAuthenticated &&
         authStore.token &&
@@ -39,14 +39,14 @@ class SSEStartupGuard {
 
       if (!hasValidAuth) {
         if (import.meta.env.DEV) {
-          console.log('⚠️ [SSE GUARD] BLOCKING SSE - invalid authentication');
+          console.log('WARNING: [SSE GUARD] BLOCKING SSE - invalid authentication');
         }
         return false;
       }
     }
 
     if (import.meta.env.DEV) {
-      console.log('✅ [SSE GUARD] ALLOWING SSE connection');
+      console.log('[SSE GUARD] ALLOWING SSE connection');
     }
     return true;
   }

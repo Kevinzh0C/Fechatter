@@ -59,7 +59,7 @@ class CompleteErrorSuppressor {
     this.addUnhandledRejectionHandler();
 
     if (import.meta.env.DEV) {
-      console.log('✅ [CompleteErrorSuppressor] Initialized successfully');
+      console.log('[CompleteErrorSuppressor] Initialized successfully');
     }
 
   /**
@@ -181,7 +181,7 @@ class CompleteErrorSuppressor {
   enable() {
     this.enabled = true;
     if (import.meta.env.DEV) {
-      console.log('✅ [CompleteErrorSuppressor] Suppression enabled');
+      console.log('[CompleteErrorSuppressor] Suppression enabled');
     }
 
   /**
@@ -190,7 +190,7 @@ class CompleteErrorSuppressor {
   disable() {
     this.enabled = false;
     if (import.meta.env.DEV) {
-      console.log('❌ [CompleteErrorSuppressor] Suppression disabled');
+      console.log('ERROR: [CompleteErrorSuppressor] Suppression disabled');
     }
 
   /**

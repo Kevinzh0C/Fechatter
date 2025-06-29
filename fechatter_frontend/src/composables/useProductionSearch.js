@@ -131,7 +131,7 @@ export function useProductionSearch(options = {}) {
     // Create new abort controller
     searchAbortController = new AbortController();
 
-    console.log(`🔍 [useProductionSearch] Starting search for: "${trimmedQuery}" (mode: ${searchMode.value})`);
+    console.log(`[useProductionSearch] Starting search for: "${trimmedQuery}" (mode: ${searchMode.value})`);
 
     isSearching.value = true;
     searchError.value = null;
@@ -184,7 +184,7 @@ export function useProductionSearch(options = {}) {
       const total = searchResult.total || 0;
       const isFallback = searchResult.fallback || false;
 
-      console.log(`✅ [useProductionSearch] Search completed: ${hits.length} hits, ${total} total ${isFallback ? '(FALLBACK)' : ''}`);
+      console.log(`[useProductionSearch] Search completed: ${hits.length} hits, ${total} total ${isFallback ? '(FALLBACK)' : ''}`);
 
       // Update results
       if (resetResults) {
@@ -208,7 +208,7 @@ export function useProductionSearch(options = {}) {
 
       // Show fallback notification if needed
       if (isFallback && hits.length > 0) {
-        console.log('💡 [useProductionSearch] Using local search results (backend unavailable)');
+        console.log('[useProductionSearch] Using local search results (backend unavailable)');
       }
 
     } catch (error) {
@@ -219,7 +219,7 @@ export function useProductionSearch(options = {}) {
 
       const errorMessage = error.message || 'Search failed';
       searchError.value = errorMessage;
-      console.error('❌ [useProductionSearch] Search failed:', error);
+      console.error('ERROR: [useProductionSearch] Search failed:', error);
 
       // Don't show notification for network errors that have fallback
       if (!error.message?.includes('Search service is temporarily unavailable')) {
@@ -249,7 +249,7 @@ export function useProductionSearch(options = {}) {
 
     // Only perform main search, suggestions are handled separately to avoid duplicate API calls
     debounceTimer = setTimeout(() => {
-      console.log(`🔍 [useProductionSearch] Debounced search triggered for: "${query}"`);
+      console.log(`[useProductionSearch] Debounced search triggered for: "${query}"`);
       performSearch(query);
       // Note: loadSuggestions removed here to prevent duplicate API calls
       // Suggestions can be loaded on focus or manually if needed
@@ -276,12 +276,12 @@ export function useProductionSearch(options = {}) {
     }
 
     try {
-      console.log(`💡 [useProductionSearch] Loading suggestions for: "${query}"`);
+      console.log(`[useProductionSearch] Loading suggestions for: "${query}"`);
       const suggestions = await searchService.getSearchSuggestions(query.trim(), 5);
       searchSuggestions.value = suggestions;
       showSuggestions.value = suggestions.length > 0;
     } catch (error) {
-      console.warn('⚠️ [useProductionSearch] Load suggestions failed:', error);
+      console.warn('WARNING: [useProductionSearch] Load suggestions failed:', error);
       searchSuggestions.value = [];
     }
   }
@@ -325,7 +325,7 @@ export function useProductionSearch(options = {}) {
         searchHistory.value = JSON.parse(saved);
       }
     } catch (error) {
-      console.warn('⚠️ [useProductionSearch] Load search history failed:', error);
+      console.warn('WARNING: [useProductionSearch] Load search history failed:', error);
       searchHistory.value = [];
     }
   }

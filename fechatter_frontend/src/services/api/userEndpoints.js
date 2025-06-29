@@ -19,7 +19,7 @@ export class UserEndpointManager {
     this.userCache = new Map();
     this.cacheExpiry = 5 * 60 * 1000; // 5 minutes
 
-    // 🔧 NEW: Enhanced auth monitoring
+    // NEW: Enhanced auth monitoring
     this.authRetryCount = 0;
     this.maxAuthRetries = 2;
   }
@@ -365,7 +365,7 @@ export const userEndpointManager = new UserEndpointManager();
 if (import.meta.env.DEV) {
   window.userEndpoints = userEndpointManager;
 
-  // 🔧 Enhanced debugging commands
+  // Enhanced debugging commands
   window.diagnoseDUserAPI = () => {
     console.group('🔬 User API Diagnostics');
     const diagnostics = userEndpointManager.getDiagnostics();
@@ -383,10 +383,10 @@ if (import.meta.env.DEV) {
   };
 
   window.fixDUserAuth = async () => {
-    console.log('🔧 Attempting to fix user authentication...');
+    console.log('Attempting to fix user authentication...');
     try {
       await userEndpointManager.forceAuthRefresh();
-      console.log('✅ Authentication refresh completed');
+      console.log('Authentication refresh completed');
 
       // Test endpoints after refresh
       const results = await userEndpointManager.testEndpoints();
@@ -395,7 +395,7 @@ if (import.meta.env.DEV) {
 
       return { success: true, results };
     } catch (error) {
-      console.error('❌ Authentication fix failed:', error);
+      console.error('ERROR: Authentication fix failed:', error);
       return { success: false, error: error.message };
     }
   };

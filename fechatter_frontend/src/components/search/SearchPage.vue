@@ -47,7 +47,7 @@
       <h2>Search Tips</h2>
       <div class="tips-grid">
         <div class="tip-card">
-          <h3>🔍 Basic Search</h3>
+          <h3>Basic Search</h3>
           <p>Just type your keywords to search across all messages</p>
         </div>
         <div class="tip-card">
@@ -55,7 +55,7 @@
           <p>Use "after:2024-01-01" or "before:yesterday"</p>
         </div>
         <div class="tip-card">
-          <h3>👤 By Person</h3>
+          <h3>USER: By Person</h3>
           <p>Use "from:@username" to find messages from someone</p>
         </div>
         <div class="tip-card">

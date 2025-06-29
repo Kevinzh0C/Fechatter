@@ -2,7 +2,7 @@
 //!
 //! **Native Pingora implementation focused on Gateway routing and networking**
 //!
-//! ## 🎯 Gateway Feature Set:
+//! ## Gateway Feature Set:
 //! ### Core Networking Functionality
 //! - Route-based upstream selection with load balancing
 //! - Multi-level rate limiting (IP-based)
@@ -124,7 +124,7 @@ impl FechatterProxy {
   /// Create new Fechatter proxy instance
   pub fn new(config: Arc<GatewayConfig>, upstream_manager: Arc<UpstreamManager>) -> Self {
     info!(
-      "🚀 Creating Pingora-native Fechatter proxy with {} upstreams",
+      "Creating Pingora-native Fechatter proxy with {} upstreams",
       config.upstreams.len()
     );
 
@@ -452,11 +452,11 @@ impl FechatterProxy {
   fn match_route(&self, path: &str, method: &str) -> Option<&crate::config::RouteConfig> {
     for route in &self.config.routes {
       if self.path_matches(&route.path, path) && route.methods.contains(&method.to_uppercase()) {
-        debug!("🎯 Matched route: {} -> {}", path, route.upstream);
+        debug!("Matched route: {} -> {}", path, route.upstream);
         return Some(route);
       }
     }
-    warn!("❌ No route matched for {} {}", method, path);
+    warn!("ERROR: No route matched for {} {}", method, path);
     None
   }
 
@@ -506,7 +506,7 @@ impl ProxyHttp for FechatterProxy {
         if let Ok(origin_str) = origin.to_str() {
           if self.validate_cors_origin(origin_str, path) {
             debug!(
-              "✅ [GATEWAY] CORS preflight request approved for origin: {}",
+              "[GATEWAY] CORS preflight request approved for origin: {}",
               origin_str
             );
             ctx.cors_origin = Some(origin_str.to_string());
@@ -516,7 +516,7 @@ impl ProxyHttp for FechatterProxy {
             return Ok(true);
           } else {
             warn!(
-              "❌ [GATEWAY] CORS preflight rejected for origin: {}",
+              "ERROR: [GATEWAY] CORS preflight rejected for origin: {}",
               origin_str
             );
             return Err(pingora_core::Error::new_str("CORS preflight not allowed"));
@@ -540,7 +540,7 @@ impl ProxyHttp for FechatterProxy {
     }
 
     debug!(
-      "✅ [GATEWAY] Rate limit check passed: {} remaining",
+      "[GATEWAY] Rate limit check passed: {} remaining",
       remaining
     );
 
@@ -549,15 +549,15 @@ impl ProxyHttp for FechatterProxy {
       if let Ok(origin_str) = origin.to_str() {
         if self.validate_cors_origin(origin_str, path) {
           ctx.cors_origin = Some(origin_str.to_string());
-          debug!("✅ [GATEWAY] CORS origin validated: {}", origin_str);
+          debug!("[GATEWAY] CORS origin validated: {}", origin_str);
         } else {
-          warn!("❌ [GATEWAY] CORS origin rejected: {}", origin_str);
+          warn!("ERROR: [GATEWAY] CORS origin rejected: {}", origin_str);
           return Err(pingora_core::Error::new_str("CORS origin not allowed"));
         }
       }
     }
 
-    debug!("✅ [GATEWAY] Gateway request filter completed successfully");
+    debug!("[GATEWAY] Gateway request filter completed successfully");
     Ok(false) // Continue to upstream
   }
 
@@ -570,7 +570,7 @@ impl ProxyHttp for FechatterProxy {
     let path = session.req_header().uri.path();
     let method = session.req_header().method.as_str();
 
-    debug!("🔍 [GATEWAY] Routing: {} {}", method, path);
+    debug!("[GATEWAY] Routing: {} {}", method, path);
 
     // Match route
     let route = self.match_route(path, method).ok_or_else(|| {
@@ -597,7 +597,7 @@ impl ProxyHttp for FechatterProxy {
       }
     };
 
-    info!("🎯 [GATEWAY] Routed to upstream: {}", route.upstream);
+    info!("[GATEWAY] Routed to upstream: {}", route.upstream);
     Ok(Box::new(peer))
   }
 
@@ -645,7 +645,7 @@ impl ProxyHttp for FechatterProxy {
         }
 
         debug!(
-          "✅ [GATEWAY] CORS preflight response sent for origin: {}",
+          "[GATEWAY] CORS preflight response sent for origin: {}",
           origin
         );
         return Ok(());

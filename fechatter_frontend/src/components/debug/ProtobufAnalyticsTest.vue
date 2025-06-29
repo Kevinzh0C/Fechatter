@@ -8,12 +8,12 @@
     </div>
 
     <div class="status-panel">
-      <h3>📊 Client Status</h3>
+      <h3>Client Status</h3>
       <div class="status-grid">
         <div class="status-item">
           <span class="label">Protobuf Available:</span>
           <span class="value" :class="{ success: status.protobufAvailable, error: !status.protobufAvailable }">
-            {{ status.protobufAvailable ? '✅ YES' : '❌ NO' }}
+            {{ status.protobufAvailable ? 'YES' : 'ERROR: NO' }}
           </span>
         </div>
         <div class="status-item">
@@ -37,22 +37,22 @@
       <h3>🧪 Test Events</h3>
       <div class="test-buttons">
         <button @click="testAppStart" class="test-btn primary">
-          🚀 App Start
+          App Start
         </button>
         <button @click="testUserLogin" class="test-btn primary">
-          👤 User Login
+          USER: User Login
         </button>
         <button @click="testMessageSent" class="test-btn primary">
-          💬 Message Sent
+          MESSAGE: Message Sent
         </button>
         <button @click="testNavigation" class="test-btn primary">
           🧭 Navigation
         </button>
         <button @click="testError" class="test-btn danger">
-          ⚠️ Error Event
+          WARNING: Error Event
         </button>
         <button @click="testSearch" class="test-btn primary">
-          🔍 Search
+          Search
         </button>
         <button @click="testFileUpload" class="test-btn primary">
           📁 File Upload
@@ -64,7 +64,7 @@
     </div>
 
     <div class="logs-panel">
-      <h3>📝 Event Logs</h3>
+      <h3>Event Logs</h3>
       <div class="logs-container">
         <div v-for="(log, index) in logs" :key="index" class="log-entry" :class="log.type">
           <span class="timestamp">{{ formatTime(log.timestamp) }}</span>
@@ -176,7 +176,7 @@ export default {
       try {
         addLog('Testing app start event...', 'info')
         await analytics.trackAppStart()
-        addLog('✅ App start event sent successfully', 'success')
+        addLog('App start event sent successfully', 'success')
         networkStats.totalRequests++
         networkStats.successful++
         if (status.value.protobufAvailable) {
@@ -185,7 +185,7 @@ export default {
           networkStats.jsonFallback++
         }
       } catch (error) {
-        addLog(`❌ App start event failed: ${error.message}`, 'error')
+        addLog(`ERROR: App start event failed: ${error.message}`, 'error')
         networkStats.totalRequests++
         networkStats.failed++
       }
@@ -196,7 +196,7 @@ export default {
       try {
         addLog('Testing user login event...', 'info')
         await analytics.trackUserLogin('test@fechatter.com', 'password')
-        addLog('✅ User login event sent successfully', 'success')
+        addLog('User login event sent successfully', 'success')
         networkStats.totalRequests++
         networkStats.successful++
         if (status.value.protobufAvailable) {
@@ -205,7 +205,7 @@ export default {
           networkStats.jsonFallback++
         }
       } catch (error) {
-        addLog(`❌ User login event failed: ${error.message}`, 'error')
+        addLog(`ERROR: User login event failed: ${error.message}`, 'error')
         networkStats.totalRequests++
         networkStats.failed++
       }
@@ -216,9 +216,9 @@ export default {
       try {
         addLog('Testing message sent event...', 'info')
         await analytics.trackMessageSent('chat_test_123', 'Hello from protobuf test! @everyone', [])
-        addLog('✅ Message sent event queued successfully', 'success')
+        addLog('Message sent event queued successfully', 'success')
       } catch (error) {
-        addLog(`❌ Message sent event failed: ${error.message}`, 'error')
+        addLog(`ERROR: Message sent event failed: ${error.message}`, 'error')
       }
       updateStatus()
     }
@@ -228,9 +228,9 @@ export default {
         addLog('Testing navigation event...', 'info')
         const startTime = Date.now() - Math.random() * 2000 // Random navigation time
         await analytics.trackNavigation('/test-from', '/test-to', startTime)
-        addLog('✅ Navigation event queued successfully', 'success')
+        addLog('Navigation event queued successfully', 'success')
       } catch (error) {
-        addLog(`❌ Navigation event failed: ${error.message}`, 'error')
+        addLog(`ERROR: Navigation event failed: ${error.message}`, 'error')
       }
       updateStatus()
     }
@@ -241,7 +241,7 @@ export default {
         const testError = new Error('This is a test error from protobuf analytics')
         testError.stack = 'Error: Test error\n    at ProtobufAnalyticsTest.vue:testError:1:1'
         await analytics.trackError(testError, 'protobuf-test-component', 'TestError')
-        addLog('✅ Error event sent successfully', 'success')
+        addLog('Error event sent successfully', 'success')
         networkStats.totalRequests++
         networkStats.successful++
         if (status.value.protobufAvailable) {
@@ -250,7 +250,7 @@ export default {
           networkStats.jsonFallback++
         }
       } catch (error) {
-        addLog(`❌ Error event failed: ${error.message}`, 'error')
+        addLog(`ERROR: Error event failed: ${error.message}`, 'error')
         networkStats.totalRequests++
         networkStats.failed++
       }
@@ -261,9 +261,9 @@ export default {
       try {
         addLog('Testing search event...', 'info')
         await analytics.trackSearch('global', 'protobuf test query', Math.floor(Math.random() * 20), Math.floor(Math.random() * 500), true)
-        addLog('✅ Search event queued successfully', 'success')
+        addLog('Search event queued successfully', 'success')
       } catch (error) {
-        addLog(`❌ Search event failed: ${error.message}`, 'error')
+        addLog(`ERROR: Search event failed: ${error.message}`, 'error')
       }
       updateStatus()
     }
@@ -277,9 +277,9 @@ export default {
           name: 'protobuf-test.png'
         }
         await analytics.trackFileUpload(mockFile, 'test-upload', Math.floor(Math.random() * 3000))
-        addLog('✅ File upload event queued successfully', 'success')
+        addLog('File upload event queued successfully', 'success')
       } catch (error) {
-        addLog(`❌ File upload event failed: ${error.message}`, 'error')
+        addLog(`ERROR: File upload event failed: ${error.message}`, 'error')
       }
       updateStatus()
     }
@@ -288,7 +288,7 @@ export default {
       try {
         addLog('Flushing pending events...', 'info')
         await analytics.flush()
-        addLog('✅ Events flushed successfully', 'success')
+        addLog('Events flushed successfully', 'success')
         networkStats.totalRequests++
         networkStats.successful++
         if (status.value.protobufAvailable) {
@@ -297,7 +297,7 @@ export default {
           networkStats.jsonFallback++
         }
       } catch (error) {
-        addLog(`❌ Flush failed: ${error.message}`, 'error')
+        addLog(`ERROR: Flush failed: ${error.message}`, 'error')
         networkStats.totalRequests++
         networkStats.failed++
       }

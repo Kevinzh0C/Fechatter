@@ -15,7 +15,7 @@ class SearchDebugger {
    * 启动完整的搜索系统诊断
    */
   async runFullDiagnosis(chatId = 3, query = 'Hi') {
-    console.log('🔍 === Search System Full Diagnosis ===');
+    console.log('=== Search System Full Diagnosis ===');
     console.log(`📋 Testing Chat ID: ${chatId}, Query: "${query}"`);
 
     this.debugResults = [];
@@ -47,7 +47,7 @@ class SearchDebugger {
    * 测试后端API可用性
    */
   async testBackendAPIs(chatId, query) {
-    console.log('\n📡 Testing Backend APIs...');
+    console.log('\nSUBSCRIPTION: Testing Backend APIs...');
 
     const endpoints = [
       {
@@ -112,7 +112,7 @@ class SearchDebugger {
    * 测试SearchService
    */
   async testSearchService(chatId, query) {
-    console.log('\n🔧 Testing SearchService...');
+    console.log('\nTesting SearchService...');
 
     try {
       // Test chat search
@@ -203,7 +203,7 @@ class SearchDebugger {
     this.debugResults.push(result);
 
     const statusEmojis = {
-      'SUCCESS': '✅',
+      'SUCCESS': '',
       'WARNING': '⚠️',
       'ERROR': '❌',
       'CRITICAL': '🚨'
@@ -216,7 +216,7 @@ class SearchDebugger {
    * 打印诊断摘要
    */
   printDiagnosisSummary() {
-    console.log('\n📊 === Search System Diagnosis Summary ===');
+    console.log('\n=== Search System Diagnosis Summary ===');
 
     const stats = {
       SUCCESS: 0,
@@ -229,29 +229,29 @@ class SearchDebugger {
       stats[result.status]++;
     });
 
-    console.log(`✅ Success: ${stats.SUCCESS}`);
-    console.log(`⚠️ Warning: ${stats.WARNING}`);
-    console.log(`❌ Error: ${stats.ERROR}`);
+    console.log(`Success: ${stats.SUCCESS}`);
+    console.log(`WARNING: Warning: ${stats.WARNING}`);
+    console.log(`ERROR: Error: ${stats.ERROR}`);
     console.log(`🚨 Critical: ${stats.CRITICAL}`);
     console.log(`📋 Total: ${this.debugResults.length}`);
 
     // 系统状态评估
     if (stats.CRITICAL > 0) {
       console.log('\n🚨 SYSTEM STATUS: CRITICAL - Essential APIs are failing');
-      console.log('🔧 RECOMMENDATION: Use fallback search mode only');
+      console.log('RECOMMENDATION: Use fallback search mode only');
     } else if (stats.ERROR > 0) {
-      console.log('\n⚠️ SYSTEM STATUS: DEGRADED - Some features unavailable');
-      console.log('🔧 RECOMMENDATION: Fallback mechanisms will be used');
+      console.log('\nWARNING: SYSTEM STATUS: DEGRADED - Some features unavailable');
+      console.log('RECOMMENDATION: Fallback mechanisms will be used');
     } else if (stats.WARNING > 0) {
-      console.log('\n✅ SYSTEM STATUS: FUNCTIONAL - Minor issues present');
-      console.log('🔧 RECOMMENDATION: Search system is usable');
+      console.log('\nSYSTEM STATUS: FUNCTIONAL - Minor issues present');
+      console.log('RECOMMENDATION: Search system is usable');
     } else {
       console.log('\n🎉 SYSTEM STATUS: FULLY OPERATIONAL');
-      console.log('🔧 RECOMMENDATION: All search features available');
+      console.log('RECOMMENDATION: All search features available');
     }
 
     // 用户建议
-    console.log('\n💡 USER GUIDANCE:');
+    console.log('\nUSER GUIDANCE:');
     if (stats.SUCCESS > 0) {
       console.log('- Search functionality is available');
       console.log('- Results will be displayed when found');
@@ -279,14 +279,14 @@ class SearchDebugger {
       });
 
       if (result && result.hits !== undefined) {
-        console.log('✅ Search system is responsive');
+        console.log('Search system is responsive');
         return true;
       } else {
-        console.log('⚠️ Search system returned unexpected format');
+        console.log('WARNING: Search system returned unexpected format');
         return false;
       }
     } catch (error) {
-      console.log('❌ Search system is not responding:', error.message);
+      console.log('ERROR: Search system is not responding:', error.message);
       return false;
     }
   }

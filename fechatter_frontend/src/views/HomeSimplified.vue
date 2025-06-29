@@ -6,7 +6,7 @@
       <p>Initializing...</p>
     </div>
 
-    <!-- ❌ 错误状态 -->
+    <!-- ERROR: 错误状态 -->
     <div v-else-if="initError" class="error-container">
       <div class="error-icon">⚠️</div>
       <h3>Initialization Failed</h3>
@@ -16,7 +16,7 @@
       </button>
     </div>
 
-    <!-- ✅ 正常状态 -->
+    <!-- 正常状态 -->
     <div v-else class="home-content">
       <header class="home-header">
         <h1>Welcome to Fechatter</h1>
@@ -29,7 +29,7 @@
       </header>
 
       <main class="home-main">
-        <!-- 🎯 聊天区域 -->
+        <!-- 聊天区域 -->
         <div class="chat-section">
           <div v-if="isLoadingChats" class="loading-chats">
             <div class="loading-spinner small"></div>
@@ -53,7 +53,7 @@
         </div>
       </main>
 
-      <!-- 🔍 开发模式调试面板 -->
+      <!-- 开发模式调试面板 -->
       <div v-if="showDebugInfo" class="debug-panel">
         <h4>Debug Info</h4>
         <div class="debug-grid">
@@ -84,11 +84,11 @@ import { useRouter } from 'vue-router';
 import { useSimplifiedAuthStore } from '@/stores/authSimplified';
 import { authRecoveryManager } from '@/services/authRecoveryStrategies';
 
-// 🎯 组合式API设置
+// 组合式API设置
 const router = useRouter();
 const authStore = useSimplifiedAuthStore();
 
-// 🎯 响应式状态
+// 响应式状态
 const isInitializing = ref(true);
 const initError = ref(null);
 const isLoadingChats = ref(false);
@@ -96,7 +96,7 @@ const chats = ref([]);
 const recoveryMethod = ref('none');
 const initializationTime = ref(0);
 
-// 🎯 计算属性
+// 计算属性
 const showDebugInfo = computed(() => import.meta.env.DEV);
 
 // 🔄 智能初始化 (延迟验证)
@@ -104,14 +104,14 @@ const initializeHome = async () => {
   const startTime = Date.now();
 
   try {
-    // 🎯 Step 1: 快速认证检查
+    // Step 1: 快速认证检查
     if (authStore.isAuthenticated) {
       // 已认证，直接进入
       await loadChats();
       return;
     }
 
-    // 🎯 Step 2: 尝试恢复认证状态
+    // Step 2: 尝试恢复认证状态
     const recoveryResult = await authRecoveryManager.attemptRecovery({
       tokenExpired: true,
       hasRememberedCredentials: false
@@ -127,7 +127,7 @@ const initializeHome = async () => {
         await authStore.attemptRecovery();
       }
 
-      // 🎯 恢复成功，加载聊天
+      // 恢复成功，加载聊天
       await loadChats();
     } else {
       // 🚪 恢复失败，重定向到登录
@@ -146,7 +146,7 @@ const initializeHome = async () => {
   }
 };
 
-// 🎯 加载聊天数据 (延迟加载)
+// 加载聊天数据 (延迟加载)
 const loadChats = async () => {
   isLoadingChats.value = true;
 
@@ -154,7 +154,7 @@ const loadChats = async () => {
     // 🔄 模拟API调用
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // 🎯 模拟聊天数据
+    // 模拟聊天数据
     chats.value = [
       {
         id: 1,
@@ -210,7 +210,7 @@ const runAuthDiagnostics = async () => {
       timestamp: new Date().toISOString()
     };
 
-    console.group('🔍 Auth Diagnostics');
+    console.group('Auth Diagnostics');
     console.log('Current State:', diagnostics.authState);
     console.log('Recovery Strategies:', diagnostics.recoveryStrategies);
     console.log('Storage:', diagnostics.localStorage);
@@ -221,14 +221,14 @@ const runAuthDiagnostics = async () => {
   }
 };
 
-// 🎯 组件生命周期
+// 组件生命周期
 onMounted(() => {
   initializeHome();
 });
 </script>
 
 <style scoped>
-/* 🎨 简化的样式设计 */
+/* 简化的样式设计 */
 .home-simplified {
   min-height: 100vh;
   background: #f9fafb;
@@ -269,7 +269,7 @@ onMounted(() => {
   }
 }
 
-/* ❌ 错误状态 */
+/* ERROR: 错误状态 */
 .error-container {
   display: flex;
   flex-direction: column;
@@ -311,7 +311,7 @@ onMounted(() => {
   transform: translateY(-1px);
 }
 
-/* ✅ 正常状态 */
+/* 正常状态 */
 .home-content {
   max-width: 1200px;
   margin: 0 auto;
@@ -360,7 +360,7 @@ onMounted(() => {
   background: #dc2626;
 }
 
-/* 🎯 聊天区域 */
+/* 聊天区域 */
 .chat-section {
   background: white;
   border-radius: 12px;
@@ -435,7 +435,7 @@ onMounted(() => {
   font-size: 0.9rem;
 }
 
-/* 🔍 调试面板 */
+/* 调试面板 */
 .debug-panel {
   margin-top: 2rem;
   background: white;
@@ -484,7 +484,7 @@ onMounted(() => {
   background: #4f46e5;
 }
 
-/* 🎯 响应式设计 */
+/* 响应式设计 */
 @media (max-width: 768px) {
   .home-content {
     padding: 1rem;
@@ -505,7 +505,7 @@ onMounted(() => {
   }
 }
 
-/* 🎯 可访问性优化 */
+/* 可访问性优化 */
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;

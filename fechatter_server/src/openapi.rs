@@ -61,7 +61,7 @@ pub(crate) trait OpenApiRouter {
                 // Workspace schema
                 Workspace,
                 
-                // Search schemas - 精简后只保留核心的3个
+                // Search schemas - streamlined to core 3 schemas
                 SearchMessages,
                 SearchResult,
                 SearchableMessage,

@@ -1,5 +1,5 @@
 <template>
-  <!-- 🔍 Production Search Modal - Human-Centered Design -->
+  <!-- Production Search Modal - Human-Centered Design -->
   <teleport to="body">
     <transition name="modal-backdrop">
       <div 
@@ -80,7 +80,7 @@
                     </svg>
                   </button>
                   
-                  <!-- 🔧 NEW: Search Action Button on the right -->
+                  <!-- NEW: Search Action Button on the right -->
                   <button
                     v-if="searchQuery.trim() && searchQuery.length >= 2"
                     @click="handleSearch"
@@ -288,7 +288,7 @@ const resultsContainer = ref(null);
 // Reactive State
 const searchQuery = ref(props.initialQuery);
 const isSearchActive = ref(false);
-const isSearching = ref(false); // 🔧 NEW: Track search loading state
+const isSearching = ref(false); // NEW: Track search loading state
 const showAdvancedFilters = ref(false);
 const showQuickFilters = ref(true);
 const currentStrategy = ref(null);
@@ -535,7 +535,7 @@ onMounted(() => {
 
 // 计算实际的打开状态 - 修复逻辑优先级
 const isModalOpen = computed(() => {
-  // 🔧 FIX: 优先使用 isOpen (父组件传递的值)，modelValue 为空时才使用默认值
+  // FIX: 优先使用 isOpen (父组件传递的值)，modelValue 为空时才使用默认值
   if (props.isOpen !== undefined && props.isOpen !== false) {
     return props.isOpen;
   }
@@ -545,7 +545,7 @@ const isModalOpen = computed(() => {
 </script>
 
 <style scoped>
-/* 🎨 Modern Search Modal - Premium Design System inspired by Notion, Linear & Slack */
+/* Modern Search Modal - Premium Design System inspired by Notion, Linear & Slack */
 
 /* Modern Design Variables - Human-Centered & Accessible */
 .search-modal-backdrop {
@@ -834,7 +834,7 @@ const isModalOpen = computed(() => {
   font-weight: 400;
 }
 
-/* 🔧 NEW: Search Action Button - Modern & Prominent */
+/* NEW: Search Action Button - Modern & Prominent */
 .search-action-button {
   display: flex;
   align-items: center;

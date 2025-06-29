@@ -7,7 +7,7 @@
     <div v-if="showDebugData && isDevelopment"
       class="absolute top-0 right-0 z-40 bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs shadow-lg max-w-md"
       style="transform: translateY(-100%);">
-      <div class="font-bold text-yellow-800 mb-2">🔍 数据传输断点诊断</div>
+      <div class="font-bold text-yellow-800 mb-2">数据传输断点诊断</div>
       <div class="space-y-1 text-yellow-700">
         <div><strong>Message ID:</strong> {{ message.id || message.temp_id }}</div>
         <div><strong>Sender ID:</strong> {{ message.sender_id }}</div>
@@ -42,7 +42,7 @@
       </div>
     </div>
 
-    <!-- Message Content Container - 🎯 OPTIMIZED: Limited width for modern chat layout -->
+    <!-- Message Content Container - OPTIMIZED: Limited width for modern chat layout -->
     <div class="min-w-0 flex-1 max-w-[calc(100%-4rem)]">
       <!-- Message Header -->
       <div class="flex items-baseline space-x-2 mb-1">
@@ -68,13 +68,13 @@
 
         <!-- Message Status -->
         <div v-if="isCurrentUserMessage" class="flex items-center ml-auto">
-          <!-- ✅ Green checkmark: delivered or confirmed via SSE -->
+          <!-- Green checkmark: delivered or confirmed via SSE -->
           <CheckIcon v-if="message.status === 'delivered' || message.status === 'read' || message.confirmed_via_sse"
             class="h-4 w-4 text-green-500" title="已送达" />
           <!-- ⏰ Blue clock: waiting for confirmation -->
           <ClockIcon v-else-if="message.status === 'sending' || message.status === 'sent'"
             class="h-4 w-4 text-blue-400 animate-pulse" title="等待送达确认..." />
-          <!-- ❌ Red error: failed messages with retry counter -->
+          <!-- ERROR: Red error: failed messages with retry counter -->
           <div v-else-if="message.status === 'failed' || message.status === 'timeout'"
             class="flex items-center space-x-1 cursor-pointer hover:bg-red-50 rounded px-1 py-0.5 transition-colors"
             @click="retryMessage" :title="getRetryTooltip()">
@@ -96,7 +96,7 @@
         <span class="text-gray-500 truncate">{{ truncatedReplyContent }}</span>
       </div>
 
-      <!-- 🎯 OPTIMIZED: Message Content with width constraints -->
+      <!-- OPTIMIZED: Message Content with width constraints -->
       <div class="message-content-wrapper max-w-3xl" @dblclick="startEdit">
         <!-- ✨ 代码高亮加载状态 -->
         <div v-if="isHighlightingCode" class="code-highlighting-indicator">
@@ -106,14 +106,14 @@
 
         <!-- ✨ 代码高亮错误状态 -->
         <div v-else-if="highlightError" class="code-highlight-error">
-          <span>⚠️ Code highlighting failed: {{ highlightError }}</span>
+          <span>WARNING: Code highlighting failed: {{ highlightError }}</span>
           <button @click="highlightCodeInContent" class="retry-highlight-btn">Retry</button>
         </div>
 
         <!-- ✨ 正常内容显示 -->
         <div v-else class="content-wrapper" v-html="renderedContent"></div>
 
-        <!-- 🚀 CRITICAL FIX: File Attachments Display -->
+        <!-- CRITICAL FIX: File Attachments Display -->
         <div v-if="message.files && message.files.length > 0" class="message-files">
           <div v-for="file in message.files" :key="file.id || getFileUrl(file) || 'unknown'" class="file-attachment">
             <!-- Image Preview -->
@@ -365,42 +365,42 @@ const isDevelopment = computed(() => {
   return import.meta.env.DEV || import.meta.env.MODE === 'development'
 })
 
-// 🚀 CRITICAL FIX: Safe content extraction function for reuse
+// CRITICAL FIX: Safe content extraction function for reuse
 const extractSafeMessageContent = () => {
   const rawContent = props.message.content
 
-  // 🔍 DEBUG: 添加详细调试日志
-  console.group(`🔍 [DEBUG] extractSafeMessageContent for message ${props.message.id}`)
-  console.log('🔍 [DEBUG] Raw content:', rawContent)
-  console.log('🔍 [DEBUG] Raw content type:', typeof rawContent)
-  console.log('🔍 [DEBUG] Raw content constructor:', rawContent?.constructor?.name)
-  console.log('🔍 [DEBUG] Full message object:', props.message)
+  // DEBUG: 添加详细调试日志
+  console.group(`[DEBUG] extractSafeMessageContent for message ${props.message.id}`)
+  console.log('[DEBUG] Raw content:', rawContent)
+  console.log('[DEBUG] Raw content type:', typeof rawContent)
+  console.log('[DEBUG] Raw content constructor:', rawContent?.constructor?.name)
+  console.log('[DEBUG] Full message object:', props.message)
 
   if (!rawContent) {
-    console.log('🔍 [DEBUG] No content found, returning empty string')
+    console.log('[DEBUG] No content found, returning empty string')
     console.groupEnd()
     return ''
   }
 
   // If it's already a string, check for object serialization issues
   if (typeof rawContent === 'string') {
-    console.log('🔍 [DEBUG] Content is string, checking for [object Object]...')
+    console.log('[DEBUG] Content is string, checking for [object Object]...')
     if (rawContent.includes('[object Object]')) {
       console.error('🚨 [DEBUG] FOUND [object Object] string in message content!')
-      console.log('🔍 [DEBUG] Full string content:', JSON.stringify(rawContent))
+      console.log('[DEBUG] Full string content:', JSON.stringify(rawContent))
       console.groupEnd()
       return 'Message content error - please refresh'
     }
-    console.log('✅ [DEBUG] String content is safe:', rawContent.substring(0, 100) + (rawContent.length > 100 ? '...' : ''))
+    console.log('[DEBUG] String content is safe:', rawContent.substring(0, 100) + (rawContent.length > 100 ? '...' : ''))
     console.groupEnd()
     return rawContent
   }
 
   // If it's an object, extract content safely
   if (typeof rawContent === 'object' && rawContent !== null) {
-    console.warn('⚠️ [DEBUG] Content is object, attempting safe extraction...')
-    console.log('🔍 [DEBUG] Object keys:', Object.keys(rawContent))
-    console.log('🔍 [DEBUG] Object values preview:', JSON.stringify(rawContent, null, 2).substring(0, 200))
+    console.warn('WARNING: [DEBUG] Content is object, attempting safe extraction...')
+    console.log('[DEBUG] Object keys:', Object.keys(rawContent))
+    console.log('[DEBUG] Object values preview:', JSON.stringify(rawContent, null, 2).substring(0, 200))
 
     // Try multiple extraction strategies
     const strategies = [
@@ -411,7 +411,7 @@ const extractSafeMessageContent = () => {
       { name: 'data', value: rawContent.data }
     ]
 
-    console.log('🔍 [DEBUG] Trying extraction strategies:')
+    console.log('[DEBUG] Trying extraction strategies:')
     for (const strategy of strategies) {
       console.log(`  - ${strategy.name}:`, strategy.value, typeof strategy.value)
     }
@@ -425,29 +425,29 @@ const extractSafeMessageContent = () => {
       (Array.isArray(rawContent) ? rawContent.join(' ') : null)
 
     if (extracted && typeof extracted === 'string') {
-      console.log('✅ [DEBUG] Successfully extracted string:', extracted.substring(0, 100) + (extracted.length > 100 ? '...' : ''))
+      console.log('[DEBUG] Successfully extracted string:', extracted.substring(0, 100) + (extracted.length > 100 ? '...' : ''))
       console.groupEnd()
       return extracted
     }
 
-    console.warn('⚠️ [DEBUG] No string found in object, attempting JSON.stringify...')
+    console.warn('WARNING: [DEBUG] No string found in object, attempting JSON.stringify...')
     // Last resort: safe JSON stringify
     try {
       const jsonResult = JSON.stringify(rawContent, null, 2)
-      console.log('✅ [DEBUG] JSON stringify successful:', jsonResult.substring(0, 100) + '...')
+      console.log('[DEBUG] JSON stringify successful:', jsonResult.substring(0, 100) + '...')
       console.groupEnd()
       return jsonResult
     } catch (e) {
-      console.error('❌ [DEBUG] JSON stringify failed:', e)
+      console.error('ERROR: [DEBUG] JSON stringify failed:', e)
       console.groupEnd()
       return `Complex object content - ID: ${props.message.id}`
     }
   }
 
   // Convert any other type to string
-  console.log('🔍 [DEBUG] Converting other type to string:', typeof rawContent)
+  console.log('[DEBUG] Converting other type to string:', typeof rawContent)
   const result = String(rawContent)
-  console.log('🔍 [DEBUG] String conversion result:', result)
+  console.log('[DEBUG] String conversion result:', result)
   console.groupEnd()
   return result
 }
@@ -480,7 +480,7 @@ const senderName = computed(() => {
   let name = 'Unknown User'
   let source = 'fallback'
 
-  // 🚀 CRITICAL FIX: Ensure all name sources are strings, not objects
+  // CRITICAL FIX: Ensure all name sources are strings, not objects
   const safeString = (value) => {
     if (!value) return null
     if (typeof value === 'string') return value
@@ -505,7 +505,7 @@ const senderName = computed(() => {
     source = 'sender.name'
   }
 
-  // 🔧 FINAL SAFETY CHECK: Ensure result is always a string
+  // FINAL SAFETY CHECK: Ensure result is always a string
   if (typeof name !== 'string' || !name || name === 'null' || name === 'undefined') {
     name = 'Unknown User'
   }
@@ -609,7 +609,7 @@ const canDelete = computed(() => {
   return isCurrentUserMessage.value
 })
 
-// 🚀 NEW: Get retry tooltip based on message status and attempts
+// NEW: Get retry tooltip based on message status and attempts
 const getRetryTooltip = () => {
   if (!props.message) return ''
 
@@ -634,28 +634,28 @@ const getRetryTooltip = () => {
 }
 
 const renderedContent = computed(() => {
-  // 🚀 CRITICAL FIX: Use unified safe content extraction
+  // CRITICAL FIX: Use unified safe content extraction
   const safeContent = extractSafeMessageContent()
 
-  // 🔍 DEBUG: 添加renderedContent调试
-  console.group(`🎨 [DEBUG] renderedContent for message ${props.message.id}`)
-  console.log('🔍 [DEBUG] Safe content from extraction:', safeContent)
-  console.log('🔍 [DEBUG] Safe content type:', typeof safeContent)
-  console.log('🔍 [DEBUG] Highlighted content available:', !!highlightedContent.value)
+  // DEBUG: 添加renderedContent调试
+  console.group(`[DEBUG] renderedContent for message ${props.message.id}`)
+  console.log('[DEBUG] Safe content from extraction:', safeContent)
+  console.log('[DEBUG] Safe content type:', typeof safeContent)
+  console.log('[DEBUG] Highlighted content available:', !!highlightedContent.value)
 
   if (highlightedContent.value) {
-    console.log('🔍 [DEBUG] Using cached highlighted content')
+    console.log('[DEBUG] Using cached highlighted content')
     console.groupEnd()
     return highlightedContent.value
   }
 
-  // 🔍 DEBUG: 检查markdown渲染前后的内容
-  console.log('🔍 [DEBUG] About to render markdown with content:', safeContent.substring(0, 200))
+  // DEBUG: 检查markdown渲染前后的内容
+  console.log('[DEBUG] About to render markdown with content:', safeContent.substring(0, 200))
 
   // Fallback to basic markdown rendering with safe string content
   const markdownResult = renderMarkdown(safeContent)
-  console.log('🔍 [DEBUG] Markdown render result:', markdownResult.substring(0, 200))
-  console.log('🔍 [DEBUG] Does result contain [object Object]?', markdownResult.includes('[object Object]'))
+  console.log('[DEBUG] Markdown render result:', markdownResult.substring(0, 200))
+  console.log('[DEBUG] Does result contain [object Object]?', markdownResult.includes('[object Object]'))
   console.groupEnd()
 
   return markdownResult
@@ -734,7 +734,7 @@ const handleRightClick = (event) => {
   event.preventDefault()
   event.stopPropagation()
 
-  console.log('🔍 右键菜单调试信息:', {
+  console.log('右键菜单调试信息:', {
     clientX: event.clientX,
     clientY: event.clientY,
     pageX: event.pageX,
@@ -784,7 +784,7 @@ const handleRightClick = (event) => {
   setTimeout(() => {
     const menuElement = document.querySelector('.context-menu')
     if (menuElement) {
-      console.log('✅ 菜单元素状态:', {
+      console.log('菜单元素状态:', {
         position: getComputedStyle(menuElement).position,
         left: getComputedStyle(menuElement).left,
         top: getComputedStyle(menuElement).top,
@@ -830,12 +830,12 @@ const openImagePreview = (file) => {
   const messageImages = (props.message.files || [])
     .filter(f => isImageFile(f))
     .map(f => {
-      // 🔧 CRITICAL FIX: Multi-source loading strategy
+      // CRITICAL FIX: Multi-source loading strategy
       const secureUrl = getSecureImageUrl(f)
       const apiUrl = getFileUrl(f)
 
       return {
-        // 🌟 CRITICAL FIX: Always use API URL as primary - modal will handle authentication
+        // CRITICAL FIX: Always use API URL as primary - modal will handle authentication
         url: apiUrl,
         // 🔄 OPTIMIZATION: Provide secure URL if already cached for faster loading
         secureUrl: secureUrl || null,
@@ -883,9 +883,9 @@ const closeImagePreview = () => {
   showImagePreview.value = false
 }
 
-// 🚀 ENHANCED: File handling utilities using unified URL handler
+// ENHANCED: File handling utilities using unified URL handler
 const getFileUrl = (file) => {
-  // 🔧 Use unified file URL handler to automatically handle all formats
+  // Use unified file URL handler to automatically handle all formats
   return getStandardFileUrl(file, {
     workspaceId: props.message?.workspace_id || props.workspaceId
   })
@@ -893,7 +893,7 @@ const getFileUrl = (file) => {
 
 // 🔐 SECURE: Authenticated image loading with blob URLs
 const getSecureImageUrl = (file) => {
-  // 🔧 CRITICAL FIX: Use processed URL as key to avoid original /download/ URLs
+  // CRITICAL FIX: Use processed URL as key to avoid original /download/ URLs
   const apiUrl = getFileUrl(file)
   const fileKey = file.id || apiUrl || 'unknown'
 
@@ -918,7 +918,7 @@ const getSecureImageUrl = (file) => {
 
 // 🔐 SECURE: Load image with authentication and create blob URL
 const loadSecureImage = async (file) => {
-  // 🔧 CRITICAL FIX: Use processed URL as key to match getSecureImageUrl
+  // CRITICAL FIX: Use processed URL as key to match getSecureImageUrl
   const apiUrl = getFileUrl(file)
   const fileKey = file.id || apiUrl || 'unknown'
 
@@ -954,14 +954,14 @@ const loadSecureImage = async (file) => {
       secureImageUrls.value[fileKey] = objectUrl
 
       if (import.meta.env.DEV) {
-        console.log('✅ [SecureImage] Image loaded successfully, created object URL')
+        console.log('[SecureImage] Image loaded successfully, created object URL')
       }
     } else {
       throw new Error('No image data received')
     }
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('❌ [SecureImage] Failed to load image:', error)
+      console.error('ERROR: [SecureImage] Failed to load image:', error)
     }
 
     imageErrors.value[fileKey] = true
@@ -993,7 +993,7 @@ const onImageLoad = (file) => {
   imageLoaded.value[file.id || fileName] = true
 
   if (import.meta.env.DEV) {
-    console.log('✅ Image loaded successfully:', fileName)
+    console.log('Image loaded successfully:', fileName)
   }
 }
 
@@ -1001,14 +1001,14 @@ const onImageError = (file) => {
   const fileName = getFileName(file)
   imageLoaded.value[file.id || fileName] = false
 
-  console.error('❌ Failed to load image:', fileName, 'URL:', getFileUrl(file))
+  console.error('ERROR: Failed to load image:', fileName, 'URL:', getFileUrl(file))
 }
 
 const downloadFile = async (file) => {
   const fileName = getFileName(file)
 
   try {
-    // 🔧 Enhanced Download: Handle both secure and direct URLs
+    // Enhanced Download: Handle both secure and direct URLs
     let downloadUrl = getSecureImageUrl(file)
 
     // If secure URL is not available (still loading), use direct API URL
@@ -1017,7 +1017,7 @@ const downloadFile = async (file) => {
     }
 
     if (!downloadUrl) {
-      console.error('❌ No URL available for file download:', fileName)
+      console.error('ERROR: No URL available for file download:', fileName)
       return
     }
 
@@ -1071,7 +1071,7 @@ const downloadFile = async (file) => {
       }
     }
   } catch (error) {
-    console.error('❌ Download failed for file:', fileName, error)
+    console.error('ERROR: Download failed for file:', fileName, error)
 
     // Show user-friendly error message
     if (typeof window !== 'undefined' && window.alert) {
@@ -1122,7 +1122,7 @@ const handleReplyToMessage = (replyData) => {
       messageInput.focus()
       // 设置光标位置到末尾
       messageInput.setSelectionRange(mentionText.length, mentionText.length)
-      console.log('✅ Message input focused with mention:', mentionText)
+      console.log('Message input focused with mention:', mentionText)
     }
   }, 100)
 
@@ -1141,13 +1141,13 @@ const handleTranslateMessage = async (translateData) => {
 
   console.log('🌐 Translation request:', translationRequest)
 
-  // 🔧 FIXED: Use messageUIStore state management with optimal positioning
+  // FIXED: Use messageUIStore state management with optimal positioning
   try {
     // Import messageUIStore
     const { useMessageUIStore } = await import('@/stores/messageUI')
     const messageUIStore = useMessageUIStore()
 
-    // 🎯 优化：让Chat.vue的getOptimalTranslationPanelPosition处理位置计算
+    // 优化：让Chat.vue的getOptimalTranslationPanelPosition处理位置计算
     // 移除position参数，使用最优定位算法
     messageUIStore.openTranslationPanel(props.message.id, {
       showAdvanced: false,
@@ -1155,7 +1155,7 @@ const handleTranslateMessage = async (translateData) => {
       showConfidence: true
     })
 
-    console.log('✅ Translation panel opened via state management with optimal positioning')
+    console.log('Translation panel opened via state management with optimal positioning')
   } catch (error) {
     console.error('🚨 Failed to open translation panel:', error)
 
@@ -1211,23 +1211,23 @@ const toggleDebugData = () => {
 }
 
 const logMessageData = () => {
-  console.group(`🔍 数据传输断点分析 - Message ${props.message.id}`)
+  console.group(`数据传输断点分析 - Message ${props.message.id}`)
 
   console.log('📋 原始消息对象:', props.message)
 
-  console.log('👤 用户名数据源分析:', {
-    'sender.fullname': props.message.sender?.fullname || '❌ null',
-    'sender_name': props.message.sender_name || '❌ null',
-    'sender.username': props.message.sender?.username || '❌ null',
-    'sender.name': props.message.sender?.name || '❌ null',
+  console.log('USER: 用户名数据源分析:', {
+    'sender.fullname': props.message.sender?.fullname || 'ERROR: null',
+    'sender_name': props.message.sender_name || 'ERROR: null',
+    'sender.username': props.message.sender?.username || 'ERROR: null',
+    'sender.name': props.message.sender?.name || 'ERROR: null',
     '最终显示': senderName.value,
     '数据源': userNameSource.value
   })
 
-  console.log('🎨 头像数据源分析:', {
-    'sender.avatar_url': props.message.sender?.avatar_url || '❌ null',
-    'sender_avatar': props.message.sender_avatar || '❌ null',
-    '最终显示': senderAvatar.value || '❌ 使用fallback',
+  console.log('头像数据源分析:', {
+    'sender.avatar_url': props.message.sender?.avatar_url || 'ERROR: null',
+    'sender_avatar': props.message.sender_avatar || 'ERROR: null',
+    '最终显示': senderAvatar.value || 'ERROR: 使用fallback',
     'fallback初始字母': senderInitials.value
   })
 
@@ -1235,7 +1235,7 @@ const logMessageData = () => {
     '消息ID': props.message.id || props.message.temp_id,
     '发送者ID': props.message.sender_id,
     '是否有sender对象': !!props.message.sender,
-    'sender对象内容': props.message.sender || '❌ null',
+    'sender对象内容': props.message.sender || 'ERROR: null',
     '创建时间': props.message.created_at,
     '消息内容': props.message.content
   })
@@ -1243,19 +1243,19 @@ const logMessageData = () => {
   // Check for potential data loss points
   const dataLossIndicators = []
   if (!props.message.sender && !props.message.sender_name) {
-    dataLossIndicators.push('❌ 缺少所有用户名数据源')
+    dataLossIndicators.push('ERROR: 缺少所有用户名数据源')
   }
   if (!props.message.sender?.fullname && !props.message.sender_name) {
-    dataLossIndicators.push('⚠️ 只有fallback用户名数据')
+    dataLossIndicators.push('WARNING: 只有fallback用户名数据')
   }
   if (!props.message.sender?.avatar_url && !props.message.sender_avatar) {
-    dataLossIndicators.push('⚠️ 缺少头像数据，使用生成头像')
+    dataLossIndicators.push('WARNING: 缺少头像数据，使用生成头像')
   }
 
   if (dataLossIndicators.length > 0) {
     console.warn('🚨 发现数据传输断点:', dataLossIndicators)
   } else {
-    console.log('✅ 数据传输完整')
+    console.log('数据传输完整')
   }
 
   console.groupEnd()
@@ -1264,7 +1264,7 @@ const logMessageData = () => {
 
 // ✨ Enhanced async code highlighting for messages
 const highlightCodeInContent = async () => {
-  // 🚀 CRITICAL FIX: Use safe content extraction
+  // CRITICAL FIX: Use safe content extraction
   const safeContent = extractSafeMessageContent()
   if (!safeContent) return
 
@@ -1341,7 +1341,7 @@ const retryMessage = async () => {
       console.log(`🔄 [DiscordMessageItem] Retrying message ${props.message.id}`)
     }
   } catch (error) {
-    console.error('❌ [DiscordMessageItem] Retry failed:', error)
+    console.error('ERROR: [DiscordMessageItem] Retry failed:', error)
 
     // 显示错误通知
     if (window.errorHandler?.showNotification) {
@@ -1382,11 +1382,11 @@ const cleanupObjectUrls = () => {
 
 // Lifecycle hooks
 onMounted(() => {
-  // 🚀 Auto-highlight code on component mount
+  // Auto-highlight code on component mount
   nextTick(() => {
     const safeContent = extractSafeMessageContent()
     if (safeContent && /```[\s\S]*?```/.test(safeContent)) {
-      console.log('🎨 [MOUNTED] Auto-highlighting code for message', props.message.id)
+      console.log('[MOUNTED] Auto-highlighting code for message', props.message.id)
       highlightCodeInContent()
     }
   })
@@ -1399,7 +1399,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 🎯 优化字体层次 - 让消息正文成为视觉焦点 */
+/* 优化字体层次 - 让消息正文成为视觉焦点 */
 .message-content {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Text', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 15px;
@@ -1424,7 +1424,7 @@ onUnmounted(() => {
   /* Subtle hover effect */
 }
 
-/* 🎯 OPTIMIZED: Message content wrapper for width constraints */
+/* OPTIMIZED: Message content wrapper for width constraints */
 .message-content-wrapper {
   max-width: min(calc(100vw - 200px), 42rem);
   /* Responsive max width, similar to Discord */
@@ -1432,7 +1432,7 @@ onUnmounted(() => {
   overflow-wrap: break-word;
 }
 
-/* 🔧 消息内容优化 - 增强可读性 */
+/* 消息内容优化 - 增强可读性 */
 .content-wrapper {
   color: #111827;
   font-weight: 400;
@@ -1442,7 +1442,7 @@ onUnmounted(() => {
   /* Reduced spacing from username to content */
 }
 
-/* 🚀 CRITICAL FIX: File Attachments Styling */
+/* CRITICAL FIX: File Attachments Styling */
 .message-files {
   margin-top: 0.5rem;
   /* Reduced from 0.75rem */
@@ -1471,7 +1471,7 @@ onUnmounted(() => {
 /* 📸 OPTIMIZED: Image Attachments - Modern Chat Standards */
 .image-attachment {
   position: relative;
-  /* 🎯 Optimized thumbnail sizes for better chat experience */
+  /* Optimized thumbnail sizes for better chat experience */
   max-width: 240px;
   /* Reduced from 280px for better space utilization */
   max-height: 180px;
@@ -1512,13 +1512,13 @@ onUnmounted(() => {
 .attachment-image {
   width: 100%;
   height: auto;
-  /* 🎯 Smart sizing based on image dimensions */
+  /* Smart sizing based on image dimensions */
   max-height: 180px;
   /* Matches container */
   object-fit: contain;
   /* Changed from cover to contain for better display */
   transition: transform 0.2s ease;
-  /* 🔧 Ensure minimum readable size */
+  /* Ensure minimum readable size */
   min-width: 120px;
   min-height: 80px;
 }
@@ -1550,7 +1550,7 @@ onUnmounted(() => {
   padding: 8px;
   opacity: 0;
   transition: opacity 0.2s ease;
-  /* 🎯 Better visual hierarchy */
+  /* Better visual hierarchy */
   background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, transparent 50%);
   border-radius: 0 8px 0 8px;
 }
@@ -1598,7 +1598,7 @@ onUnmounted(() => {
   background: #f8f9fa;
   border-radius: 8px;
   color: #6c757d;
-  /* 🎯 Consistent with optimized thumbnail size */
+  /* Consistent with optimized thumbnail size */
   min-height: 120px;
   max-width: 240px;
 }
@@ -1627,7 +1627,7 @@ onUnmounted(() => {
   background: #f8d7da;
   border-radius: 8px;
   color: #721c24;
-  /* 🎯 Consistent with optimized thumbnail size */
+  /* Consistent with optimized thumbnail size */
   min-height: 120px;
   max-width: 240px;
 }
@@ -1642,15 +1642,15 @@ onUnmounted(() => {
   color: #721c24;
 }
 
-/* 🎨 Enhanced hover effects for better UX */
+/* Enhanced hover effects for better UX */
 .image-attachment:hover {
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   transform: translateY(-2px);
 }
 
-/* 💡 Add click hint for images */
+/* Add click hint for images */
 .image-attachment::after {
-  content: "🔍 Click to view full size";
+  content: "Click to view full size";
   position: absolute;
   bottom: 8px;
   left: 8px;
@@ -1724,7 +1724,7 @@ onUnmounted(() => {
   text-decoration: underline;
 }
 
-/* 📝 内联代码优化 */
+/* 内联代码优化 */
 .content-wrapper :deep(code:not(.hljs code)) {
   background-color: #f3f4f6;
   color: #1f2937;
@@ -1735,7 +1735,7 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
-/* 🎯 时间戳subtle化 */
+/* 时间戳subtle化 */
 time {
   font-size: 11px !important;
   font-weight: 400 !important;
@@ -1793,7 +1793,7 @@ time {
   background-color: #b91c1c;
 }
 
-/* 🎯 生产级表情在消息中的1.5x显示 */
+/* 生产级表情在消息中的1.5x显示 */
 .message-content-wrapper :deep(*) {
   /* 匹配Unicode表情符号并放大 */
   font-variant-emoji: emoji;
@@ -1809,7 +1809,7 @@ time {
   margin: 0 0.1em !important;
 }
 
-/* 🎯 自动检测文本中的表情符号 */
+/* 自动检测文本中的表情符号 */
 .message-content-wrapper :deep(p),
 .message-content-wrapper :deep(span),
 .message-content-wrapper :deep(div) {
@@ -1818,7 +1818,7 @@ time {
   text-rendering: optimizeQuality;
 }
 
-/* 🎯 增强表情符号在不同内容类型中的显示 */
+/* 增强表情符号在不同内容类型中的显示 */
 .content-wrapper :deep(p),
 .content-wrapper :deep(span),
 .content-wrapper :deep(div) {
@@ -1827,14 +1827,14 @@ time {
   font-size: inherit;
 }
 
-/* 🎯 表情符号通用增强样式 */
+/* 表情符号通用增强样式 */
 .content-wrapper :deep(p *),
 .content-wrapper :deep(span *),
 .content-wrapper :deep(div *) {
   font-feature-settings: "liga" 1, "calt" 1, "kern" 1;
 }
 
-/* 🎯 确保表情符号在Markdown内容中也正确显示 */
+/* 确保表情符号在Markdown内容中也正确显示 */
 .markdown-content :deep(.emoji) {
   font-size: 1.5em !important;
   vertical-align: middle !important;

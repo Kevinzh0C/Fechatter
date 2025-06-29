@@ -34,25 +34,25 @@ pub async fn setup_nats_subscriber(
   nats_client: Option<Arc<async_nats::Client>>
 ) -> anyhow::Result<()> {
   if !config.messaging.enabled {
-    warn!("⚠️ NATS messaging is disabled - bot_server will not process events");
+    warn!("WARNING: NATS messaging is disabled - bot_server will not process events");
     return Ok(());
   }
 
   let nats_client = match nats_client {
     Some(client) => client,
     None => {
-      warn!("⚠️ NATS client not provided - bot_server will not process events");
+      warn!("WARNING: NATS client not provided - bot_server will not process events");
       return Ok(());
     }
   };
 
-  info!("🚀 Setting up NATS subscriber for bot event processing...");
+  info!("Setting up NATS subscriber for bot event processing...");
 
   // Setup unified NATS + Protobuf analytics publisher
   let analytics_publisher = if config.analytics.enabled {
     Some(Arc::new(UnifiedBotAnalyticsPublisher::new(Arc::clone(&nats_client).as_ref().clone())))
   } else {
-    info!("📊 Analytics disabled in configuration");
+    info!("Analytics disabled in configuration");
     None
   };
 
@@ -86,7 +86,7 @@ pub async fn setup_nats_subscriber(
 
     // Spawn a handler for each subscription
     tokio::spawn(async move {
-      info!("📡 Bot NATS subscriber started: {}", subject_str);
+      info!("SUBSCRIPTION: Bot NATS subscriber started: {}", subject_str);
       let mut subscriber = subscriber;
 
       while let Some(msg) = subscriber.next().await {
@@ -95,7 +95,7 @@ pub async fn setup_nats_subscriber(
         let payload_size = payload.len();
 
         // Upgrade to INFO level with detailed logging
-        info!("📨 [BOT] Received NATS event from subject: {} (size: {} bytes)", subject, payload_size);
+        info!("EVENT: [BOT] Received NATS event from subject: {} (size: {} bytes)", subject, payload_size);
 
         // Process the event
         if let Err(e) = process_nats_event(
@@ -109,7 +109,7 @@ pub async fn setup_nats_subscriber(
         )
         .await
         {
-          error!("❌ [BOT] Failed to process event from {}: {}", subject, e);
+          error!("ERROR: [BOT] Failed to process event from {}: {}", subject, e);
           
           // Track error in analytics using unified publisher
           if let Some(analytics) = &analytics_clone {
@@ -123,15 +123,15 @@ pub async fn setup_nats_subscriber(
               .await;
           }
         } else {
-          info!("✅ [BOT] Successfully processed event from: {}", subject);
+          info!("[BOT] Successfully processed event from: {}", subject);
         }
       }
 
-      warn!("⚠️ Bot NATS subscriber ended: {}", subject_str);
+      warn!("WARNING: Bot NATS subscriber ended: {}", subject_str);
     });
   }
 
-  info!("✅ Bot NATS event processor setup complete");
+  info!("Bot NATS event processor setup complete");
   Ok(())
 }
 
@@ -149,16 +149,16 @@ pub async fn process_nats_event(
 
   // Parse message created event
   if subject.contains("message.created") || subject.contains("messages.created") {
-    info!("💬 [BOT] Parsing message created event from: {}", subject);
+    info!("MESSAGE: [BOT] Parsing message created event from: {}", subject);
     
     let event = match serde_json::from_slice::<MessageCreatedEvent>(payload) {
       Ok(event) => {
-        info!("✅ [BOT] Successfully parsed message event: chat_id={}, members_count={}", 
+        info!("[BOT] Successfully parsed message event: chat_id={}, members_count={}", 
               event.msg.chat_id.0, event.members.len());
         event
       }
       Err(e) => {
-        error!("❌ [BOT] Failed to parse message event from {}: {}", subject, e);
+        error!("ERROR: [BOT] Failed to parse message event from {}: {}", subject, e);
         return Err(e.into());
       }
     };
@@ -199,7 +199,7 @@ pub async fn process_nats_event(
       )
       .await
       {
-        error!("❌ [BOT] Bot {} failed to process notification: {}", bot_id.0, e);
+        error!("ERROR: [BOT] Bot {} failed to process notification: {}", bot_id.0, e);
         
         // Track bot error in analytics
         if let Some(analytics) = analytics_publisher {
@@ -213,7 +213,7 @@ pub async fn process_nats_event(
             .await;
         }
       } else {
-        info!("✅ [BOT] Bot {} successfully processed message in chat {}", 
+        info!("[BOT] Bot {} successfully processed message in chat {}", 
               bot_id.0, event.msg.chat_id.0);
         
         // Track successful bot response in analytics
@@ -233,7 +233,7 @@ pub async fn process_nats_event(
       }
     }
     
-    info!("🎯 [BOT] Completed processing message event from: {}", subject);
+    info!("[BOT] Completed processing message event from: {}", subject);
   } else {
     debug!("🤖 [BOT] Unhandled subject pattern: {}", subject);
   }
@@ -255,7 +255,7 @@ async fn process_message_created_event(
   let message = event.msg;
   let mut members = event.members;
 
-  info!("💬 Bot processing message in chat {}", message.chat_id);
+  info!("MESSAGE: Bot processing message in chat {}", message.chat_id);
 
   // Remove the sender from members
   members.remove(&message.sender_id);
@@ -281,7 +281,7 @@ async fn process_message_created_event(
         .process(pool, ai_client.clone(), ai_client.clone(), config, analytics_publisher)
         .await?;
     } else {
-      debug!("👤 Other participant is not a bot, skipping");
+      debug!("USER: Other participant is not a bot, skipping");
     }
   } else {
     debug!(
@@ -334,7 +334,7 @@ impl BotNotification {
       .then_transform_response(response_transformers::Summary::from_client(client.clone()))
       .then_answer(answers::Simple::from_client(client.clone()));
 
-    info!("🔍 Querying AI with: {}", self.event.content);
+    info!("Querying AI with: {}", self.event.content);
 
     // Generate AI response
     let result = pipeline.query(&self.event.content).await?;
@@ -350,7 +350,7 @@ impl BotNotification {
       );
     }
 
-    info!("💬 Bot response generated, saving to database...");
+    info!("MESSAGE: Bot response generated, saving to database...");
 
     // Insert bot response into database
     let message_id: (i64,) = sqlx::query_as(
@@ -367,7 +367,7 @@ impl BotNotification {
     .await?;
 
     info!(
-      "✅ Bot {} responded to message {} with new message {}",
+      "Bot {} responded to message {} with new message {}",
       self.bot_id.0, self.event.id, message_id.0
     );
 
@@ -404,7 +404,7 @@ pub async fn get_bots(pool: &PgPool) -> anyhow::Result<HashSet<UserId>> {
 
   let bot_set: HashSet<UserId> = bots.into_iter().map(|b| UserId::from(b.0)).collect();
 
-  debug!("🔍 Retrieved {} bots from database", bot_set.len());
+  debug!("Retrieved {} bots from database", bot_set.len());
 
   Ok(bot_set)
 }

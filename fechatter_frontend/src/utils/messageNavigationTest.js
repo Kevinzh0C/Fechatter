@@ -32,7 +32,7 @@ export class MessageNavigationTest {
   }
 
   /**
-   * 🔍 测试参数验证
+   * 测试参数验证
    */
   async testParameterValidation() {
     console.log('🧪 Testing parameter validation...')
@@ -52,7 +52,7 @@ export class MessageNavigationTest {
   }
 
   /**
-   * 🎯 测试导航接口
+   * 测试导航接口
    */
   async testNavigationInterface() {
     console.log('🧪 Testing navigation interface...')
@@ -106,7 +106,7 @@ export class MessageNavigationTest {
   }
 
   /**
-   * 📊 测试分析功能
+   * 测试分析功能
    */
   async testAnalytics() {
     console.log('🧪 Testing analytics...')
@@ -131,7 +131,7 @@ export class MessageNavigationTest {
   }
 
   /**
-   * 📝 添加测试结果
+   * 添加测试结果
    */
   addTestResult(testName, passed, description) {
     const result = {
@@ -143,12 +143,12 @@ export class MessageNavigationTest {
 
     this.testResults.push(result)
 
-    const status = passed ? '✅ PASS' : '❌ FAIL'
+    const status = passed ? 'PASS' : 'ERROR: FAIL'
     console.log(`🧪 ${status}: ${testName} - ${description}`)
   }
 
   /**
-   * 📊 打印测试结果
+   * 打印测试结果
    */
   printTestResults() {
     const passedTests = this.testResults.filter(r => r.passed).length
@@ -156,26 +156,26 @@ export class MessageNavigationTest {
     const successRate = ((passedTests / totalTests) * 100).toFixed(1)
 
     console.log('\n🧪 [MessageNavigationTest] Test Summary:')
-    console.log(`📊 Results: ${passedTests}/${totalTests} tests passed (${successRate}%)`)
+    console.log(`Results: ${passedTests}/${totalTests} tests passed (${successRate}%)`)
 
     if (passedTests === totalTests) {
       console.log('🎉 All tests passed! Navigation system is ready for production.')
     } else {
-      console.log('⚠️ Some tests failed. Please check the implementation.')
+      console.log('WARNING: Some tests failed. Please check the implementation.')
 
       // 显示失败的测试
       const failedTests = this.testResults.filter(r => !r.passed)
       failedTests.forEach(test => {
-        console.log(`❌ Failed: ${test.name} - ${test.description}`)
+        console.log(`ERROR: Failed: ${test.name} - ${test.description}`)
       })
     }
   }
 
   /**
-   * 🎯 运行生产环境检查
+   * 运行生产环境检查
    */
   async runProductionChecks() {
-    console.log('🔍 [MessageNavigationTest] Running production checks...')
+    console.log('[MessageNavigationTest] Running production checks...')
 
     const checks = {
       cssLoaded: this.checkCSSLoaded(),
@@ -184,21 +184,21 @@ export class MessageNavigationTest {
       performance: this.checkPerformance()
     }
 
-    console.log('🔍 Production Checks Results:', checks)
+    console.log('Production Checks Results:', checks)
 
     const allPassed = Object.values(checks).every(check => check.passed)
 
     if (allPassed) {
-      console.log('🚀 Production checks passed! System ready for deployment.')
+      console.log('Production checks passed! System ready for deployment.')
     } else {
-      console.log('⚠️ Production checks failed. Review the issues before deployment.')
+      console.log('WARNING: Production checks failed. Review the issues before deployment.')
     }
 
     return checks
   }
 
   /**
-   * 🎨 检查CSS是否加载
+   * 检查CSS是否加载
    */
   checkCSSLoaded() {
     try {
@@ -224,7 +224,7 @@ export class MessageNavigationTest {
   }
 
   /**
-   * 🏗️ 检查DOM结构
+   * 检查DOM结构
    */
   checkDOMStructure() {
     try {
@@ -260,7 +260,7 @@ export class MessageNavigationTest {
   }
 
   /**
-   * ⚡ 检查性能
+   * 检查性能
    */
   checkPerformance() {
     try {
@@ -284,7 +284,7 @@ export class MessageNavigationTest {
   }
 }
 
-// 🌟 导出便捷函数
+// 导出便捷函数
 export async function quickTest() {
   const tester = new MessageNavigationTest()
   return await tester.runAllTests()
@@ -295,7 +295,7 @@ export async function productionCheck() {
   return await tester.runProductionChecks()
 }
 
-// 🎯 自动测试（开发环境）
+// 自动测试（开发环境）
 if (import.meta.env.DEV) {
   // 延迟执行测试，确保DOM就绪
   setTimeout(async () => {

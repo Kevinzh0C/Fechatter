@@ -12,9 +12,9 @@ export class AuthArchitectureTest {
     this.startTime = Date.now();
   }
 
-  // 🎯 测试KISS原则 (Keep It Simple, Stupid)
+  // 测试KISS原则 (Keep It Simple, Stupid)
   async testKISSPrinciple() {
-    console.log('🎯 Testing KISS Principle...');
+    console.log('Testing KISS Principle...');
 
     const kissTests = [
       {
@@ -53,9 +53,9 @@ export class AuthArchitectureTest {
     }
   }
 
-  // 🎯 测试单一职责原则 (Single Responsibility Principle)
+  // 测试单一职责原则 (Single Responsibility Principle)
   async testSingleResponsibility() {
-    console.log('🎯 Testing Single Responsibility...');
+    console.log('Testing Single Responsibility...');
 
     const srpTests = [
       {
@@ -93,9 +93,9 @@ export class AuthArchitectureTest {
     }
   }
 
-  // 🎯 测试用户体验优先 (User Experience First)
+  // 测试用户体验优先 (User Experience First)
   async testUserExperienceFirst() {
-    console.log('🎯 Testing User Experience First...');
+    console.log('Testing User Experience First...');
 
     const uxTests = [
       {
@@ -131,9 +131,9 @@ export class AuthArchitectureTest {
     }
   }
 
-  // 🎯 测试性能优化 (Performance Optimization)
+  // 测试性能优化 (Performance Optimization)
   async testPerformanceOptimization() {
-    console.log('🎯 Testing Performance Optimization...');
+    console.log('Testing Performance Optimization...');
 
     const perfTests = [
       {
@@ -170,9 +170,9 @@ export class AuthArchitectureTest {
     }
   }
 
-  // 🎯 测试可维护性 (Maintainability)
+  // 测试可维护性 (Maintainability)
   async testMaintainability() {
-    console.log('🎯 Testing Maintainability...');
+    console.log('Testing Maintainability...');
 
     const maintTests = [
       {
@@ -209,9 +209,9 @@ export class AuthArchitectureTest {
     }
   }
 
-  // 🎯 测试错误处理 (Error Handling)
+  // 测试错误处理 (Error Handling)
   async testErrorHandling() {
-    console.log('🎯 Testing Error Handling...');
+    console.log('Testing Error Handling...');
 
     const errorTests = [
       {
@@ -248,7 +248,7 @@ export class AuthArchitectureTest {
     }
   }
 
-  // 🎯 运行所有测试
+  // 运行所有测试
   async runAllTests() {
     console.group('🧪 Authentication Architecture Test Suite');
 
@@ -265,7 +265,7 @@ export class AuthArchitectureTest {
     return this.results;
   }
 
-  // 📊 添加测试结果
+  // 添加测试结果
   addResult(category, testName, status, error = null) {
     this.results.push({
       category,
@@ -285,10 +285,10 @@ export class AuthArchitectureTest {
 
     const totalTime = Date.now() - this.startTime;
 
-    console.log('\n📊 Test Report:');
+    console.log('\nTest Report:');
     console.log(`Total Tests: ${totalTests}`);
-    console.log(`✅ Passed: ${passedTests} (${Math.round(passedTests / totalTests * 100)}%)`);
-    console.log(`❌ Failed: ${failedTests} (${Math.round(failedTests / totalTests * 100)}%)`);
+    console.log(`Passed: ${passedTests} (${Math.round(passedTests / totalTests * 100)}%)`);
+    console.log(`ERROR: Failed: ${failedTests} (${Math.round(failedTests / totalTests * 100)}%)`);
     console.log(`🚨 Errors: ${errorTests} (${Math.round(errorTests / totalTests * 100)}%)`);
     console.log(`⏱️ Total Time: ${totalTime}ms`);
 
@@ -298,10 +298,10 @@ export class AuthArchitectureTest {
       const categoryResults = this.results.filter(r => r.category === category);
       const categoryPassed = categoryResults.filter(r => r.status === 'PASS').length;
 
-      console.log(`\n🎯 ${category}: ${categoryPassed}/${categoryResults.length} passed`);
+      console.log(`\n${category}: ${categoryPassed}/${categoryResults.length} passed`);
 
       categoryResults.forEach(result => {
-        const icon = result.status === 'PASS' ? '✅' :
+        const icon = result.status === 'PASS' ? '' :
           result.status === 'FAIL' ? '❌' : '🚨';
         console.log(`  ${icon} ${result.testName}`);
         if (result.error) {
@@ -310,23 +310,23 @@ export class AuthArchitectureTest {
       });
     });
 
-    // 🎯 设计原则符合度评分
+    // 设计原则符合度评分
     const designPrincipleScore = Math.round(passedTests / totalTests * 100);
-    console.log(`\n🎯 Design Principle Compliance: ${designPrincipleScore}%`);
+    console.log(`\nDesign Principle Compliance: ${designPrincipleScore}%`);
 
     if (designPrincipleScore >= 90) {
       console.log('🎉 Excellent! Architecture fully complies with frontend design principles.');
     } else if (designPrincipleScore >= 80) {
       console.log('👍 Good! Architecture mostly complies with design principles.');
     } else if (designPrincipleScore >= 70) {
-      console.log('⚠️ Fair. Some design principles need improvement.');
+      console.log('WARNING: Fair. Some design principles need improvement.');
     } else {
       console.log('🚨 Poor. Significant refactoring needed.');
     }
   }
 }
 
-// 🎯 导出测试套件
+// 导出测试套件
 export const authArchitectureTest = new AuthArchitectureTest();
 
 // 🧪 全局测试接口

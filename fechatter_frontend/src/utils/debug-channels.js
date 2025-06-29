@@ -109,7 +109,7 @@ export async function debugChannelsIssue() {
   );
   if (hasLowercaseTypes) {
     if (import.meta.env.DEV) {
-      console.warn('⚠️ 发现小写的 chat_type！');
+      console.warn('WARNING: 发现小写的 chat_type！');
     const lowercaseChats = chatStore.chats.filter(chat =>
       chat.chat_type && chat.chat_type !== chat.chat_type.charAt(0).toUpperCase() + chat.chat_type.slice(1)
     );
@@ -121,7 +121,7 @@ export async function debugChannelsIssue() {
   const missingType = chatStore.chats.filter(chat => !chat.chat_type);
   if (missingType.length > 0) {
     if (import.meta.env.DEV) {
-      console.warn('⚠️ 发现缺失 chat_type 的 chats:', missingType.map(c => ({ id: c.id, name: c.name })));
+      console.warn('WARNING: 发现缺失 chat_type 的 chats:', missingType.map(c => ({ id: c.id, name: c.name })));
     }
 
   // 检查意外的 chat_type 值
@@ -131,7 +131,7 @@ export async function debugChannelsIssue() {
   );
   if (unexpectedTypes.length > 0) {
     if (import.meta.env.DEV) {
-      console.warn('⚠️ 发现意外的 chat_type 值:', unexpectedTypes.map(c => ({ name: c.name, type: c.chat_type })));
+      console.warn('WARNING: 发现意外的 chat_type 值:', unexpectedTypes.map(c => ({ name: c.name, type: c.chat_type })));
     }
 
   if (import.meta.env.DEV) {

@@ -5,7 +5,7 @@
 <template>
   <div class="fix-verification">
     <div class="verification-header">
-      <h3>🔧 isTranslating Fix Verification</h3>
+      <h3>isTranslating Fix Verification</h3>
       <button @click="visible = !visible" class="toggle-btn">
         {{ visible ? 'Hide' : 'Show' }}
       </button>
@@ -18,15 +18,15 @@
         <div class="status-grid">
           <div class="status-item success">
             <span class="status-label">Variable Definition:</span>
-            <span class="status-value">✅ Fixed</span>
+            <span class="status-value">Fixed</span>
           </div>
           <div class="status-item success">
             <span class="status-label">Template References:</span>
-            <span class="status-value">✅ Resolved</span>
+            <span class="status-value">Resolved</span>
           </div>
           <div class="status-item success">
             <span class="status-label">State Management:</span>
-            <span class="status-value">✅ Unified</span>
+            <span class="status-value">Unified</span>
           </div>
         </div>
       </div>

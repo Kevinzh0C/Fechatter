@@ -14,7 +14,7 @@ class ContentScriptErrorSuppressor {
     this.recentErrors = [];
     this.maxRecentErrors = 50;
 
-    // 🔧 FIX: Enhanced extension error patterns
+    // FIX: Enhanced extension error patterns
     this.extensionErrorPatterns = [
       // Original patterns
       /content script/i,
@@ -26,12 +26,12 @@ class ContentScriptErrorSuppressor {
       /webkit-extension:/,
       /safari-extension:/,
 
-      // 🔧 NEW: Async response listener errors
+      // NEW: Async response listener errors
       /listener indicated an asynchronous response.*message channel closed/i,
       /asynchronous response.*channel closed/i,
       /listener.*returning true.*channel closed/i,
 
-      // 🔧 NEW: Common extension-related errors
+      // NEW: Common extension-related errors
       /cannot access contents of url/i,
       /cannot access a chrome:/i,
       /extension context invalidated/i,
@@ -39,7 +39,7 @@ class ContentScriptErrorSuppressor {
       /disconnected port object/i,
       /port.*disconnected/i,
 
-      // 🔧 NEW: Specific Chrome extension errors
+      // NEW: Specific Chrome extension errors
       /unchecked runtime\.lastError/i,
       /the message port closed before a response was received/i,
       /trying to use a disconnected port object/i,
@@ -56,13 +56,13 @@ class ContentScriptErrorSuppressor {
       /webkit-extension:\/\//,
       /safari-extension:\/\//,
 
-      // 🔧 NEW: Anonymous/generated script sources
+      // NEW: Anonymous/generated script sources
       /^<anonymous>$/,
       /^eval$/,
       /^\s*$/,
       /^VM\d+/,
 
-      // 🔧 NEW: Extension-like stack traces
+      // NEW: Extension-like stack traces
       /at Object\.\w+ \(chrome-extension:/,
       /at Object\.\w+ \(moz-extension:/,
       /at \w+\.js:\d+:\d+\)$/
@@ -174,7 +174,7 @@ class ContentScriptErrorSuppressor {
     // Enhanced debugging function
     window.debugContentScriptErrors = () => {
       const stats = this.getStats();
-      console.group('🔍 Content Script Error Debug Info');
+      console.group('Content Script Error Debug Info');
       if (import.meta.env.DEV) {
         console.log('Stats:', stats);
       if (import.meta.env.DEV) {
@@ -232,7 +232,7 @@ class ContentScriptErrorSuppressor {
     testErrors.forEach((error, index) => {
       const isContentScript = this.isContentScriptError(error);
       if (import.meta.env.DEV) {
-        console.log(`${index + 1}. ${isContentScript ? '🔇' : '✅'} ${error.substring(0, 50)}...`);
+        console.log(`${index + 1}. ${isContentScript ? '🔇' : ''} ${error.substring(0, 50)}...`);
       }
     });
     console.groupEnd();
@@ -249,7 +249,7 @@ if (typeof window !== 'undefined') {
     window.contentScriptSuppressor = contentScriptSuppressor;
 
     if (import.meta.env.DEV) {
-      console.log('💡 Content script error suppression registered (transparent mode)');
+      console.log('Content script error suppression registered (transparent mode)');
     }
   }, 50);
 }

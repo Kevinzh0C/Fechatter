@@ -1,3 +1,0 @@
-[dependencies]
-tokio = { version = "1", features = ["full"] }
-async-nats = "0.35"

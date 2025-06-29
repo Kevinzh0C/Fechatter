@@ -108,7 +108,7 @@ impl CacheConsistencyChecker {
 
     /// 执行完整的一致性检查
     pub async fn perform_consistency_check(&self) -> Result<ConsistencyReport, AppError> {
-        info!("🔍 开始缓存一致性检查");
+        info!("开始缓存一致性检查");
 
         let mut risks = Vec::new();
         
@@ -126,7 +126,7 @@ impl CacheConsistencyChecker {
 
         let report = self.generate_report(risks).await;
         
-        info!("✅ 缓存一致性检查完成: {} 个风险项目", report.total_risks);
+        info!("缓存一致性检查完成: {} 个风险项目", report.total_risks);
         
         Ok(report)
     }
@@ -357,7 +357,7 @@ impl CacheConsistencyChecker {
                 }
                 RiskSeverity::Medium => {
                     medium_risks += 1;
-                    recommendations.push(format!("⚠️  中等优先级: {}", risk.impact));
+                    recommendations.push(format!("WARNING: 中等优先级: {}", risk.impact));
                 }
                 RiskSeverity::Low => {
                     low_risks += 1;
@@ -472,18 +472,18 @@ impl CacheConsistencyGuardian {
                             );
                             
                             for recommendation in &report.recommendations {
-                                warn!("💡 建议: {}", recommendation);
+                                warn!("建议: {}", recommendation);
                             }
                         } else {
                             debug!(
-                                "✅ 缓存一致性检查正常: {} 个总风险, {} 个高风险", 
+                                "缓存一致性检查正常: {} 个总风险, {} 个高风险", 
                                 report.total_risks, 
                                 report.high_risks
                             );
                         }
                     }
                     Err(e) => {
-                        error!("❌ 缓存一致性检查失败: {}", e);
+                        error!("ERROR: 缓存一致性检查失败: {}", e);
                     }
                 }
             }

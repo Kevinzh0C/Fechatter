@@ -11,7 +11,7 @@ use serde_json::Value;
 use tokio::time::{timeout, Duration};
 use uuid::Uuid;
 
-/// 验证NATS消息事件的辅助函数
+/// Helper function to verify NATS message events
 async fn verify_message_event(
   event_data: &Value,
   expected_content: &str,
@@ -19,7 +19,7 @@ async fn verify_message_event(
   expected_sender_id: i64,
   expected_message_id: i64,
 ) -> Result<()> {
-  // 使用NatsEventValidator进行验证
+  // Use NatsEventValidator for verification
   NatsEventValidator::validate_message_created_event(
     event_data,
     expected_content,
@@ -27,7 +27,7 @@ async fn verify_message_event(
     expected_sender_id,
   )?;
 
-  // 验证消息ID
+  // Verify message ID
   let message = event_data
     .get("message")
     .ok_or_else(|| anyhow::anyhow!("Missing 'message' field in event"))?;
@@ -42,12 +42,12 @@ async fn verify_message_event(
   Ok(())
 }
 
-/// 基础通知系统测试
+/// Basic notification system test
 #[tokio::test]
 async fn test_basic_notification_system() -> Result<()> {
   let mut env = TestEnvironment::new_with_nats().await?;
 
-  // 检查NATS是否可用
+  // Check if NATS is available
   let nats_client = match env.nats_client() {
     Some(client) => client.clone(),
     None => {
@@ -56,17 +56,17 @@ async fn test_basic_notification_system() -> Result<()> {
     }
   };
 
-  // 创建测试用户
+  // Create test users
   let users = env.create_test_users(3).await?;
   let user1 = &users[0];
   let user2 = &users[1];
   let user3 = &users[2];
 
-  // 订阅消息创建事件
+  // Subscribe to message creation events
   let message_subject = "fechatter.messages.created";
   let mut message_subscriber = nats_client.subscribe(message_subject).await?;
 
-  // 创建聊天
+  // Create chat
   let timestamp = std::time::SystemTime::now()
     .duration_since(std::time::UNIX_EPOCH)
     .unwrap()
@@ -113,7 +113,7 @@ async fn test_basic_notification_system() -> Result<()> {
   )
   .await?;
 
-  info!("✅ Basic notification system test passed");
+  info!("Basic notification system test passed");
   Ok(())
 }
 
@@ -187,7 +187,7 @@ async fn test_real_time_message_notifications() -> Result<()> {
   .await
   {
     Ok(_) => {
-      info!("✅ DM notification validated with exact match");
+      info!("DM notification validated with exact match");
     }
     Err(e) => {
       warn!(
@@ -196,7 +196,7 @@ async fn test_real_time_message_notifications() -> Result<()> {
       );
       // Check if we at least got a message event
       if dm_event_data.get("message").is_some() {
-        info!("✅ DM notification received (content may differ due to concurrent tests)");
+        info!("DM notification received (content may differ due to concurrent tests)");
       } else {
         return Err(anyhow::anyhow!("No message in DM notification"));
       }
@@ -205,7 +205,7 @@ async fn test_real_time_message_notifications() -> Result<()> {
 
   let dm_members = dm_event_data["chat_members"].as_array().unwrap();
   assert_eq!(dm_members.len(), 3, "DM should have 3 members");
-  info!("✅ DM notification validated");
+  info!("DM notification validated");
 
   // Test 2: Group message notification
   info!("🔄 Testing group notification...");
@@ -258,7 +258,7 @@ async fn test_real_time_message_notifications() -> Result<()> {
   .await
   {
     Ok(_) => {
-      info!("✅ Group notification validated with exact match");
+      info!("Group notification validated with exact match");
     }
     Err(e) => {
       warn!(
@@ -267,7 +267,7 @@ async fn test_real_time_message_notifications() -> Result<()> {
       );
       // Check if we at least got a message event
       if group_event_data.get("message").is_some() {
-        info!("✅ Group notification received (content may differ due to concurrent tests)");
+        info!("Group notification received (content may differ due to concurrent tests)");
       } else {
         return Err(anyhow::anyhow!("No message in group notification"));
       }
@@ -288,9 +288,9 @@ async fn test_real_time_message_notifications() -> Result<()> {
       group_members.len()
     );
   } else {
-    info!("✅ Group has correct number of members (4)");
+    info!("Group has correct number of members (4)");
   }
-  info!("✅ Group notification validated");
+  info!("Group notification validated");
 
   // Test 3: Rapid consecutive messages
   info!("🔄 Testing rapid message notifications...");
@@ -326,7 +326,7 @@ async fn test_real_time_message_notifications() -> Result<()> {
     "Should receive at least half of rapid notifications"
   );
   info!(
-    "✅ Rapid notifications validated ({}/{})",
+    "Rapid notifications validated ({}/{})",
     received_count, rapid_count
   );
 
@@ -400,7 +400,7 @@ async fn test_user_status_notifications() -> Result<()> {
       new_member_id.into(),
     )?;
 
-    info!("✅ User join notification received");
+    info!("User join notification received");
   }
 
   // 移除成员
@@ -418,10 +418,10 @@ async fn test_user_status_notifications() -> Result<()> {
     let event_data: Value = serde_json::from_slice(&event.payload)?;
     assert_eq!(event_data["chat_id"], Value::from(i64::from(chat.id)));
     assert_eq!(event_data["user_id"], Value::from(i64::from(new_member_id)));
-    info!("✅ User leave notification received");
+    info!("User leave notification received");
   }
 
-  info!("✅ User status notifications test passed");
+  info!("User status notifications test passed");
   Ok(())
 }
 
@@ -499,7 +499,7 @@ async fn test_notification_deduplication() -> Result<()> {
     );
     // Don't fail the test immediately, continue with deduplication check
   } else {
-    info!("✅ First message notification received with correct ID");
+    info!("First message notification received with correct ID");
   }
 
   // Try to send duplicate message
@@ -512,7 +512,7 @@ async fn test_notification_deduplication() -> Result<()> {
     Ok(duplicate_message) => {
       // The key test is that duplicate returns the same message ID as the first
       if duplicate_message.id == first_message.id {
-        info!("✅ Duplicate properly deduplicated - same message ID returned");
+        info!("Duplicate properly deduplicated - same message ID returned");
       } else {
         warn!(
           "Duplicate message got different ID: {} vs {}",
@@ -526,12 +526,12 @@ async fn test_notification_deduplication() -> Result<()> {
       {
         let dup_event_data: Value = serde_json::from_slice(&dup_notification.payload)?;
         if dup_event_data["idempotency_key"] == idempotency_key.to_string() {
-          info!("✅ Duplicate notification event received");
+          info!("Duplicate notification event received");
         }
       }
     }
     Err(error) => {
-      info!("✅ Duplicate properly rejected with error: {}", error);
+      info!("Duplicate properly rejected with error: {}", error);
     }
   }
 
@@ -587,7 +587,7 @@ async fn test_notification_performance() -> Result<()> {
   let notifications_per_sec = received_count as f64 / 5.0;
 
   info!(
-        "📊 Performance: Sent {} messages in {:?} ({:.2} msg/sec), Received {} notifications ({:.2} notif/sec)",
+        "Performance: Sent {} messages in {:?} ({:.2} msg/sec), Received {} notifications ({:.2} notif/sec)",
         message_count, send_duration, messages_per_sec, received_count, notifications_per_sec
     );
 
@@ -596,6 +596,6 @@ async fn test_notification_performance() -> Result<()> {
     "Should receive at least 25% of notifications"
   );
 
-  info!("✅ Notification performance test passed");
+  info!("Notification performance test passed");
   Ok(())
 }

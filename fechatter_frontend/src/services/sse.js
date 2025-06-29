@@ -80,7 +80,7 @@ class SSEService {
       this.reconnectAttempts = 0;
 
       if (import.meta.env.DEV) {
-        console.log('✅ SSE: Connected');
+        console.log('SSE: Connected');
       }
 
       this.emit('connected');

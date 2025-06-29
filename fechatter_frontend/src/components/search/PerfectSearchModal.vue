@@ -1,5 +1,5 @@
 <template>
-  <!-- 🎯 Perfect Search Modal - Jobs-inspired Design -->
+  <!-- Perfect Search Modal - Jobs-inspired Design -->
   <teleport to="body">
     <transition name="modal-fade">
       <div v-if="isOpen" class="search-backdrop" @click="handleClose" @keydown.esc="handleClose">
@@ -24,7 +24,7 @@
               </button>
             </header>
 
-            <!-- 🔍 Modern Search Input -->
+            <!-- Modern Search Input -->
             <section class="search-section">
               <div class="search-input-container">
                 <!-- Search Icon - Always Visible -->
@@ -81,7 +81,7 @@
               <div class="strategies-section" v-if="hasSearched">
                 <div class="strategies-header">
                   <button @click="showAdvancedStrategies = !showAdvancedStrategies" class="strategies-toggle">
-                    <span class="toggle-icon">🔧</span>
+                    <span class="toggle-icon"></span>
                     <span>Advanced Search</span>
                     <svg class="chevron-icon" :class="{ rotated: showAdvancedStrategies }" viewBox="0 0 24 24"
                       fill="none" stroke="currentColor">
@@ -235,7 +235,7 @@ import { useRouter } from 'vue-router'
 // Import navigation styles
 import '@/styles/messageNavigation.css'
 
-// 🔧 Router instance for navigation
+// Router instance for navigation
 const router = useRouter()
 
 // Props
@@ -266,7 +266,7 @@ const activeFilters = ref([])
 const searchError = ref(null)
 const searchSource = ref(null)
 
-// 🔍 Advanced Search Strategies
+// Advanced Search Strategies
 const searchStrategies = [
   {
     id: 'semantic',
@@ -277,13 +277,13 @@ const searchStrategies = [
   {
     id: 'exact',
     label: 'Exact Match',
-    icon: '🎯',
+    icon: '',
     description: 'Find exact phrase matches'
   },
   {
     id: 'fuzzy',
     label: 'Fuzzy Search',
-    icon: '🔍',
+    icon: '',
     description: 'Tolerates typos and variations'
   },
   {
@@ -342,7 +342,7 @@ const handleSearch = useDebounceFn(async () => {
     const isAuthenticated = authStore?.isAuthenticated || false
     const hasValidToken = authStore?.token && authStore?.isTokenValid?.() !== false
 
-    console.log('🔍 [PerfectSearch] Auth check:', {
+    console.log('[PerfectSearch] Auth check:', {
       isAuthenticated,
       hasValidToken,
       tokenExists: !!authStore?.token
@@ -351,7 +351,7 @@ const handleSearch = useDebounceFn(async () => {
     let searchResponse = null
     let currentSearchSource = 'unknown'
 
-    // 🚀 Step 2: Try API search if authenticated
+    // Step 2: Try API search if authenticated
     if (isAuthenticated && hasValidToken) {
       try {
         const searchService = (await import('@/services/searchService')).default
@@ -361,16 +361,16 @@ const handleSearch = useDebounceFn(async () => {
           chatId: props.chatId,
           limit: 50,
           offset: 0,
-          // 🚀 Apply advanced search strategies
+          // Apply advanced search strategies
           ...buildSearchStrategies()
         }
 
-        console.log('🔍 [PerfectSearch] Attempting API search:', searchParams)
+        console.log('[PerfectSearch] Attempting API search:', searchParams)
         searchResponse = await searchService.intelligentSearch(searchParams)
         currentSearchSource = 'api'
 
       } catch (apiError) {
-        console.warn('🔍 [PerfectSearch] API search failed, trying fallback:', apiError.message)
+        console.warn('[PerfectSearch] API search failed, trying fallback:', apiError.message)
 
         // 🔄 Step 3: Handle specific authentication errors gracefully
         if (apiError.message?.includes('401') ||
@@ -379,7 +379,7 @@ const handleSearch = useDebounceFn(async () => {
           apiError.message?.includes('expired')) {
 
           // Don't throw auth errors, just fall back to local search
-          console.log('🔍 [PerfectSearch] Authentication issue detected, using local search')
+          console.log('[PerfectSearch] Authentication issue detected, using local search')
           searchResponse = await performLocalSearch()
           currentSearchSource = 'local_auth_fallback'
         } else {
@@ -390,18 +390,18 @@ const handleSearch = useDebounceFn(async () => {
       }
     } else {
       // 🏠 Step 4: Use local search if not authenticated
-      console.log('🔍 [PerfectSearch] Not authenticated, using local search')
+      console.log('[PerfectSearch] Not authenticated, using local search')
       searchResponse = await performLocalSearch()
       currentSearchSource = 'local_no_auth'
     }
 
-    // 📊 Step 5: Process results regardless of source
+    // Step 5: Process results regardless of source
     if (searchResponse) {
       searchResults.value = searchResponse.hits || searchResponse.results || []
       searchTime.value = searchResponse.took_ms || searchResponse.duration || 0
       searchSource.value = currentSearchSource
 
-      console.log('🔍 [PerfectSearch] Search completed:', {
+      console.log('[PerfectSearch] Search completed:', {
         source: currentSearchSource,
         resultCount: searchResults.value.length,
         duration: searchTime.value
@@ -411,9 +411,9 @@ const handleSearch = useDebounceFn(async () => {
     }
 
   } catch (error) {
-    console.error('🔍 [PerfectSearch] Search completely failed:', error)
+    console.error('[PerfectSearch] Search completely failed:', error)
 
-    // 🎯 Final fallback: show user-friendly error
+    // Final fallback: show user-friendly error
     if (error.message?.includes('auth') || error.message?.includes('token')) {
       searchError.value = 'Search requires authentication. Please check your connection.'
     } else {
@@ -431,7 +431,7 @@ const performLocalSearch = async () => {
   try {
     console.log('🏠 [LocalSearch] Starting enhanced local message search...')
 
-    // 🔧 增强：多种消息获取方式
+    // 增强：多种消息获取方式
     let localMessages = []
     let messageSource = 'unknown'
 
@@ -441,7 +441,7 @@ const performLocalSearch = async () => {
       if (UnifiedMessageService && typeof UnifiedMessageService.getMessagesForChat === 'function') {
         localMessages = UnifiedMessageService.getMessagesForChat(props.chatId) || []
         messageSource = 'UnifiedMessageService'
-        console.log(`🏠 [LocalSearch] ✅ Got ${localMessages.length} messages from UnifiedMessageService`)
+        console.log(`🏠 [LocalSearch] Got ${localMessages.length} messages from UnifiedMessageService`)
       }
     } catch (error) {
       console.warn('🏠 [LocalSearch] UnifiedMessageService failed:', error.message)
@@ -457,7 +457,7 @@ const performLocalSearch = async () => {
             msg.chat_id == props.chatId || msg.chatId == props.chatId
           )
           messageSource = 'ChatStore'
-          console.log(`🏠 [LocalSearch] ✅ Got ${localMessages.length} messages from ChatStore`)
+          console.log(`🏠 [LocalSearch] Got ${localMessages.length} messages from ChatStore`)
         }
       } catch (error) {
         console.warn('🏠 [LocalSearch] ChatStore failed:', error.message)
@@ -493,7 +493,7 @@ const performLocalSearch = async () => {
         }).filter(msg => msg.id && msg.content)
 
         messageSource = 'DOM_Extraction'
-        console.log(`🏠 [LocalSearch] ✅ Got ${localMessages.length} messages from DOM extraction`)
+        console.log(`🏠 [LocalSearch] Got ${localMessages.length} messages from DOM extraction`)
       } catch (error) {
         console.warn('🏠 [LocalSearch] DOM extraction failed:', error.message)
       }
@@ -509,7 +509,7 @@ const performLocalSearch = async () => {
           if (Array.isArray(parsedMessages)) {
             localMessages = parsedMessages
             messageSource = 'Browser_Cache'
-            console.log(`🏠 [LocalSearch] ✅ Got ${localMessages.length} messages from browser cache`)
+            console.log(`🏠 [LocalSearch] Got ${localMessages.length} messages from browser cache`)
           }
         }
       } catch (error) {
@@ -519,7 +519,7 @@ const performLocalSearch = async () => {
 
     // 检查是否有可搜索的消息
     if (localMessages.length === 0) {
-      console.warn('🏠 [LocalSearch] ⚠️ No messages found from any source')
+      console.warn('🏠 [LocalSearch] WARNING: No messages found from any source')
       return {
         hits: [],
         took_ms: 0,
@@ -532,14 +532,14 @@ const performLocalSearch = async () => {
     const startTime = Date.now()
     const query = searchQuery.value.trim().toLowerCase()
 
-    console.log(`🏠 [LocalSearch] 🔍 Searching ${localMessages.length} messages from ${messageSource} for: "${query}"`)
+    console.log(`🏠 [LocalSearch] Searching ${localMessages.length} messages from ${messageSource} for: "${query}"`)
 
-    // 🔍 Advanced local search algorithm with strategy support
+    // Advanced local search algorithm with strategy support
     const strategies = buildSearchStrategies()
 
     const searchResults = localMessages
       .filter(message => {
-        // 🔧 更强的内容提取
+        // 更强的内容提取
         const content = (
           message.content ||
           message.text ||
@@ -569,12 +569,12 @@ const performLocalSearch = async () => {
           return false
         }
 
-        // 🎯 Apply exact match strategy
+        // Apply exact match strategy
         if (strategies.exactMatch) {
           return content.includes(query) || senderName.includes(query)
         }
 
-        // 🔍 Apply fuzzy search strategy
+        // Apply fuzzy search strategy
         if (strategies.fuzzySearch) {
           return fuzzyMatch(content, query) ||
             fuzzyMatch(senderName, query) ||
@@ -582,7 +582,7 @@ const performLocalSearch = async () => {
             senderName.includes(query)
         }
 
-        // 👤 Apply user-focused strategy
+        // USER: Apply user-focused strategy
         if (strategies.userFocused) {
           return senderName.includes(query) || content.includes(query)
         }
@@ -612,7 +612,7 @@ const performLocalSearch = async () => {
 
     const duration = Date.now() - startTime
 
-    console.log(`🏠 [LocalSearch] ✅ Completed in ${duration}ms, found ${searchResults.length} results from ${messageSource}`)
+    console.log(`🏠 [LocalSearch] Completed in ${duration}ms, found ${searchResults.length} results from ${messageSource}`)
 
     return {
       hits: searchResults,
@@ -625,9 +625,9 @@ const performLocalSearch = async () => {
     }
 
   } catch (error) {
-    console.error('🏠 [LocalSearch] ❌ All fallback methods failed:', error)
+    console.error('🏠 [LocalSearch] ERROR: All fallback methods failed:', error)
 
-    // 🔧 最终备用：返回空结果但不完全失败
+    // 最终备用：返回空结果但不完全失败
     return {
       hits: [],
       took_ms: 0,
@@ -639,7 +639,7 @@ const performLocalSearch = async () => {
   }
 }
 
-// 🔍 Fuzzy string matching for typo tolerance
+// Fuzzy string matching for typo tolerance
 const fuzzyMatch = (text, query, maxDistance = 2) => {
   if (!text || !query) return false
 
@@ -685,19 +685,19 @@ const levenshteinDistance = (str1, str2) => {
   return matrix[str2.length][str1.length]
 }
 
-// 📊 Calculate relevance score for local search with strategy support
+// Calculate relevance score for local search with strategy support
 const calculateLocalScore = (message, query, strategies = {}) => {
   const content = (message.content || message.text || '').toLowerCase()
   const senderName = (message.sender_name || '').toLowerCase()
 
   let score = 0
 
-  // 🎯 Exact phrase match gets highest score
+  // Exact phrase match gets highest score
   if (content.includes(query)) {
     score += strategies.exactMatch ? 200 : 100
   }
 
-  // 👤 Boost user-focused searches
+  // USER: Boost user-focused searches
   if (strategies.userFocused && senderName.includes(query)) {
     score += 150
   }
@@ -713,7 +713,7 @@ const calculateLocalScore = (message, query, strategies = {}) => {
     }
   })
 
-  // 🔍 Fuzzy match bonus
+  // Fuzzy match bonus
   if (strategies.fuzzySearch) {
     if (fuzzyMatch(content, query)) score += 30
     if (fuzzyMatch(senderName, query)) score += 15
@@ -784,7 +784,7 @@ const navigateResults = (direction) => {
   })
 }
 
-// 🔧 Build advanced search parameters based on selected strategies
+// Build advanced search parameters based on selected strategies
 const buildSearchStrategies = () => {
   const strategies = {}
 
@@ -816,7 +816,7 @@ const buildSearchStrategies = () => {
   return strategies
 }
 
-// 🎯 Toggle search strategy selection
+// Toggle search strategy selection
 const toggleStrategy = (strategy) => {
   const index = activeFilters.value.indexOf(strategy.id)
   if (index > -1) {
@@ -829,7 +829,7 @@ const toggleStrategy = (strategy) => {
     activeFilters.value.push(strategy.id)
   }
 
-  console.log('🎯 [Strategies] Active strategies:', activeFilters.value)
+  console.log('[Strategies] Active strategies:', activeFilters.value)
 
   // Re-search with new strategies
   handleSearch()
@@ -840,33 +840,33 @@ const applySuggestion = (suggestion) => {
   handleSearch()
 }
 
-// 🎯 Enhanced Production-grade message navigation with timeout and error recovery
+// Enhanced Production-grade message navigation with timeout and error recovery
 const jumpToMessage = async (result) => {
-  console.log('🎯 [MessageJump] 🎯 DAG-Enhanced: Starting navigation chain:', {
+  console.log('[MessageJump] DAG-Enhanced: Starting navigation chain:', {
     messageId: result.id,
     chatId: result.chat_id || result.chatId,
     sender: result.sender_name,
     source: 'perfect_search_modal'
   })
 
-  // 🔧 新增：运行DAG诊断
+  // 新增：运行DAG诊断
   const diagnostics = await runDAGDiagnostics(result)
-  console.log('🔍 [MessageJump] 🎯 DAG-Diagnostics: System state:', diagnostics)
+  console.log('[MessageJump] DAG-Diagnostics: System state:', diagnostics)
 
   try {
-    // 🔧 预检查：验证基本参数
+    // 预检查：验证基本参数
     if (!result.id || !result.chat_id) {
       throw new Error('Invalid search result: missing id or chat_id')
     }
 
-    // 🔧 增强：保存搜索结果上下文用于时间戳估算
+    // 增强：保存搜索结果上下文用于时间戳估算
     window.lastSearchResults = searchResults.value
-    console.log('📜 [PerfectSearch] 🎯 DAG: Saved search context for enhanced navigation', {
+    console.log('📜 [PerfectSearch] DAG: Saved search context for enhanced navigation', {
       totalResults: searchResults.value.length,
       searchSource: searchSource.value
     })
 
-    console.log('🎯 [PerfectSearch] 🎯 DAG: Executing perfect navigation with enhanced error handling')
+    console.log('[PerfectSearch] DAG: Executing perfect navigation with enhanced error handling')
 
     // Import Perfect Navigation Controller
     const { perfectNavigationController } = await import('@/utils/PerfectNavigationController')
@@ -874,7 +874,7 @@ const jumpToMessage = async (result) => {
     // Close modal first for better UX
     handleClose()
 
-    // 🔧 Enhanced navigation with timeout and fallback
+    // Enhanced navigation with timeout and fallback
     const navigationPromise = perfectNavigationController.navigateToMessage({
       messageId: result.id,
       chatId: result.chat_id || result.chatId,
@@ -893,11 +893,11 @@ const jumpToMessage = async (result) => {
       searchSource: searchSource.value,
       searchTime: searchTime.value,
 
-      // 🔧 新增：诊断信息
+      // 新增：诊断信息
       diagnostics: diagnostics
     })
 
-    // 🔧 设置15秒超时（增加时间）
+    // 设置15秒超时（增加时间）
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Navigation timeout after 15 seconds')), 15000)
     )
@@ -905,11 +905,11 @@ const jumpToMessage = async (result) => {
     const navigationResult = await Promise.race([navigationPromise, timeoutPromise])
 
     if (navigationResult.success) {
-      // 🔧 增强：分析导航结果，显示策略信息
+      // 增强：分析导航结果，显示策略信息
       const strategy = navigationResult.pipeline?.stages?.enhanced_message_context?.strategy
       const loadedMessages = navigationResult.pipeline?.stages?.enhanced_message_context?.loadedMessagesCount
 
-      console.log('✅ [PerfectSearch] 🎯 DAG: Enhanced navigation completed:', {
+      console.log('[PerfectSearch] DAG: Enhanced navigation completed:', {
         navigationId: navigationResult.navigationId,
         duration: navigationResult.duration,
         strategy: strategy,
@@ -917,9 +917,9 @@ const jumpToMessage = async (result) => {
         stages: Object.keys(navigationResult.pipeline?.stages || {})
       })
 
-      // 🎯 显示成功反馈（如果使用了历史加载）
+      // 显示成功反馈（如果使用了历史加载）
       if (strategy && strategy !== 'already_loaded' && loadedMessages > 0) {
-        console.log(`🎯 [PerfectSearch] 🎯 DAG: Used ${strategy} to load ${loadedMessages} messages for stable navigation`)
+        console.log(`[PerfectSearch] DAG: Used ${strategy} to load ${loadedMessages} messages for stable navigation`)
       }
 
       emit('navigate', {
@@ -936,14 +936,14 @@ const jumpToMessage = async (result) => {
       })
 
     } else {
-      console.warn('⚠️ [PerfectSearch] 🎯 DAG: Enhanced navigation failed, attempting graceful fallback')
+      console.warn('WARNING: [PerfectSearch] DAG: Enhanced navigation failed, attempting graceful fallback')
       await performGracefulFallback(result)
     }
 
   } catch (error) {
-    console.error('❌ [PerfectSearch] 🎯 DAG: Navigation error:', error)
+    console.error('ERROR: [PerfectSearch] DAG: Navigation error:', error)
 
-    // 🔧 智能错误处理
+    // 智能错误处理
     if (error.message.includes('Chat data loading timeout')) {
       await handleChatTimeoutError(result, error)
     } else if (error.message.includes('Navigation timeout')) {
@@ -966,16 +966,16 @@ const jumpToMessage = async (result) => {
       })
     }
   } catch (error) {
-    console.warn('🎨 Analytics tracking failed:', error)
+    console.warn('Analytics tracking failed:', error)
   }
 }
 
-// 🔧 增强：Chat超时错误处理（智能版）
+// 增强：Chat超时错误处理（智能版）
 const handleChatTimeoutError = async (result, error) => {
   console.log('🔄 [PerfectSearch] Handling chat timeout with enhanced recovery')
 
   try {
-    // 🔧 智能错误分析
+    // 智能错误分析
     if (error.message.includes('does not exist')) {
       // Chat不存在 - 显示友好提示
       showUserFriendlyError(result, `Chat ${result.chat_id} is no longer available`)
@@ -1020,18 +1020,18 @@ const handleChatTimeoutError = async (result, error) => {
         }
       }, 2000)
     } else {
-      // 🔧 修复：避免window.location.href
-      console.warn('⚠️ [PerfectSearch] Router unavailable for timeout recovery')
+      // 修复：避免window.location.href
+      console.warn('WARNING: [PerfectSearch] Router unavailable for timeout recovery')
       showUserFriendlyError(result, 'Navigation system temporarily unavailable')
     }
 
   } catch (fallbackError) {
-    console.error('❌ [PerfectSearch] Enhanced recovery failed:', fallbackError)
+    console.error('ERROR: [PerfectSearch] Enhanced recovery failed:', fallbackError)
     showUserFriendlyError(result, 'Chat is temporarily unavailable')
   }
 }
 
-// 🔧 新增：导航超时错误处理
+// 新增：导航超时错误处理
 const handleNavigationTimeoutError = async (result, error) => {
   console.log('⏰ [PerfectSearch] Navigation timeout, performing emergency fallback')
 
@@ -1042,7 +1042,7 @@ const handleNavigationTimeoutError = async (result, error) => {
       console.log('⏰ [PerfectSearch] Using router for timeout fallback')
       await safeRouter.push(`/chat/${result.chat_id}`)
 
-      // 🔧 新增：超时后也尝试等待和查找消息
+      // 新增：超时后也尝试等待和查找消息
       setTimeout(async () => {
         await waitForChatLoadAndHistoryMessages(result)
       }, 1000)
@@ -1055,30 +1055,30 @@ const handleNavigationTimeoutError = async (result, error) => {
         reason: 'navigation_timeout'
       })
     } else {
-      // 🔧 修复：避免window.location.href
-      console.warn('⚠️ [PerfectSearch] Router unavailable for emergency fallback')
+      // 修复：避免window.location.href
+      console.warn('WARNING: [PerfectSearch] Router unavailable for emergency fallback')
       showUserFriendlyError(result, 'Navigation system temporarily unavailable')
     }
 
   } catch (emergencyError) {
-    console.error('❌ [PerfectSearch] Emergency fallback failed:', emergencyError)
+    console.error('ERROR: [PerfectSearch] Emergency fallback failed:', emergencyError)
     showUserFriendlyError(result, 'Navigation system temporarily unavailable')
   }
 }
 
-// 🔧 新增：优雅降级处理 - 修复 router.push 错误
+// 新增：优雅降级处理 - 修复 router.push 错误
 const performGracefulFallback = async (result, error = null) => {
   console.log('🔄 [PerfectSearch] Performing graceful fallback navigation')
 
   try {
-    // 🔧 修复：直接使用setup函数内的router，避免异步import问题
+    // 修复：直接使用setup函数内的router，避免异步import问题
     const safeRouter = getSafeRouter()
 
     if (safeRouter) {
-      console.log('✅ [PerfectSearch] Using router for navigation')
+      console.log('[PerfectSearch] Using router for navigation')
       await safeRouter.push(`/chat/${result.chat_id}`)
 
-      // 🔧 新增：等待页面加载并处理历史消息
+      // 新增：等待页面加载并处理历史消息
       await waitForChatLoadAndHistoryMessages(result)
 
       emit('navigate', {
@@ -1091,8 +1091,8 @@ const performGracefulFallback = async (result, error = null) => {
         reason: error?.message || 'fallback'
       })
     } else {
-      // 🔧 修复：避免window.location.href，使用事件通知代替
-      console.warn('⚠️ [PerfectSearch] Router unavailable, dispatching navigation event')
+      // 修复：避免window.location.href，使用事件通知代替
+      console.warn('WARNING: [PerfectSearch] Router unavailable, dispatching navigation event')
 
       window.dispatchEvent(new CustomEvent('navigate-to-chat', {
         detail: {
@@ -1115,17 +1115,17 @@ const performGracefulFallback = async (result, error = null) => {
     }
 
   } catch (fallbackError) {
-    console.error('❌ [PerfectSearch] Graceful fallback failed:', fallbackError)
+    console.error('ERROR: [PerfectSearch] Graceful fallback failed:', fallbackError)
     showUserFriendlyError(result, 'Unable to open chat')
   }
 }
 
-// 🔧 新增：基于DAG分析的智能等待聊天加载和历史消息处理
+// 新增：基于DAG分析的智能等待聊天加载和历史消息处理
 const waitForChatLoadAndHistoryMessages = async (result) => {
   const maxWaitTime = 10000 // 增加到10秒最大等待时间
   const startTime = Date.now()
 
-  console.log(`🔄 [PerfectSearch] 🎯 DAG-Enhanced: Starting intelligent message loading for ${result.id}`)
+  console.log(`🔄 [PerfectSearch] DAG-Enhanced: Starting intelligent message loading for ${result.id}`)
 
   try {
     // Step 1: 等待基础页面元素加载
@@ -1135,13 +1135,13 @@ const waitForChatLoadAndHistoryMessages = async (result) => {
     let messageElement = document.querySelector(`[data-message-id="${result.id}"]`)
 
     if (messageElement) {
-      console.log(`✅ [PerfectSearch] 🎯 DAG: Message ${result.id} already visible, scrolling`)
+      console.log(`[PerfectSearch] DAG: Message ${result.id} already visible, scrolling`)
       scrollToMessageSafely(messageElement)
       return { success: true, method: 'already_loaded' }
     }
 
     // Step 3: 智能策略选择 - 基于DAG分析的多策略方法
-    console.log(`🔄 [PerfectSearch] 🎯 DAG: Message not visible, starting intelligent loading strategies`)
+    console.log(`🔄 [PerfectSearch] DAG: Message not visible, starting intelligent loading strategies`)
 
     const strategies = [
       { name: 'UnifiedMessageService', execute: () => loadViaUnifiedMessageService(result) },
@@ -1152,11 +1152,11 @@ const waitForChatLoadAndHistoryMessages = async (result) => {
 
     for (const [index, strategy] of strategies.entries()) {
       if ((Date.now() - startTime) > maxWaitTime) {
-        console.warn(`⏰ [PerfectSearch] 🎯 DAG: Timeout reached, stopping strategy execution`)
+        console.warn(`⏰ [PerfectSearch] DAG: Timeout reached, stopping strategy execution`)
         break
       }
 
-      console.log(`📋 [PerfectSearch] 🎯 DAG: Trying strategy ${index + 1}/${strategies.length}: ${strategy.name}`)
+      console.log(`📋 [PerfectSearch] DAG: Trying strategy ${index + 1}/${strategies.length}: ${strategy.name}`)
 
       const strategyResult = await strategy.execute()
 
@@ -1166,7 +1166,7 @@ const waitForChatLoadAndHistoryMessages = async (result) => {
 
         messageElement = document.querySelector(`[data-message-id="${result.id}"]`)
         if (messageElement) {
-          console.log(`✅ [PerfectSearch] 🎯 DAG: Strategy ${strategy.name} succeeded`)
+          console.log(`[PerfectSearch] DAG: Strategy ${strategy.name} succeeded`)
           scrollToMessageSafely(messageElement)
           return { success: true, method: strategy.name }
         }
@@ -1176,16 +1176,16 @@ const waitForChatLoadAndHistoryMessages = async (result) => {
       await new Promise(resolve => setTimeout(resolve, 500))
     }
 
-    console.warn(`⚠️ [PerfectSearch] 🎯 DAG: All strategies failed for message ${result.id}`)
+    console.warn(`WARNING: [PerfectSearch] DAG: All strategies failed for message ${result.id}`)
     return { success: false, error: 'All loading strategies failed' }
 
   } catch (error) {
-    console.error(`❌ [PerfectSearch] 🎯 DAG: Wait for chat load failed:`, error)
+    console.error(`ERROR: [PerfectSearch] DAG: Wait for chat load failed:`, error)
     return { success: false, error: error.message }
   }
 }
 
-// 🔧 新增：通过UnifiedMessageService加载策略
+// 新增：通过UnifiedMessageService加载策略
 const loadViaUnifiedMessageService = async (result) => {
   try {
     const unifiedMessageService = window.unifiedMessageService
@@ -1193,12 +1193,12 @@ const loadViaUnifiedMessageService = async (result) => {
       return { success: false, error: 'UnifiedMessageService not available' }
     }
 
-    console.log(`📦 [PerfectSearch] 🎯 DAG-UMS: Loading via UnifiedMessageService for chat ${result.chat_id}`)
+    console.log(`📦 [PerfectSearch] DAG-UMS: Loading via UnifiedMessageService for chat ${result.chat_id}`)
 
     // 检查是否还有更多消息可以加载
     const hasMore = unifiedMessageService.hasMoreMessages(result.chat_id)
     if (!hasMore) {
-      console.log(`📦 [PerfectSearch] 🎯 DAG-UMS: No more messages to load`)
+      console.log(`📦 [PerfectSearch] DAG-UMS: No more messages to load`)
       return { success: false, error: 'No more messages available' }
     }
 
@@ -1206,7 +1206,7 @@ const loadViaUnifiedMessageService = async (result) => {
     const currentMessages = unifiedMessageService.getMessagesForChat(result.chat_id) || []
     const beforeCount = currentMessages.length
 
-    console.log(`📦 [PerfectSearch] 🎯 DAG-UMS: Current message count: ${beforeCount}`)
+    console.log(`📦 [PerfectSearch] DAG-UMS: Current message count: ${beforeCount}`)
 
     // 使用chatStore的fetchMoreMessages方法
     const chatStore = window.chatStore || (await import('@/stores/chat')).useChatStore()
@@ -1216,7 +1216,7 @@ const loadViaUnifiedMessageService = async (result) => {
       const afterMessages = unifiedMessageService.getMessagesForChat(result.chat_id) || []
       const afterCount = afterMessages.length
 
-      console.log(`📦 [PerfectSearch] 🎯 DAG-UMS: After loading: ${afterCount} messages (+${afterCount - beforeCount})`)
+      console.log(`📦 [PerfectSearch] DAG-UMS: After loading: ${afterCount} messages (+${afterCount - beforeCount})`)
 
       return {
         success: afterCount > beforeCount,
@@ -1228,15 +1228,15 @@ const loadViaUnifiedMessageService = async (result) => {
     return { success: false, error: 'ChatStore fetchMoreMessages not available' }
 
   } catch (error) {
-    console.error(`❌ [PerfectSearch] 🎯 DAG-UMS: UnifiedMessageService loading failed:`, error)
+    console.error(`ERROR: [PerfectSearch] DAG-UMS: UnifiedMessageService loading failed:`, error)
     return { success: false, error: error.message }
   }
 }
 
-// 🔧 新增：通过滚动触发加载策略
+// 新增：通过滚动触发加载策略
 const loadViaScrollTrigger = async (result) => {
   try {
-    console.log(`📜 [PerfectSearch] 🎯 DAG-Scroll: Triggering load via scroll for chat ${result.chat_id}`)
+    console.log(`📜 [PerfectSearch] DAG-Scroll: Triggering load via scroll for chat ${result.chat_id}`)
 
     const scrollContainer = document.querySelector('.simple-message-list, .messages-container, .message-list')
     if (!scrollContainer) {
@@ -1262,7 +1262,7 @@ const loadViaScrollTrigger = async (result) => {
 
       const newScrollHeight = scrollContainer.scrollHeight
       if (newScrollHeight > originalScrollHeight) {
-        console.log(`📜 [PerfectSearch] 🎯 DAG-Scroll: New content loaded, height: ${originalScrollHeight} → ${newScrollHeight}`)
+        console.log(`📜 [PerfectSearch] DAG-Scroll: New content loaded, height: ${originalScrollHeight} → ${newScrollHeight}`)
 
         // 恢复滚动位置（调整高度差）
         const heightDifference = newScrollHeight - originalScrollHeight
@@ -1280,15 +1280,15 @@ const loadViaScrollTrigger = async (result) => {
     return { success: false, error: 'No new content loaded via scroll' }
 
   } catch (error) {
-    console.error(`❌ [PerfectSearch] 🎯 DAG-Scroll: Scroll trigger loading failed:`, error)
+    console.error(`ERROR: [PerfectSearch] DAG-Scroll: Scroll trigger loading failed:`, error)
     return { success: false, error: error.message }
   }
 }
 
-// 🔧 新增：通过直接API加载策略
+// 新增：通过直接API加载策略
 const loadViaDirectAPI = async (result) => {
   try {
-    console.log(`🌐 [PerfectSearch] 🎯 DAG-API: Loading via direct API for message ${result.id}`)
+    console.log(`🌐 [PerfectSearch] DAG-API: Loading via direct API for message ${result.id}`)
 
     const api = (await import('@/services/api')).default
 
@@ -1301,7 +1301,7 @@ const loadViaDirectAPI = async (result) => {
     })
 
     if (response.data && response.data.length > 0) {
-      console.log(`🌐 [PerfectSearch] 🎯 DAG-API: Loaded ${response.data.length} messages around target`)
+      console.log(`🌐 [PerfectSearch] DAG-API: Loaded ${response.data.length} messages around target`)
 
       // 触发消息显示更新（如果有消息服务的话）
       const unifiedMessageService = window.unifiedMessageService
@@ -1315,15 +1315,15 @@ const loadViaDirectAPI = async (result) => {
     return { success: false, error: 'No messages returned from API' }
 
   } catch (error) {
-    console.error(`❌ [PerfectSearch] 🎯 DAG-API: Direct API loading failed:`, error)
+    console.error(`ERROR: [PerfectSearch] DAG-API: Direct API loading failed:`, error)
     return { success: false, error: error.message }
   }
 }
 
-// 🔧 新增：通过事件系统加载策略
+// 新增：通过事件系统加载策略
 const loadViaEventSystem = async (result) => {
   try {
-    console.log(`📡 [PerfectSearch] 🎯 DAG-Event: Triggering load via event system for message ${result.id}`)
+    console.log(`SUBSCRIPTION: [PerfectSearch] DAG-Event: Triggering load via event system for message ${result.id}`)
 
     // 发送加载更多消息事件
     window.dispatchEvent(new CustomEvent('load-more-messages', {
@@ -1338,7 +1338,7 @@ const loadViaEventSystem = async (result) => {
     // 也尝试点击加载更多按钮
     const loadMoreButton = document.querySelector('.load-more-button, [data-load-more], .load-earlier-messages')
     if (loadMoreButton && !loadMoreButton.disabled) {
-      console.log(`📡 [PerfectSearch] 🎯 DAG-Event: Clicking load more button`)
+      console.log(`SUBSCRIPTION: [PerfectSearch] DAG-Event: Clicking load more button`)
       loadMoreButton.click()
     }
 
@@ -1348,14 +1348,14 @@ const loadViaEventSystem = async (result) => {
     return { success: true, method: 'EventSystem' }
 
   } catch (error) {
-    console.error(`❌ [PerfectSearch] 🎯 DAG-Event: Event system loading failed:`, error)
+    console.error(`ERROR: [PerfectSearch] DAG-Event: Event system loading failed:`, error)
     return { success: false, error: error.message }
   }
 }
 
-// 🔧 新增：DOM稳定化等待
+// 新增：DOM稳定化等待
 const waitForDOMStabilization = async () => {
-  console.log(`🔄 [PerfectSearch] 🎯 DAG-DOM: Waiting for DOM stabilization`)
+  console.log(`🔄 [PerfectSearch] DAG-DOM: Waiting for DOM stabilization`)
 
   // Step 1: Vue nextTick
   await nextTick()
@@ -1366,10 +1366,10 @@ const waitForDOMStabilization = async () => {
   // Step 3: 额外等待时间让DOM完全稳定
   await new Promise(resolve => setTimeout(resolve, 300))
 
-  console.log(`✅ [PerfectSearch] 🎯 DAG-DOM: DOM stabilization complete`)
+  console.log(`[PerfectSearch] DAG-DOM: DOM stabilization complete`)
 }
 
-// 🔧 新增：触发加载更多消息
+// 新增：触发加载更多消息
 const triggerLoadMoreMessages = async () => {
   try {
     // 方法1: 触发滚动到顶部来加载历史消息
@@ -1403,11 +1403,11 @@ const triggerLoadMoreMessages = async () => {
     await new Promise(resolve => setTimeout(resolve, 200))
 
   } catch (error) {
-    console.warn(`⚠️ [PerfectSearch] Failed to trigger load more:`, error.message)
+    console.warn(`WARNING: [PerfectSearch] Failed to trigger load more:`, error.message)
   }
 }
 
-// 🔧 新增：等待加载完成
+// 新增：等待加载完成
 const waitForLoadingComplete = async () => {
   const maxWait = 2000
   const startTime = Date.now()
@@ -1428,10 +1428,10 @@ const waitForLoadingComplete = async () => {
   console.log(`⏰ [PerfectSearch] Loading wait timeout, proceeding`)
 }
 
-// 🔧 新增：安全滚动到消息
+// 新增：安全滚动到消息
 const scrollToMessageSafely = (messageElement) => {
   try {
-    console.log(`🎯 [PerfectSearch] 🎯 DAG-Scroll: Starting safe scroll to message`)
+    console.log(`[PerfectSearch] DAG-Scroll: Starting safe scroll to message`)
 
     // 清除之前的高亮
     document.querySelectorAll('.message-highlight, .search-target, .blue-pulse-beam-highlight').forEach(el => {
@@ -1451,7 +1451,7 @@ const scrollToMessageSafely = (messageElement) => {
     })
 
     // 🌊 ENHANCED: 使用新的边框流动光束高亮 
-    console.log(`🌊 [FlowingBeam] 🚀 Applying enhanced flowing beam effect to message ${messageElement.dataset.messageId}`)
+    console.log(`🌊 [FlowingBeam] Applying enhanced flowing beam effect to message ${messageElement.dataset.messageId}`)
 
     // 🌊 流动光束：添加边框内流动的光束效果（非脉冲）
     messageElement.classList.add('blue-pulse-beam-highlight', 'blue-beam-intense')
@@ -1483,7 +1483,7 @@ const scrollToMessageSafely = (messageElement) => {
     const scrollContainer = messageElement.closest('.simple-message-list, .messages-container')
     if (scrollContainer) {
       const onScrollEnd = () => {
-        console.log(`✅ [PerfectSearch] 🎯 DAG-Scroll: Scroll completed, message highlighted with enhanced flowing beam`)
+        console.log(`[PerfectSearch] DAG-Scroll: Scroll completed, message highlighted with enhanced flowing beam`)
         scrollContainer.removeEventListener('scrollend', onScrollEnd)
       }
 
@@ -1503,21 +1503,21 @@ const scrollToMessageSafely = (messageElement) => {
       messageElement.style.zIndex = ''
       messageElement.style.position = ''
 
-      console.log(`🌊 [FlowingBeam] 🚀 Enhanced flowing beam removed from message ${messageElement.dataset.messageId}`)
-      console.log(`🔄 [PerfectSearch] 🎯 DAG-Scroll: Enhanced flowing beam highlight removed after 8 seconds`)
+      console.log(`🌊 [FlowingBeam] Enhanced flowing beam removed from message ${messageElement.dataset.messageId}`)
+      console.log(`🔄 [PerfectSearch] DAG-Scroll: Enhanced flowing beam highlight removed after 8 seconds`)
     }, 8000) // 🌊 从4秒增加到8秒
 
     return { success: true, scrolled: true, effect: 'enhanced_flowing_beam' }
 
   } catch (error) {
-    console.error(`❌ [PerfectSearch] 🎯 DAG-Scroll: Scroll to message failed:`, error)
+    console.error(`ERROR: [PerfectSearch] DAG-Scroll: Scroll to message failed:`, error)
     return { success: false, error: error.message }
   }
 }
 
-// 🔧 增强：用户友好错误显示 - 修复 actions 数组问题
+// 增强：用户友好错误显示 - 修复 actions 数组问题
 const showUserFriendlyError = (result, message) => {
-  // 🔧 安全的 actions 数组创建
+  // 安全的 actions 数组创建
   const actions = []
 
   try {
@@ -1530,14 +1530,14 @@ const showUserFriendlyError = (result, message) => {
       label: 'Open Chat',
       action: async () => {
         try {
-          // 🔧 修复：使用setup函数内的router，避免页面刷新
+          // 修复：使用setup函数内的router，避免页面刷新
           const safeRouter = getSafeRouter()
           if (safeRouter) {
             console.log('🔄 [UserFriendlyError] Using router for navigation')
             await safeRouter.push(`/chat/${result.chat_id}`)
           } else {
-            // 🔧 修复：避免window.location.href，使用事件通知
-            console.warn('⚠️ [UserFriendlyError] Router unavailable, dispatching event')
+            // 修复：避免window.location.href，使用事件通知
+            console.warn('WARNING: [UserFriendlyError] Router unavailable, dispatching event')
             window.dispatchEvent(new CustomEvent('navigate-to-chat', {
               detail: {
                 chatId: result.chat_id,
@@ -1560,7 +1560,7 @@ const showUserFriendlyError = (result, message) => {
       }
     })
   } catch (actionError) {
-    console.warn('⚠️ [PerfectSearch] Failed to create recovery actions:', actionError)
+    console.warn('WARNING: [PerfectSearch] Failed to create recovery actions:', actionError)
   }
 
   // 创建用户友好的通知
@@ -1578,7 +1578,7 @@ const showUserFriendlyError = (result, message) => {
       detail: notification
     }))
   } catch (eventError) {
-    console.warn('⚠️ [PerfectSearch] Failed to dispatch notification:', eventError)
+    console.warn('WARNING: [PerfectSearch] Failed to dispatch notification:', eventError)
   }
 
   console.error(`🚨 [PerfectSearch] User error: ${message}`, result)
@@ -1593,7 +1593,7 @@ const showUserFriendlyError = (result, message) => {
   })
 }
 
-// 🔧 修复：直接使用setup函数内的router实例，避免页面刷新
+// 修复：直接使用setup函数内的router实例，避免页面刷新
 const getSafeRouter = () => {
   // 直接返回setup函数内的router实例
   if (router && typeof router.push === 'function') {
@@ -1606,7 +1606,7 @@ const getSafeRouter = () => {
     return fallbackRouter
   }
 
-  console.warn('⚠️ [PerfectSearch] No router instance available')
+  console.warn('WARNING: [PerfectSearch] No router instance available')
   return null
 }
 
@@ -1614,7 +1614,7 @@ const getInitials = (name) => {
   return name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?'
 }
 
-// 🎨 Generate beautiful avatar colors based on username
+// Generate beautiful avatar colors based on username
 const getAvatarStyle = (username) => {
   const colors = [
     { bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: '#ffffff' },
@@ -1697,10 +1697,10 @@ const getSearchSourceLabel = (source) => {
     'local_error_fallback': '💾 Fallback Mode',
     'local': '💾 Local Search',
     'local_empty': '💾 Local (No Data)',
-    'local_error': '⚠️ Search Error'
+    'local_error': 'WARNING: Search Error'
   }
 
-  return sourceLabels[source] || '🔍 Search'
+  return sourceLabels[source] || 'Search'
 }
 
 // 移除已删除的 perfectSearchService 相关代码
@@ -1725,9 +1725,9 @@ watch(() => props.isOpen, (isOpen) => {
 
 // Lifecycle
 onMounted(() => {
-  // 🔧 DEBUG: Confirm PerfectSearchModal is loading
-  console.log('🎯 PerfectSearchModal mounted successfully!')
-  console.log('🎯 Props received:', { isOpen: props.isOpen, chatId: props.chatId })
+  // DEBUG: Confirm PerfectSearchModal is loading
+  console.log('PerfectSearchModal mounted successfully!')
+  console.log('Props received:', { isOpen: props.isOpen, chatId: props.chatId })
 
   // Focus search input when modal opens
   if (props.isOpen) {
@@ -1737,30 +1737,30 @@ onMounted(() => {
   }
 })
 
-// 🔧 新增：等待聊天页面基础元素 - DAG增强版
+// 新增：等待聊天页面基础元素 - DAG增强版
 const waitForChatPageElements = async () => {
   const maxWait = 5000 // 增加到5秒
   const startTime = Date.now()
 
-  console.log(`🔄 [PerfectSearch] 🎯 DAG-Elements: Waiting for chat page elements`)
+  console.log(`🔄 [PerfectSearch] DAG-Elements: Waiting for chat page elements`)
 
   while ((Date.now() - startTime) < maxWait) {
     const chatContainer = document.querySelector('.chat-container, .simple-message-list, .messages-container')
     const messageElements = document.querySelectorAll('[data-message-id]')
 
     if (chatContainer && messageElements.length > 0) {
-      console.log(`✅ [PerfectSearch] 🎯 DAG-Elements: Chat page loaded with ${messageElements.length} messages`)
+      console.log(`[PerfectSearch] DAG-Elements: Chat page loaded with ${messageElements.length} messages`)
       return { success: true, elements: messageElements.length }
     }
 
     await new Promise(resolve => setTimeout(resolve, 100))
   }
 
-  console.warn(`⚠️ [PerfectSearch] 🎯 DAG-Elements: Chat page elements loading timeout`)
+  console.warn(`WARNING: [PerfectSearch] DAG-Elements: Chat page elements loading timeout`)
   return { success: false, error: 'Chat page elements loading timeout' }
 }
 
-// 🔧 新增：DAG诊断工具
+// 新增：DAG诊断工具
 const runDAGDiagnostics = async (result) => {
   const diagnostics = {
     timestamp: new Date().toISOString(),
@@ -1769,7 +1769,7 @@ const runDAGDiagnostics = async (result) => {
     steps: {}
   }
 
-  console.log(`🔍 [PerfectSearch] 🎯 DAG-Diagnostics: Running full system diagnostics`)
+  console.log(`[PerfectSearch] DAG-Diagnostics: Running full system diagnostics`)
 
   try {
     // 1. 检查路由系统
@@ -1830,12 +1830,12 @@ const runDAGDiagnostics = async (result) => {
       }
     }
 
-    console.log(`🔍 [PerfectSearch] 🎯 DAG-Diagnostics: Complete diagnostics:`, diagnostics)
+    console.log(`[PerfectSearch] DAG-Diagnostics: Complete diagnostics:`, diagnostics)
 
     return diagnostics
 
   } catch (error) {
-    console.error(`❌ [PerfectSearch] 🎯 DAG-Diagnostics: Diagnostics failed:`, error)
+    console.error(`ERROR: [PerfectSearch] DAG-Diagnostics: Diagnostics failed:`, error)
     diagnostics.error = error.message
     return diagnostics
   }
@@ -1843,7 +1843,7 @@ const runDAGDiagnostics = async (result) => {
 </script>
 
 <style scoped>
-/* 🎨 PERFECT SEARCH MODAL - JOBS MASTERPIECE EDITION
+/* PERFECT SEARCH MODAL - JOBS MASTERPIECE EDITION
    ✨ The epitome of digital craftsmanship and aesthetic perfection */
 
 /* Modal Backdrop - Cinematic Experience */
@@ -1978,7 +1978,7 @@ const runDAGDiagnostics = async (result) => {
   height: 16px;
 }
 
-/* 🔍 Modern Search Section */
+/* Modern Search Section */
 .search-section {
   padding: 0 24px 24px;
   background: rgba(248, 250, 252, 0.3);
@@ -2178,7 +2178,7 @@ const runDAGDiagnostics = async (result) => {
   }
 }
 
-/* 🔍 Advanced Search Strategies Section */
+/* Advanced Search Strategies Section */
 .strategies-section {
   margin-top: 20px;
   padding: 0 4px;
@@ -2378,7 +2378,7 @@ const runDAGDiagnostics = async (result) => {
 }
 
 .results-count::before {
-  content: '🔍';
+  content: '';
   font-size: 14px;
 }
 
@@ -2489,7 +2489,7 @@ const runDAGDiagnostics = async (result) => {
   align-items: flex-start;
 }
 
-/* 🎨 Colorful User Avatar */
+/* Colorful User Avatar */
 .result-avatar {
   width: 44px;
   height: 44px;
@@ -2985,7 +2985,7 @@ const runDAGDiagnostics = async (result) => {
   line-height: 1.5;
 }
 
-/* 🎯 Modern Modal Footer */
+/* Modern Modal Footer */
 .modal-footer {
   padding: 16px 24px;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
@@ -3078,7 +3078,7 @@ const runDAGDiagnostics = async (result) => {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 🔧 新增：搜索消息高亮样式 */
+/* 新增：搜索消息高亮样式 */
 :global(.message-highlight) {
   background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 235, 59, 0.1) 100%) !important;
   border: 2px solid rgba(255, 193, 7, 0.4) !important;
@@ -3097,7 +3097,7 @@ const runDAGDiagnostics = async (result) => {
 }
 
 :global(.search-target::before) {
-  content: '🎯';
+  content: '';
   position: absolute;
   top: -8px;
   right: -8px;

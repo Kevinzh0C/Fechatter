@@ -12,22 +12,22 @@ async fn main() -> anyhow::Result<()> {
     if std::env::var("OPENAI_API_KEY").is_ok() {
         test_openai_integration().await?;
     } else {
-        println!("⚠️  OPENAI_API_KEY not set, skipping API tests");
+        println!("WARNING: OPENAI_API_KEY not set, skipping API tests");
     }
     
     Ok(())
 }
 
 fn test_message_creation() {
-    println!("\n📝 Testing message creation...");
+    println!("\nTesting message creation...");
     
     let system_msg = Message::system("You are helpful");
     let user_msg = Message::user("Hello");
     let assistant_msg = Message::assistant("Hi there!");
     
-    println!("✅ Created system message: {:?}", system_msg.content);
-    println!("✅ Created user message: {:?}", user_msg.content);
-    println!("✅ Created assistant message: {:?}", assistant_msg.content);
+    println!("Created system message: {:?}", system_msg.content);
+    println!("Created user message: {:?}", user_msg.content);
+    println!("Created assistant message: {:?}", assistant_msg.content);
 }
 
 async fn test_openai_integration() -> anyhow::Result<()> {
@@ -45,10 +45,10 @@ async fn test_openai_integration() -> anyhow::Result<()> {
     println!("🔄 Testing chat completion...");
     match adapter.complete(&messages).await {
         Ok(response) => {
-            println!("✅ Chat completion: {}", response.trim());
+            println!("Chat completion: {}", response.trim());
         },
         Err(e) => {
-            println!("❌ Chat completion failed: {}", e);
+            println!("ERROR: Chat completion failed: {}", e);
         }
     }
     
@@ -56,10 +56,10 @@ async fn test_openai_integration() -> anyhow::Result<()> {
     println!("🔄 Testing embedding generation...");
     match adapter.generate_embedding("test").await {
         Ok(embedding) => {
-            println!("✅ Embedding generated: {} dimensions", embedding.len());
+            println!("Embedding generated: {} dimensions", embedding.len());
         },
         Err(e) => {
-            println!("❌ Embedding generation failed: {}", e);
+            println!("ERROR: Embedding generation failed: {}", e);
         }
     }
     
@@ -67,10 +67,10 @@ async fn test_openai_integration() -> anyhow::Result<()> {
     println!("🔄 Testing content moderation...");
     match adapter.moderate_content("This is a normal message").await {
         Ok(is_safe) => {
-            println!("✅ Content moderation: safe = {}", is_safe);
+            println!("Content moderation: safe = {}", is_safe);
         },
         Err(e) => {
-            println!("❌ Content moderation failed: {}", e);
+            println!("ERROR: Content moderation failed: {}", e);
         }
     }
     
@@ -78,10 +78,10 @@ async fn test_openai_integration() -> anyhow::Result<()> {
     println!("🔄 Testing summary generation...");
     match adapter.generate_summary("This is a long text that needs to be summarized for testing purposes.").await {
         Ok(summary) => {
-            println!("✅ Summary generated: {}", summary.trim());
+            println!("Summary generated: {}", summary.trim());
         },
         Err(e) => {
-            println!("❌ Summary generation failed: {}", e);
+            println!("ERROR: Summary generation failed: {}", e);
         }
     }
     

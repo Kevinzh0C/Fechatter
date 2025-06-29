@@ -4,7 +4,7 @@
 <template>
   <div class="login-fix-verification">
     <div class="verification-header">
-      <h3>🔧 Login Flow Fix</h3>
+      <h3>Login Flow Fix</h3>
       <button @click="visible = !visible" class="toggle-btn">
         {{ visible ? 'Hide' : 'Show' }}
       </button>
@@ -18,13 +18,13 @@
           <div class="state-item">
             <span>Auth Store:</span>
             <span :class="authStore.isAuthenticated ? 'success' : 'error'">
-              {{ authStore.isAuthenticated ? '✅' : '❌' }}
+              {{ authStore.isAuthenticated ? '' : '❌' }}
             </span>
           </div>
           <div class="state-item">
             <span>User Data:</span>
             <span :class="authStore.user ? 'success' : 'error'">
-              {{ authStore.user ? '✅' : '❌' }}
+              {{ authStore.user ? '' : '❌' }}
             </span>
           </div>
         </div>
@@ -34,10 +34,10 @@
       <div class="section">
         <h4>Fix Status</h4>
         <div class="fix-list">
-          <div class="fix-item">✅ Simplified auth checking</div>
-          <div class="fix-item">✅ Added nextTick() delay</div>
-          <div class="fix-item">✅ Enhanced error handling</div>
-          <div class="fix-item">✅ Trust router guard</div>
+          <div class="fix-item">Simplified auth checking</div>
+          <div class="fix-item">Added nextTick() delay</div>
+          <div class="fix-item">Enhanced error handling</div>
+          <div class="fix-item">Trust router guard</div>
         </div>
       </div>
       

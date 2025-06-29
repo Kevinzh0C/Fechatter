@@ -17,7 +17,7 @@ class QuickAuthLoginFix {
   applyFix() {
     if (this.isFixing) {
       if (import.meta.env.DEV) {
-        console.log('⚠️ Fix already in progress');
+        console.log('WARNING: Fix already in progress');
       return;
     }
 
@@ -47,7 +47,7 @@ class QuickAuthLoginFix {
       fixCount += this.forceCleanLogin();
 
       if (import.meta.env.DEV) {
-        console.log(`\n✅ Applied ${fixCount} authentication fixes`);
+        console.log(`\nApplied ${fixCount} authentication fixes`);
       if (import.meta.env.DEV) {
         console.log('🔄 Page will reload to complete fix...');
       }
@@ -59,7 +59,7 @@ class QuickAuthLoginFix {
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Error applying auth fix:', error);
+        console.error('ERROR: Error applying auth fix:', error);
       }
     } finally {
       this.isFixing = false;
@@ -73,7 +73,7 @@ class QuickAuthLoginFix {
    */
   clearAuthState() {
     if (import.meta.env.DEV) {
-      console.log('🔧 Clearing authentication state...');
+      console.log('Clearing authentication state...');
     }
 
     try {
@@ -85,7 +85,7 @@ class QuickAuthLoginFix {
         authStore.isAuthenticated = false;
         authStore.hasToken = false;
         if (import.meta.env.DEV) {
-          console.log('   ✅ Pinia auth store cleared');
+          console.log('   Pinia auth store cleared');
         }
 
       // Clear any Vue reactive auth state
@@ -95,13 +95,13 @@ class QuickAuthLoginFix {
           proxy.$auth.user = null;
           proxy.$auth.loggedIn = false;
           if (import.meta.env.DEV) {
-            console.log('   ✅ Vue auth plugin cleared');
+            console.log('   Vue auth plugin cleared');
           }
 
       return 1;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('   ❌ Error clearing auth state:', error);
+        console.error('   ERROR: Error clearing auth state:', error);
       return 0;
     }
 
@@ -110,7 +110,7 @@ class QuickAuthLoginFix {
    */
   clearRouterGuards() {
     if (import.meta.env.DEV) {
-      console.log('🔧 Clearing problematic router guards...');
+      console.log('Clearing problematic router guards...');
     }
 
     try {
@@ -128,16 +128,16 @@ class QuickAuthLoginFix {
         });
 
         if (import.meta.env.DEV) {
-          console.log('   ✅ Router guards cleared');
+          console.log('   Router guards cleared');
         return 1;
       }
 
       if (import.meta.env.DEV) {
-        console.log('   ⚠️ Router not found');
+        console.log('   WARNING: Router not found');
       return 0;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('   ❌ Error clearing router guards:', error);
+        console.error('   ERROR: Error clearing router guards:', error);
       return 0;
     }
 
@@ -146,7 +146,7 @@ class QuickAuthLoginFix {
    */
   resetTokenState() {
     if (import.meta.env.DEV) {
-      console.log('🔧 Resetting token state...');
+      console.log('Resetting token state...');
     }
 
     try {
@@ -188,11 +188,11 @@ class QuickAuthLoginFix {
       });
 
       if (import.meta.env.DEV) {
-        console.log(`   ✅ Cleared ${clearCount} token entries`);
+        console.log(`   Cleared ${clearCount} token entries`);
       return clearCount > 0 ? 1 : 0;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('   ❌ Error resetting token state:', error);
+        console.error('   ERROR: Error resetting token state:', error);
       return 0;
     }
 
@@ -201,7 +201,7 @@ class QuickAuthLoginFix {
    */
   clearAuthCache() {
     if (import.meta.env.DEV) {
-      console.log('🔧 Clearing authentication cache...');
+      console.log('Clearing authentication cache...');
     }
 
     try {
@@ -224,11 +224,11 @@ class QuickAuthLoginFix {
         }
 
       if (import.meta.env.DEV) {
-        console.log(`   ✅ Cleared ${clearCount} cached auth entries`);
+        console.log(`   Cleared ${clearCount} cached auth entries`);
       return clearCount > 0 ? 1 : 0;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('   ❌ Error clearing auth cache:', error);
+        console.error('   ERROR: Error clearing auth cache:', error);
       return 0;
     }
 
@@ -237,7 +237,7 @@ class QuickAuthLoginFix {
    */
   forceCleanLogin() {
     if (import.meta.env.DEV) {
-      console.log('🔧 Preparing clean login redirect...');
+      console.log('Preparing clean login redirect...');
     }
 
     try {
@@ -254,11 +254,11 @@ class QuickAuthLoginFix {
         });
 
       if (import.meta.env.DEV) {
-        console.log('   ✅ Clean login redirect prepared');
+        console.log('   Clean login redirect prepared');
       return 1;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('   ❌ Error preparing clean redirect:', error);
+        console.error('   ERROR: Error preparing clean redirect:', error);
       return 0;
     }
 
@@ -267,7 +267,7 @@ class QuickAuthLoginFix {
    */
   diagnose() {
     if (import.meta.env.DEV) {
-      console.log('\n🔍 AUTHENTICATION DIAGNOSTIC');
+      console.log('\nAUTHENTICATION DIAGNOSTIC');
     if (import.meta.env.DEV) {
       console.log('============================');
     }
@@ -276,14 +276,14 @@ class QuickAuthLoginFix {
     const authStore = this.getAuthStore();
     if (authStore) {
       if (import.meta.env.DEV) {
-        console.log(`📊 Auth Store:`, {
+        console.log(`Auth Store:`, {
         isAuthenticated: authStore.isAuthenticated,
         hasToken: authStore.hasToken,
         user: authStore.user ? 'Present' : 'Null'
       });
     } else {
       if (import.meta.env.DEV) {
-        console.log('⚠️ Auth Store: Not found');
+        console.log('WARNING: Auth Store: Not found');
       }
 
     // Check localStorage
@@ -342,11 +342,11 @@ class QuickAuthLoginFix {
       window.location.href = '/login';
 
       if (import.meta.env.DEV) {
-        console.log('✅ Emergency login redirect initiated');
+        console.log('Emergency login redirect initiated');
       }
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Emergency login failed:', error);
+        console.error('ERROR: Emergency login failed:', error);
       }
 
 // Create global instance

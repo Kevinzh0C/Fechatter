@@ -19,35 +19,35 @@ async function runProtobufTests() {
   console.log('🧪 Running Protobuf Analytics Tests...');
 
   // Test 1: Check client status
-  console.log('\n📊 Client Status:');
+  console.log('\nClient Status:');
   const status = testAnalytics.getStatus();
   console.log(JSON.stringify(status, null, 2));
 
   // Test 2: Test app start event
-  console.log('\n🚀 Testing App Start Event...');
+  console.log('\nTesting App Start Event...');
   try {
     await testAnalytics.trackAppStart();
-    console.log('✅ App start event tracked successfully');
+    console.log('App start event tracked successfully');
   } catch (error) {
-    console.error('❌ App start event failed:', error);
+    console.error('ERROR: App start event failed:', error);
   }
 
   // Test 3: Test user login event
-  console.log('\n👤 Testing User Login Event...');
+  console.log('\nUSER: Testing User Login Event...');
   try {
     await testAnalytics.trackUserLogin('test@example.com', 'password');
-    console.log('✅ User login event tracked successfully');
+    console.log('User login event tracked successfully');
   } catch (error) {
-    console.error('❌ User login event failed:', error);
+    console.error('ERROR: User login event failed:', error);
   }
 
   // Test 4: Test message sent event
-  console.log('\n💬 Testing Message Sent Event...');
+  console.log('\nMESSAGE: Testing Message Sent Event...');
   try {
     await testAnalytics.trackMessageSent('chat_123', 'Hello world! @user', []);
-    console.log('✅ Message sent event tracked successfully');
+    console.log('Message sent event tracked successfully');
   } catch (error) {
-    console.error('❌ Message sent event failed:', error);
+    console.error('ERROR: Message sent event failed:', error);
   }
 
   // Test 5: Test navigation event
@@ -55,29 +55,29 @@ async function runProtobufTests() {
   try {
     const startTime = Date.now() - 1000; // Simulate 1 second navigation
     await testAnalytics.trackNavigation('/login', '/chat', startTime);
-    console.log('✅ Navigation event tracked successfully');
+    console.log('Navigation event tracked successfully');
   } catch (error) {
-    console.error('❌ Navigation event failed:', error);
+    console.error('ERROR: Navigation event failed:', error);
   }
 
   // Test 6: Test error event
-  console.log('\n⚠️ Testing Error Event...');
+  console.log('\nWARNING: Testing Error Event...');
   try {
     const testError = new Error('Test error message');
     testError.stack = 'Error: Test error\n    at test:1:1';
     await testAnalytics.trackError(testError, 'test-context', 'TestError');
-    console.log('✅ Error event tracked successfully');
+    console.log('Error event tracked successfully');
   } catch (error) {
-    console.error('❌ Error event failed:', error);
+    console.error('ERROR: Error event failed:', error);
   }
 
   // Test 7: Test search event
-  console.log('\n🔍 Testing Search Event...');
+  console.log('\nTesting Search Event...');
   try {
     await testAnalytics.trackSearch('global', 'test query', 5, 250, true);
-    console.log('✅ Search event tracked successfully');
+    console.log('Search event tracked successfully');
   } catch (error) {
-    console.error('❌ Search event failed:', error);
+    console.error('ERROR: Search event failed:', error);
   }
 
   // Test 8: Test file upload event
@@ -90,22 +90,22 @@ async function runProtobufTests() {
       name: 'test.jpg'
     };
     await testAnalytics.trackFileUpload(mockFile, 'drag-drop', 2500);
-    console.log('✅ File upload event tracked successfully');
+    console.log('File upload event tracked successfully');
   } catch (error) {
-    console.error('❌ File upload event failed:', error);
+    console.error('ERROR: File upload event failed:', error);
   }
 
   // Test 9: Flush pending events
   console.log('\n🔄 Testing Batch Flush...');
   try {
     await testAnalytics.flush();
-    console.log('✅ Batch flush completed successfully');
+    console.log('Batch flush completed successfully');
   } catch (error) {
-    console.error('❌ Batch flush failed:', error);
+    console.error('ERROR: Batch flush failed:', error);
   }
 
   // Test 10: Final status check
-  console.log('\n📊 Final Client Status:');
+  console.log('\nFinal Client Status:');
   const finalStatus = testAnalytics.getStatus();
   console.log(JSON.stringify(finalStatus, null, 2));
 
@@ -119,7 +119,7 @@ async function runProtobufTests() {
 if (typeof window !== 'undefined') {
   // Browser environment
   window.runProtobufTests = runProtobufTests;
-  console.log('📝 Protobuf tests loaded. Run window.runProtobufTests() to execute.');
+  console.log('Protobuf tests loaded. Run window.runProtobufTests() to execute.');
 } else {
   // Node.js environment
   runProtobufTests().catch(console.error);

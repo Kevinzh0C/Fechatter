@@ -63,10 +63,10 @@ class RequestConflictResolver {
 
     try {
       // Execute request
-      console.debug(`🚀 [CONFLICT] Starting request: ${operationId}`);
+      console.debug(`[CONFLICT] Starting request: ${operationId}`);
       const result = await requestPromise;
 
-      console.debug(`✅ [CONFLICT] Request completed: ${operationId}`);
+      console.debug(`[CONFLICT] Request completed: ${operationId}`);
       return result;
 
     } catch (error) {
@@ -76,7 +76,7 @@ class RequestConflictResolver {
       }
 
       if (import.meta.env.DEV) {
-        console.error(`❌ [CONFLICT] Request failed: ${operationId}`, error.message);
+        console.error(`ERROR: [CONFLICT] Request failed: ${operationId}`, error.message);
       }
       throw error;
 
@@ -115,7 +115,7 @@ class RequestConflictResolver {
 
       default:
         if (import.meta.env.DEV) {
-          console.warn(`⚠️ [CONFLICT] Unknown strategy: ${strategy}`);
+          console.warn(`WARNING: [CONFLICT] Unknown strategy: ${strategy}`);
         }
     }
   }

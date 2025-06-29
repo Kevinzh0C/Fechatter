@@ -8,27 +8,27 @@ export function quickHealthCheck() {
   console.group('🏥 Quick Health Check');
 
   const checks = {
-    '🚀 Frontend Server': checkFrontendServer(),
-    '🔧 Message Service': checkMessageService(),
+    'Frontend Server': checkFrontendServer(),
+    'Message Service': checkMessageService(),
     '💾 Cache System': checkCacheSystem(),
-    '🎯 Components': checkComponents(),
+    'Components': checkComponents(),
     '🛡️ Security': checkSecurity(),
-    '📊 Performance': checkPerformance()
+    'Performance': checkPerformance()
   };
 
   let allHealthy = true;
 
   Object.entries(checks).forEach(([name, result]) => {
-    const status = result.healthy ? '✅' : '❌';
+    const status = result.healthy ? '' : '❌';
     console.log(`${status} ${name}: ${result.message}`);
     if (!result.healthy) allHealthy = false;
   });
 
   console.log('\n' + '='.repeat(50));
-  console.log(`Overall Status: ${allHealthy ? '✅ HEALTHY' : '❌ ISSUES DETECTED'}`);
+  console.log(`Overall Status: ${allHealthy ? 'HEALTHY' : 'ERROR: ISSUES DETECTED'}`);
 
   if (!allHealthy) {
-    console.log('\n🔧 Quick fixes available:');
+    console.log('\nQuick fixes available:');
     console.log('- Run: window.debugFullReport() for detailed analysis');
     console.log('- Run: window.resetCircuitBreaker() if auto-load is stuck');
     console.log('- Run: window.forceStopLoadingDebug() if loading indicators are stuck');

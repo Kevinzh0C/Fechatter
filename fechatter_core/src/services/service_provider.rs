@@ -75,28 +75,28 @@ impl ActualAuthServiceProvider for ServiceProvider {
   }
 }
 
-// 注意：这里故意不完整，需要在fechatter_server中实现这个特性
-// 我们设置一个占位符类型，应该在server中被正确替换
+// Note: This is intentionally incomplete, needs implementation in fechatter_server
+// We set a placeholder type that should be properly replaced in the server layer
 #[cfg(not(test))]
 impl ActualAuthServiceProvider for ServiceProvider {
-  // 定义一个占位符类型，这个类型会在服务器层被实际实现
+  // Define a placeholder type that will be implemented in the server layer
   type AuthService = RealAuthServicePlaceholder;
 
   fn create_service(&self) -> Self::AuthService {
-    // 这个函数永远不应该被直接调用，因为实际的实现应该在服务器层
-    // 如果这个函数被调用了，那就是配置错误
+    // This function should never be called directly, as the actual implementation should be in the server layer
+    // If this function is called, it indicates a configuration error
     panic!(
       "This is a placeholder implementation. The actual implementation should be in the server layer"
     )
   }
 }
 
-// 定义一个占位符类型，这个类型在服务器层会被正确替换
+// Define a placeholder type that will be properly replaced in the server layer
 #[cfg(not(test))]
 #[derive(Clone)]
 pub struct RealAuthServicePlaceholder;
 
-// 为占位符实现必要的特性，这样编译器才不会报错
+// Implement necessary traits for the placeholder so the compiler doesn't error
 #[cfg(not(test))]
 impl AuthServiceTrait for RealAuthServicePlaceholder {}
 
@@ -211,7 +211,7 @@ impl RefreshTokenService for DummyAuthService {
     let expires_at = now + chrono::Duration::days(7);
     let absolute_expires_at = now + chrono::Duration::days(30);
 
-    // 创建基本的模拟令牌
+    // Create basic mock tokens
     Ok(AuthTokens {
       access_token: "mock-access-token-for-test".to_string(),
       refresh_token: crate::models::jwt::RefreshTokenData {
@@ -231,7 +231,7 @@ impl SignupService for DummyAuthService {
     _payload: &crate::models::CreateUser,
     _auth_context: Option<crate::services::AuthContext>,
   ) -> Result<AuthTokens, CoreError> {
-    // 简单地创建一个基本的模拟令牌
+    // Simply create basic mock tokens
     let now = chrono::Utc::now();
     let expires_at = now + chrono::Duration::days(7);
     let absolute_expires_at = now + chrono::Duration::days(30);
@@ -255,12 +255,12 @@ impl SigninService for DummyAuthService {
     payload: &crate::models::SigninUser,
     _auth_context: Option<crate::services::AuthContext>,
   ) -> Result<Option<AuthTokens>, CoreError> {
-    // 模拟成功登录
+    // Mock successful login
     let now = chrono::Utc::now();
     let expires_at = now + chrono::Duration::days(7);
     let absolute_expires_at = now + chrono::Duration::days(30);
 
-    // 如果是测试用户名"nonexistent@acme.test"，返回None
+    // Return None for test username "nonexistent@acme.test"
     if payload.email == "nonexistent@acme.test" {
       return Ok(None);
     }
@@ -280,12 +280,12 @@ impl SigninService for DummyAuthService {
 #[async_trait]
 impl LogoutService for DummyAuthService {
   async fn logout(&self, _refresh_token: &str) -> Result<(), CoreError> {
-    // 简单地返回成功
+    // Simply return success
     Ok(())
   }
 
   async fn logout_all(&self, _user_id: UserId) -> Result<(), CoreError> {
-    // 简单地返回成功
+    // Simply return success
     Ok(())
   }
 }

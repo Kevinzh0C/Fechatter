@@ -157,9 +157,9 @@ const signOut = async () => {
   try {
     // Auth store logout now handles everything including navigation
     await authStore.logout('You have been signed out successfully.')
-    console.log('✅ [USER_BAR] Sign out completed')
+    console.log('[USER_BAR] Sign out completed')
   } catch (error) {
-    console.error('❌ [USER_BAR] Sign out failed:', error)
+    console.error('ERROR: [USER_BAR] Sign out failed:', error)
 
     // Emergency fallback only if auth store logout completely fails
     try {
@@ -172,7 +172,7 @@ const signOut = async () => {
       // Force page reload to login
       window.location.href = '/login'
     } catch (fallbackError) {
-      console.error('❌ [USER_BAR] Emergency fallback failed:', fallbackError)
+      console.error('ERROR: [USER_BAR] Emergency fallback failed:', fallbackError)
       // Last resort: show user manual instructions
       alert('Please manually refresh the page and try logging in again.')
     }

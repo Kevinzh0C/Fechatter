@@ -1,19 +1,19 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// 统一时间管理模块
-/// 提供应用层统一的时间处理，避免数据库方言差异
+/// Unified time management module
+/// Provides application-level unified time handling to avoid database dialect differences
 pub struct TimeManager;
 
 impl TimeManager {
-  /// 获取当前UTC时间
-  /// 这是应用层统一的时间获取入口
+  /// Get current UTC time
+  /// This is the unified application-level entry point for time retrieval
   #[inline]
   pub fn now() -> DateTime<Utc> {
     Utc::now()
   }
 
-  /// 为新实体创建时间戳
+  /// Create timestamps for new entities
   pub fn create_timestamps() -> EntityTimestamps {
     let now = Self::now();
     EntityTimestamps {
@@ -22,25 +22,25 @@ impl TimeManager {
     }
   }
 
-  /// 为更新实体创建时间戳
+  /// Create timestamp for entity updates
   pub fn update_timestamp() -> DateTime<Utc> {
     Self::now()
   }
 
-  /// 格式化时间为ISO字符串
+  /// Format time as ISO string
   pub fn format_iso(time: DateTime<Utc>) -> String {
     time.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
   }
 }
 
-/// 实体时间戳结构
+/// Entity timestamp structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EntityTimestamps {
   pub created_at: DateTime<Utc>,
   pub updated_at: DateTime<Utc>,
 }
 
-/// 为任何需要时间戳的实体提供的trait
+/// Trait for any entity that requires timestamps
 pub trait WithTimestamps {
   fn created_at(&self) -> DateTime<Utc>;
   fn updated_at(&self) -> DateTime<Utc>;
@@ -50,16 +50,16 @@ pub trait WithTimestamps {
   fn set_updated_at(&mut self, time: DateTime<Utc>);
 }
 
-/// 时间相关的SQL查询助手
+/// SQL query helper for time-related operations
 pub struct TimeQuery;
 
 impl TimeQuery {
-  /// 生成创建实体的时间字段绑定（用于INSERT）
+  /// Generate time field bindings for entity creation (for INSERT)
   pub fn create_bindings() -> EntityTimestamps {
     TimeManager::create_timestamps()
   }
 
-  /// 生成更新实体的时间字段绑定（用于UPDATE）
+  /// Generate time field bindings for entity updates (for UPDATE)
   pub fn update_binding() -> DateTime<Utc> {
     TimeManager::update_timestamp()
   }

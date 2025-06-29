@@ -16,7 +16,7 @@ class Auth401ErrorFix {
    * Apply comprehensive 401 error fix
    */
   async applyComprehensiveFix() {
-    console.group('🔧 Applying Auth 401 Error Fix');
+    console.group('Applying Auth 401 Error Fix');
 
     try {
       const fixes = [
@@ -33,11 +33,11 @@ class Auth401ErrorFix {
         const fixName = ['token manager', 'auth store', 'SSE connection', 'API error handling', 'graceful logout'][index];
         if (result.status === 'fulfilled') {
           if (import.meta.env.DEV) {
-            console.log(`✅ ${fixName} fix applied`);
+            console.log(`${fixName} fix applied`);
           this.fixCount++;
         } else {
           if (import.meta.env.DEV) {
-            console.error(`❌ ${fixName} fix failed:`, result.reason);
+            console.error(`ERROR: ${fixName} fix failed:`, result.reason);
           }
       });
 
@@ -48,7 +48,7 @@ class Auth401ErrorFix {
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Failed to apply comprehensive fix:', error);
+        console.error('ERROR: Failed to apply comprehensive fix:', error);
       }
 
     console.groupEnd();
@@ -80,7 +80,7 @@ class Auth401ErrorFix {
         });
 
         if (import.meta.env.DEV) {
-          console.log('✅ Expired tokens cleared');
+          console.log('Expired tokens cleared');
         return true;
       }
 
@@ -91,21 +91,21 @@ class Auth401ErrorFix {
         try {
           await tokenManager.refreshToken();
           if (import.meta.env.DEV) {
-            console.log('✅ Token refreshed successfully');
+            console.log('Token refreshed successfully');
           return true;
         } catch (error) {
           if (import.meta.env.DEV) {
-            console.warn('⚠️ Token refresh failed, clearing tokens:', error.message);
+            console.warn('WARNING: Token refresh failed, clearing tokens:', error.message);
           await tokenManager.clearTokens();
           return true;
         }
 
       if (import.meta.env.DEV) {
-        console.log('✅ Token manager state is valid');
+        console.log('Token manager state is valid');
       return true;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Token manager fix failed:', error);
+        console.error('ERROR: Token manager fix failed:', error);
       return false;
     }
 
@@ -141,12 +141,12 @@ class Auth401ErrorFix {
                 console.log('🔄 Restoring auth state from localStorage...');
               await authStore.validateAndSyncAuthState();
               if (import.meta.env.DEV) {
-                console.log('✅ Auth state restored');
+                console.log('Auth state restored');
               return true;
             }
           } catch (parseError) {
             if (import.meta.env.DEV) {
-              console.warn('⚠️ Failed to parse stored auth data:', parseError);
+              console.warn('WARNING: Failed to parse stored auth data:', parseError);
             }
 
         // If restoration failed, clear everything
@@ -154,7 +154,7 @@ class Auth401ErrorFix {
           console.log('🧹 Clearing corrupted auth state...');
         authStore.clearAuth();
         if (import.meta.env.DEV) {
-          console.log('✅ Auth state cleared');
+          console.log('Auth state cleared');
         return true;
       }
 
@@ -164,16 +164,16 @@ class Auth401ErrorFix {
           console.log('🧹 Clearing leftover auth data...');
         authStore.clearAuth();
         if (import.meta.env.DEV) {
-          console.log('✅ Leftover auth data cleared');
+          console.log('Leftover auth data cleared');
         return true;
       }
 
       if (import.meta.env.DEV) {
-        console.log('✅ Auth store state is consistent');
+        console.log('Auth store state is consistent');
       return true;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Auth store fix failed:', error);
+        console.error('ERROR: Auth store fix failed:', error);
       return false;
     }
 
@@ -204,22 +204,22 @@ class Auth401ErrorFix {
 
         if (!authStore.isAuthenticated) {
           if (import.meta.env.DEV) {
-            console.log('✅ SSE disconnected (not authenticated)');
+            console.log('SSE disconnected (not authenticated)');
           sseManager.disconnect();
           return true;
         }
 
         if (import.meta.env.DEV) {
-          console.log('✅ SSE connection state checked');
+          console.log('SSE connection state checked');
         return true;
       }
 
       if (import.meta.env.DEV) {
-        console.log('✅ No SSE connection manager found');
+        console.log('No SSE connection manager found');
       return true;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ SSE connection fix failed:', error);
+        console.error('ERROR: SSE connection fix failed:', error);
       return false;
     }
 
@@ -278,22 +278,22 @@ class Auth401ErrorFix {
           }
 
           if (import.meta.env.DEV) {
-            console.log('✅ API 401 error interceptor added');
+            console.log('API 401 error interceptor added');
           }
         } else {
           if (import.meta.env.DEV) {
-            console.log('✅ API 401 error interceptor already exists');
+            console.log('API 401 error interceptor already exists');
           }
 
         return true;
       }
 
       if (import.meta.env.DEV) {
-        console.log('✅ No axios instance found');
+        console.log('No axios instance found');
       return true;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ API error handling fix failed:', error);
+        console.error('ERROR: API error handling fix failed:', error);
       return false;
     }
 
@@ -326,11 +326,11 @@ class Auth401ErrorFix {
           }
 
           if (import.meta.env.DEV) {
-            console.log('✅ Graceful logout completed');
+            console.log('Graceful logout completed');
           }
         } catch (error) {
           if (import.meta.env.DEV) {
-            console.error('❌ Graceful logout failed:', error);
+            console.error('ERROR: Graceful logout failed:', error);
           }
           // Fallback: hard redirect
           window.location.href = '/login';
@@ -338,11 +338,11 @@ class Auth401ErrorFix {
       };
 
       if (import.meta.env.DEV) {
-        console.log('✅ Graceful logout implemented');
+        console.log('Graceful logout implemented');
       return true;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Graceful logout implementation failed:', error);
+        console.error('ERROR: Graceful logout implementation failed:', error);
       return false;
     }
 
@@ -373,7 +373,7 @@ class Auth401ErrorFix {
    * Diagnose current 401 error state
    */
   async diagnose401Errors() {
-    console.group('🔍 Diagnosing 401 Error State');
+    console.group('Diagnosing 401 Error State');
 
     try {
       // Check auth state
@@ -445,18 +445,18 @@ class Auth401ErrorFix {
         console.log('5️⃣ Recommendations:');
       if (tokenStatus.isExpired) {
         if (import.meta.env.DEV) {
-          console.log('  ⚠️ Token is expired - clear auth state');
+          console.log('  WARNING: Token is expired - clear auth state');
       if (authStore.isAuthenticated && !tokenStatus.hasToken) {
         if (import.meta.env.DEV) {
-          console.log('  ⚠️ Auth state inconsistent - sync or clear');
+          console.log('  WARNING: Auth state inconsistent - sync or clear');
       if (tokenStatus.refreshTokenExpired) {
         if (import.meta.env.DEV) {
-          console.log('  ⚠️ Refresh token expired - require login');
+          console.log('  WARNING: Refresh token expired - require login');
         }
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Diagnosis failed:', error);
+        console.error('ERROR: Diagnosis failed:', error);
       }
 
     console.groupEnd();
@@ -500,13 +500,13 @@ if (typeof window !== 'undefined') {
   window.gracefulLogout = async (message) => auth401ErrorFix.performGracefulLogout(message);
 
   if (import.meta.env.DEV) {
-    console.log('🔧 Auth 401 Error Fix loaded');
+    console.log('Auth 401 Error Fix loaded');
   if (import.meta.env.DEV) {
-    console.log('💡 Use window.fix401Errors() to apply comprehensive fix');
+    console.log('Use window.fix401Errors() to apply comprehensive fix');
   if (import.meta.env.DEV) {
-    console.log('💡 Use window.diagnose401() to diagnose current state');
+    console.log('Use window.diagnose401() to diagnose current state');
   if (import.meta.env.DEV) {
-    console.log('💡 Use window.gracefulLogout() for clean logout');
+    console.log('Use window.gracefulLogout() for clean logout');
   }
 
 export default auth401ErrorFix; 

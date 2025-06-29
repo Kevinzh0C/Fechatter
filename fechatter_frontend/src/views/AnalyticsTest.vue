@@ -1,7 +1,7 @@
 <template>
   <div class="analytics-test-container">
     <div class="test-header">
-      <h1>📊 Analytics Batch Testing</h1>
+      <h1>Analytics Batch Testing</h1>
       <p>Test the Analytics client batch sending mechanism and various event types</p>
     </div>
 
@@ -33,7 +33,7 @@
 
       <!-- Quick Actions -->
       <div class="test-card">
-        <h3>⚡ Quick Actions</h3>
+        <h3>Quick Actions</h3>
         <div class="action-buttons">
           <button @click="sendSingleEvent" class="btn btn-primary">
             Send Single Event
@@ -52,7 +52,7 @@
 
       <!-- Event Type Testing -->
       <div class="test-card full-width">
-        <h3>🎯 Event Type Testing</h3>
+        <h3>Event Type Testing</h3>
         <div class="event-type-grid">
           <button 
             v-for="eventType in eventTypes" 
@@ -69,7 +69,7 @@
 
       <!-- Performance Testing -->
       <div class="test-card">
-        <h3>🚀 Performance Testing</h3>
+        <h3>Performance Testing</h3>
         <div class="perf-controls">
           <div class="input-group">
             <label>Event Count:</label>
@@ -102,7 +102,7 @@
 
       <!-- Event Log -->
       <div class="test-card full-width">
-        <h3>📝 Event Log</h3>
+        <h3>Event Log</h3>
         <div class="log-controls">
           <button @click="clearLog" class="btn btn-small">Clear Log</button>
           <label class="checkbox-label">
@@ -149,12 +149,12 @@ const perfResults = ref(null)
 
 // Event types for testing
 const eventTypes = ref([
-  { name: 'App Start', icon: '🚀', category: 'system', event: 'app_start', data: {} },
+  { name: 'App Start', icon: '', category: 'system', event: 'app_start', data: {} },
   { name: 'User Login', icon: '🔐', category: 'auth', event: 'user_login', data: { email: 'test@example.com', login_method: 'password' } },
   { name: 'Message Sent', icon: '💬', category: 'chat', event: 'message_sent', data: { chat_id: 'test_chat', message_type: 'text', message_size: 50 } },
   { name: 'Navigation', icon: '🧭', category: 'navigation', event: 'navigation', data: { from: 'home', to: 'chat', duration_ms: 250 } },
   { name: 'File Upload', icon: '📁', category: 'file', event: 'file_uploaded', data: { file_type: 'image', file_size: 1024000, upload_method: 'drag_drop' } },
-  { name: 'Search', icon: '🔍', category: 'search', event: 'search_performed', data: { search_type: 'messages', query_length: 10, results_count: 5 } },
+  { name: 'Search', icon: '', category: 'search', event: 'search_performed', data: { search_type: 'messages', query_length: 10, results_count: 5 } },
   { name: 'Error', icon: '❌', category: 'error', event: 'error_occurred', data: { error_type: 'network', error_code: '500', error_message: 'Server error' } },
   { name: 'Bot Response', icon: '🤖', category: 'ai', event: 'bot_response', data: { bot_id: 'gpt-4', response_type: 'chat', response_time_ms: 1500, success: true } }
 ])

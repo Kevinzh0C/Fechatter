@@ -1,6 +1,6 @@
 /**
- * 🎯 Enhanced Bot Service - 增强Bot服务
- * 扩展原有botService，提供完整的Bot管理功能
+ * Enhanced Bot Service
+ * Extends the original botService to provide comprehensive Bot management functionality
  */
 
 import { BotService } from './botService'
@@ -11,17 +11,17 @@ export class EnhancedBotService extends BotService {
   constructor() {
     super()
 
-    // 增强功能配置
+    // Enhanced functionality configuration
     this.analysisTypes = ['sentiment', 'topic', 'intent', 'comprehensive']
     this.summaryStyles = ['brief', 'detailed', 'bullet-points', 'academic']
     this.customBotTypes = ['analyzer', 'summarizer', 'responder', 'translator']
 
-    // 缓存配置
-    this.cacheTimeout = 24 * 60 * 60 * 1000 // 24小时
+    // Cache configuration
+    this.cacheTimeout = 24 * 60 * 60 * 1000 // 24 hours
     this.analysisCache = new Map()
     this.summaryCache = new Map()
 
-    // 性能监控
+    // Performance monitoring
     this.performanceMetrics = {
       translationRequests: 0,
       analysisRequests: 0,
@@ -32,11 +32,11 @@ export class EnhancedBotService extends BotService {
   }
 
   // ================================
-  // 🎯 Translation Service Enhancement
+  // Translation Service Enhancement
   // ================================
 
   /**
-   * 增强翻译功能 - 支持缓存、批量翻译、质量评估
+   * Enhanced translation functionality - supports caching, batch translation, quality assessment
    */
   async translateMessage(messageId, targetLang, options = {}) {
     const startTime = Date.now()
@@ -51,7 +51,7 @@ export class EnhancedBotService extends BotService {
     }
 
     try {
-      // 检查缓存
+      // Check cache
       if (enhancedOptions.cacheResult) {
         const cachedResult = await this.getCachedTranslation(messageId, targetLang)
         if (cachedResult) {
@@ -60,10 +60,10 @@ export class EnhancedBotService extends BotService {
         }
       }
 
-      // 执行翻译
+      // Execute translation
       const result = await super.translateMessage(messageId, targetLang)
 
-      // 增强结果处理
+      // Enhanced result processing
       const enhancedResult = {
         ...result,
         cached: false,
@@ -79,7 +79,7 @@ export class EnhancedBotService extends BotService {
         }
       }
 
-      // 缓存结果
+      // Cache result
       if (enhancedOptions.cacheResult) {
         await this.cacheTranslation(messageId, targetLang, enhancedResult)
       }
@@ -94,7 +94,7 @@ export class EnhancedBotService extends BotService {
   }
 
   /**
-   * 批量翻译消息
+   * Batch translate messages
    */
   async translateMessagesBatch(messageIds, targetLang, options = {}) {
     const batchSize = options.batchSize || 5
@@ -125,21 +125,21 @@ export class EnhancedBotService extends BotService {
   }
 
   // ================================
-  // 🎯 AI Analysis Service
+  // AI Analysis Service
   // ================================
 
   /**
-   * AI消息分析 - 支持多种分析类型
+   * AI message analysis - supports multiple analysis types
    */
   async analyzeMessage(messageId, analysisType = 'comprehensive', options = {}) {
     const startTime = Date.now()
 
-    // 验证分析类型
+    // Validate analysis type
     if (!this.analysisTypes.includes(analysisType)) {
       throw new Error(`Invalid analysis type: ${analysisType}`)
     }
 
-    // 检查缓存
+    // Check cache
     const cacheKey = `${messageId}-${analysisType}`
     if (options.useCache !== false) {
       const cached = this.analysisCache.get(cacheKey)
@@ -173,7 +173,7 @@ export class EnhancedBotService extends BotService {
         rawData: options.includeRawData ? response.data : null
       }
 
-      // 缓存结果
+      // Cache result
       if (options.useCache !== false) {
         this.analysisCache.set(cacheKey, {
           result,
@@ -191,7 +191,7 @@ export class EnhancedBotService extends BotService {
   }
 
   /**
-   * 批量分析消息
+   * Batch analyze messages
    */
   async analyzeMessagesBatch(messageIds, analysisType = 'comprehensive', options = {}) {
     try {
@@ -217,21 +217,21 @@ export class EnhancedBotService extends BotService {
   }
 
   // ================================
-  // 🎯 AI Summary Service
+  // AI Summary Service
   // ================================
 
   /**
-   * AI消息总结 - 支持多种总结风格
+   * AI message summarization - supports multiple summary styles
    */
   async summarizeMessage(messageId, style = 'brief', options = {}) {
     const startTime = Date.now()
 
-    // 验证总结风格
+    // Validate summary style
     if (!this.summaryStyles.includes(style)) {
       throw new Error(`Invalid summary style: ${style}`)
     }
 
-    // 检查缓存
+    // Check cache
     const cacheKey = `${messageId}-${style}`
     if (options.useCache !== false) {
       const cached = this.summaryCache.get(cacheKey)
@@ -265,7 +265,7 @@ export class EnhancedBotService extends BotService {
         }
       }
 
-      // 缓存结果
+      // Cache result
       if (options.useCache !== false) {
         this.summaryCache.set(cacheKey, {
           result,
@@ -283,7 +283,7 @@ export class EnhancedBotService extends BotService {
   }
 
   /**
-   * 对话总结 - 总结整个对话
+   * Conversation summary - summarize entire conversation
    */
   async summarizeConversation(chatId, options = {}) {
     try {
@@ -314,11 +314,11 @@ export class EnhancedBotService extends BotService {
   }
 
   // ================================
-  // 🎯 Custom Bot Management
+  // Custom Bot Management
   // ================================
 
   /**
-   * 创建自定义Bot
+   * Create custom bot
    */
   async createCustomBot(botConfig) {
     try {
@@ -340,7 +340,7 @@ export class EnhancedBotService extends BotService {
   }
 
   /**
-   * 更新自定义Bot
+   * Update custom bot
    */
   async updateCustomBot(botId, updates) {
     try {
@@ -356,7 +356,7 @@ export class EnhancedBotService extends BotService {
   }
 
   /**
-   * 删除自定义Bot
+   * Delete custom bot
    */
   async deleteCustomBot(botId) {
     try {
@@ -369,7 +369,7 @@ export class EnhancedBotService extends BotService {
   }
 
   /**
-   * 获取自定义Bot列表
+   * Get custom bot list
    */
   async getCustomBots() {
     try {
@@ -385,11 +385,11 @@ export class EnhancedBotService extends BotService {
   }
 
   // ================================
-  // 🎯 Bot Configuration Management
+  // Bot Configuration Management
   // ================================
 
   /**
-   * 更新Bot配置
+   * Update bot configuration
    */
   async updateBotConfig(botType, config) {
     try {
@@ -401,7 +401,7 @@ export class EnhancedBotService extends BotService {
   }
 
   /**
-   * 获取Bot状态
+   * Get bot status
    */
   async getBotStatus() {
     try {
@@ -422,11 +422,11 @@ export class EnhancedBotService extends BotService {
   }
 
   // ================================
-  // 🎯 Utility Methods
+  // Utility Methods
   // ================================
 
   /**
-   * 缓存翻译结果
+   * Cache translation result
    */
   async cacheTranslation(messageId, targetLang, result) {
     const key = `${messageId}-${targetLang}`
@@ -444,7 +444,7 @@ export class EnhancedBotService extends BotService {
   }
 
   /**
-   * 获取缓存的翻译结果
+   * Get cached translation result
    */
   async getCachedTranslation(messageId, targetLang) {
     const key = `${messageId}-${targetLang}`
@@ -467,10 +467,10 @@ export class EnhancedBotService extends BotService {
   }
 
   /**
-   * 估算翻译置信度
+   * Estimate translation confidence
    */
   estimateConfidence(result) {
-    // 简单的置信度估算算法
+    // Simple confidence estimation algorithm
     const textLength = result.translation?.length || 0
     const sourceLength = result.source_text?.length || 0
 
@@ -484,24 +484,24 @@ export class EnhancedBotService extends BotService {
   }
 
   /**
-   * 生成翻译替代方案
+   * Generate translation alternatives
    */
   async generateAlternatives(result) {
-    // TODO: 实现替代翻译生成
+    // TODO: Implement alternative translation generation
     return []
   }
 
   /**
-   * 计算翻译质量分数
+   * Calculate translation quality score
    */
   calculateQualityScore(result) {
     const confidence = result.confidence || 0.7
     const length = result.translation?.length || 0
 
-    // 简单的质量评分算法
+    // Simple quality scoring algorithm
     let score = confidence * 100
 
-    // 长度调整
+    // Length adjustment
     if (length < 10) score *= 0.9
     if (length > 500) score *= 0.95
 
@@ -509,7 +509,7 @@ export class EnhancedBotService extends BotService {
   }
 
   /**
-   * 更新性能指标
+   * Update performance metrics
    */
   updatePerformanceMetrics(type, responseTime, success) {
     const metrics = this.performanceMetrics
@@ -517,7 +517,7 @@ export class EnhancedBotService extends BotService {
 
     metrics[field]++
 
-    // 更新平均响应时间
+    // Update average response time
     const totalRequests = metrics.translationRequests +
       metrics.analysisRequests +
       metrics.summaryRequests
@@ -525,7 +525,7 @@ export class EnhancedBotService extends BotService {
     metrics.averageResponseTime =
       (metrics.averageResponseTime * (totalRequests - 1) + responseTime) / totalRequests
 
-    // 更新错误率
+    // Update error rate
     if (!success) {
       const totalErrors = metrics.errorRate * (totalRequests - 1) + 1
       metrics.errorRate = totalErrors / totalRequests
@@ -535,20 +535,20 @@ export class EnhancedBotService extends BotService {
   }
 
   /**
-   * 获取性能指标
+   * Get performance metrics
    */
   getPerformanceMetrics() {
     return { ...this.performanceMetrics }
   }
 
   /**
-   * 清理缓存
+   * Clear cache
    */
   clearCache() {
     this.analysisCache.clear()
     this.summaryCache.clear()
 
-    // 清理localStorage中的翻译缓存
+    // Clear translation cache in localStorage
     const keys = Object.keys(localStorage)
     keys.forEach(key => {
       if (key.startsWith('translation_cache_')) {
@@ -558,10 +558,10 @@ export class EnhancedBotService extends BotService {
   }
 }
 
-// 创建增强服务实例
+// Create enhanced service instance
 export const enhancedBotService = new EnhancedBotService()
 
-// 导出到全局，便于调试
+// Export to global for debugging
 if (typeof window !== 'undefined') {
   window.enhancedBotService = enhancedBotService
 }

@@ -73,7 +73,7 @@ export class MessageUpdateDebouncer {
     }
     
     if (import.meta.env.DEV) {
-      console.log(`✅ [Debouncer] Executing update from ${update.source} for chat ${chatId}`);
+      console.log(`[Debouncer] Executing update from ${update.source} for chat ${chatId}`);
     }
     
     // Execute the update

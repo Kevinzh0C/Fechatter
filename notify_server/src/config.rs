@@ -254,7 +254,7 @@ impl AppConfig {
     // Check file permissions: should be owner read/write only (600) or owner/group read (640)
     if mode & 0o077 != 0 {
       eprintln!(
-        "⚠️  WARNING: Config file {} has overly permissive permissions ({:o}). \
+        "WARNING: WARNING: Config file {} has overly permissive permissions ({:o}). \
         Consider using 'chmod 600 {}' for better security.",
         path.display(),
         mode & 0o777,
@@ -280,7 +280,7 @@ impl AppConfig {
   fn apply_env_overrides(config: &mut Self) -> Result<()> {
     // Database URL override
     if let Ok(db_url) = std::env::var("DATABASE_URL") {
-      eprintln!("📝 notify_server: Using DATABASE_URL from environment");
+      eprintln!("notify_server: Using DATABASE_URL from environment");
       config.server.db_url = db_url;
     }
 
@@ -289,14 +289,14 @@ impl AppConfig {
       match port_str.parse::<u16>() {
         Ok(port) => {
           eprintln!(
-            "📝 notify_server: Using NOTIFY_PORT from environment: {}",
+            "notify_server: Using NOTIFY_PORT from environment: {}",
             port
           );
           config.server.port = port;
         }
         Err(e) => {
           eprintln!(
-            "⚠️  WARNING: Invalid NOTIFY_PORT value '{}': {}",
+            "WARNING: WARNING: Invalid NOTIFY_PORT value '{}': {}",
             port_str, e
           );
         }
@@ -305,14 +305,14 @@ impl AppConfig {
 
     // NATS URL override
     if let Ok(nats_url) = std::env::var("NATS_URL") {
-      eprintln!("📝 notify_server: Using NATS_URL from environment");
+      eprintln!("notify_server: Using NATS_URL from environment");
       config.messaging.nats.url = nats_url;
     }
 
     // Log level
     if let Ok(log_level) = std::env::var("RUST_LOG") {
       eprintln!(
-        "📝 notify_server: Using RUST_LOG from environment: {}",
+        "notify_server: Using RUST_LOG from environment: {}",
         log_level
       );
     }
@@ -465,7 +465,7 @@ impl AppConfig {
 
     // Print warnings
     for warning in &warnings {
-      eprintln!("⚠️  Production Warning: {}", warning);
+      eprintln!("WARNING: Production Warning: {}", warning);
     }
 
     // If there are errors, return failure
@@ -474,7 +474,7 @@ impl AppConfig {
     }
 
     if warnings.is_empty() {
-      eprintln!("✅ Configuration appears production-ready");
+      eprintln!("Configuration appears production-ready");
     }
 
     Ok(())
@@ -483,29 +483,29 @@ impl AppConfig {
 
 impl TokenConfigProvider for AuthConfig {
   fn get_encoding_key_pem(&self) -> &str {
-    // 🔧 FIX: notify-server should NOT need encoding key (private key)
+    // FIX: notify-server should NOT need encoding key (private key)
     // It only needs to verify tokens, not create them
     // Return empty string to indicate this service doesn't encode
     ""
   }
 
   fn get_decoding_key_pem(&self) -> &str {
-    // 🔧 CORRECT: Use public key for token verification
+    // CORRECT: Use public key for token verification
     &self.pk
   }
 
   fn get_jwt_audience(&self) -> Option<&str> {
-    // 🔧 CRITICAL: Use same audience as fechatter-server
+    // CRITICAL: Use same audience as fechatter-server
     Some("fechatter-web")
   }
 
   fn get_jwt_issuer(&self) -> Option<&str> {
-    // 🔧 CRITICAL: Use same issuer as fechatter-server
+    // CRITICAL: Use same issuer as fechatter-server
     Some("fechatter-server")
   }
 
   fn get_jwt_leeway(&self) -> u64 {
-    // 🔧 CRITICAL: Use same leeway as fechatter-server
+    // CRITICAL: Use same leeway as fechatter-server
     60
   }
 }

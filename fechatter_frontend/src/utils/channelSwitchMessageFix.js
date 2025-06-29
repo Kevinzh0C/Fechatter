@@ -15,7 +15,7 @@ class ChannelSwitchMessageFix {
    * Apply comprehensive channel switch message fix
    */
   async applyChannelSwitchFix() {
-    console.group('🔧 Applying Channel Switch Message Fix');
+    console.group('Applying Channel Switch Message Fix');
 
     try {
       const fixes = [
@@ -32,11 +32,11 @@ class ChannelSwitchMessageFix {
         const fixName = ['route watcher timing', 'chat store state clear', 'message cache invalidation', 'state logging', 'concurrent loading prevention'][index];
         if (result.status === 'fulfilled') {
           if (import.meta.env.DEV) {
-            console.log(`✅ ${fixName} fix applied`);
+            console.log(`${fixName} fix applied`);
           }
         } else {
           if (import.meta.env.DEV) {
-            console.error(`❌ ${fixName} fix failed:`, result.reason);
+            console.error(`ERROR: ${fixName} fix failed:`, result.reason);
           }
       });
 
@@ -47,7 +47,7 @@ class ChannelSwitchMessageFix {
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Failed to apply channel switch fix:', error);
+        console.error('ERROR: Failed to apply channel switch fix:', error);
       }
 
     console.groupEnd();
@@ -58,7 +58,7 @@ class ChannelSwitchMessageFix {
    */
   async fixRouteWatcherTiming() {
     if (import.meta.env.DEV) {
-      console.log('🔧 Applying route watcher timing fix...');
+      console.log('Applying route watcher timing fix...');
     }
 
     // The fix is now in Chat.vue - enhanced route watcher with proper state clearing
@@ -72,7 +72,7 @@ class ChannelSwitchMessageFix {
    */
   async fixChatStoreStateClear() {
     if (import.meta.env.DEV) {
-      console.log('🔧 Applying chat store state clearing fix...');
+      console.log('Applying chat store state clearing fix...');
     }
 
     // The fix is now in chat.js - setCurrentChat always clears messages and cache
@@ -86,7 +86,7 @@ class ChannelSwitchMessageFix {
    */
   async fixMessageCacheInvalidation() {
     if (import.meta.env.DEV) {
-      console.log('🔧 Applying message cache invalidation fix...');
+      console.log('Applying message cache invalidation fix...');
     }
 
     // Enhanced cache clearing in setCurrentChat to prevent stale data
@@ -100,7 +100,7 @@ class ChannelSwitchMessageFix {
    */
   async enhanceStateLogging() {
     if (import.meta.env.DEV) {
-      console.log('🔧 Enhancing state logging...');
+      console.log('Enhancing state logging...');
     }
 
     // Added comprehensive logging to track state changes
@@ -114,7 +114,7 @@ class ChannelSwitchMessageFix {
    */
   async preventConcurrentLoading() {
     if (import.meta.env.DEV) {
-      console.log('🔧 Preventing concurrent loading...');
+      console.log('Preventing concurrent loading...');
     }
 
     // Added isLoadingChat flag to prevent concurrent loads
@@ -154,7 +154,7 @@ class ChannelSwitchMessageFix {
 
       if (availableChats.length < 2) {
         if (import.meta.env.DEV) {
-          console.warn('⚠️ Need at least 2 channels to test switching. Available:', availableChats.length);
+          console.warn('WARNING: Need at least 2 channels to test switching. Available:', availableChats.length);
         return false;
       }
 
@@ -198,24 +198,24 @@ class ChannelSwitchMessageFix {
         console.log('\n5️⃣ Switch Test Results:');
       const switchWorked = chatStore.currentChatId === chat2.id;
       if (import.meta.env.DEV) {
-        console.log('  - Chat ID switched correctly:', switchWorked ? '✅' : '❌');
+        console.log('  - Chat ID switched correctly:', switchWorked ? '' : '❌');
       if (import.meta.env.DEV) {
-        console.log('  - Messages updated:', messages1Count !== messages2Count ? '✅' : '⚠️');
+        console.log('  - Messages updated:', messages1Count !== messages2Count ? '' : '⚠️');
       }
 
       if (switchWorked) {
         if (import.meta.env.DEV) {
-          console.log('✅ Channel switching appears to be working correctly');
+          console.log('Channel switching appears to be working correctly');
         return true;
       } else {
         if (import.meta.env.DEV) {
-          console.error('❌ Channel switching failed - chat ID not updated');
+          console.error('ERROR: Channel switching failed - chat ID not updated');
         return false;
       }
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Channel switch test failed:', error);
+        console.error('ERROR: Channel switch test failed:', error);
       return false;
     } finally {
       console.groupEnd();
@@ -226,7 +226,7 @@ class ChannelSwitchMessageFix {
    */
   monitorChannelSwitchPerformance() {
     if (import.meta.env.DEV) {
-      console.log('📊 Starting channel switch performance monitoring...');
+      console.log('Starting channel switch performance monitoring...');
     }
 
     let lastSwitchTime = 0;
@@ -254,7 +254,7 @@ class ChannelSwitchMessageFix {
 
     setTimeout(() => {
       if (import.meta.env.DEV) {
-        console.log('📊 Performance monitoring stopped');
+        console.log('Performance monitoring stopped');
       if (import.meta.env.DEV) {
         console.log(`📈 Total switches monitored: ${switchCount}`);
       }
@@ -287,13 +287,13 @@ if (typeof window !== 'undefined') {
   window.monitorChannelSwitch = () => channelSwitchMessageFix.monitorChannelSwitchPerformance();
 
   if (import.meta.env.DEV) {
-    console.log('🔧 Channel Switch Message Fix loaded');
+    console.log('Channel Switch Message Fix loaded');
   if (import.meta.env.DEV) {
-    console.log('💡 Use window.fixChannelSwitch() to apply comprehensive fix');
+    console.log('Use window.fixChannelSwitch() to apply comprehensive fix');
   if (import.meta.env.DEV) {
-    console.log('💡 Use window.testChannelSwitch() to test channel switching');
+    console.log('Use window.testChannelSwitch() to test channel switching');
   if (import.meta.env.DEV) {
-    console.log('💡 Use window.monitorChannelSwitch() to monitor performance');
+    console.log('Use window.monitorChannelSwitch() to monitor performance');
   }
 
 export default channelSwitchMessageFix; 

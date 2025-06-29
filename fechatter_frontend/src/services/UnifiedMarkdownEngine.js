@@ -1,11 +1,11 @@
 /**
- * 🎯 Unified Markdown Engine
+ * Unified Markdown Engine
  * 
- * 统一的 Markdown 处理引擎，集成：
- * - Shiki 代码高亮
- * - KaTeX 数学公式渲染
- * - 标准 Markdown 格式化
- * - 实时预览同步
+ * Unified Markdown processing engine, integrating:
+ * - Shiki code highlighting
+ * - KaTeX math formula rendering
+ * - Standard Markdown formatting
+ * - Real-time preview synchronization
  */
 
 import { unified } from 'unified';
@@ -50,13 +50,13 @@ export class UnifiedMarkdownEngine {
   }
 
   /**
-   * 初始化引擎
+   * Initialize engine
    */
   async initialize() {
     if (this.isInitialized) return;
 
     try {
-      // 初始化 Shiki 高亮器
+      // Initialize Shiki highlighter
       this.highlighter = await createHighlighter({
         themes: ['vitesse-light', 'one-dark-pro'],
         langs: [
@@ -67,32 +67,32 @@ export class UnifiedMarkdownEngine {
         ]
       });
 
-      // 创建统一的 Markdown 处理器
+      // Create unified Markdown processor
       this.processor = unified()
         .use(remarkParse)
         .use(remarkGfm)
         .use(remarkBreaks)
-        .use(remarkMath) // 数学公式支持
+        .use(remarkMath) // Math formula support
         .use(remarkRehype, { allowDangerousHtml: false })
-        .use(rehypeKatex, { // KaTeX 数学公式渲染
+        .use(rehypeKatex, { // KaTeX math formula rendering
           displayMode: false,
           throwOnError: false,
           errorColor: '#cc0000'
         })
-        .use(this.createShikiPlugin()) // 自定义 Shiki 插件
+        .use(this.createShikiPlugin()) // Custom Shiki plugin
         .use(rehypeSanitize, this.createSanitizeSchema())
         .use(rehypeStringify);
 
       this.isInitialized = true;
-      console.log('✅ UnifiedMarkdownEngine initialized');
+      console.log('UnifiedMarkdownEngine initialized');
     } catch (error) {
-      console.error('❌ Failed to initialize UnifiedMarkdownEngine:', error);
+      console.error('ERROR: Failed to initialize UnifiedMarkdownEngine:', error);
       throw error;
     }
   }
 
   /**
-   * 渲染 Markdown 内容（用于消息显示）
+   * Render Markdown content (for message display)
    */
   async renderMarkdown(content, options = {}) {
     await this.initialize();
@@ -131,7 +131,7 @@ export class UnifiedMarkdownEngine {
       return html;
 
     } catch (error) {
-      console.error('❌ Markdown rendering failed:', error);
+      console.error('ERROR: Markdown rendering failed:', error);
       // 返回安全的纯文本
       return `<p>${this.escapeHtml(content)}</p>`;
     }
@@ -168,7 +168,7 @@ export class UnifiedMarkdownEngine {
       return html;
 
     } catch (error) {
-      console.error('❌ Preview rendering failed:', error);
+      console.error('ERROR: Preview rendering failed:', error);
       return `<p>${this.escapeHtml(content)}</p>`;
     }
   }

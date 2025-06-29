@@ -66,7 +66,7 @@ class SearchApiTest {
    */
   async testDirectApiCall(chatId, query) {
     try {
-      console.log('📡 Testing direct API call...');
+      console.log('SUBSCRIPTION: Testing direct API call...');
 
       const token = localStorage.getItem('auth_token') || window.tokenManager?.getAccessToken();
 
@@ -79,7 +79,7 @@ class SearchApiTest {
         }
       });
 
-      console.log('📡 Direct API Response:', {
+      console.log('SUBSCRIPTION: Direct API Response:', {
         status: response.status,
         statusText: response.statusText,
         headers: Object.fromEntries(response.headers.entries())
@@ -87,7 +87,7 @@ class SearchApiTest {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('📡 Direct API Data:', data);
+        console.log('SUBSCRIPTION: Direct API Data:', data);
         this.addResult('Direct API Call', 'PASS', `Returned ${data.data?.hits?.length || 0} results`);
       } else {
         const errorText = await response.text();
@@ -103,7 +103,7 @@ class SearchApiTest {
    */
   async testSearchService(chatId, query) {
     try {
-      console.log('🔍 Testing SearchService...');
+      console.log('Testing SearchService...');
 
       const result = await searchService.searchInChat({
         chatId,
@@ -111,7 +111,7 @@ class SearchApiTest {
         limit: 5
       });
 
-      console.log('🔍 SearchService Result:', result);
+      console.log('SearchService Result:', result);
 
       if (result && typeof result === 'object') {
         const hitCount = result.hits?.length || 0;
@@ -162,7 +162,7 @@ class SearchApiTest {
     this.testResults.push(result);
 
     const statusEmoji = {
-      'PASS': '✅',
+      'PASS': '',
       'FAIL': '❌',
       'ERROR': '🚨'
     };
@@ -174,22 +174,22 @@ class SearchApiTest {
    * 打印测试结果摘要
    */
   printResults() {
-    console.log('\n📊 Search API Test Results Summary:');
+    console.log('\nSearch API Test Results Summary:');
     console.log('=====================================');
 
     const passed = this.testResults.filter(r => r.status === 'PASS').length;
     const failed = this.testResults.filter(r => r.status === 'FAIL').length;
     const errors = this.testResults.filter(r => r.status === 'ERROR').length;
 
-    console.log(`✅ Passed: ${passed}`);
-    console.log(`❌ Failed: ${failed}`);
+    console.log(`Passed: ${passed}`);
+    console.log(`ERROR: Failed: ${failed}`);
     console.log(`🚨 Errors: ${errors}`);
     console.log(`📋 Total: ${this.testResults.length}`);
 
     if (failed === 0 && errors === 0) {
       console.log('\n🎉 All tests passed! Search functionality should work correctly.');
     } else {
-      console.log('\n⚠️ Some tests failed. Check the details above.');
+      console.log('\nWARNING: Some tests failed. Check the details above.');
     }
   }
 
@@ -202,26 +202,26 @@ class SearchApiTest {
 
     // 检查1: 认证
     const token = localStorage.getItem('auth_token') || window.tokenManager?.getAccessToken();
-    console.log('🔐 Auth Token:', token ? '✅ Present' : '❌ Missing');
+    console.log('🔐 Auth Token:', token ? 'Present' : 'ERROR: Missing');
 
     // 检查2: Chat ID
-    console.log('💬 Chat ID:', chatId ? `✅ ${chatId}` : '❌ Missing');
+    console.log('MESSAGE: Chat ID:', chatId ? `${chatId}` : 'ERROR: Missing');
 
     // 检查3: Query
-    console.log('🔍 Query:', query ? `✅ "${query}"` : '❌ Empty');
+    console.log('Query:', query ? `"${query}"` : 'ERROR: Empty');
 
     // 检查4: SearchService
     try {
-      console.log('🔧 SearchService:', searchService ? '✅ Available' : '❌ Not found');
+      console.log('SearchService:', searchService ? 'Available' : 'ERROR: Not found');
     } catch (error) {
-      console.log('🔧 SearchService: ❌ Error -', error.message);
+      console.log('SearchService: ERROR: Error -', error.message);
     }
 
     // 检查5: API服务
     try {
-      console.log('📡 API Service:', api ? '✅ Available' : '❌ Not found');
+      console.log('SUBSCRIPTION: API Service:', api ? 'Available' : 'ERROR: Not found');
     } catch (error) {
-      console.log('📡 API Service: ❌ Error -', error.message);
+      console.log('SUBSCRIPTION: API Service: ERROR: Error -', error.message);
     }
   }
 }

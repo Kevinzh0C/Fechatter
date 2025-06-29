@@ -22,7 +22,7 @@ app.use((req, res, next) => {
 });
 
 // ================================
-// 🎯 Bot API Endpoints
+// Bot API Endpoints
 // ================================
 
 // GET /api/bot/languages - Get supported languages
@@ -219,7 +219,7 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 [Bot Mock API] Server running on http://localhost:${PORT}`);
+  console.log(`[Bot Mock API] Server running on http://localhost:${PORT}`);
   console.log(`📋 Available endpoints:`);
   console.log(`   GET  /api/bot/languages`);
   console.log(`   POST /api/bot/translate`);

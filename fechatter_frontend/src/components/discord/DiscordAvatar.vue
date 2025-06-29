@@ -258,7 +258,7 @@ watch(() => props.src, () => {
 </script>
 
 <style scoped>
-/* 🎨 Discord头像容器 */
+/* Discord头像容器 */
 .discord-avatar-container {
   position: relative;
   display: inline-block;
@@ -269,7 +269,7 @@ watch(() => props.src, () => {
   cursor: pointer;
 }
 
-/* 🎯 头像尺寸 */
+/* 头像尺寸 */
 .size-small .discord-avatar {
   width: 24px;
   height: 24px;
@@ -294,7 +294,7 @@ watch(() => props.src, () => {
   font-size: 48px;
 }
 
-/* 🎯 头像主体 */
+/* 头像主体 */
 .discord-avatar {
   width: 40px;
   height: 40px;
@@ -316,7 +316,7 @@ watch(() => props.src, () => {
   box-shadow: var(--shadow-medium);
 }
 
-/* 🎯 头像图片 */
+/* 头像图片 */
 .avatar-image {
   width: 100%;
   height: 100%;
@@ -324,7 +324,7 @@ watch(() => props.src, () => {
   border-radius: 50%;
 }
 
-/* 🎯 文字头像 */
+/* 文字头像 */
 .avatar-text {
   font-weight: 600;
   font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -333,7 +333,7 @@ watch(() => props.src, () => {
   color: #ffffff;
 }
 
-/* 🎯 加载状态 */
+/* 加载状态 */
 .avatar-loading {
   position: absolute;
   inset: 0;
@@ -358,7 +358,7 @@ watch(() => props.src, () => {
   100% { transform: rotate(360deg); }
 }
 
-/* 🎯 状态指示器 */
+/* 状态指示器 */
 .status-indicator {
   position: absolute;
   bottom: -2px;
@@ -403,7 +403,7 @@ watch(() => props.src, () => {
   border-radius: 50%;
 }
 
-/* 🎯 状态颜色 */
+/* 状态颜色 */
 .status-online .status-dot {
   background-color: var(--status-online);
 }
@@ -420,7 +420,7 @@ watch(() => props.src, () => {
   background-color: var(--status-offline);
 }
 
-/* 🎯 徽章 */
+/* 徽章 */
 .avatar-badge {
   position: absolute;
   top: -4px;
@@ -489,7 +489,7 @@ watch(() => props.src, () => {
   padding: 0 10px;
 }
 
-/* 🎯 悬停效果 */
+/* 悬停效果 */
 .discord-avatar-container.clickable:hover .status-indicator {
   transform: scale(1.1);
 }
@@ -498,19 +498,19 @@ watch(() => props.src, () => {
   transform: scale(1.1);
 }
 
-/* 🎯 无障碍支持 */
+/* 无障碍支持 */
 .discord-avatar-container:focus {
   outline: 2px solid var(--border-focus);
   outline-offset: 2px;
   border-radius: 50%;
 }
 
-/* 🎯 动画 */
+/* 动画 */
 .discord-avatar-container {
   animation: discord-fade-in 0.2s ease-out;
 }
 
-/* 🎯 响应式 */
+/* 响应式 */
 @media (max-width: 768px) {
   .size-large .discord-avatar {
     width: 60px;
@@ -525,7 +525,7 @@ watch(() => props.src, () => {
   }
 }
 
-/* 🎯 高对比度模式 */
+/* 高对比度模式 */
 @media (prefers-contrast: high) {
   .discord-avatar {
     border-width: 3px;
@@ -536,7 +536,7 @@ watch(() => props.src, () => {
   }
 }
 
-/* 🎯 打印模式 */
+/* 打印模式 */
 @media print {
   .discord-avatar-container {
     break-inside: avoid;

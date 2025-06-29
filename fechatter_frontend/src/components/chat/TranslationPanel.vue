@@ -36,7 +36,7 @@
         <div class="message-preview">
           <div class="preview-label">Original Message:</div>
           <div class="preview-content">{{ truncatedContent }}</div>
-          <!-- 🔧 DEBUG: Show message info in development -->
+          <!-- DEBUG: Show message info in development -->
           <div v-if="isDev" class="debug-info">
             <small>Debug: ID={{ message.id }}, Length={{ (message.content || '').length }}</small>
           </div>
@@ -83,13 +83,13 @@
               Translate Again
             </button>
           </div>
-          <!-- 🔧 DEBUG: Show result info in development -->
+          <!-- DEBUG: Show result info in development -->
           <div v-if="isDev" class="debug-info">
             <small>Debug Result: Confidence={{ translationResult.confidence }}</small>
           </div>
         </div>
 
-        <!-- 🔧 DEBUG: Show state info in development -->
+        <!-- DEBUG: Show state info in development -->
         <div v-if="isDev" class="debug-state">
           <div class="debug-info">
             <small>
@@ -112,7 +112,7 @@ import { useNotifications } from '@/composables/useNotifications'
 import { useZIndex } from '@/utils/ZIndexManager'
 
 // ================================
-// 🎯 Props & Emits
+// Props & Emits
 // ================================
 
 const props = defineProps({
@@ -137,7 +137,7 @@ const emit = defineEmits([
 ])
 
 // ================================
-// 🎯 Composables & Stores
+// Composables & Stores
 // ================================
 
 const messageUIStore = useMessageUIStore()
@@ -145,7 +145,7 @@ const { notifySuccess, notifyError } = useNotifications()
 const { allocate: allocateZIndex, release: releaseZIndex } = useZIndex()
 
 // ================================
-// 🎯 Reactive State
+// Reactive State
 // ================================
 
 const panelRef = ref(null)
@@ -155,7 +155,7 @@ const selectedLanguage = ref('en')
 const componentId = ref(`translation-panel-${props.message.id}`)
 
 // ================================
-// 🎯 Computed Properties
+// Computed Properties
 // ================================
 
 const panelZIndex = computed(() => {
@@ -170,7 +170,7 @@ const panelZIndex = computed(() => {
 
 const quotaInfo = ref(botService.getQuotaInfo())
 
-// 🔧 FIXED: Reactive quota info that updates after translation
+// FIXED: Reactive quota info that updates after translation
 const updateQuotaInfo = () => {
   quotaInfo.value = botService.getQuotaInfo()
 }
@@ -183,7 +183,7 @@ const truncatedContent = computed(() => {
 const isDev = computed(() => import.meta.env.DEV)
 
 const panelStyle = computed(() => {
-  // 🎯 优化定位逻辑：直接使用Chat.vue计算的最优位置
+  // 优化定位逻辑：直接使用Chat.vue计算的最优位置
   const basePosition = props.position
   const panelWidth = 400
   const panelHeight = 500
@@ -232,7 +232,7 @@ const supportedLanguages = [
 ]
 
 // ================================
-// 🎯 Event Handlers
+// Event Handlers
 // ================================
 
 const handleOverlayClick = () => {
@@ -260,7 +260,7 @@ const handleTranslate = async (targetLang) => {
     return
   }
 
-  // 🔧 ENHANCED: Immediate UI feedback
+  // ENHANCED: Immediate UI feedback
   selectedLanguage.value = targetLang
   translationResult.value = null
 
@@ -269,10 +269,10 @@ const handleTranslate = async (targetLang) => {
   isTranslating.value = true
 
   try {
-    // 🔧 FIX: Convert message ID to string to match backend API expectation
+    // FIX: Convert message ID to string to match backend API expectation
     const messageId = String(props.message.id)
 
-    // 🔧 CRITICAL FIX: Store message content globally for botService access
+    // CRITICAL FIX: Store message content globally for botService access
     if (typeof window !== 'undefined') {
       window.currentTranslatingMessage = {
         id: messageId,
@@ -302,7 +302,7 @@ const handleTranslate = async (targetLang) => {
       console.log('🌐 [TranslationPanel] Translation API response:', result)
     }
 
-    // 🔧 SIMPLIFIED: Use direct result properties (API response is already correct)
+    // SIMPLIFIED: Use direct result properties (API response is already correct)
     const translationText = result.translation
     const sourceLanguage = result.source_language || 'auto-detected'
     const confidence = result.confidence || 0.95
@@ -318,7 +318,7 @@ const handleTranslate = async (targetLang) => {
       console.log('🌐 [TranslationPanel] Final translation result:', translationResult.value)
     }
 
-    // 🔧 FIXED: Use server-provided quota information and update UI
+    // FIXED: Use server-provided quota information and update UI
     const remainingQuota = result.quota_remaining !== undefined ? result.quota_remaining :
       (result.quota?.remaining !== undefined ? result.quota.remaining : 'unknown')
 
@@ -332,7 +332,7 @@ const handleTranslate = async (targetLang) => {
     console.error('🚨 [TranslationPanel] Translation error:', error)
     notifyError(error.message || 'Failed to translate message')
 
-    // 🔧 DEBUG: Log detailed error information
+    // DEBUG: Log detailed error information
     if (import.meta.env.DEV) {
       console.log('🚨 [TranslationPanel] Error details:', {
         error: error.message,
@@ -343,7 +343,7 @@ const handleTranslate = async (targetLang) => {
   } finally {
     isTranslating.value = false
 
-    // 🔧 CLEANUP: Remove global message reference
+    // CLEANUP: Remove global message reference
     if (typeof window !== 'undefined') {
       delete window.currentTranslatingMessage
     }
@@ -393,7 +393,7 @@ const getLanguageName = (code) => {
 }
 
 // ================================
-// 🎯 Keyboard Handling
+// Keyboard Handling
 // ================================
 
 const handleKeydown = (event) => {
@@ -408,7 +408,7 @@ const handleKeydown = (event) => {
 }
 
 // ================================
-// 🎯 Lifecycle
+// Lifecycle
 // ================================
 
 onMounted(() => {
@@ -435,7 +435,7 @@ watch(() => props.visible, (newVisible) => {
     isTranslating.value = false
     selectedLanguage.value = 'en'
 
-    // 🔧 FIXED: Update quota info when panel opens
+    // FIXED: Update quota info when panel opens
     updateQuotaInfo()
   }
 })
@@ -841,7 +841,7 @@ watch(() => props.visible, (newVisible) => {
   outline-offset: -2px;
 }
 
-/* 🔧 DEBUG: Debug styles */
+/* DEBUG: Debug styles */
 .debug-info {
   margin-top: 8px;
   padding: 4px 8px;

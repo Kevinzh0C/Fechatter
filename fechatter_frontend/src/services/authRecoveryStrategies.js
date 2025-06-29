@@ -1,5 +1,5 @@
 /**
- * 🔧 Authentication Recovery Strategies - 策略模式实现
+ * Authentication Recovery Strategies - 策略模式实现
  * 
  * 设计原则：
  * - Strategy Pattern: 可插拔的恢复策略
@@ -9,14 +9,14 @@
 
 import authService from '@/services/auth.service';
 
-// 🎯 恢复策略基类
+// 恢复策略基类
 class RecoveryStrategy {
   constructor(name, priority = 0) {
     this.name = name;
     this.priority = priority;
   }
 
-  // 🔍 检查策略是否适用
+  // 检查策略是否适用
   async canApply(context) {
     throw new Error('canApply must be implemented');
   }
@@ -26,7 +26,7 @@ class RecoveryStrategy {
     throw new Error('execute must be implemented');
   }
 
-  // 📊 获取策略描述
+  // 获取策略描述
   getDescription() {
     return `${this.name} (Priority: ${this.priority})`;
   }
@@ -177,7 +177,7 @@ class GracefulLogoutStrategy extends RecoveryStrategy {
   }
 }
 
-// 🎯 恢复策略管理器
+// 恢复策略管理器
 export class AuthRecoveryManager {
   constructor() {
     this.strategies = [
@@ -191,7 +191,7 @@ export class AuthRecoveryManager {
     this.strategies.sort((a, b) => b.priority - a.priority);
   }
 
-  // 🔧 注册新策略
+  // 注册新策略
   registerStrategy(strategy) {
     if (!(strategy instanceof RecoveryStrategy)) {
       throw new Error('Strategy must extend RecoveryStrategy');
@@ -204,7 +204,7 @@ export class AuthRecoveryManager {
   // 🔄 执行恢复流程
   async attemptRecovery(context = {}) {
     if (import.meta.env.DEV) {
-      console.log('🔧 Starting recovery process with context:', context);
+      console.log('Starting recovery process with context:', context);
     }
 
     const results = [];
@@ -235,7 +235,7 @@ export class AuthRecoveryManager {
           method: result.method
         });
 
-        // 🎯 如果策略成功，返回结果
+        // 如果策略成功，返回结果
         if (result.success) {
           return {
             success: true,
@@ -253,7 +253,7 @@ export class AuthRecoveryManager {
           error: error.message
         });
 
-        console.error(`❌ Recovery strategy ${strategy.name} failed:`, error);
+        console.error(`ERROR: Recovery strategy ${strategy.name} failed:`, error);
       }
     }
 
@@ -265,7 +265,7 @@ export class AuthRecoveryManager {
     };
   }
 
-  // 📊 获取策略信息
+  // 获取策略信息
   getStrategies() {
     return this.strategies.map(s => ({
       name: s.name,
@@ -292,7 +292,7 @@ export class AuthRecoveryManager {
   }
 }
 
-// 🎯 创建单例实例
+// 创建单例实例
 export const authRecoveryManager = new AuthRecoveryManager();
 
 // 🧪 全局调试接口

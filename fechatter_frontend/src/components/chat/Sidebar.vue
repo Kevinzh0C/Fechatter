@@ -1,5 +1,5 @@
 <template>
-  <!-- 🎨 现代人体工学设计的侧边栏 -->
+  <!-- 现代人体工学设计的侧边栏 -->
   <aside class="modern-sidebar">
     <!-- 📍 工作区域头部 -->
     <header class="workspace-header" @click="toggleWorkspaceMenu">
@@ -145,7 +145,7 @@
         </ul>
       </section>
 
-      <!-- 💬 私信 -->
+      <!-- MESSAGE: 私信 -->
       <section class="nav-section direct-messages">
         <div class="section-header">
           <div class="section-title">
@@ -297,7 +297,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 🎨 现代人体工学侧边栏设计 */
+/* 现代人体工学侧边栏设计 */
 .modern-sidebar {
   width: 280px;
   height: 100vh;
@@ -510,7 +510,7 @@ onUnmounted(() => {
   margin-bottom: 4px;
 }
 
-/* 🎯 频道项目 */
+/* 频道项目 */
 .channel-item,
 .dm-item {
   width: 100%;
@@ -600,7 +600,7 @@ onUnmounted(() => {
   transform: scale(1.1);
 }
 
-/* 📝 频道信息 */
+/* 频道信息 */
 .channel-info,
 .dm-info {
   flex: 1;
@@ -652,7 +652,7 @@ onUnmounted(() => {
   border: 2px solid #1e1f22;
 }
 
-/* 👤 私信头像 */
+/* USER: 私信头像 */
 .dm-container {
   flex: 1;
   overflow-y: auto;
@@ -703,7 +703,7 @@ onUnmounted(() => {
   box-shadow: 0 0 8px rgba(35, 165, 90, 0.5);
 }
 
-/* 📊 未读消息指示器 */
+/* 未读消息指示器 */
 .unread-badge {
   background: linear-gradient(135deg, #ed4245, #c73a3e);
   color: #ffffff;
@@ -756,7 +756,7 @@ onUnmounted(() => {
   }
 }
 
-/* 🎯 高对比度支持 */
+/* 高对比度支持 */
 @media (prefers-contrast: high) {
   .modern-sidebar {
     border-right: 2px solid rgba(255, 255, 255, 0.3);
@@ -790,7 +790,7 @@ onUnmounted(() => {
   }
 }
 
-/* 🎯 滚动条样式 */
+/* 滚动条样式 */
 .sidebar-navigation::-webkit-scrollbar,
 .dm-container::-webkit-scrollbar {
   width: 6px;

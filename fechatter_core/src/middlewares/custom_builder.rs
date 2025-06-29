@@ -914,7 +914,7 @@ mod tests {
     }
   }
 
-  // 模拟应用状态
+  // Mock application state
   #[derive(Clone)]
   struct MockAppState {
     token_verifier: MockTokenVerifier,
@@ -947,7 +947,7 @@ mod tests {
     }
   }
 
-  // 实现模拟服务提供者
+  // Implement mock service provider
   struct MockAuthService;
 
   impl MockAuthService {
@@ -1100,7 +1100,7 @@ mod tests {
     }
   }
 
-  // 模拟服务器操作的结构体
+  // Mock server operations struct
   struct MockServer {
     app: Router,
   }
@@ -1115,7 +1115,7 @@ mod tests {
     }
   }
 
-  // 测试处理器
+  // Test handlers
   async fn test_handler() -> &'static str {
     "Hello, world!"
   }
@@ -1124,41 +1124,41 @@ mod tests {
     format!("User ID: {}", user.id)
   }
 
-  // ===== 单元测试 =====
+  // ===== Unit Tests =====
 
   #[tokio::test]
   async fn it_should_accept_valid_token() {
-    // 创建追踪器
+    // Create tracker
     let tracker = MiddlewareTracker::new();
 
-    // 创建应用状态
+    // Create application state
     let app_state = MockAppState::new(tracker.clone());
 
-    // 创建路由
+    // Create router
     let app = Router::new()
       .route("/test", get(test_handler))
       .route("/user", get(auth_user_handler));
 
-    // 添加认证中间件
+    // Add authentication middleware
     let app = add_auth_middleware(app, app_state);
 
-    // 创建模拟服务器
+    // Create mock server
     let server = MockServer::new(app);
 
-    // 创建带有有效令牌的请求
+    // Create request with valid token
     let request = Request::builder()
       .uri("/test")
       .header("Authorization", "Bearer valid_token")
       .body(Body::empty())
       .unwrap();
 
-    // 发送请求
+    // Send request
     let response = server.send_request(request).await;
 
-    // 验证：
-    // 1. 认证中间件被调用
-    // 2. 响应状态码是200 OK
-    // 3. 响应主体是正确的
+    // Verify:
+    // 1. Authentication middleware was called
+    // 2. Response status code is 200 OK
+    // 3. Response body is correct
     assert!(tracker.was_auth_called());
     assert_eq!(response.status(), StatusCode::OK);
 
@@ -1170,66 +1170,66 @@ mod tests {
 
   #[tokio::test]
   async fn it_should_reject_invalid_token() {
-    // 创建追踪器
+    // Create tracker
     let tracker = MiddlewareTracker::new();
 
-    // 创建应用状态
+    // Create application state
     let app_state = MockAppState::new(tracker.clone());
 
-    // 设置令牌验证器失败
+    // Set token verifier to fail
     app_state.token_verifier.set_should_fail(true);
 
-    // 创建路由
+    // Create router
     let app = Router::new().route("/test", get(test_handler));
 
-    // 添加认证中间件
+    // Add authentication middleware
     let app = add_auth_middleware(app, app_state);
 
-    // 创建模拟服务器
+    // Create mock server
     let server = MockServer::new(app);
 
-    // 创建带有无效令牌的请求
+    // Create request with invalid token
     let request = Request::builder()
       .uri("/test")
       .header("Authorization", "Bearer invalid_token")
       .body(Body::empty())
       .unwrap();
 
-    // 发送请求
+    // Send request
     let response = server.send_request(request).await;
 
-    // 验证：
-    // 1. 认证中间件被调用
-    // 2. 响应状态码是401 Unauthorized
+    // Verify:
+    // 1. Authentication middleware was called
+    // 2. Response status code is 401 Unauthorized
     assert!(tracker.was_auth_called());
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
   }
 
   #[tokio::test]
   async fn it_should_use_auth_extension_trait() {
-    // 创建追踪器和应用状态
+    // Create tracker and application state
     let tracker = MiddlewareTracker::new();
     let app_state = MockAppState::new(tracker.clone());
 
-    // 使用RouterExt创建路由
+    // Create router using RouterExt
     let app = Router::new()
       .route("/user", get(auth_user_handler))
       .with_auth(app_state);
 
-    // 创建模拟服务器
+    // Create mock server
     let server = MockServer::new(app);
 
-    // 创建带有有效令牌的请求
+    // Create request with valid token
     let request = Request::builder()
       .uri("/user")
       .header("Authorization", "Bearer valid_token")
       .body(Body::empty())
       .unwrap();
 
-    // 发送请求
+    // Send request
     let response = server.send_request(request).await;
 
-    // 验证响应
+    // Verify response
     assert_eq!(response.status(), StatusCode::OK);
     let body = body::to_bytes(response.into_body(), 1024 * 16)
       .await
@@ -1239,39 +1239,39 @@ mod tests {
 
   #[tokio::test]
   async fn it_should_execute_middleware_in_order() {
-    // 创建追踪器和应用状态
+    // Create tracker and application state
     let tracker = MiddlewareTracker::new();
     let app_state = MockAppState::new(tracker.clone());
 
-    // 使用RouterExt创建带有多个中间件的路由
+    // Create router with multiple middleware using RouterExt
     let app = Router::new()
       .route("/test", get(test_handler))
       .with_auth(app_state.clone());
 
-    // 创建模拟服务器
+    // Create mock server
     let server = MockServer::new(app);
 
-    // 创建请求
+    // Create request
     let request = Request::builder()
       .uri("/test")
       .header("Authorization", "Bearer valid_token")
       .body(Body::empty())
       .unwrap();
 
-    // 发送请求
+    // Send request
     let _response = server.send_request(request).await;
 
-    // 验证认证中间件被调用
+    // Verify authentication middleware was called
     assert!(tracker.was_auth_called());
   }
 
   #[tokio::test]
   async fn it_should_enforce_middleware_order() {
-    // 创建追踪器和应用状态
+    // Create tracker and application state
     let tracker = MiddlewareTracker::new();
     let app_state = MockAppState::new(tracker.clone());
 
-    // 使用CoreBuilder创建路由，强制正确的中间件顺序
+    // Create router using CoreBuilder, enforcing correct middleware order
     let app = CoreBuilder::new(
       Router::new().route("/test", get(test_handler)),
       app_state.clone(),
@@ -1279,43 +1279,43 @@ mod tests {
     .with_auth()
     .build();
 
-    // 创建模拟服务器
+    // Create mock server
     let server = MockServer::new(app);
 
-    // 创建请求
+    // Create request
     let request = Request::builder()
       .uri("/test")
       .header("Authorization", "Bearer valid_token")
       .body(Body::empty())
       .unwrap();
 
-    // 发送请求
+    // Send request
     let _response = server.send_request(request).await;
 
-    // 验证认证中间件被调用
+    // Verify authentication middleware was called
     assert!(tracker.was_auth_called());
   }
 
   #[tokio::test]
   async fn it_should_refresh_token_when_auth_fails() {
-    // 创建追踪器和应用状态
+    // Create tracker and application state
     let tracker = MiddlewareTracker::new();
     let app_state = MockAppState::new(tracker.clone());
 
-    // 设置验证器为过期令牌
+    // Set verifier for expired token
     app_state
       .token_verifier
       .set_token_behavior(TokenBehavior::Expired);
 
-    // 创建路由
+    // Create router
     let app = Router::new()
       .route("/test", get(test_handler))
       .with_auth(app_state.clone());
 
-    // 创建模拟服务器
+    // Create mock server
     let server = MockServer::new(app);
 
-    // 创建带有过期令牌和有效刷新令牌的请求
+    // Create request with expired token and valid refresh token
     let request = Request::builder()
       .uri("/test")
       .header("Authorization", "Bearer expired_token")
@@ -1323,19 +1323,19 @@ mod tests {
       .body(Body::empty())
       .unwrap();
 
-    // 发送请求
+    // Send request
     let response = server.send_request(request).await;
 
-    // 验证过期令牌应该返回401
+    // Verify expired token should return 401
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 
-    // 验证认证中间件被调用
+    // Verify authentication middleware was called
     assert!(tracker.was_auth_called());
   }
 
   #[tokio::test]
   async fn it_should_handle_token_behavior_variations() {
-    // 创建测试用例，每个测试用例包含令牌行为和预期的响应状态
+    // Create test cases, each containing token behavior and expected response status
     let test_cases = vec![
       (TokenBehavior::Valid, StatusCode::OK),
       (TokenBehavior::Expired, StatusCode::UNAUTHORIZED),
@@ -1344,38 +1344,38 @@ mod tests {
     ];
 
     for (behavior, expected_status) in test_cases {
-      // 创建追踪器和应用状态
+      // Create tracker and application state
       let tracker = MiddlewareTracker::new();
       let app_state = MockAppState::new(tracker.clone());
 
-      // 设置令牌行为
+      // Set token behavior
       app_state
         .token_verifier
         .set_token_behavior(behavior.clone());
 
-      // 创建路由
+      // Create router
       let app = Router::new()
         .route("/test", get(test_handler))
         .with_auth(app_state);
 
-      // 创建模拟服务器
+      // Create mock server
       let server = MockServer::new(app);
 
-      // 创建请求
+      // Create request
       let request = Request::builder()
         .uri("/test")
         .header("Authorization", "Bearer test_token")
         .body(Body::empty())
         .unwrap();
 
-      // 发送请求
+      // Send request
       let response = server.send_request(request).await;
 
-      // 验证响应状态符合预期
+      // Verify response status meets expectations
       assert_eq!(
         response.status(),
         expected_status,
-        "令牌行为 {:?} 应该返回 {:?}",
+        "Token behavior {:?} should return {:?}",
         behavior,
         expected_status
       );
@@ -1385,60 +1385,60 @@ mod tests {
   #[tokio::test]
   #[should_panic(expected = "Unexpected error during token verification")]
   async fn it_should_handle_token_verifier_panic() {
-    // 创建追踪器和应用状态
+    // Create tracker and application state
     let tracker = MiddlewareTracker::new();
     let app_state = MockAppState::new(tracker.clone());
 
-    // 设置令牌行为为抛出错误
+    // Set token behavior to throw error
     app_state
       .token_verifier
       .set_token_behavior(TokenBehavior::ThrowError);
 
-    // 创建路由
+    // Create router
     let app = Router::new()
       .route("/test", get(test_handler))
       .with_auth(app_state);
 
-    // 创建模拟服务器
+    // Create mock server
     let server = MockServer::new(app);
 
-    // 创建请求
+    // Create request
     let request = Request::builder()
       .uri("/test")
       .header("Authorization", "Bearer test_token")
       .body(Body::empty())
       .unwrap();
 
-    // 发送请求，这将导致panic
+    // Send request, this will cause panic
     let _ = server.send_request(request).await;
   }
 
   #[tokio::test]
   async fn it_should_handle_random_token_validation() {
-    // 创建追踪器和应用状态
+    // Create tracker and application state
     let tracker = MiddlewareTracker::new();
     let app_state = MockAppState::new(tracker.clone());
 
-    // 设置令牌行为为随机
+    // Set token behavior to random
     app_state
       .token_verifier
       .set_token_behavior(TokenBehavior::Random);
 
-    // 创建路由
+    // Create router
     let app = Router::new()
       .route("/test", get(test_handler))
       .with_auth(app_state.clone());
 
-    // 创建模拟服务器
+    // Create mock server
     let server = MockServer::new(app);
 
-    // 多次发送请求测试随机行为
+    // Send multiple requests to test random behavior
     let mut successes = 0;
     let mut failures = 0;
     let attempts = 10;
 
     for _ in 0..attempts {
-      // 创建请求
+      // Create request
       let request = Request::builder()
         .uri("/test")
         .header("Authorization", "Bearer random_token")
@@ -1446,10 +1446,10 @@ mod tests {
         .body(Body::empty())
         .unwrap();
 
-      // 发送请求
+      // Send request
       let response = server.send_request(request).await;
 
-      // 计数成功和失败
+      // Count successes and failures
       if response.status() == StatusCode::OK {
         successes += 1;
       } else {
@@ -1457,15 +1457,15 @@ mod tests {
       }
     }
 
-    // 验证有一些成功和失败，表明随机行为有效
-    assert!(successes > 0, "随机验证应该有一些成功");
-    assert!(failures > 0, "随机验证应该有一些失败");
-    assert_eq!(successes + failures, attempts, "总请求数应该等于尝试次数");
+    // Verify some successes and failures, indicating random behavior is effective
+    assert!(successes > 0, "Random validation should have some successes");
+    assert!(failures > 0, "Random validation should have some failures");
+    assert_eq!(successes + failures, attempts, "Total requests should equal attempts");
   }
 
   #[tokio::test]
   async fn it_should_work_without_middlewares() {
-    // 测试没有添加任何中间件的情况下路由的行为
+    // Test router behavior without any middleware
     let app = Router::new().route("/test", get(test_handler));
     let server = MockServer::new(app);
     let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
@@ -1475,78 +1475,78 @@ mod tests {
 
   #[tokio::test]
   async fn it_should_return_404_for_missing_routes() {
-    // 创建追踪器和应用状态
+    // Create tracker and application state
     let tracker = MiddlewareTracker::new();
     let app_state = MockAppState::new(tracker);
 
-    // 创建路由，包含中间件但路由不存在
+    // Create router with middleware but route doesn't exist
     let app = Router::new().with_auth(app_state);
 
-    // 创建模拟服务器
+    // Create mock server
     let server = MockServer::new(app);
 
-    // 创建请求到不存在的路由
+    // Create request to non-existent route
     let request = Request::builder()
       .uri("/nonexistent")
       .header("Authorization", "Bearer valid_token")
       .body(Body::empty())
       .unwrap();
 
-    // 发送请求
+    // Send request
     let response = server.send_request(request).await;
 
-    // 验证响应状态是404 Not Found
+    // Verify response status is 404 Not Found
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
   }
 
   #[tokio::test]
   async fn it_should_work_with_partial_builder_chain() {
-    // 创建追踪器和应用状态
+    // Create tracker and application state
     let tracker = MiddlewareTracker::new();
     let app_state = MockAppState::new(tracker);
 
-    // 使用CoreBuilder创建路由，但只添加认证中间件
+    // Create router using CoreBuilder, but only add authentication middleware
     let app = CoreBuilder::new(
                 Router::new().route("/test", get(test_handler)),
                 app_state
             )
             .with_auth()
-            // 提前构建，不添加刷新中间件
+            // Build early, don't add refresh middleware
             .build();
 
-    // 创建模拟服务器
+    // Create mock server
     let server = MockServer::new(app);
 
-    // 创建请求
+    // Create request
     let request = Request::builder()
       .uri("/test")
       .header("Authorization", "Bearer valid_token")
       .body(Body::empty())
       .unwrap();
 
-    // 发送请求
+    // Send request
     let response = server.send_request(request).await;
 
-    // 验证请求成功
+    // Verify request succeeds
     assert_eq!(response.status(), StatusCode::OK);
   }
 
-  /// 简化的并发测试，移除复杂的令牌刷新逻辑
+  /// Simplified concurrency test, removing complex token refresh logic
   #[tokio::test]
   async fn it_should_handle_concurrent_requests() {
-    // 测试配置
-    const CONCURRENT_REQUESTS: usize = 5; // 减少并发请求数量
+    // Test configuration
+    const CONCURRENT_REQUESTS: usize = 5; // Reduce concurrent request count
 
-    // 创建跟踪器和应用状态
+    // Create tracker and application state
     let tracker = MiddlewareTracker::new();
     let app_state = MockAppState::new(tracker.clone());
 
-    // 创建测试路由
+    // Create test router
     let app = Router::new()
       .route("/test", get(test_handler))
       .with_auth(app_state);
 
-    // 运行并发请求
+    // Run concurrent requests
     let handles = (0..CONCURRENT_REQUESTS)
       .map(|_| {
         let app = app.clone();
@@ -1564,21 +1564,21 @@ mod tests {
 
     let results = futures::future::join_all(handles).await;
 
-    // 验证所有请求都成功
+    // Verify all requests succeed
     for result in results {
       let response = result.unwrap();
       assert_eq!(response.status(), StatusCode::OK);
     }
   }
 
-  /// 简化的令牌重放测试
+  /// Simplified token replay test
   #[tokio::test]
   async fn it_should_handle_token_replay_attempts() {
-    // 创建追踪器和应用状态
+    // Create tracker and application state
     let tracker = MiddlewareTracker::new();
     let app_state = MockAppState::new(tracker.clone());
 
-    // 创建路由
+    // Create router
     let app = Router::new()
       .route("/test", get(test_handler))
       .route(
@@ -1589,7 +1589,7 @@ mod tests {
       )
       .with_auth(app_state);
 
-    // 第一步：获取有效的访问令牌
+    // Step 1: Get valid access token
     let initial_request = Request::builder()
       .uri("/test")
       .header("Authorization", "Bearer valid_token")
@@ -1599,7 +1599,7 @@ mod tests {
     let initial_response = app.clone().oneshot(initial_request).await.unwrap();
     assert_eq!(initial_response.status(), StatusCode::OK);
 
-    // 第二步：使用令牌访问受保护资源
+    // Step 2: Use token to access protected resource
     let access_request = Request::builder()
       .uri("/secured")
       .header("Authorization", "Bearer valid_token")
@@ -1610,20 +1610,20 @@ mod tests {
     assert_eq!(
       access_response.status(),
       StatusCode::OK,
-      "首次使用令牌应成功"
+      "First use of token should succeed"
     );
 
-    // 第三步：模拟令牌重放
+    // Step 3: Simulate token replay
     let delay_times = [
-      Duration::from_millis(100), // 很短延迟
-      Duration::from_secs(1),     // 1秒延迟
+      Duration::from_millis(100), // Very short delay
+      Duration::from_secs(1),     // 1 second delay
     ];
 
     for delay in delay_times {
-      // 模拟时间流逝
+      // Simulate time passing
       tokio::time::sleep(delay).await;
 
-      // 尝试重放令牌
+      // Attempt token replay
       let replay_request = Request::builder()
         .uri("/secured")
         .header("Authorization", "Bearer valid_token")
@@ -1635,11 +1635,11 @@ mod tests {
       assert_eq!(
         replay_response.status(),
         StatusCode::OK,
-        "{}ms后重放令牌状态错误",
+        "Token replay status error after {}ms",
         delay.as_millis()
       );
 
-      // 提取响应内容，验证是否正确
+      // Extract response content and verify correctness
       if replay_response.status() == StatusCode::OK {
         let body = body::to_bytes(replay_response.into_body(), 1024 * 16)
           .await
@@ -1647,7 +1647,7 @@ mod tests {
         let body_text = String::from_utf8_lossy(&body);
         assert!(
           body_text.contains("Secured data for user 1"),
-          "令牌重放产生错误的用户身份，响应：{}",
+          "Token replay produced incorrect user identity, response: {}",
           body_text
         );
       }

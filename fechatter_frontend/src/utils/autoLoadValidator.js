@@ -1,5 +1,5 @@
 /**
- * 🔍 AutoLoadManager 验证工具
+ * AutoLoadManager 验证工具
  * 
  * 验证"Loading earlier messages..."完整DAG系统的可靠性
  */
@@ -16,11 +16,11 @@ export class AutoLoadValidator {
   }
 
   /**
-   * 🎯 运行完整的AutoLoadManager验证测试
+   * 运行完整的AutoLoadManager验证测试
    */
   async runFullValidation() {
     if (this.isRunning) {
-      console.warn('🔍 [AutoLoadValidator] 验证正在进行中...');
+      console.warn('[AutoLoadValidator] 验证正在进行中...');
       return;
     }
 
@@ -30,7 +30,7 @@ export class AutoLoadValidator {
     this.passedTests = 0;
     this.failedTests = 0;
 
-    console.log('🎯 [AutoLoadValidator] 开始AutoLoadManager完整验证测试');
+    console.log('[AutoLoadValidator] 开始AutoLoadManager完整验证测试');
 
     // 测试套件
     const testSuites = [
@@ -62,7 +62,7 @@ export class AutoLoadValidator {
    * 🔄 测试1: 基本状态转换
    */
   async testBasicStateTransitions() {
-    console.log('🔍 [AutoLoadValidator] 测试1: 基本状态转换');
+    console.log('[AutoLoadValidator] 测试1: 基本状态转换');
 
     // 重置管理器
     autoLoadManager.reset();
@@ -118,7 +118,7 @@ export class AutoLoadValidator {
    * 📦 测试2: 加载回调验证
    */
   async testLoadingCallback() {
-    console.log('🔍 [AutoLoadValidator] 测试2: 加载回调验证');
+    console.log('[AutoLoadValidator] 测试2: 加载回调验证');
 
     autoLoadManager.reset();
 
@@ -157,10 +157,10 @@ export class AutoLoadValidator {
   }
 
   /**
-   * ❌ 测试3: 错误处理
+   * ERROR: 测试3: 错误处理
    */
   async testErrorHandling() {
-    console.log('🔍 [AutoLoadValidator] 测试3: 错误处理');
+    console.log('[AutoLoadValidator] 测试3: 错误处理');
 
     autoLoadManager.reset();
 
@@ -191,10 +191,10 @@ export class AutoLoadValidator {
   }
 
   /**
-   * 👤 测试4: 用户交互
+   * USER: 测试4: 用户交互
    */
   async testUserInteractions() {
-    console.log('🔍 [AutoLoadValidator] 测试4: 用户交互');
+    console.log('[AutoLoadValidator] 测试4: 用户交互');
 
     autoLoadManager.reset();
 
@@ -240,10 +240,10 @@ export class AutoLoadValidator {
   }
 
   /**
-   * 📡 测试5: 事件系统
+   * SUBSCRIPTION: 测试5: 事件系统
    */
   async testEventSystem() {
-    console.log('🔍 [AutoLoadValidator] 测试5: 事件系统');
+    console.log('[AutoLoadValidator] 测试5: 事件系统');
 
     autoLoadManager.reset();
 
@@ -296,7 +296,7 @@ export class AutoLoadValidator {
    * 🔀 测试6: 并发会话处理
    */
   async testConcurrentSessions() {
-    console.log('🔍 [AutoLoadValidator] 测试6: 并发会话处理');
+    console.log('[AutoLoadValidator] 测试6: 并发会话处理');
 
     autoLoadManager.reset();
 
@@ -329,10 +329,10 @@ export class AutoLoadValidator {
   }
 
   /**
-   * 📊 测试7: 性能指标
+   * 测试7: 性能指标
    */
   async testPerformanceMetrics() {
-    console.log('🔍 [AutoLoadValidator] 测试7: 性能指标');
+    console.log('[AutoLoadValidator] 测试7: 性能指标');
 
     autoLoadManager.reset();
 
@@ -364,10 +364,10 @@ export class AutoLoadValidator {
   }
 
   /**
-   * ✅ 测试8: DAG完整性验证
+   * 测试8: DAG完整性验证
    */
   async testDAGCompletion() {
-    console.log('🔍 [AutoLoadValidator] 测试8: DAG完整性验证');
+    console.log('[AutoLoadValidator] 测试8: DAG完整性验证');
 
     autoLoadManager.reset();
 
@@ -451,16 +451,16 @@ export class AutoLoadValidator {
   }
 
   /**
-   * 📝 记录测试结果
+   * 记录测试结果
    */
   recordTest(testName, passed, details = '') {
     this.totalTests++;
     if (passed) {
       this.passedTests++;
-      console.log(`✅ [AutoLoadValidator] ${testName}: PASSED`);
+      console.log(`[AutoLoadValidator] ${testName}: PASSED`);
     } else {
       this.failedTests++;
-      console.log(`❌ [AutoLoadValidator] ${testName}: FAILED - ${details}`);
+      console.log(`ERROR: [AutoLoadValidator] ${testName}: FAILED - ${details}`);
     }
 
     this.testResults.push({
@@ -489,15 +489,15 @@ export class AutoLoadValidator {
       autoLoadMetrics: autoLoadManager.getMetrics()
     };
 
-    console.log('\n🎯 [AutoLoadValidator] 验证报告:');
-    console.log(`📊 总测试数: ${this.totalTests}`);
-    console.log(`✅ 通过测试: ${this.passedTests}`);
-    console.log(`❌ 失败测试: ${this.failedTests}`);
-    console.log(`🎯 成功率: ${successRate}%`);
-    console.log(`🔒 系统可靠性: ${report.summary.isSystemReliable ? '✅ 100% 可靠' : '❌ 需要修复'}`);
+    console.log('\n[AutoLoadValidator] 验证报告:');
+    console.log(`总测试数: ${this.totalTests}`);
+    console.log(`通过测试: ${this.passedTests}`);
+    console.log(`ERROR: 失败测试: ${this.failedTests}`);
+    console.log(`成功率: ${successRate}%`);
+    console.log(`🔒 系统可靠性: ${report.summary.isSystemReliable ? '100% 可靠' : 'ERROR: 需要修复'}`);
 
     if (this.failedTests > 0) {
-      console.log('\n❌ 失败的测试:');
+      console.log('\nERROR: 失败的测试:');
       this.testResults.filter(t => !t.passed).forEach(test => {
         console.log(`  - ${test.name}: ${test.details}`);
       });
@@ -541,6 +541,6 @@ if (typeof window !== 'undefined' && import.meta.env.DEV) {
     autoLoadValidator.cleanup();
   };
 
-  console.log('🔍 AutoLoadValidator 调试功能已加载');
+  console.log('AutoLoadValidator 调试功能已加载');
   console.log('使用 validateAutoLoad() 运行完整验证测试');
 } 

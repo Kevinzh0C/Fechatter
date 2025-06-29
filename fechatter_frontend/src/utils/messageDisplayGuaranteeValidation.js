@@ -20,10 +20,10 @@ export class MessageDisplayGuaranteeValidator {
       // Enable debug mode for testing
       this.guarantee.enableDebugMode();
 
-      console.log('✅ MessageDisplayGuarantee validation initialized');
+      console.log('MessageDisplayGuarantee validation initialized');
       return true;
     } catch (error) {
-      console.error('❌ Failed to initialize validation:', error);
+      console.error('ERROR: Failed to initialize validation:', error);
       return false;
     }
   }

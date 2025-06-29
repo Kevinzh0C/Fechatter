@@ -55,7 +55,7 @@ class ErrorMonitor {
     // 智能过滤 - 避免在开发环境中记录过多噪音
     const shouldSkipError = this.shouldSkipError(error, context);
     if (shouldSkipError) {
-      console.debug('🔧 [ERROR_MONITOR] Skipping development noise:', errorEntry.error.message);
+      console.debug('[ERROR_MONITOR] Skipping development noise:', errorEntry.error.message);
       return null;
     }
 
@@ -73,7 +73,7 @@ class ErrorMonitor {
       }
     } else {
       if (import.meta.env.DEV) {
-        console.error('❌ ERROR:', errorEntry);
+        console.error('ERROR: ERROR:', errorEntry);
       }
     }
 
@@ -94,7 +94,7 @@ class ErrorMonitor {
   logWarning(message, context = {}) {
     this.warningsCount++;
     if (import.meta.env.DEV) {
-      console.warn('⚠️ WARNING:', message, context);
+      console.warn('WARNING: WARNING:', message, context);
     }
 
     const warningEntry = {
@@ -170,7 +170,7 @@ class ErrorMonitor {
 
       toast.innerHTML = `
         <div style="font-weight: bold; margin-bottom: 8px;">
-          ❌ ${errorEntry.error.type || 'ERROR'}
+          ERROR: ${errorEntry.error.type || 'ERROR'}
         </div>
         <div style="margin-bottom: 8px;">${errorEntry.error.message}</div>
         <div style="opacity: 0.8; font-size: 10px;">

@@ -1,6 +1,6 @@
 /**
  * Authentication Diagnostics & Auto-Fix System
- * 🔧 Production-grade tool to diagnose and resolve authentication issues
+ * Production-grade tool to diagnose and resolve authentication issues
  */
 
 class AuthDiagnostics {
@@ -48,7 +48,7 @@ class AuthDiagnostics {
       const duration = Date.now() - startTime;
       result.duration = duration;
 
-      console.log(`✅ [Auth Diagnostics] Analysis completed in ${duration}ms`);
+      console.log(`[Auth Diagnostics] Analysis completed in ${duration}ms`);
       this.displayResults(result);
 
       this.lastDiagnosticsRun = result;
@@ -57,7 +57,7 @@ class AuthDiagnostics {
       return result;
 
     } catch (error) {
-      console.error('❌ [Auth Diagnostics] Error during analysis:', error);
+      console.error('ERROR: [Auth Diagnostics] Error during analysis:', error);
       result.error = error.message;
       return result;
     }
@@ -371,7 +371,7 @@ class AuthDiagnostics {
    * Auto-fix authentication issues
    */
   async autoFix() {
-    console.log('🔧 [Auth Diagnostics] Starting auto-fix process...');
+    console.log('[Auth Diagnostics] Starting auto-fix process...');
 
     const diagnostics = this.lastDiagnosticsRun || await this.runDiagnostics();
     const fixes = [];
@@ -393,7 +393,7 @@ class AuthDiagnostics {
       }
     }
 
-    console.log('✅ [Auth Diagnostics] Auto-fix completed:', fixes);
+    console.log('[Auth Diagnostics] Auto-fix completed:', fixes);
     return fixes;
   }
 
@@ -418,7 +418,7 @@ class AuthDiagnostics {
       localStorage.setItem('refresh_token', data.refresh_token);
     }
 
-    console.log('✅ [Auth Diagnostics] Access token refreshed successfully');
+    console.log('[Auth Diagnostics] Access token refreshed successfully');
   }
 
   /**
@@ -429,7 +429,7 @@ class AuthDiagnostics {
       const authStore = window.__pinia_stores__.auth();
       if (authStore && typeof authStore.initialize === 'function') {
         await authStore.initialize();
-        console.log('✅ [Auth Diagnostics] Auth store reinitialized');
+        console.log('[Auth Diagnostics] Auth store reinitialized');
       }
     }
   }
@@ -440,11 +440,11 @@ class AuthDiagnostics {
   displayResults(result) {
     console.group('🔬 Authentication Diagnostics Results');
 
-    console.log('📊 Summary:');
+    console.log('Summary:');
     console.table(result.summary);
 
     if (result.recommendations.length > 0) {
-      console.log('💡 Recommendations:');
+      console.log('Recommendations:');
       result.recommendations.forEach((rec, idx) => {
         const icon = rec.priority === 'critical' ? '🚨' : rec.priority === 'high' ? '⚠️' : 'ℹ️';
         console.log(`  ${idx + 1}. ${icon} ${rec.issue} → ${rec.solution}`);
@@ -452,7 +452,7 @@ class AuthDiagnostics {
     }
 
     if (result.autoFixable.length > 0) {
-      console.log('🔧 Auto-fixable issues found:', result.autoFixable);
+      console.log('Auto-fixable issues found:', result.autoFixable);
       console.log('Run fixDAuth() to attempt automatic repairs');
     }
 

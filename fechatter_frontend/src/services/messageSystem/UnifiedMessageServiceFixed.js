@@ -1,5 +1,5 @@
 /**
- * 🔧 FIXED: UnifiedMessageService - Eliminates Recursive Update Issues
+ * FIXED: UnifiedMessageService - Eliminates Recursive Update Issues
  */
 
 import { ref } from 'vue';
@@ -12,7 +12,7 @@ export class UnifiedMessageServiceFixed {
     this.messageCache = {};
     this.hasMoreByChat = new Map();
 
-    // 🔧 FIX: Add anti-duplicate call protection
+    // FIX: Add anti-duplicate call protection
     this.activeRequests = new Map();
     this.lastRequestTime = new Map();
     this.requestDebounceTime = 500; // 500ms debounce
@@ -33,13 +33,13 @@ export class UnifiedMessageServiceFixed {
   }
 
   /**
-   * 🔧 FIXED: Debounced message fetching
+   * FIXED: Debounced message fetching
    */
   async fetchMessages(chatId, options = {}) {
     const { limit = 50, forceRefresh = false } = options;
     const normalizedChatId = parseInt(chatId);
 
-    // 🔧 Anti-duplicate protection
+    // Anti-duplicate protection
     if (this._shouldSkipRequest(normalizedChatId, 'fetchMessages')) {
       return this.getMessagesForChat(normalizedChatId) || [];
     }
@@ -80,7 +80,7 @@ export class UnifiedMessageServiceFixed {
   }
 
   /**
-   * 🔧 FIXED: Removed event dispatching that caused loops
+   * FIXED: Removed event dispatching that caused loops
    */
   async fetchMoreMessages(chatId, options = {}) {
     const { limit = 20 } = options;
@@ -119,7 +119,7 @@ export class UnifiedMessageServiceFixed {
         this._updateMessageCache(normalizedChatId, combined);
       }
 
-      // 🔧 REMOVED: No more event dispatching - components use Promise completion
+      // REMOVED: No more event dispatching - components use Promise completion
       return uniqueMoreMessages;
 
     } catch (error) {

@@ -59,7 +59,7 @@ export class ServiceContainer {
   }
 
   /**
-   * 🔧 RESOLVE: Get service instance with dependency injection
+   * RESOLVE: Get service instance with dependency injection
    */
   get(name) {
     // Resolve alias
@@ -124,7 +124,7 @@ export class ServiceContainer {
   }
 
   /**
-   * 🔧 UTILITIES
+   * UTILITIES
    */
   has(name) {
     const serviceName = this.aliases.get(name) || name;
@@ -263,18 +263,18 @@ export class ServiceContainer {
 }
 
 /**
- * 🏗️ SERVICE FACTORY: Configure all application services
+ * SERVICE FACTORY: Configure all application services
  */
 export function createServiceContainer(stores = {}) {
   const container = new ServiceContainer();
 
-  // 📊 LOGGING SERVICE: Cross-cutting concern
+  // LOGGING SERVICE: Cross-cutting concern
   container.register('logger', () => {
     const { createMessageTrackingLogger } = require('../logging/MessageTrackingLogger.js');
     return createMessageTrackingLogger();
   });
 
-  // 👤 USER DATA SERVICE: User resolution with DI
+  // USER: USER DATA SERVICE: User resolution with DI
   container.register('userDataResolver', ({ logger }) => {
     const { createUserDataResolver } = require('../user/UserDataResolver.js');
     return createUserDataResolver(stores);
@@ -296,7 +296,7 @@ export function createServiceContainer(stores = {}) {
     dependencies: ['logger']
   });
 
-  // 📡 API SERVICE: HTTP communications
+  // SUBSCRIPTION: API SERVICE: HTTP communications
   container.register('apiService', () => {
     // Dynamic import to avoid circular dependencies
     return import('../api.js').then(module => module.default);
@@ -330,7 +330,7 @@ export function createServiceContainer(stores = {}) {
     dependencies: ['apiService', 'logger']
   });
 
-  // 🏗️ MESSAGE NORMALIZER: Data transformation
+  // MESSAGE NORMALIZER: Data transformation
   container.register('messageNormalizer', ({ userDataResolver }) => {
     return {
       normalizeMessage(rawMsg, chatId) {
@@ -440,7 +440,7 @@ export function initializeServices(stores) {
   }
 
   globalContainer = createServiceContainer(stores);
-  console.log('🏗️ Service container initialized with services:', globalContainer.getRegistered());
+  console.log('Service container initialized with services:', globalContainer.getRegistered());
 
   return globalContainer;
 }

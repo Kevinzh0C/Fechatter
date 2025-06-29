@@ -92,7 +92,7 @@ async fn test_message_search_basic() -> Result<()> {
 
   if results.messages.is_empty() {
     warn!("No search results found - search service may not be properly configured");
-    info!("✅ Basic message search test completed (search service not available)");
+    info!("Basic message search test completed (search service not available)");
     return Ok(());
   }
 
@@ -101,7 +101,7 @@ async fn test_message_search_basic() -> Result<()> {
     assert!(msg.content.to_lowercase().contains("rust"));
   }
 
-  info!("✅ Basic message search test passed");
+  info!("Basic message search test passed");
   Ok(())
 }
 
@@ -195,7 +195,7 @@ async fn test_cross_chat_search() -> Result<()> {
   // Handle case where search service is not available or not working
   if results.messages.is_empty() {
     warn!("No search results found - search service may not be properly configured");
-    info!("✅ Cross-chat search test completed (search service not available)");
+    info!("Cross-chat search test completed (search service not available)");
     return Ok(());
   }
 
@@ -219,7 +219,7 @@ async fn test_cross_chat_search() -> Result<()> {
     assert!(chat_ids2.contains(&chat2.id));
   }
 
-  info!("✅ Cross-chat search test passed");
+  info!("Cross-chat search test passed");
   Ok(())
 }
 
@@ -288,7 +288,7 @@ async fn test_search_pagination() -> Result<()> {
   // Handle case where search service is not available or not working
   if page1_results.messages.is_empty() {
     warn!("No search results found - search service may not be properly configured");
-    info!("✅ Search pagination test completed (search service not available)");
+    info!("Search pagination test completed (search service not available)");
     return Ok(());
   }
 
@@ -312,7 +312,7 @@ async fn test_search_pagination() -> Result<()> {
     assert!(!page1_ids.contains(id));
   }
 
-  info!("✅ Search pagination test passed");
+  info!("Search pagination test passed");
   Ok(())
 }
 
@@ -379,7 +379,7 @@ async fn test_empty_search_results() -> Result<()> {
   assert_eq!(results.messages.len(), 0);
   assert_eq!(results.total_hits as usize, 0);
 
-  info!("✅ Empty search results test passed");
+  info!("Empty search results test passed");
   Ok(())
 }
 
@@ -456,14 +456,14 @@ async fn test_special_character_search() -> Result<()> {
   // Handle case where search service is not available or not working
   if results.messages.is_empty() {
     warn!("No search results found - search service may not be properly configured");
-    info!("✅ Special character search test completed (search service not available)");
+    info!("Special character search test completed (search service not available)");
     return Ok(());
   }
 
   assert!(results.messages.len() >= 1);
   assert!(results.messages[0].content.contains("test@example.com"));
 
-  info!("✅ Special character search test passed");
+  info!("Special character search test passed");
   Ok(())
 }
 
@@ -537,7 +537,7 @@ async fn test_search_performance() -> Result<()> {
   // Handle case where search service is not available or not working
   if results.messages.is_empty() {
     warn!("No search results found - search service may not be properly configured");
-    info!("✅ Search performance test completed (search service not available)");
+    info!("Search performance test completed (search service not available)");
     return Ok(());
   }
 
@@ -553,7 +553,7 @@ async fn test_search_performance() -> Result<()> {
   );
 
   info!(
-    "✅ Search performance test passed ({}ms)",
+    "Search performance test passed ({}ms)",
     search_duration.as_millis()
   );
   Ok(())

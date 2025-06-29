@@ -222,7 +222,7 @@ mod server_integration_test {
             "JetStream not available, skipping notify server setup: {}",
             e
           );
-          println!("✅ Server integration test completed (JetStream not available)");
+          println!("Server integration test completed (JetStream not available)");
           return Ok(());
         } else {
           return Err(e);
@@ -240,7 +240,7 @@ mod server_integration_test {
     // 等待事件处理
     println!("Waiting for events...");
     sleep(Duration::from_secs(1)).await;
-    println!("✅ Server integration test completed successfully");
+    println!("Server integration test completed successfully");
 
     Ok(())
   }

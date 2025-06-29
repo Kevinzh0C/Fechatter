@@ -126,9 +126,9 @@ impl ProductionProxy {
     pub async fn run(self) -> Result<()> {
         let addr: SocketAddr = self.config.server.listen_addr.parse()?;
         
-        info!("🚀 Starting production HTTP proxy on {}", addr);
-        info!("🔧 Configuration:");
-        info!("  📊 Worker Threads: {:?}", self.config.server.worker_threads);
+        info!("Starting production HTTP proxy on {}", addr);
+        info!("Configuration:");
+        info!("  Worker Threads: {:?}", self.config.server.worker_threads);
         info!("  🔗 Max Connections: {:?}", self.config.server.max_connections);
         info!("  ⏱️  Keep-Alive Timeout: {:?}s", self.config.server.keepalive_timeout);
         info!("  ⏱️  Request Timeout: {:?}s", self.config.server.request_timeout);
@@ -154,15 +154,15 @@ impl ProductionProxy {
                 info!("🛑 Graceful shutdown initiated");
             });
 
-        info!("✅ Production proxy listening and ready to serve requests");
-        info!("📊 Metrics available via proxy.get_metrics()");
+        info!("Production proxy listening and ready to serve requests");
+        info!("Metrics available via proxy.get_metrics()");
         info!("Press Ctrl+C to gracefully shutdown");
 
         if let Err(e) = server.await {
-            error!("❌ Production proxy server error: {}", e);
+            error!("ERROR: Production proxy server error: {}", e);
             Err(anyhow::anyhow!("Server error: {}", e))
         } else {
-            info!("✅ Production proxy shut down gracefully");
+            info!("Production proxy shut down gracefully");
             Ok(())
         }
     }
@@ -177,7 +177,7 @@ impl ProductionProxy {
         let uri = req.uri().clone();
         let path = uri.path();
 
-        debug!("📨 {} {}", method, path);
+        debug!("EVENT: {} {}", method, path);
 
         // Handle Gateway's own health check endpoint
         if path == "/gateway/health" && method == Method::GET {
@@ -205,7 +205,7 @@ impl ProductionProxy {
         let route = match self.find_matching_route(path, &method) {
             Some(route) => route,
             None => {
-                warn!("❌ No route found for {} {}", method, path);
+                warn!("ERROR: No route found for {} {}", method, path);
                 self.metrics.failed_requests.fetch_add(1, Ordering::Relaxed);
                 self.metrics.active_connections.fetch_sub(1, Ordering::Relaxed);
                 return Ok(self.create_error_response(StatusCode::NOT_FOUND, "Route not found"));
@@ -216,7 +216,7 @@ impl ProductionProxy {
         let upstream_server = match self.get_healthy_upstream(&route.upstream).await {
             Some(server) => server,
             None => {
-                error!("❌ No healthy upstream servers available for {}", route.upstream);
+                error!("ERROR: No healthy upstream servers available for {}", route.upstream);
                 self.metrics.upstream_errors.fetch_add(1, Ordering::Relaxed);
                 self.metrics.failed_requests.fetch_add(1, Ordering::Relaxed);
                 self.metrics.active_connections.fetch_sub(1, Ordering::Relaxed);
@@ -242,7 +242,7 @@ impl ProductionProxy {
                 response
             }
             Err(e) => {
-                error!("❌ Proxy error for {}: {}", upstream_server.address, e);
+                error!("ERROR: Proxy error for {}: {}", upstream_server.address, e);
                 self.metrics.failed_requests.fetch_add(1, Ordering::Relaxed);
                 upstream_server.failed_requests.fetch_add(1, Ordering::Relaxed);
                 self.create_error_response(StatusCode::BAD_GATEWAY, "Upstream server error")
@@ -250,7 +250,7 @@ impl ProductionProxy {
         };
 
         let duration = start_time.elapsed();
-        debug!("✅ Request completed in {:?}", duration);
+        debug!("Request completed in {:?}", duration);
         
         self.metrics.active_connections.fetch_sub(1, Ordering::Relaxed);
         Ok(response)
@@ -375,7 +375,7 @@ impl ProductionProxy {
 
     /// Find matching route for the request with improved logic
     fn find_matching_route(&self, path: &str, method: &Method) -> Option<&RouteConfig> {
-        debug!("🔍 Finding route for {} {}", method, path);
+        debug!("Finding route for {} {}", method, path);
         
         self.config.routes.iter().find(|route| {
             // Improved path matching logic
@@ -392,7 +392,7 @@ impl ProductionProxy {
                 m.to_uppercase() == method.as_str().to_uppercase()
             });
 
-            debug!("🔍 Route '{}' -> path_matches: {}, method_matches: {}", 
+            debug!("Route '{}' -> path_matches: {}, method_matches: {}", 
                    route.path, path_matches, method_matches);
 
             path_matches && method_matches
@@ -622,13 +622,13 @@ impl HealthChecker {
                 server.healthy.store(is_healthy, Ordering::Relaxed);
                 
                 if is_healthy {
-                    debug!("✅ Health check passed for {}", server.address);
+                    debug!("Health check passed for {}", server.address);
                 } else {
-                    warn!("❌ Health check failed for {} (status: {})", server.address, response.status());
+                    warn!("ERROR: Health check failed for {} (status: {})", server.address, response.status());
                 }
             }
             Err(e) => {
-                warn!("❌ Health check error for {}: {}", server.address, e);
+                warn!("ERROR: Health check error for {}: {}", server.address, e);
                 server.healthy.store(false, Ordering::Relaxed);
             }
         }

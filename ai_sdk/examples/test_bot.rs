@@ -12,17 +12,17 @@ async fn main() {
             println!("\n🧠 Testing OpenAI...");
             test_openai(api_key).await;
         } else {
-            println!("\n⚠️  OPENAI_API_KEY is empty, skipping OpenAI test");
+            println!("\nWARNING: OPENAI_API_KEY is empty, skipping OpenAI test");
         }
     } else {
-        println!("\n⚠️  OPENAI_API_KEY not set, skipping OpenAI test");
+        println!("\nWARNING: OPENAI_API_KEY not set, skipping OpenAI test");
     }
 
     // Test Ollama (local)
     println!("\n🦙 Testing Ollama...");
     test_ollama().await;
 
-    println!("\n✅ AI SDK Bot Test Complete");
+    println!("\nAI SDK Bot Test Complete");
 }
 
 async fn test_openai(api_key: String) {
@@ -34,10 +34,10 @@ async fn test_openai(api_key: String) {
 
     match adapter.complete(&messages).await {
         Ok(response) => {
-            println!("✅ OpenAI Response: {}", response.trim());
+            println!("OpenAI Response: {}", response.trim());
         }
         Err(e) => {
-            println!("❌ OpenAI Error: {}", e);
+            println!("ERROR: OpenAI Error: {}", e);
         }
     }
 }
@@ -51,12 +51,12 @@ async fn test_ollama() {
 
     match adapter.complete(&messages).await {
         Ok(response) => {
-            println!("✅ Ollama Response: {}", response.trim());
+            println!("Ollama Response: {}", response.trim());
         }
         Err(e) => {
-            println!("❌ Ollama Error: {}", e);
-            println!("💡 Make sure Ollama is running: ollama serve");
-            println!("💡 And model is available: ollama pull llama3.2");
+            println!("ERROR: Ollama Error: {}", e);
+            println!("Make sure Ollama is running: ollama serve");
+            println!("And model is available: ollama pull llama3.2");
         }
     }
 } 

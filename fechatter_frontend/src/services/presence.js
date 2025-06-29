@@ -32,7 +32,7 @@ const presenceService = {
     });
 
     this.isInitialized = true;
-    // console.log('✅ Presence Service Initialized');
+    // console.log('Presence Service Initialized');
   },
 
   /**

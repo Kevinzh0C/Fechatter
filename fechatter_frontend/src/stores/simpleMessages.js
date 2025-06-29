@@ -83,7 +83,7 @@ export const useSimpleMessageStore = defineStore('simpleMessages', {
      * Send a message - Simple optimistic update
      */
     async sendMessage(chatId, content) {
-        // 🔧 CRITICAL FIX: Get real user info from authStore instead of hardcoded 'You'
+        // CRITICAL FIX: Get real user info from authStore instead of hardcoded 'You'
         const authStore = useAuthStore();
         const currentUser = authStore.user;
         const currentUserInfo = {
@@ -97,8 +97,8 @@ export const useSimpleMessageStore = defineStore('simpleMessages', {
         const tempMessage = {
           id: `temp_${Date.now()}`,
           content,
-          sender_id: currentUserInfo.id, // ✅ Use real user ID
-          sender_name: currentUserInfo.fullname, // ✅ Use real fullname
+          sender_id: currentUserInfo.id, // Use real user ID
+          sender_name: currentUserInfo.fullname, // Use real fullname
           created_at: new Date().toISOString(),
           status: 'sending',
           files: []
@@ -121,7 +121,7 @@ export const useSimpleMessageStore = defineStore('simpleMessages', {
               id: sentMessage.id,
               content: sentMessage.content,
               sender_id: sentMessage.sender_id,
-              sender_name: sentMessage.sender?.fullname || currentUserInfo.fullname, // ✅ Use real user info as fallback
+              sender_name: sentMessage.sender?.fullname || currentUserInfo.fullname, // Use real user info as fallback
               created_at: sentMessage.created_at,
               status: 'sent',
               files: sentMessage.files || []

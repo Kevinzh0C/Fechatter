@@ -3,11 +3,11 @@
 //! **Production-grade NATS Event Publishing with notify_server compatibility**
 //! 
 //! **Key Features:**
-//! - ✅ Compatible with notify_server SSE broadcasting
-//! - ✅ Complete message content delivery for real-time notifications  
-//! - ✅ notify_server expected subject naming
-//! - ✅ Enhanced metadata for rich event context
-//! - ✅ Seamless integration with existing EventPublisher
+//! - Compatible with notify_server SSE broadcasting
+//! - Complete message content delivery for real-time notifications  
+//! - notify_server expected subject naming
+//! - Enhanced metadata for rich event context
+//! - Seamless integration with existing EventPublisher
 
 use crate::error::AppError;
 use async_nats::Client as NatsClient;
@@ -241,7 +241,7 @@ impl EnhancedEventPublisher {
         let payload_bytes = match serde_json::to_vec(&event) {
             Ok(bytes) => bytes,
             Err(e) => {
-                error!("❌ Failed to serialize event for notify_server: {}", e);
+                error!("ERROR: Failed to serialize event for notify_server: {}", e);
                 return Err(AppError::Internal(format!("Serialization error: {}", e)));
             }
         };
@@ -249,12 +249,12 @@ impl EnhancedEventPublisher {
         // Publish to NATS
         match nats_client.publish(subject.to_string(), payload_bytes.into()).await {
             Ok(_) => {
-                debug!("✅ Successfully published event to notify_server: {}", subject);
-                info!("📡 notify_server event: {} -> SSE broadcasting", subject);
+                debug!("Successfully published event to notify_server: {}", subject);
+                info!("SUBSCRIPTION: notify_server event: {} -> SSE broadcasting", subject);
                 Ok(())
             }
             Err(e) => {
-                error!("❌ Failed to publish event to notify_server: {}", e);
+                error!("ERROR: Failed to publish event to notify_server: {}", e);
                 Err(AppError::Internal(format!("notify_server NATS publish error: {}", e)))
             }
         }
@@ -298,11 +298,11 @@ pub async fn create_enhanced_publisher_for_notify_server(
 ) -> Result<EnhancedEventPublisher, AppError> {
     match async_nats::connect(nats_url).await {
         Ok(client) => {
-            info!("✅ Enhanced publisher connected to NATS for notify_server: {}", nats_url);
+            info!("Enhanced publisher connected to NATS for notify_server: {}", nats_url);
             Ok(EnhancedEventPublisher::new(Some(client)))
         }
         Err(e) => {
-            warn!("⚠️ Failed to connect enhanced publisher to NATS: {}", e);
+            warn!("WARNING: Failed to connect enhanced publisher to NATS: {}", e);
             info!("📄 Creating disabled enhanced publisher");
             Ok(EnhancedEventPublisher::disabled())
         }

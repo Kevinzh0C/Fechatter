@@ -19,7 +19,7 @@
 import { ref, onErrorCaptured } from 'vue'
 
 // ================================
-// 🎯 Props & Emits
+// Props & Emits
 // ================================
 
 const props = defineProps({
@@ -32,14 +32,14 @@ const props = defineProps({
 const emit = defineEmits(['error', 'retry'])
 
 // ================================
-// 🎯 Reactive State
+// Reactive State
 // ================================
 
 const hasError = ref(false)
 const error = ref(null)
 
 // ================================
-// 🎯 Error Handling
+// Error Handling
 // ================================
 
 onErrorCaptured((err, instance, info) => {
@@ -59,7 +59,7 @@ onErrorCaptured((err, instance, info) => {
 })
 
 // ================================
-// 🎯 Methods
+// Methods
 // ================================
 
 const retry = () => {

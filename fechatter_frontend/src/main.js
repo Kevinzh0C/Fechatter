@@ -11,13 +11,13 @@ import minimalSSE from './services/sse-minimal';
 // Import extension error suppressor to handle browser extension errors
 import './utils/extensionErrorSuppressor.js';
 
-// 🎨 AESTHETIC RESTORATION: Import unified design system FIRST to override conflicts
+// AESTHETIC RESTORATION: Import unified design system FIRST to override conflicts
 import './styles/unified-aesthetic-system.css';
 import './styles/unified-channel-fonts.css';
 import './style.css';
 import './styles/z-index.css';
 
-// 🚀 CODE HIGHLIGHTING: Import enhanced code highlighting styles
+// CODE HIGHLIGHTING: Import enhanced code highlighting styles
 import './styles/enhanced-code-highlight.css';
 
 // 🛡️ Security Initializations - MUST load first (restored after aesthetic fix)
@@ -28,7 +28,7 @@ import requestConflictResolver from './utils/requestConflictResolver'
 // Performance monitoring (development only)
 import performanceMonitor from './utils/performanceMonitor'
 
-// 🔧 NEW: System Monitor for comprehensive debugging and performance monitoring
+// NEW: System Monitor for comprehensive debugging and performance monitoring
 import { systemMonitor } from './utils/systemMonitor.js';
 
 // 🏥 NEW: Quick Health Check for instant system status
@@ -44,7 +44,7 @@ import { useWorkspaceStore } from './stores/workspace'
 import { messageDisplayGuarantee } from './services/messageSystem/MessageDisplayGuarantee.js';
 import { messageDisplayGuaranteeVerification } from './utils/messageDisplayGuaranteeVerification.js';
 
-// 🔧 NEW: Import UnifiedMessageService for global availability
+// NEW: Import UnifiedMessageService for global availability
 import { unifiedMessageService } from './services/messageSystem/UnifiedMessageService.js';
 
 import { guaranteedScrollToBottom } from '@/services/GuaranteedScrollToBottom.js'
@@ -92,18 +92,18 @@ const simplifiedSafety = {
 simplifiedSafety.initialize(devtools);
 console.log('🛡️ Production Safety Wrapper active');
 
-// --- 📊 PERFORMANCE MONITORING ---
+// --- PERFORMANCE MONITORING ---
 performanceMonitor.initialize();
-console.log('📊 Performance Monitor loaded - use window.perfAnalytics() to view stats');
+console.log('Performance Monitor loaded - use window.perfAnalytics() to view stats');
 
-// --- 🔧 SYSTEM MONITORING ---
+// --- SYSTEM MONITORING ---
 if (import.meta.env.DEV) {
-  console.log('🔧 System Monitor initialized - use window.debugSystem() for health check');
-  console.log('📊 Available debug commands: debugSystem(), debugMessageService(), debugCache(), debugComponents(), debugPerformance(), debugMemory(), debugFullReport()');
+  console.log('System Monitor initialized - use window.debugSystem() for health check');
+  console.log('Available debug commands: debugSystem(), debugMessageService(), debugCache(), debugComponents(), debugPerformance(), debugMemory(), debugFullReport()');
   console.log('🏥 Quick Health Check available - use window.quickHealthCheck() for instant status overview');
 }
 
-// --- 🚀 INITIALIZE CORE APPLICATION ---
+// --- INITIALIZE CORE APPLICATION ---
 const app = createApp(App);
 const pinia = createPinia();
 
@@ -135,7 +135,7 @@ if (import.meta.env.DEV) {
   import('./utils/messageServiceDiagnostics'); // Import UnifiedMessageService diagnostics
   import('./utils/fetchMoreMessagesTest'); // Import fetchMoreMessages fix verification
   import('./utils/systemHealthValidator'); // Import system health validator
-  import('./utils/sseDebugger'); // 🚀 Import SSE debugger for comprehensive SSE diagnosis
+  import('./utils/sseDebugger'); // Import SSE debugger for comprehensive SSE diagnosis
 
   // 🆕 NEW: Import advanced UX systems for development
   import('./services/ProgressiveLoadManager.js'); // Import progressive loading system
@@ -145,7 +145,7 @@ if (import.meta.env.DEV) {
 // Import performance validator for development testing
 if (import.meta.env.DEV) {
   import('./utils/navigationPerformanceValidator.js').then(module => {
-    console.log('🔍 Navigation Performance Validator loaded - use window.testNavigationPerformance(fromChatId, toChatId) to test');
+    console.log('Navigation Performance Validator loaded - use window.testNavigationPerformance(fromChatId, toChatId) to test');
   });
 }
 
@@ -185,31 +185,31 @@ async function initializeStores() {
     // Initialize auth state from storage
     await authStore.initialize()
 
-    // 🚀 ENHANCED: More strict SSE connection validation
+    // ENHANCED: More strict SSE connection validation
     if (import.meta.env.DEV) {
-      console.log('🔍 [SSE] Checking SSE initialization conditions...');
-      console.log('🔍 [SSE] authStore.isAuthenticated:', authStore.isAuthenticated);
-      console.log('🔍 [SSE] authStore.token exists:', !!authStore.token);
-      console.log('🔍 [SSE] Current route:', router.currentRoute.value?.path);
+      console.log('[SSE] Checking SSE initialization conditions...');
+      console.log('[SSE] authStore.isAuthenticated:', authStore.isAuthenticated);
+      console.log('[SSE] authStore.token exists:', !!authStore.token);
+      console.log('[SSE] Current route:', router.currentRoute.value?.path);
       if (authStore.token) {
-        console.log('🔍 [SSE] Token preview:', authStore.token.substring(0, 20) + '...');
+        console.log('[SSE] Token preview:', authStore.token.substring(0, 20) + '...');
       }
     }
 
-    // 🚀 CRITICAL FIX: More comprehensive authentication validation
+    // CRITICAL FIX: More comprehensive authentication validation
     const isUserLoggedIn = authStore.isAuthenticated &&
       authStore.token &&
       authStore.user &&
       authStore.token.length > 50; // Ensure token is substantial
 
-    // 🚀 ADDITIONAL: Don't initialize SSE on login/register pages
+    // ADDITIONAL: Don't initialize SSE on login/register pages
     const currentPath = router.currentRoute.value?.path || window.location.pathname;
     const isOnAuthPage = currentPath.includes('/login') ||
       currentPath.includes('/register') ||
       currentPath === '/';
 
     if (import.meta.env.DEV) {
-      console.log('🔍 [SSE] Enhanced validation:');
+      console.log('[SSE] Enhanced validation:');
       console.log('  - isUserLoggedIn:', isUserLoggedIn);
       console.log('  - isOnAuthPage:', isOnAuthPage);
       console.log('  - currentPath:', currentPath);
@@ -218,7 +218,7 @@ async function initializeStores() {
     if (isUserLoggedIn && !isOnAuthPage) {
       try {
         if (import.meta.env.DEV) {
-          console.log('🔗 [SSE] ✅ ALL CONDITIONS MET! Initializing SSE connection...');
+          console.log('🔗 [SSE] ALL CONDITIONS MET! Initializing SSE connection...');
           console.log('🔗 [SSE] User:', authStore.user?.email || 'Unknown');
           console.log('🔗 [SSE] minimalSSE service:', !!minimalSSE);
         }
@@ -229,35 +229,35 @@ async function initializeStores() {
         setTimeout(() => {
           const sseStatus = minimalSSE.getStatus();
           if (import.meta.env.DEV) {
-            console.log('📡 [SSE] Startup connection status:', sseStatus);
-            console.log('📡 [SSE] EventSource exists:', !!minimalSSE.eventSource);
+            console.log('SUBSCRIPTION: [SSE] Startup connection status:', sseStatus);
+            console.log('SUBSCRIPTION: [SSE] EventSource exists:', !!minimalSSE.eventSource);
             if (minimalSSE.eventSource) {
-              console.log('📡 [SSE] EventSource URL:', minimalSSE.eventSource.url);
-              console.log('📡 [SSE] EventSource readyState:', minimalSSE.eventSource.readyState);
+              console.log('SUBSCRIPTION: [SSE] EventSource URL:', minimalSSE.eventSource.url);
+              console.log('SUBSCRIPTION: [SSE] EventSource readyState:', minimalSSE.eventSource.readyState);
             }
           }
         }, 2000);
 
       } catch (sseError) {
         if (import.meta.env.DEV) {
-          console.error('❌ [SSE] Failed to initialize SSE on startup:', sseError);
+          console.error('ERROR: [SSE] Failed to initialize SSE on startup:', sseError);
         }
       }
     } else {
       if (import.meta.env.DEV) {
-        console.warn('⚠️ [SSE] SKIPPING SSE initialization:');
+        console.warn('WARNING: [SSE] SKIPPING SSE initialization:');
         console.warn('  - isAuthenticated:', authStore.isAuthenticated);
         console.warn('  - token exists:', !!authStore.token);
         console.warn('  - user exists:', !!authStore.user);
         console.warn('  - token length:', authStore.token?.length || 0);
         console.warn('  - isOnAuthPage:', isOnAuthPage);
         console.warn('  - currentPath:', currentPath);
-        console.warn('💡 SSE will initialize after successful login and navigation to chat');
+        console.warn('SSE will initialize after successful login and navigation to chat');
       }
     }
 
     if (import.meta.env.DEV) {
-      console.log('✅ Application stores initialized')
+      console.log('Application stores initialized')
     }
 
     if (import.meta.env.DEV) {
@@ -269,7 +269,7 @@ async function initializeStores() {
 
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('❌ Failed to initialize stores:', error)
+      console.error('ERROR: Failed to initialize stores:', error)
     }
     errorHandler.handle(error, {
       context: 'Store Initialization',
@@ -293,8 +293,8 @@ window.messageDisplayGuarantee = messageDisplayGuarantee;
 window.unifiedMessageService = unifiedMessageService;
 
 if (import.meta.env.DEV) {
-  console.log('✅ Message Display Guarantee system ready');
-  console.log('✅ UnifiedMessageService globally available');
+  console.log('Message Display Guarantee system ready');
+  console.log('UnifiedMessageService globally available');
 
   // Add debugging helper
   window.debugMessageGuarantee = () => {
@@ -304,7 +304,7 @@ if (import.meta.env.DEV) {
     console.groupEnd();
   };
 
-  // 🔧 NEW: Add quick control methods
+  // NEW: Add quick control methods
   window.disableMessageGuarantee = (duration = 30000) => {
     messageDisplayGuarantee.temporaryDisable(duration);
   };
@@ -318,7 +318,7 @@ if (import.meta.env.DEV) {
   };
 
   // 🛡️ NEW: Initialize verification system
-  console.log('🔍 Initializing Message Display Guarantee Verification...');
+  console.log('Initializing Message Display Guarantee Verification...');
   window.messageDisplayGuaranteeVerification = messageDisplayGuaranteeVerification;
 
   // Add verification command
@@ -327,17 +327,17 @@ if (import.meta.env.DEV) {
     return await messageDisplayGuaranteeVerification.runCompleteVerification();
   };
 
-  console.log('✅ Verification system ready - use window.verifyMessageDisplayGuarantee() to test');
+  console.log('Verification system ready - use window.verifyMessageDisplayGuarantee() to test');
   console.log('🔬 Message Display Diagnostics ready - use diagnoseDhat(chatId) to analyze message display issues');
   console.log('🔐 Authentication Diagnostics ready - use diagnoseDAuth() to analyze auth issues, fixDAuth() to auto-fix');
-  console.log('📨 Message Service Diagnostics ready - use diagnoseDMessageService(chatId) to analyze service issues, fixDMessageService() to auto-fix');
-  console.log('🔧 FetchMore Fix Test ready - use testFetchMoreFix(chatId) to verify the ReferenceError fix, quickTestFetchMore(chatId) for quick check');
+  console.log('EVENT: Message Service Diagnostics ready - use diagnoseDMessageService(chatId) to analyze service issues, fixDMessageService() to auto-fix');
+  console.log('FetchMore Fix Test ready - use testFetchMoreFix(chatId) to verify the ReferenceError fix, quickTestFetchMore(chatId) for quick check');
   console.log('🏥 Master System Diagnostics ready - use diagnoseDSystem(chatId) for complete health check, fixDSystem() to auto-fix all');
 }
 
 // Initialize stores with guarantee system integration
 initializeStores().then(() => {
-  console.log('✅ Application stores initialized');
+  console.log('Application stores initialized');
 }).catch(error => {
   console.error('Failed to initialize stores:', error);
 });
@@ -347,24 +347,24 @@ async function mountApp() {
   try {
     await initializeStores()
 
-    // 🔧 REFACTORED: Use dependency injection instead of global access
+    // REFACTORED: Use dependency injection instead of global access
     const authStore = useAuthStore()
     const chatStore = useChatStore()
     const userStore = useUserStore()
     const workspaceStore = useWorkspaceStore()
 
-    // 🎯 NEW: Configure dependency injection container
+    // NEW: Configure dependency injection container
     if (import.meta.env.DEV) {
       import('./services/DIContainer.js').then(({ container, configureServices }) => {
         configureServices(container)
         container.install(app)
-        console.log('✅ Dependency injection container configured')
+        console.log('Dependency injection container configured')
       }).catch(error => {
-        console.warn('⚠️ DIContainer failed to load:', error)
+        console.warn('WARNING: DIContainer failed to load:', error)
       })
     }
 
-    // 🔧 DEPRECATED: Keep minimal global access for backward compatibility
+    // DEPRECATED: Keep minimal global access for backward compatibility
     // Will be removed in future refactoring phases
     if (import.meta.env.DEV) {
       window.__pinia_stores__ = {
@@ -373,19 +373,19 @@ async function mountApp() {
         user: () => userStore,
         workspace: () => workspaceStore,
       };
-      console.warn('⚠️ Global store access is deprecated. Use dependency injection instead.')
+      console.warn('WARNING: Global store access is deprecated. Use dependency injection instead.')
     }
 
     // Security validation
     if (import.meta.env.PROD && !securityStatus.debugSuppressed) {
       if (import.meta.env.DEV) {
-        console.warn('⚠️ Security Warning: Debug logs not properly suppressed in production')
+        console.warn('WARNING: Security Warning: Debug logs not properly suppressed in production')
       }
     }
 
     app.mount('#app')
     if (import.meta.env.DEV) {
-      console.log('🚀 Fechatter application mounted successfully')
+      console.log('Fechatter application mounted successfully')
     }
 
     // Cleanup on page unload
@@ -398,7 +398,7 @@ async function mountApp() {
 
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('❌ Failed to mount application:', error)
+      console.error('ERROR: Failed to mount application:', error)
     }
     errorHandler.handle(error, {
       context: 'Application Mount',
@@ -456,7 +456,7 @@ window.$router = router;
 window.errorHandler = errorHandler;
 window.sseConnectionManager = sseConnectionManager;
 
-// 🚀 CRITICAL FIX: Expose tokenManager to window for SSE service access
+// CRITICAL FIX: Expose tokenManager to window for SSE service access
 import tokenManager from './services/tokenManager.js';
 window.tokenManager = tokenManager;
 
@@ -489,8 +489,8 @@ window.addEventListener('beforeunload', () => {
   analytics.destroy();
 });
 
-// 🎯 Initialize guaranteed scroll system
+// Initialize guaranteed scroll system
 if (import.meta.env.DEV) {
   window.guaranteedScrollToBottom = guaranteedScrollToBottom;
-  console.log('🎯 GuaranteedScrollToBottom system loaded');
+  console.log('GuaranteedScrollToBottom system loaded');
 }

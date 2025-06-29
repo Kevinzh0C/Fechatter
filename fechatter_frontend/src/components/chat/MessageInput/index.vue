@@ -183,14 +183,14 @@ const formatMode = ref('text');
 const isSending = ref(false);
 const selectedLanguage = ref('javascript');
 const files = ref([]);
-const uploadedFileUrl = ref(''); // 🎯 新增：存储上传成功的文件URL
-const uploadedFileInfo = ref(null); // 🎯 新增：存储上传成功的文件信息
+const uploadedFileUrl = ref(''); // 新增：存储上传成功的文件URL
+const uploadedFileInfo = ref(null); // 新增：存储上传成功的文件信息
 const showEmojiPicker = ref(false);
 const emojiSearchQuery = ref('');
 const selectedCategory = ref('smileys');
 const recentEmojis = ref([]);
 
-// 🎯 专业企业表情数据
+// 专业企业表情数据
 const enterpriseEmojis = ref([
   // 常用表情
   { emoji: '😊', name: 'smile', category: 'smileys' },
@@ -216,20 +216,20 @@ const enterpriseEmojis = ref([
   { emoji: '❤️', name: 'heart', category: 'symbols' },
   { emoji: '💖', name: 'sparkling_heart', category: 'symbols' },
   { emoji: '💯', name: 'hundred', category: 'symbols' },
-  { emoji: '🔥', name: 'fire', category: 'symbols' },
-  { emoji: '⭐', name: 'star', category: 'symbols' },
+  { emoji: '', name: 'fire', category: 'symbols' },
+  { emoji: '', name: 'star', category: 'symbols' },
   { emoji: '✨', name: 'sparkles', category: 'symbols' },
-  { emoji: '⚡', name: 'zap', category: 'symbols' },
+  { emoji: '', name: 'zap', category: 'symbols' },
   { emoji: '💎', name: 'gem', category: 'symbols' },
 
   // 状态表情
-  { emoji: '✅', name: 'white_check_mark', category: 'symbols' },
+  { emoji: '', name: 'white_check_mark', category: 'symbols' },
   { emoji: '❌', name: 'x', category: 'symbols' },
   { emoji: '⚠️', name: 'warning', category: 'symbols' },
-  { emoji: '🚀', name: 'rocket', category: 'travel' },
+  { emoji: '', name: 'rocket', category: 'travel' },
   { emoji: '🎉', name: 'tada', category: 'objects' },
   { emoji: '🎊', name: 'confetti_ball', category: 'objects' },
-  { emoji: '🎯', name: 'dart', category: 'objects' },
+  { emoji: '', name: 'dart', category: 'objects' },
   { emoji: '📈', name: 'chart_increasing', category: 'objects' },
 
   // 技术表情
@@ -239,7 +239,7 @@ const enterpriseEmojis = ref([
   { emoji: '⌨️', name: 'keyboard', category: 'objects' },
   { emoji: '🖱️', name: 'computer_mouse', category: 'objects' },
   { emoji: '💾', name: 'floppy_disk', category: 'objects' },
-  { emoji: '🔧', name: 'wrench', category: 'objects' },
+  { emoji: '', name: 'wrench', category: 'objects' },
   { emoji: '⚙️', name: 'gear', category: 'objects' }
 ]);
 
@@ -250,7 +250,7 @@ const emojiPickerRef = ref(null);
 
 // Computed properties
 const canSend = computed(() => {
-  // 🎯 严格的发送逻辑：必须先上传文件到远端获取URL
+  // 严格的发送逻辑：必须先上传文件到远端获取URL
   const hasContent = messageContent.value.trim().length > 0;
   const hasLocalFiles = files.value.length > 0;
   const hasUploadedFileUrl = uploadedFileUrl.value.trim().length > 0;
@@ -261,7 +261,7 @@ const canSend = computed(() => {
     return false;
   }
 
-  // ✅ 只有这两种情况可以发送：
+  // 只有这两种情况可以发送：
   // 1. 纯文本消息（没有任何文件）
   // 2. 有远端文件URL（无论是否有文本内容）
   const canSendText = hasContent && !hasLocalFiles && !hasUploadedFileUrl;
@@ -269,13 +269,13 @@ const canSend = computed(() => {
   
   const result = (canSendText || canSendFile) && notSending;
 
-  // 🔍 详细状态日志
+  // 详细状态日志
   if (hasLocalFiles && !hasUploadedFileUrl) {
     console.log('🚫 [MessageInput] Send BLOCKED: Local files need remote upload first');
   } else if (canSendFile) {
-    console.log('✅ [MessageInput] Send ENABLED: Remote file URL ready');
+    console.log('[MessageInput] Send ENABLED: Remote file URL ready');
   } else if (canSendText) {
-    console.log('✅ [MessageInput] Send ENABLED: Text-only message');
+    console.log('[MessageInput] Send ENABLED: Text-only message');
   } else {
     console.log('⚪ [MessageInput] Send DISABLED: No content or files');
   }
@@ -287,7 +287,7 @@ const placeholderText = computed(() => {
   const hasLocalFiles = files.value.length > 0;
   const hasUploadedFileUrl = uploadedFileUrl.value.trim().length > 0;
 
-  // 🎯 根据文件上传状态显示不同提示
+  // 根据文件上传状态显示不同提示
   if (hasUploadedFileUrl) {
     return 'File uploaded! Ready to send...';
   } else if (hasLocalFiles) {
@@ -304,7 +304,7 @@ const placeholderText = computed(() => {
   return 'Type a message...';
 });
 
-// 🎯 表情分类
+// 表情分类
 const emojiCategories = computed(() => {
   const categories = {};
   enterpriseEmojis.value.forEach(item => {
@@ -316,7 +316,7 @@ const emojiCategories = computed(() => {
   return categories;
 });
 
-// 🎯 过滤后的表情
+// 过滤后的表情
 const filteredEmojis = computed(() => {
   let emojis = enterpriseEmojis.value;
 
@@ -337,14 +337,14 @@ const filteredEmojis = computed(() => {
   return emojis;
 });
 
-// 🎯 表情分类相关方法
+// 表情分类相关方法
 const getCategoryIcon = (category) => {
   const icons = {
     smileys: '😊',
     people: '👍',
     symbols: '❤️',
     objects: '💻',
-    travel: '🚀'
+    travel: ''
   };
   return icons[category] || '📂';
 };
@@ -720,8 +720,8 @@ const insertTable = () => {
 const clearContent = () => {
   messageContent.value = '';
   files.value = [];
-  uploadedFileUrl.value = ''; // 🎯 清空上传的文件URL
-  uploadedFileInfo.value = null; // 🎯 清空上传的文件信息
+  uploadedFileUrl.value = ''; // 清空上传的文件URL
+  uploadedFileInfo.value = null; // 清空上传的文件信息
   showPreview.value = false;
   emit('preview-state-change', false);
   nextTick(() => {
@@ -782,16 +782,16 @@ const removeFile = (index) => {
   }
 };
 
-// 🎯 处理FilePreview组件的新事件
+// 处理FilePreview组件的新事件
 const handleFileUploaded = (uploadResult) => {
-  console.log('✅ [MessageInput] File uploaded successfully:', uploadResult);
+  console.log('[MessageInput] File uploaded successfully:', uploadResult);
 
-  // 🎯 保存上传成功的文件URL和信息
+  // 保存上传成功的文件URL和信息
   if (uploadResult && (uploadResult.url || uploadResult.file_url)) {
     // 支持多种URL字段格式
     const fileUrl = uploadResult.url || uploadResult.file_url;
 
-    // 🎯 强制触发响应式更新
+    // 强制触发响应式更新
     uploadedFileUrl.value = '';
     uploadedFileInfo.value = null;
 
@@ -808,18 +808,18 @@ const handleFileUploaded = (uploadResult) => {
 
       console.log('📁 [MessageInput] File URL set for sending:', uploadedFileUrl.value);
 
-      // 🎯 强制触发canSend重新计算
+      // 强制触发canSend重新计算
       nextTick(() => {
         console.log('🔄 [MessageInput] canSend should now be:', canSend.value);
       });
     });
   } else {
-    console.error('❌ [MessageInput] Invalid uploadResult - no URL found:', uploadResult);
+    console.error('ERROR: [MessageInput] Invalid uploadResult - no URL found:', uploadResult);
   }
 };
 
 const handleFileUploadError = (error) => {
-  console.error('❌ [MessageInput] File upload error:', error);
+  console.error('ERROR: [MessageInput] File upload error:', error);
   // 可以显示错误消息给用户
 };
 
@@ -828,15 +828,15 @@ const handleFileRemoved = () => {
 
   // 清空所有文件相关状态
   files.value = []; // 清空文件数组
-  uploadedFileUrl.value = ''; // 🎯 清空上传的文件URL
-  uploadedFileInfo.value = null; // 🎯 清空上传的文件信息
+  uploadedFileUrl.value = ''; // 清空上传的文件URL
+  uploadedFileInfo.value = null; // 清空上传的文件信息
 
   // 重置UI状态
   closePreview();
   formatMode.value = 'text';
 
   console.log('🧹 [MessageInput] All file state cleared - send button should reflect content-only state');
-  console.log('📊 [MessageInput] Current state:', {
+  console.log('[MessageInput] Current state:', {
     hasContent: messageContent.value.trim().length > 0,
     hasFiles: files.value.length > 0,
     hasUploadedFile: uploadedFileUrl.value.trim().length > 0,
@@ -844,7 +844,7 @@ const handleFileRemoved = () => {
   });
 };
 
-// 🎯 处理FilePreview触发的文件上传事件
+// 处理FilePreview触发的文件上传事件
 const handleTriggerUpload = () => {
   console.log('📁 [MessageInput] Triggering new file upload');
   triggerFileUpload();
@@ -893,7 +893,7 @@ const handleInput = () => {
 
 const sendMessage = async () => {
   if (!canSend.value) {
-    console.log('⚠️ [MessageInput] Send blocked - requirements not met');
+    console.log('WARNING: [MessageInput] Send blocked - requirements not met');
     return;
   }
 
@@ -902,7 +902,7 @@ const sendMessage = async () => {
   const hasUploadedFileUrl = uploadedFileUrl.value.trim().length > 0;
   
   if (hasLocalFiles && !hasUploadedFileUrl) {
-    console.error('❌ [MessageInput] Cannot send: Files selected but not uploaded to remote');
+    console.error('ERROR: [MessageInput] Cannot send: Files selected but not uploaded to remote');
     // 可以显示用户提示
     alert('Please upload files to remote server first before sending');
     return;
@@ -911,14 +911,14 @@ const sendMessage = async () => {
   isSending.value = true;
 
   try {
-    // 🎯 构建消息数据
+    // 构建消息数据
     let content = messageContent.value.trim();
 
-    // 🚀 Code模式下自动包装为代码块
+    // Code模式下自动包装为代码块
     if (formatMode.value === 'code' && content) {
       const language = selectedLanguage.value || 'plaintext';
       content = `\`\`\`${language}\n${content}\n\`\`\``;
-      console.log(`🔧 [MessageInput] Code mode: wrapping content as ${language} code block`);
+      console.log(`[MessageInput] Code mode: wrapping content as ${language} code block`);
     }
 
     const messageData = {
@@ -927,17 +927,17 @@ const sendMessage = async () => {
       reply_to: props.replyToMessage?.id
     };
 
-    // 🎯 只发送已上传到远端的文件URL
+    // 只发送已上传到远端的文件URL
     if (hasUploadedFileUrl) {
       messageData.files = [uploadedFileInfo.value];
-      console.log('📨 [MessageInput] Sending message with remote file URL:', uploadedFileUrl.value);
+      console.log('EVENT: [MessageInput] Sending message with remote file URL:', uploadedFileUrl.value);
     } else {
-      console.log('📨 [MessageInput] Sending text-only message');
+      console.log('EVENT: [MessageInput] Sending text-only message');
     }
 
     emit('message-sent', messageData);
 
-    // 🎯 清空所有状态
+    // 清空所有状态
     messageContent.value = '';
     files.value = [];
     uploadedFileUrl.value = '';
@@ -952,7 +952,7 @@ const sendMessage = async () => {
     });
 
   } catch (error) {
-    console.error('❌ [MessageInput] Failed to send message:', error);
+    console.error('ERROR: [MessageInput] Failed to send message:', error);
   } finally {
     isSending.value = false;
   }
@@ -967,12 +967,12 @@ watch(() => props.chatId, (newChatId, oldChatId) => {
     uploadedFileInfo.value = null;
     showPreview.value = false;
     formatMode.value = 'text';
-    showEmojiPicker.value = false; // 🎯 Close emoji picker on chat switch
+    showEmojiPicker.value = false; // Close emoji picker on chat switch
     emit('preview-state-change', false);
   }
 });
 
-// 🎯 Emoji handling functions
+// Emoji handling functions
 const toggleEmojiPicker = () => {
   showEmojiPicker.value = !showEmojiPicker.value;
   console.log('🎭 Toggle emoji picker:', showEmojiPicker.value);
@@ -988,7 +988,7 @@ const handleEmojiOverlayClick = (event) => {
 const handleEmojiSelect = (emojiObject) => {
   const textarea = messageInput.value;
   if (!textarea) {
-    console.warn('⚠️ Textarea not found for emoji insertion');
+    console.warn('WARNING: Textarea not found for emoji insertion');
     return;
   }
 
@@ -1006,7 +1006,7 @@ const handleEmojiSelect = (emojiObject) => {
     textarea.focus();
   });
 
-  // 🎯 添加到最近使用
+  // 添加到最近使用
   addToRecentEmojis(emojiObject);
 
   // Close emoji picker after selection
@@ -1014,7 +1014,7 @@ const handleEmojiSelect = (emojiObject) => {
   console.log('🎭 Emoji inserted:', emoji);
 };
 
-// 🎯 添加到最近使用的表情
+// 添加到最近使用的表情
 const addToRecentEmojis = (emojiObject) => {
   // 移除已存在的相同表情
   const filtered = recentEmojis.value.filter(item => item.emoji !== emojiObject.emoji);
@@ -1044,7 +1044,7 @@ const handleClickOutside = (event) => {
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
 
-  // 🎯 加载最近使用的表情
+  // 加载最近使用的表情
   try {
     const saved = localStorage.getItem('fechatter_recent_emojis');
     if (saved) {

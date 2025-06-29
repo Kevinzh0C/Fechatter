@@ -13,18 +13,18 @@ import { ref, reactive } from 'vue';
 
 export class RefactoredMessageService {
   constructor(dependencies) {
-    // 🔧 Dependency Injection - No global access
+    // Dependency Injection - No global access
     this.apiClient = dependencies.apiClient;
     this.userDataResolver = dependencies.userDataResolver;
     this.messageDisplayGuarantee = dependencies.messageDisplayGuarantee;
     this.logger = dependencies.logger;
     this.cacheProvider = dependencies.cacheProvider;
 
-    // 🔧 Performance optimization
+    // Performance optimization
     this.batchSize = dependencies.batchSize || 50;
     this.prefetchThreshold = dependencies.prefetchThreshold || 10;
 
-    // 🔧 Metrics tracking
+    // Metrics tracking
     this.metrics = {
       fetchCount: 0,
       cacheHits: 0,
@@ -32,14 +32,14 @@ export class RefactoredMessageService {
       userResolutionTime: 0
     };
 
-    // 🚀 STATE MANAGEMENT: Reactive state without mixing concerns
+    // STATE MANAGEMENT: Reactive state without mixing concerns
     this.isInitialized = ref(false);
     this.isOnline = ref(navigator.onLine);
     this.messagesByChat = reactive(new Map());
     this.messageCache = reactive({});
     this.hasMoreByChat = new Map();
 
-    // 📊 METRICS: Separate from business logic
+    // METRICS: Separate from business logic
     this.stats = reactive({
       totalMessages: 0,
       messagesSent: 0,
@@ -53,7 +53,7 @@ export class RefactoredMessageService {
   }
 
   /**
-   * 🚀 INITIALIZATION: Clean startup
+   * INITIALIZATION: Clean startup
    */
   async initialize() {
     if (this.isInitialized.value) return;
@@ -83,7 +83,7 @@ export class RefactoredMessageService {
     try {
       this.logger.logMessageFetch(chatId, 0, { starting: true });
 
-      // 🔧 Step 1: Fetch raw message data
+      // Step 1: Fetch raw message data
       const rawMessages = await this.fetchRawMessages(chatId, options);
 
       if (!rawMessages?.length) {
@@ -91,15 +91,15 @@ export class RefactoredMessageService {
         return [];
       }
 
-      // 🔧 Step 2: Process messages in batch for performance
+      // Step 2: Process messages in batch for performance
       const processedMessages = await this.processMessagesBatch(rawMessages);
 
-      // 🔧 Step 3: Start tracking for display guarantee
+      // Step 3: Start tracking for display guarantee
       if (options.enableTracking !== false) {
         await this.startMessageTracking(chatId, processedMessages);
       }
 
-      // 🔧 Step 4: Update metrics
+      // Step 4: Update metrics
       this.updateMetrics('fetch', performance.now() - startTime);
 
       this.logger.logMessageFetch(chatId, processedMessages.length, {
@@ -170,10 +170,10 @@ export class RefactoredMessageService {
     const startTime = performance.now();
 
     try {
-      // 🔧 Batch resolve user names for performance
+      // Batch resolve user names for performance
       const userNamesMap = await this.userDataResolver.batchResolveUsers(batch);
 
-      // 🔧 Create processed messages
+      // Create processed messages
       const processedMessages = batch.map(message => this.createProcessedMessage(message, userNamesMap));
 
       this.updateMetrics('userResolution', performance.now() - startTime);
@@ -202,10 +202,10 @@ export class RefactoredMessageService {
       id: parseInt(rawMessage.id),
       sender_id: parseInt(rawMessage.sender_id),
 
-      // 🔧 Resolved user name from batch operation
+      // Resolved user name from batch operation
       resolvedUserName: userNamesMap.get(rawMessage.id) || `User ${rawMessage.sender_id}`,
 
-      // 🔧 Enhanced sender object
+      // Enhanced sender object
       sender: {
         id: parseInt(rawMessage.sender_id),
         fullname: userNamesMap.get(rawMessage.id) || rawMessage.sender?.fullname || `User ${rawMessage.sender_id}`,
@@ -213,11 +213,11 @@ export class RefactoredMessageService {
         avatar_url: rawMessage.sender?.avatar_url || null
       },
 
-      // 🔧 Standardized timestamps
+      // Standardized timestamps
       created_at: new Date(rawMessage.created_at),
       updated_at: rawMessage.updated_at ? new Date(rawMessage.updated_at) : null,
 
-      // 🔧 Processing metadata
+      // Processing metadata
       processedAt: Date.now(),
       processingVersion: '2.0'
     };
@@ -292,7 +292,7 @@ export class RefactoredMessageService {
   }
 
   /**
-   * 📊 METRICS: Update performance statistics
+   * METRICS: Update performance statistics
    */
   updateStats(messageCount, duration) {
     this.stats.totalMessages += messageCount;
@@ -318,7 +318,7 @@ export class RefactoredMessageService {
   }
 
   /**
-   * 🔍 GETTERS: Public interface for data access
+   * GETTERS: Public interface for data access
    */
   getMessagesForChat(chatId, states = null) {
     const messages = this.messagesByChat.get(parseInt(chatId)) || [];
@@ -348,7 +348,7 @@ export class RefactoredMessageService {
   }
 
   /**
-   * 📨 SENDING: Send new message (placeholder for now)
+   * EVENT: SENDING: Send new message (placeholder for now)
    */
   async sendMessage(content, chatId, options = {}) {
     try {

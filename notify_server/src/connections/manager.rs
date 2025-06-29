@@ -148,7 +148,7 @@ impl ConnectionManager {
       match tx.send(event) {
         Ok(_) => true,
         Err(e) => {
-          warn!("❌ Failed to send event to user {}: {}", user_id.0, e);
+          warn!("ERROR: Failed to send event to user {}: {}", user_id.0, e);
           // Automatically remove invalid connection
           self.remove_user_connection(user_id);
           false
@@ -171,7 +171,7 @@ impl ConnectionManager {
     }
 
     info!(
-      "📡 Event broadcasted to {} online members in chat {}",
+      "SUBSCRIPTION: Event broadcasted to {} online members in chat {}",
       sent_count, chat_id.0
     );
     sent_count
@@ -187,7 +187,7 @@ impl ConnectionManager {
       }
     }
 
-    info!("📡 Event broadcasted to {} users", sent_count);
+    info!("SUBSCRIPTION: Event broadcasted to {} users", sent_count);
     sent_count
   }
 

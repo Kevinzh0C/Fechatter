@@ -493,7 +493,7 @@ impl CoreChatMemberRepository for ChatMemberRepository {
         .await
         .map_err(|e| CoreError::from_database_error(e))?;
 
-        // 🔧 FIX: Mark as left in chat_members table instead of deleting
+        // FIX: Mark as left in chat_members table instead of deleting
         sqlx::query(
           r#"UPDATE chat_members 
              SET left_at = NOW()
@@ -737,9 +737,9 @@ impl ChatMemberRepository {
     chat_id: i64,
     user_id: i64,
   ) -> Result<ChatMembershipStatus, CoreError> {
-    info!("🔍 [CHAT_MEMBER_REPO] ========== Enhanced chat membership validation ==========",);
+    info!("[CHAT_MEMBER_REPO] ========== Enhanced chat membership validation ==========",);
     info!(
-      "🔍 [CHAT_MEMBER_REPO] Validating: user_id={}, chat_id={}",
+      "[CHAT_MEMBER_REPO] Validating: user_id={}, chat_id={}",
       user_id, chat_id
     );
 
@@ -752,11 +752,11 @@ impl ChatMemberRepository {
       .map_err(|e| CoreError::from_database_error(e))?;
 
     if chat_exists == 0 {
-      warn!("🔍 [CHAT_MEMBER_REPO] ❌ Chat {} does not exist", chat_id);
+      warn!("[CHAT_MEMBER_REPO] ERROR: Chat {} does not exist", chat_id);
       return Ok(ChatMembershipStatus::ChatNotFound { chat_id });
     }
 
-    info!("🔍 [CHAT_MEMBER_REPO] ✅ Chat {} exists", chat_id);
+    info!("[CHAT_MEMBER_REPO] Chat {} exists", chat_id);
 
     // Step 2: Check detailed membership status
     let membership_query = r#"
@@ -794,7 +794,7 @@ impl ChatMemberRepository {
         match left_at {
           None => {
             info!(
-              "🔍 [CHAT_MEMBER_REPO] ✅ User {} is active member of chat {} with role '{}'",
+              "[CHAT_MEMBER_REPO] User {} is active member of chat {} with role '{}'",
               user_id, chat_id, role
             );
             Ok(ChatMembershipStatus::ActiveMember {
@@ -806,7 +806,7 @@ impl ChatMemberRepository {
           }
           Some(left_timestamp) => {
             warn!(
-              "🔍 [CHAT_MEMBER_REPO] ⚠️ User {} left chat {} on {}",
+              "[CHAT_MEMBER_REPO] WARNING: User {} left chat {} on {}",
               user_id, chat_id, left_timestamp
             );
             Ok(ChatMembershipStatus::UserLeftChat {
@@ -820,7 +820,7 @@ impl ChatMemberRepository {
       None => {
         // User was never a member
         warn!(
-          "🔍 [CHAT_MEMBER_REPO] ❌ User {} is not a member of chat {}",
+          "[CHAT_MEMBER_REPO] ERROR: User {} is not a member of chat {}",
           user_id, chat_id
         );
         Ok(ChatMembershipStatus::NotMember { chat_id, user_id })

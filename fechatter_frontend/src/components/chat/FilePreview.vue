@@ -165,9 +165,9 @@ const getFileIcon = computed(() => {
   }
 });
 
-// 🔧 Enhanced file URL getter with workspace support and hash path handling
+// Enhanced file URL getter with workspace support and hash path handling
 const getFileUrl = (file) => {
-  // 🔧 Use unified file URL handler to automatically handle all formats
+  // Use unified file URL handler to automatically handle all formats
   return getStandardFileUrl(file, {
     workspaceId: props.workspaceId || authStore.user?.workspace_id || 2
   });
@@ -180,7 +180,7 @@ const downloadFile = async () => {
   try {
     const fileUrl = getFileUrl(props.file);
     if (!fileUrl) {
-      console.error('❌ No URL available for file download:', fileName);
+      console.error('ERROR: No URL available for file download:', fileName);
       return;
     }
 
@@ -212,7 +212,7 @@ const downloadFile = async () => {
         // Clean up the blob URL
         setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-        console.log('✅ [FilePreview] Downloaded authenticated file:', fileName);
+        console.log('[FilePreview] Downloaded authenticated file:', fileName);
       } else {
         throw new Error('No file data received');
       }
@@ -226,10 +226,10 @@ const downloadFile = async () => {
       link.click();
       document.body.removeChild(link);
 
-      console.log('✅ [FilePreview] Downloaded file:', fileName);
+      console.log('[FilePreview] Downloaded file:', fileName);
     }
   } catch (error) {
-    console.error('❌ [FilePreview] Download failed for file:', fileName, error);
+    console.error('ERROR: [FilePreview] Download failed for file:', fileName, error);
 
     // Show user-friendly error message
     if (typeof window !== 'undefined' && window.alert) {
@@ -262,7 +262,7 @@ const openFile = async () => {
       window.open(fileUrl, '_blank');
     }
   } catch (error) {
-    console.error('❌ [FilePreview] Failed to open file:', error);
+    console.error('ERROR: [FilePreview] Failed to open file:', error);
     alert('Failed to open file. Please try downloading instead.');
   }
 };

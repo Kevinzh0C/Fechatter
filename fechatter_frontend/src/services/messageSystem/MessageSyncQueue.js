@@ -1,5 +1,5 @@
 /**
- * 🚀 Message Sync Queue Manager - Production-grade Message Sending Queue
+ * Message Sync Queue Manager - Production-grade Message Sending Queue
  * 
  * Provides reliable message sending with queue management, retry logic, and conflict resolution
  * Handles online/offline synchronization and ensures message delivery
@@ -261,7 +261,7 @@ export class MessageSyncQueue {
       return;
     }
 
-    // console.log(`⚡ Processing batch of ${batch.length} messages`);
+    // console.log(`Processing batch of ${batch.length} messages`);
 
     // Process all items in batch concurrently
     const promises = batch.map(queueItem => this.processQueueItem(queueItem));
@@ -351,7 +351,7 @@ export class MessageSyncQueue {
    * Handle processing success
    */
   async handleProcessingSuccess(queueItem, result) {
-    // console.log(`✅ Successfully processed: ${queueItem.message.metadata.clientId}`);
+    // console.log(`Successfully processed: ${queueItem.message.metadata.clientId}`);
 
     // Remove from queue - item is already removed in processQueueItem finally block
     // No additional state updates needed here as they're handled in sendMessage, etc.
@@ -361,7 +361,7 @@ export class MessageSyncQueue {
    * Handle processing error
    */
   async handleProcessingError(queueItem, error) {
-    // console.error(`❌ Error processing queue item:`, error);
+    // console.error(`ERROR: Error processing queue item:`, error);
 
     const errorInfo = {
       message: error.message,
@@ -458,7 +458,7 @@ export class MessageSyncQueue {
     };
 
     processLoop();
-    // console.log('🚀 Message queue processing started');
+    // console.log('Message queue processing started');
   }
 
   /**

@@ -1,7 +1,7 @@
 <template>
   <div class="discord-message-wrapper">
     <div class="discord-message-list" ref="scrollContainer" @scroll="handleScroll">
-      <!-- 🎯 Scroll Position Indicator -->
+      <!-- Scroll Position Indicator -->
       <div class="scroll-position-indicator" :class="{ active: loadingMore }"></div>
 
       <!-- Enhanced Load More Indicator -->
@@ -12,16 +12,16 @@
 
       <!-- Messages Container with MessageSessionGrouper Integration -->
       <div class="messages-container" ref="messagesContainer">
-        <!-- 🔧 NEW: Enhanced Message Items with Session Grouper and Date Separators -->
+        <!-- NEW: Enhanced Message Items with Session Grouper and Date Separators -->
         <template v-for="(item, index) in groupedMessages"
           :key="item.id || item.temp_id || `divider_${item.type}_${index}`">
 
-          <!-- 🎯 TimeSessionDivider for all divider types (date-divider, sub-date-divider, session-divider) -->
+          <!-- TimeSessionDivider for all divider types (date-divider, sub-date-divider, session-divider) -->
           <TimeSessionDivider
             v-if="item.type === 'date-divider' || item.type === 'sub-date-divider' || item.type === 'session-divider'"
             :divider="item" :compact="item.subType === 'short-break'" />
 
-          <!-- 🔧 ENHANCED: Message Item with Loading Context -->
+          <!-- ENHANCED: Message Item with Loading Context -->
           <div v-else class="message-loading-context" :data-loading-batch="loadingMore ? 'current' : 'loaded'">
             <DiscordMessageItem :message="item" :current-user-id="currentUserId" :chat-id="chatId"
               :is-grouped="shouldGroupMessage(item, index)" @user-profile-opened="$emit('user-profile-opened', $event)"
@@ -47,7 +47,7 @@
       <div v-if="searchHighlight" class="search-highlight-overlay"></div>
     </div>
 
-    <!-- 🎯 FIXED: Enhanced Scroll to Bottom Button - 固定在视口位置 -->
+    <!-- FIXED: Enhanced Scroll to Bottom Button - 固定在视口位置 -->
     <Transition name="fade">
       <button v-if="showScrollToBottom" class="scroll-to-bottom-btn-fixed" @click="scrollToBottom(true)"
         :title="`Jump to latest${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`">
@@ -132,7 +132,7 @@ const unreadCount = computed(() => {
   return 0
 })
 
-// 🔧 NEW: Process messages with MessageSessionGrouper to include sub-date dividers
+// NEW: Process messages with MessageSessionGrouper to include sub-date dividers
 const groupedMessages = computed(() => {
   if (!props.messages || props.messages.length === 0) {
     return []
@@ -155,7 +155,7 @@ const groupedMessages = computed(() => {
     return result.groupedMessages
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('❌ [DiscordMessageList] MessageSessionGrouper failed:', error)
+      console.error('ERROR: [DiscordMessageList] MessageSessionGrouper failed:', error)
     }
     // Fallback to original messages if grouper fails
     return props.messages
@@ -212,7 +212,7 @@ const formatTypingText = (users) => {
   }
 }
 
-// 🎯 OPTIMIZED: 完美历史消息加载体验 - 简单可靠的固定阅读位置
+// OPTIMIZED: 完美历史消息加载体验 - 简单可靠的固定阅读位置
 const loadMoreMessages = async () => {
   if (
     loadingMore.value ||
@@ -227,7 +227,7 @@ const loadMoreMessages = async () => {
   isLoading.value = true
   lastLoadTime.value = Date.now()
 
-  // 🚀 KEY FIX: 暂时禁用自动滚动，防止watch干扰
+  // KEY FIX: 暂时禁用自动滚动，防止watch干扰
   const wasAutoScrollEnabled = autoScrollEnabled.value
   autoScrollEnabled.value = false
 
@@ -235,36 +235,36 @@ const loadMoreMessages = async () => {
     const container = scrollContainer.value
     if (!container) return
 
-    // 🔧 STEP 1: 保存当前精确状态 - 只记录关键数据
+    // STEP 1: 保存当前精确状态 - 只记录关键数据
     const beforeScrollTop = container.scrollTop
     const beforeScrollHeight = container.scrollHeight
 
     if (import.meta.env.DEV) {
-      console.log('📊 [Load More] 保存状态:', {
+      console.log('[Load More] 保存状态:', {
         beforeScrollTop,
         beforeScrollHeight,
         autoScrollDisabled: true
       })
     }
 
-    // 🔧 STEP 2: 触发历史消息加载
+    // STEP 2: 触发历史消息加载
     await emit('load-more-messages')
 
-    // 🔧 STEP 3: 等待DOM完全更新
+    // STEP 3: 等待DOM完全更新
     await nextTick()
     await new Promise(resolve => requestAnimationFrame(resolve))
 
-    // 🔧 STEP 4: 简单可靠的位置恢复 - 高度差补偿法
+    // STEP 4: 简单可靠的位置恢复 - 高度差补偿法
     const afterScrollHeight = container.scrollHeight
     const heightDifference = afterScrollHeight - beforeScrollHeight
 
     if (heightDifference > 0) {
-      // 🚀 立即调整滚动位置保持阅读位置不变
+      // 立即调整滚动位置保持阅读位置不变
       const newScrollTop = beforeScrollTop + heightDifference
       container.scrollTop = newScrollTop
 
       if (import.meta.env.DEV) {
-        console.log('✅ [Load More] 位置固定成功:', {
+        console.log('[Load More] 位置固定成功:', {
           heightAdded: heightDifference,
           beforeScrollTop,
           newScrollTop,
@@ -274,13 +274,13 @@ const loadMoreMessages = async () => {
     }
 
   } catch (error) {
-    console.error('❌ [Load More] 加载失败:', error)
+    console.error('ERROR: [Load More] 加载失败:', error)
   } finally {
-    // 🔧 STEP 5: 状态清理 - 恢复自动滚动设置
+    // STEP 5: 状态清理 - 恢复自动滚动设置
     setTimeout(() => {
       loadingMore.value = false
       isLoading.value = false
-      // 🔧 恢复原始自动滚动状态
+      // 恢复原始自动滚动状态
       autoScrollEnabled.value = wasAutoScrollEnabled
 
       if (import.meta.env.DEV) {
@@ -290,11 +290,11 @@ const loadMoreMessages = async () => {
   }
 }
 
-// 🔧 ENHANCED: 更流畅智能的滚动处理
+// ENHANCED: 更流畅智能的滚动处理
 const handleScroll = throttle((event) => {
   const { scrollTop, scrollHeight, clientHeight } = event.target
 
-  // 🚀 IMPROVED: 更准确的滚动到底部按钮显示逻辑
+  // IMPROVED: 更准确的滚动到底部按钮显示逻辑
   const isNearBottom = scrollTop + clientHeight >= scrollHeight - 50
   const hasScrollableContent = scrollHeight > clientHeight + 20
   const shouldShowButton = hasScrollableContent && !isNearBottom && props.messages.length > 3
@@ -313,7 +313,7 @@ const handleScroll = throttle((event) => {
     })
   }
 
-  // 🎯 优化的历史消息加载触发条件 - 更流畅的体验
+  // 优化的历史消息加载触发条件 - 更流畅的体验
   const scrollDirection = scrollTop < lastScrollTop.value ? 'up' : 'down'
 
   const shouldLoadMore = (
@@ -327,7 +327,7 @@ const handleScroll = throttle((event) => {
   )
 
   if (shouldLoadMore) {
-    // 🚀 立即触发加载，无需延迟
+    // 立即触发加载，无需延迟
     loadMoreMessages()
   }
 
@@ -613,14 +613,14 @@ watch(() => props.messages.length, async (newLength, oldLength) => {
             registered++
           } catch (error) {
             if (import.meta.env.DEV) {
-              console.warn(`⚠️ [DiscordMessageList] Fallback attempt ${attempt} failed for message ${messageId}:`, error.message)
+              console.warn(`WARNING: [DiscordMessageList] Fallback attempt ${attempt} failed for message ${messageId}:`, error.message)
             }
           }
         }
       })
 
       if (import.meta.env.DEV) {
-        console.log(`✅ [DiscordMessageList] Fallback attempt ${attempt}: ${registered}/${total} messages registered`)
+        console.log(`[DiscordMessageList] Fallback attempt ${attempt}: ${registered}/${total} messages registered`)
       }
 
       // 如果注册率低于90%，进行额外尝试
@@ -729,14 +729,14 @@ onMounted(() => {
           } catch (error) {
             failed++
             if (import.meta.env.DEV) {
-              console.warn(`⚠️ [DiscordMessageList] Phase ${phase} registration failed for message ${messageId}:`, error.message)
+              console.warn(`WARNING: [DiscordMessageList] Phase ${phase} registration failed for message ${messageId}:`, error.message)
             }
           }
         }
       })
 
       if (import.meta.env.DEV) {
-        console.log(`✅ [DiscordMessageList] Phase ${phase} registration: ${registered}/${props.messages.length} messages (${failed} failed)`)
+        console.log(`[DiscordMessageList] Phase ${phase} registration: ${registered}/${props.messages.length} messages (${failed} failed)`)
       }
 
       // 如果还有失败的消息，启动下一阶段
@@ -779,7 +779,7 @@ defineExpose({
 })
 
 // Console log for verification
-console.log(`✅ [DiscordMessageList] Mounted for chat ${props.chatId} with ${props.messages.length} messages`)
+console.log(`[DiscordMessageList] Mounted for chat ${props.chatId} with ${props.messages.length} messages`)
 </script>
 
 <style scoped>
@@ -787,7 +787,7 @@ console.log(`✅ [DiscordMessageList] Mounted for chat ${props.chatId} with ${pr
   position: relative;
   height: 100%;
   width: 100%;
-  /* 🎯 FIXED: wrapper不处理滚动，只作为定位容器 */
+  /* FIXED: wrapper不处理滚动，只作为定位容器 */
 }
 
 .discord-message-list {
@@ -798,19 +798,19 @@ console.log(`✅ [DiscordMessageList] Mounted for chat ${props.chatId} with ${pr
   background-color: var(--bg-primary, #36393f);
   position: relative;
   scroll-behavior: auto;
-  /* 🎯 确保瞬时滚动，避免平滑滚动干扰 */
+  /* 确保瞬时滚动，避免平滑滚动干扰 */
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* 🎯 Enhanced scrolling performance - 优化滚动性能 */
+  /* Enhanced scrolling performance - 优化滚动性能 */
   will-change: scroll-position;
   contain: layout style paint;
-  /* 🎯 NEW: 减少重排和重绘 */
+  /* NEW: 减少重排和重绘 */
   transform: translateZ(0);
   /* 启用硬件加速 */
   -webkit-overflow-scrolling: touch;
   /* iOS平滑滚动 */
-  /* 🎯 NEW: 优化滚动时的渲染性能 */
+  /* NEW: 优化滚动时的渲染性能 */
   overscroll-behavior: contain;
   /* 防止过度滚动 */
 }
@@ -844,20 +844,20 @@ console.log(`✅ [DiscordMessageList] Mounted for chat ${props.chatId} with ${pr
   max-width: 960px;
   width: 100%;
   padding: 0 16px 48px 16px;
-  /* 🎯 OPTIMIZED: 添加底部padding - 黄金分割比例优化 */
+  /* OPTIMIZED: 添加底部padding - 黄金分割比例优化 */
   display: flex;
   flex-direction: column;
-  /* 🎯 NEW: 优化加载时的布局稳定性 */
+  /* NEW: 优化加载时的布局稳定性 */
   min-height: 0;
   /* 防止flex容器过度增长 */
   flex-shrink: 0;
   /* 防止收缩导致的布局变化 */
-  /* 🎯 NEW: 提供更好的渲染性能 */
+  /* NEW: 提供更好的渲染性能 */
   contain: layout style;
   /* 限制重排影响范围 */
 }
 
-/* 🔧 REMOVED: Old date-separator and time-separator styles - now handled by TimeSessionDivider component */
+/* REMOVED: Old date-separator and time-separator styles - now handled by TimeSessionDivider component */
 
 .load-more-indicator {
   display: flex;
@@ -950,7 +950,7 @@ console.log(`✅ [DiscordMessageList] Mounted for chat ${props.chatId} with ${pr
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 9999;
   backdrop-filter: blur(12px);
-  /* 🚀 Enhanced visibility */
+  /* Enhanced visibility */
   will-change: transform, opacity;
   contain: layout style;
 }
@@ -1124,7 +1124,7 @@ console.log(`✅ [DiscordMessageList] Mounted for chat ${props.chatId} with ${pr
   }
 }
 
-/* 🎯 Smooth scroll position indicator */
+/* Smooth scroll position indicator */
 .scroll-position-indicator {
   position: absolute;
   top: 0;
@@ -1193,7 +1193,7 @@ console.log(`✅ [DiscordMessageList] Mounted for chat ${props.chatId} with ${pr
 @media (max-width: 1024px) and (min-width: 769px) {
   .messages-container {
     padding: 0 14px 42px 14px;
-    /* 🎯 TABLET: 平板端中间值优化 */
+    /* TABLET: 平板端中间值优化 */
   }
 }
 
@@ -1201,7 +1201,7 @@ console.log(`✅ [DiscordMessageList] Mounted for chat ${props.chatId} with ${pr
 @media (max-width: 768px) {
   .messages-container {
     padding: 0 12px 36px 12px;
-    /* 🎯 MOBILE: 移动端优化底部间距，减少左右padding */
+    /* MOBILE: 移动端优化底部间距，减少左右padding */
   }
 
   .scroll-to-bottom-btn-fixed {

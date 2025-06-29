@@ -229,7 +229,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 
 // ================================
-// 🎯 Props & Emits
+// Props & Emits
 // ================================
 
 const props = defineProps({
@@ -267,7 +267,7 @@ const emit = defineEmits([
 ])
 
 // ================================
-// 🎯 Reactive State
+// Reactive State
 // ================================
 
 const toolbarRef = ref(null)
@@ -279,7 +279,7 @@ const isDragging = ref(false)
 const dragOffset = ref({ x: 0, y: 0 })
 
 // ================================
-// 🎯 Computed Properties
+// Computed Properties
 // ================================
 
 const toolbarZIndex = computed(() => props.zIndex)
@@ -310,7 +310,7 @@ const toolbarClasses = computed(() => [
 ])
 
 // ================================
-// 🎯 Core Methods
+// Core Methods
 // ================================
 
 const handleClose = () => {
@@ -334,7 +334,7 @@ const toggleHeaderDropdown = () => {
 }
 
 // ================================
-// 🎯 Format Application Methods
+// Format Application Methods
 // ================================
 
 const applyFormat = (format) => {
@@ -503,7 +503,7 @@ const insertTable = (rows, cols) => {
 }
 
 // ================================
-// 🎯 Drag & Drop Functions
+// Drag & Drop Functions
 // ================================
 
 const startDrag = (event) => {
@@ -556,7 +556,7 @@ const stopDrag = () => {
 }
 
 // ================================
-// 🎯 Keyboard Shortcuts
+// Keyboard Shortcuts
 // ================================
 
 const handleKeyDown = (event) => {
@@ -607,7 +607,7 @@ const handleClickOutside = (event) => {
 }
 
 // ================================
-// 🎯 Lifecycle Hooks
+// Lifecycle Hooks
 // ================================
 
 onMounted(() => {
@@ -637,7 +637,7 @@ watch(() => props.visible, (newVisible) => {
 
 <style scoped>
 /* ================================
-   🎯 Overlay & Container
+   Overlay & Container
    ================================ */
 
 .floating-toolbar-overlay {
@@ -670,7 +670,7 @@ watch(() => props.visible, (newVisible) => {
 }
 
 /* ================================
-   🎯 Toolbar Handle
+   Toolbar Handle
    ================================ */
 
 .toolbar-handle {
@@ -723,7 +723,7 @@ watch(() => props.visible, (newVisible) => {
 }
 
 /* ================================
-   🎯 Main Toolbar
+   Main Toolbar
    ================================ */
 
 .main-toolbar {
@@ -794,7 +794,7 @@ watch(() => props.visible, (newVisible) => {
 }
 
 /* ================================
-   🎯 Special Buttons
+   Special Buttons
    ================================ */
 
 .expand-btn svg {
@@ -822,7 +822,7 @@ watch(() => props.visible, (newVisible) => {
 }
 
 /* ================================
-   🎯 Dropdown Menus
+   Dropdown Menus
    ================================ */
 
 .dropdown-menu {
@@ -872,7 +872,7 @@ watch(() => props.visible, (newVisible) => {
 }
 
 /* ================================
-   🎯 Header Previews
+   Header Previews
    ================================ */
 
 .header-preview {
@@ -896,7 +896,7 @@ watch(() => props.visible, (newVisible) => {
 }
 
 /* ================================
-   🎯 Special Icons
+   Special Icons
    ================================ */
 
 .math-symbol,
@@ -915,7 +915,7 @@ watch(() => props.visible, (newVisible) => {
 }
 
 /* ================================
-   🎯 Expanded Toolbar
+   Expanded Toolbar
    ================================ */
 
 .expanded-toolbar {
@@ -938,7 +938,7 @@ watch(() => props.visible, (newVisible) => {
 }
 
 /* ================================
-   🎯 Keyboard Shortcuts
+   Keyboard Shortcuts
    ================================ */
 
 .keyboard-shortcuts {
@@ -979,7 +979,7 @@ watch(() => props.visible, (newVisible) => {
 }
 
 /* ================================
-   🎯 Animations
+   Animations
    ================================ */
 
 .expand-enter-active,
@@ -1002,7 +1002,7 @@ watch(() => props.visible, (newVisible) => {
 }
 
 /* ================================
-   🎯 Responsive Design
+   Responsive Design
    ================================ */
 
 @media (max-width: 480px) {
@@ -1027,7 +1027,7 @@ watch(() => props.visible, (newVisible) => {
 }
 
 /* ================================
-   🎯 Dark Mode Support
+   Dark Mode Support
    ================================ */
 
 @media (prefers-color-scheme: dark) {
@@ -1087,7 +1087,7 @@ watch(() => props.visible, (newVisible) => {
 }
 
 /* ================================
-   🎯 Accessibility
+   Accessibility
    ================================ */
 
 .toolbar-btn:focus-visible {
@@ -1111,7 +1111,7 @@ watch(() => props.visible, (newVisible) => {
 }
 
 /* ================================
-   🎯 High Contrast Mode
+   High Contrast Mode
    ================================ */
 
 @media (prefers-contrast: high) {

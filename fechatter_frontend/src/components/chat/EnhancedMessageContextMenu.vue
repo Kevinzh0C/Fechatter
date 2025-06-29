@@ -141,7 +141,7 @@ import { useNotifications } from '@/composables/useNotifications'
 import MenuItem from '@/components/ui/MenuItem.vue'
 
 // ================================
-// 🎯 Props & Emits
+// Props & Emits
 // ================================
 
 const props = defineProps({
@@ -185,7 +185,7 @@ const emit = defineEmits([
 ])
 
 // ================================
-// 🎯 Composables & Stores
+// Composables & Stores
 // ================================
 
 const messageUIStore = useMessageUIStore()
@@ -193,7 +193,7 @@ const authStore = useAuthStore()
 const { notifySuccess, notifyError, notifyInfo } = useNotifications()
 
 // ================================
-// 🎯 Reactive State
+// Reactive State
 // ================================
 
 const menuRef = ref(null)
@@ -203,7 +203,7 @@ const analysisResult = ref(null)
 const summaryResult = ref(null)
 
 // ================================
-// 🎯 Computed Properties
+// Computed Properties
 // ================================
 
 // 用户权限检查
@@ -297,7 +297,7 @@ const menuClasses = computed(() => [
 ])
 
 // ================================
-// 🎯 Menu Estimation
+// Menu Estimation
 // ================================
 
 const getEstimatedMenuHeight = () => {
@@ -334,7 +334,7 @@ const getEstimatedMenuHeight = () => {
 }
 
 // ================================
-// 🎯 Event Handlers
+// Event Handlers
 // ================================
 
 const handleOverlayClick = () => {
@@ -497,7 +497,7 @@ const handleDelete = () => {
 }
 
 // ================================
-// 🎯 Keyboard Handling
+// Keyboard Handling
 // ================================
 
 const handleKeydown = (event) => {
@@ -536,7 +536,7 @@ const handleKeydown = (event) => {
 }
 
 // ================================
-// 🎯 Lifecycle
+// Lifecycle
 // ================================
 
 onMounted(() => {

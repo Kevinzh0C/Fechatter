@@ -30,27 +30,27 @@ pub use self::server_time::ServerTimeLayer;
 pub const REQUEST_ID_HEADER: &str = "x-request-id";
 pub const SERVER_TIME_HEADER: &str = "x-server-time";
 
-/// 一个简单的trait，表示类型可以提供ID
-/// 用于需要访问ID的通用代码
+/// A simple trait indicating that a type can provide an ID
+/// Used for generic code that needs to access IDs
 pub trait HasIdField {
   fn id(&self) -> UserId;
 }
 
-/// 为标准AuthUser实现HasIdField
+/// Implement HasIdField for standard AuthUser
 impl HasIdField for AuthUser {
   fn id(&self) -> UserId {
     self.id
   }
 }
 
-/// 查找密钥文件并返回文件路径
+/// Find key files and return file paths
 ///
-/// 按照优先级顺序查找:
-/// 1. 项目根目录/fechatter_core/fixtures
-/// 2. 当前目录/fixtures
-/// 3. 上级目录/fixtures
+/// Search in priority order:
+/// 1. Project root/fechatter_core/fixtures
+/// 2. Current directory/fixtures
+/// 3. Parent directory/fixtures
 ///
-/// 返回 (encoding_path, decoding_path) 元组
+/// Returns (encoding_path, decoding_path) tuple
 pub fn find_key_files() -> (String, String) {
   let paths = ["fechatter_core/fixtures", "fixtures", "../fixtures"];
   let mut enc_path = String::from("fixtures/encoding.pem");

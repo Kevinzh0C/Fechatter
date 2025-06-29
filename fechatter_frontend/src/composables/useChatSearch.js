@@ -266,7 +266,7 @@ export function useChatSearch(chatId) {
    * 键盘快捷键处理 - DISABLED to prevent conflicts with PerfectSearchModal
    */
   const handleKeyboard = (event) => {
-    // 🔧 DISABLED: Temporarily disabled to prevent conflict with PerfectSearchModal
+    // DISABLED: Temporarily disabled to prevent conflict with PerfectSearchModal
     // This was causing wrong search modal to appear
     /*
     // Ctrl/Cmd + K 打开搜索
@@ -280,12 +280,12 @@ export function useChatSearch(chatId) {
 
   // 监听键盘事件 - DISABLED to prevent conflicts
   onMounted(() => {
-    // 🔧 DISABLED: Temporarily disabled to prevent conflict with PerfectSearchModal
+    // DISABLED: Temporarily disabled to prevent conflict with PerfectSearchModal
     // document.addEventListener('keydown', handleKeyboard);
   });
 
   onUnmounted(() => {
-    // 🔧 DISABLED: Temporarily disabled to prevent conflict with PerfectSearchModal  
+    // DISABLED: Temporarily disabled to prevent conflict with PerfectSearchModal  
     // document.removeEventListener('keydown', handleKeyboard);
 
     if (debounceTimer) {

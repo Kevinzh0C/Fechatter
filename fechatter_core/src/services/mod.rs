@@ -46,7 +46,7 @@ pub trait AuthService: Send + Sync {
   fn user_from_claims(&self, claims: UserClaims) -> AuthUser;
 }
 
-// 重新导出 - 保持向后兼容性
+// Re-export for backward compatibility
 pub use auth_service::*;
 pub use service_provider::*;
 pub use workspace_service::*;

@@ -80,7 +80,7 @@ mod integration_tests {
     let long_password = "a".repeat(129);
     assert!(long_password.len() > 128);
 
-    println!("✅ Password validation logic tests passed");
+    println!("Password validation logic tests passed");
   }
 
   #[tokio::test]
@@ -101,7 +101,7 @@ mod integration_tests {
     let long_name = "a".repeat(101);
     assert!(long_name.len() > 100);
 
-    println!("✅ Fullname validation logic tests passed");
+    println!("Fullname validation logic tests passed");
   }
 
   #[tokio::test]
@@ -119,7 +119,7 @@ mod integration_tests {
     let long_name = "a".repeat(51);
     assert!(long_name.len() > 50);
 
-    println!("✅ Workspace name validation logic tests passed");
+    println!("Workspace name validation logic tests passed");
   }
 
   #[tokio::test]
@@ -150,7 +150,7 @@ mod integration_tests {
     let channel_members = 500;
     assert!(channel_members <= 10000);
 
-    println!("✅ Chat validation logic tests passed");
+    println!("Chat validation logic tests passed");
   }
 
   #[tokio::test]
@@ -180,7 +180,7 @@ mod integration_tests {
     let has_content_or_files = !empty_content.trim().is_empty() || !no_files;
     // This should be false (no content and no files)
 
-    println!("✅ Message validation logic tests passed");
+    println!("Message validation logic tests passed");
   }
 
   #[tokio::test]
@@ -208,7 +208,7 @@ mod integration_tests {
     assert!(admin_can_manage_users);
     assert!(admin_is_workspace_admin);
 
-    println!("✅ Permission validation logic tests passed");
+    println!("Permission validation logic tests passed");
   }
 
   #[tokio::test]
@@ -234,19 +234,19 @@ mod integration_tests {
     let capped_message_score = (high_messages as f64 * 0.1).min(50.0);
     assert_eq!(capped_message_score, 50.0); // Should cap at 50
 
-    println!("✅ Activity score calculation logic tests passed");
+    println!("Activity score calculation logic tests passed");
   }
 
   #[tokio::test]
   async fn summary_all_validation_tests() {
-    println!("\n🎯 核心验证逻辑单元测试总结:");
-    println!("✅ 密码验证 - 长度限制、边界检查");
-    println!("✅ 用户名验证 - 空值检查、长度限制");
-    println!("✅ 工作空间名称验证 - 字符限制、长度限制");
-    println!("✅ 聊天验证 - 名称、描述、成员数量验证");
-    println!("✅ 消息验证 - 内容长度、文件数量、必填检查");
-    println!("✅ 权限验证 - 用户权限、管理员权限检查");
-    println!("✅ 算法验证 - 活动评分计算、边界处理");
-    println!("\n🔥 所有核心业务逻辑验证测试通过！");
+    println!("\nCore validation logic unit test summary:");
+    println!("Password validation - length limits, boundary checks");
+    println!("Username validation - null checks, length limits");
+    println!("Workspace name validation - character limits, length limits");
+    println!("Chat validation - name, description, member count validation");
+    println!("Message validation - content length, file count, required field checks");
+    println!("Permission validation - user permissions, admin permission checks");
+    println!("Algorithm validation - activity score calculation, boundary handling");
+    println!("\nAll core business logic validation tests passed!");
   }
 }

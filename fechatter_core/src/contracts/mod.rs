@@ -1,18 +1,18 @@
-// 契约模块，定义所有的服务接口
+// Contract module defining all service interfaces
 pub mod repositories;
 pub mod services;
 
-// 基础设施服务接口契约
+// Infrastructure service interface contracts
 pub mod infrastructure;
 
-// 事件接口契约
+// Event interface contracts
 pub mod events;
 
-// 重新导出接口契约
+// Re-export interface contracts
 pub use events::*;
 pub use infrastructure::*;
 pub use repositories::*;
 pub use services::*;
 
-// 明确导出AuthContext以解决可见性问题
+// Explicitly export AuthContext to resolve visibility issues
 pub use services::AuthContext;

@@ -11,7 +11,7 @@ class MessagePersistenceDiagnosis {
 
   initialize() {
     if (import.meta.env.DEV) {
-      console.log('🔍 Message Persistence Diagnosis Tool loaded');
+      console.log('Message Persistence Diagnosis Tool loaded');
     }
 
   /**
@@ -19,7 +19,7 @@ class MessagePersistenceDiagnosis {
    */
   async diagnoseMessagePersistence() {
     if (import.meta.env.DEV) {
-      console.log('\n🔍 COMPREHENSIVE MESSAGE PERSISTENCE DIAGNOSIS');
+      console.log('\nCOMPREHENSIVE MESSAGE PERSISTENCE DIAGNOSIS');
     if (import.meta.env.DEV) {
       console.log('==============================================\n');
     }
@@ -153,7 +153,7 @@ class MessagePersistenceDiagnosis {
           }
       } else {
         if (import.meta.env.DEV) {
-          console.log('   ⚠️ No cache found for current chat');
+          console.log('   WARNING: No cache found for current chat');
         }
 
       // 检查持久化存储
@@ -181,7 +181,7 @@ class MessagePersistenceDiagnosis {
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Frontend check failed:', error);
+        console.error('ERROR: Frontend check failed:', error);
       this.testResults.push({
         test: 'Frontend Mechanisms',
         status: 'ERROR',
@@ -204,7 +204,7 @@ class MessagePersistenceDiagnosis {
 
       if (!currentChatId) {
         if (import.meta.env.DEV) {
-          console.log('⚠️ No current chat selected');
+          console.log('WARNING: No current chat selected');
         return;
       }
 
@@ -254,7 +254,7 @@ class MessagePersistenceDiagnosis {
         });
       } else {
         if (import.meta.env.DEV) {
-          console.log(`   ❌ API Error: ${response.status} ${response.statusText}`);
+          console.log(`   ERROR: API Error: ${response.status} ${response.statusText}`);
         this.testResults.push({
           test: 'Backend API',
           status: 'FAIL',
@@ -263,7 +263,7 @@ class MessagePersistenceDiagnosis {
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Backend check failed:', error);
+        console.error('ERROR: Backend check failed:', error);
       this.testResults.push({
         test: 'Backend API',
         status: 'ERROR',
@@ -297,7 +297,7 @@ class MessagePersistenceDiagnosis {
     }
 
     if (import.meta.env.DEV) {
-      console.log('\n🔍 Automated checks:');
+      console.log('\nAutomated checks:');
     }
 
     // 检查最近的消息发送
@@ -346,7 +346,7 @@ class MessagePersistenceDiagnosis {
 
       // 分析乐观更新流程
       if (import.meta.env.DEV) {
-        console.log('\n🚀 Optimistic Update Flow:');
+        console.log('\nOptimistic Update Flow:');
       if (import.meta.env.DEV) {
         console.log('   1. Create temp message → UI shows immediately');
       if (import.meta.env.DEV) {
@@ -359,7 +359,7 @@ class MessagePersistenceDiagnosis {
 
       // 问题点分析
       if (import.meta.env.DEV) {
-        console.log('\n⚠️ Potential Issue Points:');
+        console.log('\nWARNING: Potential Issue Points:');
       if (import.meta.env.DEV) {
         console.log('   • Cache not persistent across page reloads');
       if (import.meta.env.DEV) {
@@ -372,7 +372,7 @@ class MessagePersistenceDiagnosis {
 
       // 解决方案分析
       if (import.meta.env.DEV) {
-        console.log('\n💡 Solution Categories:');
+        console.log('\nSolution Categories:');
       if (import.meta.env.DEV) {
         console.log('   • HIGH-LEVEL: Implement persistent cache (localStorage/IndexedDB)');
       if (import.meta.env.DEV) {
@@ -389,7 +389,7 @@ class MessagePersistenceDiagnosis {
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Cache analysis failed:', error);
+        console.error('ERROR: Cache analysis failed:', error);
       this.testResults.push({
         test: 'Cache Behavior',
         status: 'ERROR',
@@ -401,15 +401,15 @@ class MessagePersistenceDiagnosis {
    */
   generateFinalReport() {
     if (import.meta.env.DEV) {
-      console.log('\n📊 FINAL DIAGNOSIS REPORT');
+      console.log('\nFINAL DIAGNOSIS REPORT');
     if (import.meta.env.DEV) {
       console.log('=========================\n');
     }
 
     if (import.meta.env.DEV) {
-      console.log('🔍 Test Results Summary:');
+      console.log('Test Results Summary:');
     this.testResults.forEach(result => {
-      const emoji = result.status === 'PASS' ? '✅' :
+      const emoji = result.status === 'PASS' ? '' :
         result.status === 'FAIL' ? '❌' :
           result.status === 'ERROR' ? '🚨' : '📋';
       if (import.meta.env.DEV) {
@@ -418,7 +418,7 @@ class MessagePersistenceDiagnosis {
     });
 
     if (import.meta.env.DEV) {
-      console.log('\n🎯 ROOT CAUSE ANALYSIS:');
+      console.log('\nROOT CAUSE ANALYSIS:');
     if (import.meta.env.DEV) {
       console.log('   Primary Issue: FRONTEND CACHE INVALIDATION');
     if (import.meta.env.DEV) {
@@ -440,7 +440,7 @@ class MessagePersistenceDiagnosis {
     }
 
     if (import.meta.env.DEV) {
-      console.log('\n🏗️ HIGH-LEVEL SOLUTIONS:');
+      console.log('\nHIGH-LEVEL SOLUTIONS:');
     if (import.meta.env.DEV) {
       console.log('   1. PERSISTENT CACHE LAYER');
     if (import.meta.env.DEV) {
@@ -472,7 +472,7 @@ class MessagePersistenceDiagnosis {
     }
 
     if (import.meta.env.DEV) {
-      console.log('\n🔧 SPECIFIC TECHNICAL FIXES:');
+      console.log('\nSPECIFIC TECHNICAL FIXES:');
     if (import.meta.env.DEV) {
       console.log('   • Add localStorage backup for message cache');
     if (import.meta.env.DEV) {
@@ -494,7 +494,7 @@ class MessagePersistenceDiagnosis {
     }
 
     if (import.meta.env.DEV) {
-      console.log('\n✅ NEXT STEPS:');
+      console.log('\nNEXT STEPS:');
     if (import.meta.env.DEV) {
       console.log('   1. Implement persistent cache layer');
     if (import.meta.env.DEV) {
@@ -523,19 +523,19 @@ class MessagePersistenceDiagnosis {
 
       if (!currentChatId) {
         if (import.meta.env.DEV) {
-          console.log('❌ No chat selected. Please open a chat first.');
+          console.log('ERROR: No chat selected. Please open a chat first.');
         return;
       }
 
       if (import.meta.env.DEV) {
-        console.log(`📝 Sending test message: "${testMessage}"`);
+        console.log(`Sending test message: "${testMessage}"`);
       }
 
       // 发送测试消息
       await chatStore.sendMessage(currentChatId, { content: testMessage });
 
       if (import.meta.env.DEV) {
-        console.log('✅ Message sent successfully');
+        console.log('Message sent successfully');
       if (import.meta.env.DEV) {
         console.log('\n📋 Manual verification steps:');
       if (import.meta.env.DEV) {
@@ -552,7 +552,7 @@ class MessagePersistenceDiagnosis {
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Test message send failed:', error);
+        console.error('ERROR: Test message send failed:', error);
       }
 
 // 创建全局实例
@@ -575,7 +575,7 @@ if (typeof window !== 'undefined') {
   };
 
   if (import.meta.env.DEV) {
-    console.log('🔍 Message Persistence Diagnosis Tool loaded');
+    console.log('Message Persistence Diagnosis Tool loaded');
   if (import.meta.env.DEV) {
     console.log('   Commands:');
   if (import.meta.env.DEV) {

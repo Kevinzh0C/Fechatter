@@ -19,7 +19,7 @@ export const loggerMiddleware: RouterMiddleware = async (to, from, next) => {
   };
 
   // 导航开始日志
-  console.group(`🚀 [${traceId}] Route Navigation`);
+  console.group(`[${traceId}] Route Navigation`);
   console.log('From:', from.fullPath);
   console.log('To:', to.fullPath);
   console.log('Meta:', to.meta);

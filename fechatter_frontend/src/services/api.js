@@ -10,7 +10,7 @@ const api = axios.create({
   timeout: 30000,
   headers: {
     'Accept': 'application/json'
-    // 🔧 CRITICAL FIX: Removed default 'Content-Type': 'application/json'
+    // CRITICAL FIX: Removed default 'Content-Type': 'application/json'
     // This allows axios to automatically set the correct Content-Type based on request body:
     // - FormData → multipart/form-data; boundary=...
     // - Object → application/json
@@ -28,7 +28,7 @@ api.interceptors.request.use(
       const { default: tokenManager } = await import('./tokenManager');
       const { default: authStateManager } = await import('../utils/authStateManager');
 
-      // 🔧 CRITICAL FIX: Get token with fallback mechanism
+      // CRITICAL FIX: Get token with fallback mechanism
       // Priority 1: tokenManager (in-memory, fast)
       let token = tokenManager.getAccessToken();
 
@@ -37,7 +37,7 @@ api.interceptors.request.use(
         const authState = authStateManager.getAuthState();
         token = authState.token;
 
-        // 🔧 RECOVERY: If authStateManager has token but tokenManager doesn't,
+        // RECOVERY: If authStateManager has token but tokenManager doesn't,
         // restore tokenManager with the token for future requests
         if (token) {
           await tokenManager.setTokens({
@@ -58,12 +58,12 @@ api.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
 
-      // 🔧 CRITICAL FIX: Smart Content-Type handling for FormData
+      // CRITICAL FIX: Smart Content-Type handling for FormData
       // If body is FormData, remove any existing Content-Type to let browser set it automatically
       if (config.data instanceof FormData) {
         delete config.headers['Content-Type'];
         if (import.meta.env.DEV) {
-          console.log('🔧 [API] Removed Content-Type header for FormData - browser will auto-set boundary');
+          console.log('[API] Removed Content-Type header for FormData - browser will auto-set boundary');
         }
       }
 
@@ -130,7 +130,7 @@ api.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${newTokens.accessToken}`;
 
           if (import.meta.env.DEV) {
-            console.log('✅ Token refreshed, retrying request');
+            console.log('Token refreshed, retrying request');
           }
 
           return api(originalRequest);
@@ -138,7 +138,7 @@ api.interceptors.response.use(
 
       } catch (refreshError) {
         if (import.meta.env.DEV) {
-          console.error('❌ Token refresh failed:', refreshError);
+          console.error('ERROR: Token refresh failed:', refreshError);
         }
 
         // Clear tokens and redirect to login

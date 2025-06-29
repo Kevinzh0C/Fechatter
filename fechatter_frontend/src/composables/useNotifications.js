@@ -50,7 +50,7 @@ export function useNotifications() {
       type: 'success',
       message,
       title: options.title || 'Success',
-      icon: '✅',
+      icon: '',
       ...options
     });
   };

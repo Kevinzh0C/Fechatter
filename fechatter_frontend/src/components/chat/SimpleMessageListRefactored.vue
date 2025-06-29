@@ -8,7 +8,7 @@
       <span>Loading messages...</span>
     </div>
 
-    <!-- 🔥 DIRECT RENDERING: No wrapper divs, no transitions, no excessive containers -->
+    <!-- DIRECT RENDERING: No wrapper divs, no transitions, no excessive containers -->
     <template v-for="item in enhancedMessages"
       :key="item.id || item._stableKey || `divider_${item.type}_${item.id}`">
       
@@ -18,7 +18,7 @@
         :divider="item"
         :compact="item.subType === 'short-break'" />
 
-      <!-- 📝 DIRECT DiscordMessageItem - Zero wrapper containers -->
+      <!-- DIRECT DiscordMessageItem - Zero wrapper containers -->
       <DiscordMessageItem 
         v-else
         :message="item" 
@@ -55,13 +55,13 @@ const props = defineProps({
 
 const emit = defineEmits(['user-profile-opened', 'dm-created', 'load-more-messages']);
 
-// 🔥 MINIMAL State
+// MINIMAL State
 const scrollContainer = ref(null);
 const showScrollToBottomButton = ref(false);
 const messageElements = ref(new Map());
 const messageGroupingState = ref({ groupedMessages: [], lastProcessedCount: 0 });
 
-// 🎯 Core: Enhanced message rendering (ultra-simplified)
+// Core: Enhanced message rendering (ultra-simplified)
 const enhancedMessages = computed(() => {
   if (!props.messages?.length) return [];
 
@@ -76,7 +76,7 @@ const enhancedMessages = computed(() => {
   return messageGroupingState.value.groupedMessages;
 });
 
-// 🔥 MINIMAL: Element registration
+// MINIMAL: Element registration
 const registerMessageElement = (messageId, el) => {
   if (el) {
     messageElements.value.set(messageId, el);
@@ -86,7 +86,7 @@ const registerMessageElement = (messageId, el) => {
   }
 };
 
-// 🔥 MINIMAL: Scroll functions
+// MINIMAL: Scroll functions
 const scrollToBottom = (smooth = false) => {
   const container = scrollContainer.value;
   if (!container) return;
@@ -98,7 +98,7 @@ const scrollToBottom = (smooth = false) => {
   showScrollToBottomButton.value = false;
 };
 
-// 🔥 MINIMAL: Scroll handler
+// MINIMAL: Scroll handler
 const debouncedHandleScroll = (() => {
   let timeoutId = null;
   return () => {
@@ -113,7 +113,7 @@ const debouncedHandleScroll = (() => {
   };
 })();
 
-// 🔥 Watch for new messages - auto scroll if near bottom
+// Watch for new messages - auto scroll if near bottom
 watch(() => props.messages?.length, (newLength, oldLength) => {
   if (newLength > (oldLength || 0)) {
     nextTick(() => {
@@ -132,7 +132,7 @@ defineExpose({ scrollToBottom, scrollContainer });
 </script>
 
 <style scoped>
-/* 🔥 ULTRA-SIMPLIFIED: Core styles only */
+/* ULTRA-SIMPLIFIED: Core styles only */
 .simple-message-list {
   width: 100%;
   height: 100%;

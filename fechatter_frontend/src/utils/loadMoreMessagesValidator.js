@@ -1,5 +1,5 @@
 /**
- * 🔍 Load More Messages DAG Validator
+ * Load More Messages DAG Validator
  * 
  * 验证"Loading earlier messages..."功能的完整DAG调用链
  * 确保每个环节都正常工作
@@ -20,7 +20,7 @@ export class LoadMoreMessagesValidator {
     this.errors = [];
     this.isValidating = true;
 
-    console.log(`🔍 [LoadMoreValidator] Starting complete DAG validation for chat ${chatId}`);
+    console.log(`[LoadMoreValidator] Starting complete DAG validation for chat ${chatId}`);
 
     try {
       // 1. 验证UI组件存在
@@ -53,7 +53,7 @@ export class LoadMoreMessagesValidator {
         timestamp: new Date().toISOString()
       });
 
-      console.error('❌ [LoadMoreValidator] DAG validation failed:', error);
+      console.error('ERROR: [LoadMoreValidator] DAG validation failed:', error);
       return this.generateReport();
     } finally {
       this.isValidating = false;
@@ -61,7 +61,7 @@ export class LoadMoreMessagesValidator {
   }
 
   /**
-   * 🎯 验证UI组件存在和可访问性
+   * 验证UI组件存在和可访问性
    */
   async validateUIComponents() {
     const tests = [
@@ -110,7 +110,7 @@ export class LoadMoreMessagesValidator {
   }
 
   /**
-   * 🎯 验证事件传播机制
+   * 验证事件传播机制
    */
   async validateEventPropagation() {
     const tests = [
@@ -143,7 +143,7 @@ export class LoadMoreMessagesValidator {
         });
 
         if (!result) {
-          console.warn(`⚠️ [LoadMoreValidator] ${test.name} failed`);
+          console.warn(`WARNING: [LoadMoreValidator] ${test.name} failed`);
         }
       } catch (error) {
         this.errors.push({
@@ -156,7 +156,7 @@ export class LoadMoreMessagesValidator {
   }
 
   /**
-   * 🎯 验证Store层
+   * 验证Store层
    */
   async validateStoreLayer(chatId) {
     const tests = [
@@ -209,7 +209,7 @@ export class LoadMoreMessagesValidator {
   }
 
   /**
-   * 🎯 验证Service层
+   * 验证Service层
    */
   async validateServiceLayer(chatId) {
     const tests = [
@@ -269,7 +269,7 @@ export class LoadMoreMessagesValidator {
   }
 
   /**
-   * 🎯 验证API调用能力
+   * 验证API调用能力
    */
   async validateAPICall(chatId) {
     const tests = [
@@ -321,7 +321,7 @@ export class LoadMoreMessagesValidator {
   }
 
   /**
-   * 🎯 验证状态管理
+   * 验证状态管理
    */
   async validateStateManagement(chatId) {
     const tests = [
@@ -362,7 +362,7 @@ export class LoadMoreMessagesValidator {
   }
 
   /**
-   * 🎯 验证滚动位置恢复
+   * 验证滚动位置恢复
    */
   async validateScrollRestoration() {
     const tests = [
@@ -405,7 +405,7 @@ export class LoadMoreMessagesValidator {
   }
 
   /**
-   * 🎯 辅助方法: 获取ChatStore
+   * 辅助方法: 获取ChatStore
    */
   getChatStore() {
     try {
@@ -419,7 +419,7 @@ export class LoadMoreMessagesValidator {
   }
 
   /**
-   * 🎯 辅助方法: 查找Vue组件
+   * 辅助方法: 查找Vue组件
    */
   findVueComponent(componentName) {
     try {
@@ -437,7 +437,7 @@ export class LoadMoreMessagesValidator {
   }
 
   /**
-   * 🎯 辅助方法: 查找MessageList组件
+   * 辅助方法: 查找MessageList组件
    */
   findMessageListComponent() {
     try {
@@ -449,7 +449,7 @@ export class LoadMoreMessagesValidator {
   }
 
   /**
-   * 📊 生成验证报告
+   * 生成验证报告
    */
   generateReport() {
     const totalTests = this.testResults.length;
@@ -472,13 +472,13 @@ export class LoadMoreMessagesValidator {
     };
 
     // 输出详细报告
-    console.log('📊 [LoadMoreValidator] Validation Report:');
-    console.log(`✅ Passed: ${passedTests}/${totalTests} (${report.summary.successRate})`);
-    console.log(`❌ Failed: ${failedTests}`);
+    console.log('[LoadMoreValidator] Validation Report:');
+    console.log(`Passed: ${passedTests}/${totalTests} (${report.summary.successRate})`);
+    console.log(`ERROR: Failed: ${failedTests}`);
     console.log(`🚨 Errors: ${errorCount}`);
 
     if (this.errors.length > 0) {
-      console.log('🔍 Errors Details:', this.errors);
+      console.log('Errors Details:', this.errors);
     }
 
     return report;
@@ -511,14 +511,14 @@ export class LoadMoreMessagesValidator {
   }
 }
 
-// 🔧 全局方法：快速验证
+// 全局方法：快速验证
 export async function quickValidateLoadMore(chatId) {
   const validator = new LoadMoreMessagesValidator();
   return await validator.validateCompleteDAG(chatId);
 }
 
-// 🔧 开发模式自动验证
+// 开发模式自动验证
 if (import.meta.env.DEV) {
   window.validateLoadMore = quickValidateLoadMore;
-  console.log('🔍 LoadMore validation available: window.validateLoadMore(chatId)');
+  console.log('LoadMore validation available: window.validateLoadMore(chatId)');
 } 

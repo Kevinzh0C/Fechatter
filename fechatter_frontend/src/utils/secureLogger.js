@@ -206,7 +206,7 @@ class SecureLogger {
   performance(label, data) {
     if (this.isDevelopment) {
       if (import.meta.env.DEV) {
-        console.log(`📊 [PERF] ${label}:`, data);
+        console.log(`[PERF] ${label}:`, data);
       }
     }
   }

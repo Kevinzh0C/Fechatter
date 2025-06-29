@@ -273,13 +273,13 @@ impl From<EventTransportError> for AppError {
 
 impl IntoResponse for AppError {
   fn into_response(self) -> Response<Body> {
-    tracing::info!("🔍 [HTTP_RESPONSE] ========== Converting AppError to HTTP Response ==========");
-    tracing::debug!("🔍 [HTTP_RESPONSE] Input AppError: {:?}", self);
+    tracing::info!("[HTTP_RESPONSE] ========== Converting AppError to HTTP Response ==========");
+    tracing::debug!("[HTTP_RESPONSE] Input AppError: {:?}", self);
 
     let status = match &self {
       AppError::UserAlreadyExists(_) => StatusCode::CONFLICT,
       AppError::NotFound(_) => {
-        tracing::info!("🔍 [HTTP_RESPONSE] 🔍 NotFound error -> HTTP 404");
+        tracing::info!("[HTTP_RESPONSE] NotFound error -> HTTP 404");
         StatusCode::NOT_FOUND
       }
       AppError::SqlxError(_) => StatusCode::INTERNAL_SERVER_ERROR,
@@ -297,11 +297,11 @@ impl IntoResponse for AppError {
       AppError::IOError(_) => StatusCode::INTERNAL_SERVER_ERROR,
       AppError::ChatFileError(_) => StatusCode::NOT_FOUND,
       AppError::ChatMembershipError { .. } => {
-        tracing::info!("🔍 [HTTP_RESPONSE] 🔍 ChatMembershipError -> HTTP 403");
+        tracing::info!("[HTTP_RESPONSE] ChatMembershipError -> HTTP 403");
         StatusCode::FORBIDDEN
       }
       AppError::ChatAccessDenied { .. } => {
-        tracing::info!("🔍 [HTTP_RESPONSE] 🔍 ChatAccessDenied -> HTTP 403");
+        tracing::info!("[HTTP_RESPONSE] ChatAccessDenied -> HTTP 403");
         StatusCode::FORBIDDEN
       }
       AppError::NatsError(_) => StatusCode::INTERNAL_SERVER_ERROR,
@@ -333,18 +333,18 @@ impl IntoResponse for AppError {
 
     let code = status.as_u16();
     tracing::error!(
-      "🔍 [HTTP_RESPONSE] ✅ Final HTTP Status: {} ({})",
+      "[HTTP_RESPONSE] Final HTTP Status: {} ({})",
       code,
       status.canonical_reason().unwrap_or("Unknown")
     );
-    tracing::debug!("🔍 [HTTP_RESPONSE] Error message: {}", self.to_string());
+    tracing::debug!("[HTTP_RESPONSE] Error message: {}", self.to_string());
 
     let body = Json(ErrorOutput {
       code,
       error: self.to_string(),
     });
 
-    tracing::info!("🔍 [HTTP_RESPONSE] ========== HTTP Response Generated ==========");
+    tracing::info!("[HTTP_RESPONSE] ========== HTTP Response Generated ==========");
     (status, body).into_response()
   }
 }
@@ -571,27 +571,27 @@ pub fn membership_status_to_app_error(
   use crate::domains::chat::ChatMembershipStatus;
 
   tracing::info!(
-    "🔍 [ERROR_CONVERTER] ========== Converting membership status to AppError =========="
+    "[ERROR_CONVERTER] ========== Converting membership status to AppError =========="
   );
-  tracing::debug!("🔍 [ERROR_CONVERTER] Input status: {:?}", status);
+  tracing::debug!("[ERROR_CONVERTER] Input status: {:?}", status);
 
   let app_error = match status {
     ChatMembershipStatus::ActiveMember { .. } => {
       // This should not happen in error scenarios
       tracing::warn!(
-        "🔍 [ERROR_CONVERTER] ⚠️ Active member status in error context - this is unexpected"
+        "[ERROR_CONVERTER] WARNING: Active member status in error context - this is unexpected"
       );
       AppError::Internal("Active member status in error context".to_string())
     }
     ChatMembershipStatus::ChatNotFound { chat_id } => {
       tracing::info!(
-        "🔍 [ERROR_CONVERTER] 🔍 Converting ChatNotFound to AppError::NotFound for chat_id={}",
+        "[ERROR_CONVERTER] Converting ChatNotFound to AppError::NotFound for chat_id={}",
         chat_id
       );
       AppError::NotFound(vec![format!("Chat {} not found", chat_id)])
     }
     ChatMembershipStatus::NotMember { chat_id, user_id } => {
-      tracing::info!("🔍 [ERROR_CONVERTER] 🔍 Converting NotMember to AppError::ChatAccessDenied for user={} in chat={}", user_id, chat_id);
+      tracing::info!("[ERROR_CONVERTER] Converting NotMember to AppError::ChatAccessDenied for user={} in chat={}", user_id, chat_id);
       AppError::ChatAccessDenied {
         reason: "User is not a member of this chat".to_string(),
         chat_id,
@@ -603,7 +603,7 @@ pub fn membership_status_to_app_error(
       user_id,
       left_at,
     } => {
-      tracing::info!("🔍 [ERROR_CONVERTER] 🔍 Converting UserLeftChat to AppError::ChatAccessDenied for user={} in chat={}, left_at={}", user_id, chat_id, left_at);
+      tracing::info!("[ERROR_CONVERTER] Converting UserLeftChat to AppError::ChatAccessDenied for user={} in chat={}, left_at={}", user_id, chat_id, left_at);
       AppError::ChatAccessDenied {
         reason: format!(
           "User left this chat on {}",
@@ -618,7 +618,7 @@ pub fn membership_status_to_app_error(
       user_id,
       issue,
     } => {
-      tracing::error!("🔍 [ERROR_CONVERTER] ❌ Converting DataInconsistency to AppError::ChatMembershipError for user={} in chat={}, issue={}", user_id, chat_id, issue);
+      tracing::error!("[ERROR_CONVERTER] ERROR: Converting DataInconsistency to AppError::ChatMembershipError for user={} in chat={}, issue={}", user_id, chat_id, issue);
       AppError::ChatMembershipError {
         message: format!("Data inconsistency detected: {}", issue),
         chat_id,
@@ -629,11 +629,11 @@ pub fn membership_status_to_app_error(
   };
 
   tracing::info!(
-    "🔍 [ERROR_CONVERTER] ✅ Generated AppError: {:?}",
+    "[ERROR_CONVERTER] Generated AppError: {:?}",
     app_error
   );
   tracing::debug!(
-    "🔍 [ERROR_CONVERTER] Error will generate HTTP status: {}",
+    "[ERROR_CONVERTER] Error will generate HTTP status: {}",
     match &app_error {
       AppError::NotFound(_) => 404,
       AppError::ChatAccessDenied { .. } => 403,

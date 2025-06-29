@@ -1,9 +1,0 @@
-[default.extend-words]
-
-[files]
-extend-exclude = [
-  "CHANGELOG.md",
-  "fechatter_server/fixtures/*",
-  "fechatter_core/fixtures/*",
-  "notify_server/*.html",
-]

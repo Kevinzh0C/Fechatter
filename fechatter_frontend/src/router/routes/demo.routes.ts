@@ -28,7 +28,7 @@ export const demoRoutes: AppRouteRecord[] = [
     component: () => import('../../components/demo/CodeHighlightTest.vue'),
     meta: {
       title: 'Code Highlight Test',
-      icon: '🎨',
+      icon: '',
       order: 91,
       hideInMenu: false, // 开发环境显示
     }

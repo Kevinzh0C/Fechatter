@@ -152,32 +152,32 @@ function createCodeWrapper(highlightedCode, language, options = {}) {
  */
 function getLanguageInfo(language) {
   const languageStyles = {
-    javascript: { icon: '⚡', color: '#f7df1e' },
+    javascript: { icon: '', color: '#f7df1e' },
     typescript: { icon: '🔷', color: '#3178c6' },
     python: { icon: '🐍', color: '#3776ab' },
     java: { icon: '☕', color: '#ed8b00' },
     cpp: { icon: '⚙️', color: '#00599c' },
-    c: { icon: '🔧', color: '#a8b9cc' },
+    c: { icon: '', color: '#a8b9cc' },
     csharp: { icon: '💜', color: '#239120' },
     php: { icon: '🐘', color: '#777bb4' },
     ruby: { icon: '💎', color: '#cc342d' },
-    go: { icon: '🚀', color: '#00add8' },
+    go: { icon: '', color: '#00add8' },
     rust: { icon: '🦀', color: '#dea584' },
     swift: { icon: '🦉', color: '#fa7343' },
-    kotlin: { icon: '🎯', color: '#7f52ff' },
+    kotlin: { icon: '', color: '#7f52ff' },
     scala: { icon: '🔺', color: '#dc322f' },
     shell: { icon: '📟', color: '#89e051' },
     sql: { icon: '🗄️', color: '#336791' },
     json: { icon: '📋', color: '#292929' },
     xml: { icon: '📄', color: '#0060ac' },
     html: { icon: '🌐', color: '#e34f26' },
-    css: { icon: '🎨', color: '#1572b6' },
-    yaml: { icon: '📝', color: '#cb171e' },
+    css: { icon: '', color: '#1572b6' },
+    yaml: { icon: '', color: '#cb171e' },
     markdown: { icon: '📖', color: '#083fa1' },
     dockerfile: { icon: '🐳', color: '#384d54' },
-    nginx: { icon: '🔧', color: '#009639' },
+    nginx: { icon: '', color: '#009639' },
     apache: { icon: '🪶', color: '#d22128' },
-    plaintext: { icon: '📝', color: '#6b7280' }
+    plaintext: { icon: '', color: '#6b7280' }
   };
 
   return languageStyles[language] || languageStyles.plaintext;
@@ -498,7 +498,7 @@ export async function highlightMarkdownCode(markdown, options = {}) {
         });
 
         if (import.meta.env.DEV) {
-          console.log(`✅ Code block ${processedBlocks} highlighted successfully (${lang})`);
+          console.log(`Code block ${processedBlocks} highlighted successfully (${lang})`);
         }
       } catch (blockError) {
         console.warn(`Failed to highlight code block ${processedBlocks} in language ${lang}:`, blockError);

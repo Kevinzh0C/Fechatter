@@ -39,7 +39,7 @@ class EmergencyMessageOrderFix {
     fixCount += this.fixCurrentDOM();
 
     if (import.meta.env.DEV) {
-      console.log(`\n✅ Applied ${fixCount} emergency fixes`);
+      console.log(`\nApplied ${fixCount} emergency fixes`);
     if (import.meta.env.DEV) {
       console.log('🔄 Refresh the page to see all fixes applied');
     }
@@ -53,14 +53,14 @@ class EmergencyMessageOrderFix {
    */
   fixChatStoreMessages() {
     if (import.meta.env.DEV) {
-      console.log('🔧 Fixing Chat Store messages...');
+      console.log('Fixing Chat Store messages...');
     }
 
     try {
       const chatStore = this.getChatStore();
       if (!chatStore) {
         if (import.meta.env.DEV) {
-          console.log('⚠️ Chat store not found');
+          console.log('WARNING: Chat store not found');
         return 0;
       }
 
@@ -103,12 +103,12 @@ class EmergencyMessageOrderFix {
         }
 
       if (import.meta.env.DEV) {
-        console.log(`✅ Chat store: ${fixCount} fixes applied`);
+        console.log(`Chat store: ${fixCount} fixes applied`);
       return fixCount;
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Error fixing chat store:', error);
+        console.error('ERROR: Error fixing chat store:', error);
       return 0;
     }
 
@@ -117,7 +117,7 @@ class EmergencyMessageOrderFix {
    */
   fixLocalStorageCache() {
     if (import.meta.env.DEV) {
-      console.log('🔧 Fixing localStorage cache...');
+      console.log('Fixing localStorage cache...');
     }
 
     try {
@@ -149,12 +149,12 @@ class EmergencyMessageOrderFix {
       });
 
       if (import.meta.env.DEV) {
-        console.log(`✅ localStorage: ${fixCount} caches fixed`);
+        console.log(`localStorage: ${fixCount} caches fixed`);
       return fixCount;
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Error fixing localStorage:', error);
+        console.error('ERROR: Error fixing localStorage:', error);
       return 0;
     }
 
@@ -163,7 +163,7 @@ class EmergencyMessageOrderFix {
    */
   fixSessionStorage() {
     if (import.meta.env.DEV) {
-      console.log('🔧 Fixing sessionStorage...');
+      console.log('Fixing sessionStorage...');
     }
 
     try {
@@ -185,12 +185,12 @@ class EmergencyMessageOrderFix {
           }
 
       if (import.meta.env.DEV) {
-        console.log(`✅ sessionStorage: ${fixCount} caches fixed`);
+        console.log(`sessionStorage: ${fixCount} caches fixed`);
       return fixCount;
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Error fixing sessionStorage:', error);
+        console.error('ERROR: Error fixing sessionStorage:', error);
       return 0;
     }
 
@@ -235,7 +235,7 @@ class EmergencyMessageOrderFix {
    */
   installPermanentInterceptors() {
     if (import.meta.env.DEV) {
-      console.log('🔧 Installing permanent sorting interceptors...');
+      console.log('Installing permanent sorting interceptors...');
     }
 
     try {
@@ -266,7 +266,7 @@ class EmergencyMessageOrderFix {
                 return timeA - timeB;
               });
               if (import.meta.env.DEV) {
-                console.log(`🔧 Auto-sorted ${result.length} messages chronologically`);
+                console.log(`Auto-sorted ${result.length} messages chronologically`);
               }
 
             return result;
@@ -282,12 +282,12 @@ class EmergencyMessageOrderFix {
       }
 
       if (import.meta.env.DEV) {
-        console.log(`✅ Interceptors: ${fixCount} installed`);
+        console.log(`Interceptors: ${fixCount} installed`);
       return fixCount;
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Error installing interceptors:', error);
+        console.error('ERROR: Error installing interceptors:', error);
       return 0;
     }
 
@@ -312,7 +312,7 @@ class EmergencyMessageOrderFix {
             return timeA - timeB;
           });
           if (import.meta.env.DEV) {
-            console.log('🔧 Auto-sorted messages on setter');
+            console.log('Auto-sorted messages on setter');
         internalMessages = newMessages;
       },
       configurable: true,
@@ -327,7 +327,7 @@ class EmergencyMessageOrderFix {
    */
   fixCurrentDOM() {
     if (import.meta.env.DEV) {
-      console.log('🔧 Analyzing current DOM...');
+      console.log('Analyzing current DOM...');
     }
 
     try {
@@ -368,12 +368,12 @@ class EmergencyMessageOrderFix {
         });
 
       if (import.meta.env.DEV) {
-        console.log('✅ DOM: Analysis complete (no direct DOM manipulation)');
+        console.log('DOM: Analysis complete (no direct DOM manipulation)');
       return 1;
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Error analyzing DOM:', error);
+        console.error('ERROR: Error analyzing DOM:', error);
       return 0;
     }
 
@@ -382,7 +382,7 @@ class EmergencyMessageOrderFix {
    */
   diagnose() {
     if (import.meta.env.DEV) {
-      console.log('\n🔍 EMERGENCY DIAGNOSTIC');
+      console.log('\nEMERGENCY DIAGNOSTIC');
     if (import.meta.env.DEV) {
       console.log('=======================');
     }
@@ -391,7 +391,7 @@ class EmergencyMessageOrderFix {
     const chatStore = this.getChatStore();
     if (chatStore && chatStore.messages) {
       if (import.meta.env.DEV) {
-        console.log(`📊 Chat Store: ${chatStore.messages.length} messages`);
+        console.log(`Chat Store: ${chatStore.messages.length} messages`);
       }
 
       if (chatStore.messages.length > 1) {
@@ -402,15 +402,15 @@ class EmergencyMessageOrderFix {
 
         if (firstTime < lastTime) {
           if (import.meta.env.DEV) {
-            console.log('✅ Store order: CORRECT (oldest→newest)');
+            console.log('Store order: CORRECT (oldest→newest)');
           }
         } else {
           if (import.meta.env.DEV) {
-            console.log('❌ Store order: WRONG (newest→oldest)');
+            console.log('ERROR: Store order: WRONG (newest→oldest)');
           }
     } else {
       if (import.meta.env.DEV) {
-        console.log('⚠️ Chat Store: No messages found');
+        console.log('WARNING: Chat Store: No messages found');
       }
 
     // Check localStorage
@@ -424,11 +424,11 @@ class EmergencyMessageOrderFix {
       console.log('🌐 API Status: Checking...');
     fetch('/api/health').then(response => {
       if (import.meta.env.DEV) {
-        console.log(`✅ API: Connected (${response.status})`);
+        console.log(`API: Connected (${response.status})`);
       }
     }).catch(error => {
       if (import.meta.env.DEV) {
-        console.log('❌ API: Connection failed (using cached data)');
+        console.log('ERROR: API: Connection failed (using cached data)');
       }
     });
 

@@ -11,7 +11,7 @@ use axum::{
 
 #[tokio::test]
 async fn test_basic_search_functionality() -> Result<(), AppError> {
-  println!("🔍 Testing basic search functionality...");
+  println!("Testing basic search functionality...");
 
   let (_tdb, app_state) = AppState::test_new().await?;
 
@@ -105,7 +105,7 @@ async fn test_basic_search_functionality() -> Result<(), AppError> {
     }
     Err(AppError::SearchError(msg)) => {
       if msg.contains("index") || msg.contains("connection") || msg.contains("disabled") {
-        println!("   ℹ️  Search service needs configuration: {}", msg);
+        println!("   INFO:  Search service needs configuration: {}", msg);
       } else {
         return Err(AppError::SearchError(msg));
       }
@@ -113,7 +113,7 @@ async fn test_basic_search_functionality() -> Result<(), AppError> {
     Err(e) => return Err(e),
   }
 
-  println!("✅ Basic search functionality test completed");
+  println!("Basic search functionality test completed");
   Ok(())
 }
 
@@ -216,7 +216,7 @@ async fn test_search_validation() -> Result<(), AppError> {
   assert!(matches!(result, Err(AppError::InvalidInput(_))));
   println!("   ✓ Limit validation works");
 
-  println!("✅ Search validation test completed");
+  println!("Search validation test completed");
   Ok(())
 }
 
@@ -315,7 +315,7 @@ async fn test_search_pagination() -> Result<(), AppError> {
     }
     Err(AppError::SearchError(msg)) => {
       if msg.contains("index") || msg.contains("connection") || msg.contains("disabled") {
-        println!("   ℹ️  Search service needs configuration: {}", msg);
+        println!("   INFO:  Search service needs configuration: {}", msg);
         return Ok(());
       } else {
         return Err(AppError::SearchError(msg));
@@ -347,11 +347,11 @@ async fn test_search_pagination() -> Result<(), AppError> {
       println!("   ✓ Results count: {}", search_result.messages.len());
     }
     Err(AppError::SearchError(_)) => {
-      println!("   ℹ️  Search service needs configuration");
+      println!("   INFO:  Search service needs configuration");
     }
     Err(e) => return Err(e),
   }
 
-  println!("✅ Search pagination test completed");
+  println!("Search pagination test completed");
   Ok(())
 }

@@ -11,11 +11,11 @@ pub async fn init_observability(bind_address: &str) -> Result<(), AppError> {
     
     metrics::init_metrics(addr).await?;
     
-    tracing::info!("📊 Observability initialized for analytics_server");
+    tracing::info!("Observability initialized for analytics_server");
     Ok(())
 }
 
 /// Shutdown observability
 pub async fn shutdown_observability() {
-    tracing::info!("📊 Shutting down observability");
+    tracing::info!("Shutting down observability");
 }

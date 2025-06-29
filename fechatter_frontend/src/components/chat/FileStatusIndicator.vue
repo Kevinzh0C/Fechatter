@@ -20,7 +20,7 @@
 
     <!-- File Upload Success -->
     <div v-else-if="file.upload_status === 'uploaded'" class="upload-success">
-      <div class="upload-success-icon">✅</div>
+      <div class="upload-success-icon"></div>
       <div class="upload-success-text">文件已上传</div>
     </div>
 
@@ -39,8 +39,8 @@
     <div v-if="file.upload_status === 'uploaded' && messageStatus" class="message-status-indicator">
       <div class="message-status-icon">
         <span v-if="messageStatus === 'sending'">📨</span>
-        <span v-else-if="messageStatus === 'sent'">✅</span>
-        <span v-else-if="messageStatus === 'delivered'">✅✅</span>
+        <span v-else-if="messageStatus === 'sent'"></span>
+        <span v-else-if="messageStatus === 'delivered'"></span>
         <span v-else-if="messageStatus === 'failed'">❌</span>
       </div>
       <div class="message-status-text">
@@ -67,11 +67,11 @@ const props = defineProps({
 const getMessageStatusText = (status) => {
   const statusMap = {
     'file_uploading': '📤 正在上传文件...',
-    'file_uploaded': '✅ 文件已上传',
-    'sending': '📨 正在发送...',
-    'sent': '✅ 已发送',
-    'delivered': '✅ 已送达',
-    'failed': '❌ 发送失败'
+    'file_uploaded': '文件已上传',
+    'sending': 'EVENT: 正在发送...',
+    'sent': '已发送',
+    'delivered': '已送达',
+    'failed': 'ERROR: 发送失败'
   };
 
   return statusMap[status] || status;

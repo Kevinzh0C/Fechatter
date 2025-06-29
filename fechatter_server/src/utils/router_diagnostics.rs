@@ -16,17 +16,17 @@ pub async fn router_diagnostic_middleware(
     let uri = req.uri().clone();
     let path = uri.path();
     
-    info!("🔍 [ROUTER_DIAG] Incoming request: {} {}", method, path);
+    info!("[ROUTER_DIAG] Incoming request: {} {}", method, path);
     
     // Check if this is a chat route
     if path.contains("/api/chat/") && path.contains("/") {
-        info!("🔍 [ROUTER_DIAG] 🎯 CHAT ROUTE DETECTED: {}", path);
+        info!("[ROUTER_DIAG] CHAT ROUTE DETECTED: {}", path);
         
         // Extract chat ID for debugging
         if let Some(chat_id) = extract_chat_id_from_path(path) {
-            info!("🔍 [ROUTER_DIAG] 📝 Chat ID extracted: {}", chat_id);
+            info!("[ROUTER_DIAG] Chat ID extracted: {}", chat_id);
         } else {
-            warn!("🔍 [ROUTER_DIAG] ⚠️ Failed to extract chat ID from: {}", path);
+            warn!("[ROUTER_DIAG] WARNING: Failed to extract chat ID from: {}", path);
         }
     }
     
@@ -42,28 +42,28 @@ pub async fn router_diagnostic_middleware(
     // Log the result
     match status {
         StatusCode::OK => {
-            info!("🔍 [ROUTER_DIAG] ✅ SUCCESS: {} {} -> {} ({:?})", 
+            info!("[ROUTER_DIAG] SUCCESS: {} {} -> {} ({:?})", 
                   method, path, status, duration);
         },
         StatusCode::NOT_FOUND => {
-            error!("🔍 [ROUTER_DIAG] 🚫 NOT FOUND: {} {} -> {} ({:?})", 
+            error!("[ROUTER_DIAG] 🚫 NOT FOUND: {} {} -> {} ({:?})", 
                    method, path, status, duration);
-            error!("🔍 [ROUTER_DIAG] 🚫 This indicates the route is NOT REGISTERED!");
+            error!("[ROUTER_DIAG] 🚫 This indicates the route is NOT REGISTERED!");
         },
         StatusCode::UNAUTHORIZED => {
-            warn!("🔍 [ROUTER_DIAG] 🔐 UNAUTHORIZED: {} {} -> {} ({:?})", 
+            warn!("[ROUTER_DIAG] 🔐 UNAUTHORIZED: {} {} -> {} ({:?})", 
                   method, path, status, duration);
         },
         StatusCode::FORBIDDEN => {
-            warn!("🔍 [ROUTER_DIAG] 🛡️ FORBIDDEN: {} {} -> {} ({:?})", 
+            warn!("[ROUTER_DIAG] 🛡️ FORBIDDEN: {} {} -> {} ({:?})", 
                   method, path, status, duration);
         },
         StatusCode::INTERNAL_SERVER_ERROR => {
-            error!("🔍 [ROUTER_DIAG] 💥 SERVER ERROR: {} {} -> {} ({:?})", 
+            error!("[ROUTER_DIAG] 💥 SERVER ERROR: {} {} -> {} ({:?})", 
                    method, path, status, duration);
         },
         _ => {
-            info!("🔍 [ROUTER_DIAG] 📊 RESPONSE: {} {} -> {} ({:?})", 
+            info!("[ROUTER_DIAG] RESPONSE: {} {} -> {} ({:?})", 
                   method, path, status, duration);
         }
     }

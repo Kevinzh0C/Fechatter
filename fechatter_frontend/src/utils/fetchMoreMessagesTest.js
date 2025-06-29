@@ -1,6 +1,6 @@
 /**
  * fetchMoreMessages Fix Verification Test
- * 🔧 Tests the variable scope fix in UnifiedMessageService.fetchMoreMessages
+ * Tests the variable scope fix in UnifiedMessageService.fetchMoreMessages
  */
 
 class FetchMoreMessagesTest {
@@ -12,7 +12,7 @@ class FetchMoreMessagesTest {
    * Run comprehensive tests for fetchMoreMessages fix
    */
   async runTests(chatId = 5) {
-    console.log('🔧 [FetchMoreMessages Test] Starting verification tests...');
+    console.log('[FetchMoreMessages Test] Starting verification tests...');
 
     const startTime = Date.now();
 
@@ -225,15 +225,15 @@ class FetchMoreMessagesTest {
    * Display test results
    */
   displayResults(results) {
-    console.group('🔧 fetchMoreMessages Fix Verification Results');
+    console.group('fetchMoreMessages Fix Verification Results');
 
     console.log(`⏱️ Test Duration: ${results.duration}ms`);
-    console.log(`📊 Overall Result: ${results.overall.passed ? '✅ PASSED' : '❌ FAILED'} (${results.overall.passRate})`);
+    console.log(`Overall Result: ${results.overall.passed ? 'PASSED' : 'ERROR: FAILED'} (${results.overall.passRate})`);
 
     console.log('\n📋 Individual Test Results:');
 
     Object.values(results.tests).forEach((test, idx) => {
-      const icon = test.passed ? '✅' : '❌';
+      const icon = test.passed ? '' : '❌';
       console.log(`  ${idx + 1}. ${icon} ${test.name}`);
 
       if (test.details) {
@@ -245,11 +245,11 @@ class FetchMoreMessagesTest {
 
     if (results.overall.passed) {
       console.log('\n🎉 SUCCESS: fetchMoreMessages ReferenceError has been fixed!');
-      console.log('   ✅ Variable scope issue resolved');
-      console.log('   ✅ Error handling improved');
-      console.log('   ✅ Method functions correctly');
+      console.log('   Variable scope issue resolved');
+      console.log('   Error handling improved');
+      console.log('   Method functions correctly');
     } else {
-      console.log('\n⚠️ Some tests failed. The fix may need additional work.');
+      console.log('\nWARNING: Some tests failed. The fix may need additional work.');
     }
 
     console.groupEnd();
@@ -259,12 +259,12 @@ class FetchMoreMessagesTest {
    * Quick test specifically for the ReferenceError
    */
   async quickReferenceErrorTest(chatId = 5) {
-    console.log('🔍 [Quick Test] Checking for ReferenceError: existing is not defined...');
+    console.log('[Quick Test] Checking for ReferenceError: existing is not defined...');
 
     try {
       // Force an API error scenario to test the fix
       const result = await window.unifiedMessageService.fetchMoreMessages(chatId);
-      console.log('✅ [Quick Test] No ReferenceError thrown - fix appears successful');
+      console.log('[Quick Test] No ReferenceError thrown - fix appears successful');
       return { success: true, result };
 
     } catch (error) {
@@ -272,10 +272,10 @@ class FetchMoreMessagesTest {
         error.message.includes('existing is not defined');
 
       if (isOriginalError) {
-        console.log('❌ [Quick Test] Original ReferenceError still present - fix failed');
+        console.log('ERROR: [Quick Test] Original ReferenceError still present - fix failed');
         return { success: false, error, isOriginalError: true };
       } else {
-        console.log('✅ [Quick Test] Different error (expected) - ReferenceError fix successful');
+        console.log('[Quick Test] Different error (expected) - ReferenceError fix successful');
         console.log(`   Error type: ${error.constructor.name}`);
         console.log(`   Error message: ${error.message}`);
         return { success: true, error, isOriginalError: false };

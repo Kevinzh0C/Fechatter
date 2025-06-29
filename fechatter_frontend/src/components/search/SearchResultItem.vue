@@ -1,5 +1,5 @@
 <template>
-  <!-- 🎯 Search Result Item - Cognitive Design Optimized -->
+  <!-- Search Result Item - Cognitive Design Optimized -->
   <article 
     class="search-result-item"
     :class="{ 'highlighted': isHighlighted }"
@@ -242,7 +242,7 @@ const highlightSearchTerms = (content, query) => {
 </script>
 
 <style scoped>
-/* 🎨 Search Result Item - Cognitive Design System */
+/* Search Result Item - Cognitive Design System */
 
 .search-result-item {
   /* Golden Ratio Layout System */

@@ -246,7 +246,7 @@ export class MessageOfflineQueue {
   async queueOfflineMessage(message) {
     if (this.stats.offlineMessages >= this.config.maxOfflineMessages) {
       if (import.meta.env.DEV) {
-        console.warn('⚠️ Offline queue is full, removing oldest messages');
+        console.warn('WARNING: Offline queue is full, removing oldest messages');
       await this.purgeOldestMessages(100); // Remove 100 oldest messages
     }
 
@@ -285,7 +285,7 @@ export class MessageOfflineQueue {
       });
 
       if (messagesToSync.length === 0) {
-        // console.log('✅ No offline messages to sync');
+        // console.log('No offline messages to sync');
         return;
       }
 
@@ -317,7 +317,7 @@ export class MessageOfflineQueue {
       this.stats.lastSyncTime = new Date().toISOString();
       this.stats.pendingSyncMessages = messagesToSync.length - syncedCount;
 
-      // console.log(`✅ Sync completed: ${syncedCount} successful, ${errorCount} failed`);
+      // console.log(`Sync completed: ${syncedCount} successful, ${errorCount} failed`);
 
     } catch (error) {
       if (import.meta.env.DEV) {
@@ -466,7 +466,7 @@ export class MessageOfflineQueue {
    */
   updateConfig(newConfig) {
     Object.assign(this.config, newConfig);
-    // console.log('📝 Updated offline queue configuration');
+    // console.log('Updated offline queue configuration');
   }
 
   /**
