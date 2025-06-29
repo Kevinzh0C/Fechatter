@@ -103,7 +103,7 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     /**
      * Initialize auth state from storage
-     * 🔧 PERFORMANCE OPTIMIZED: Target <200ms initialization time
+     * PERFORMANCE OPTIMIZED: Target <200ms initialization time
      */
     async initialize() {
       // Prevent multiple initializations
@@ -116,11 +116,11 @@ export const useAuthStore = defineStore('auth', {
       }
 
       try {
-        // 🔧 PERFORMANCE: 简化的一致性检查，移除昂贵操作
-        // 跳过复杂的ensureAuthStateConsistency，只做基本检查
+        // PERFORMANCE: Simplified consistency check, remove expensive operations
+        // Skip complex ensureAuthStateConsistency, only do basic checks
         const authState = authStateManager.getAuthState();
 
-        // 快速路径：无token则直接返回
+        // Fast path: no token, return immediately
         if (!authState.token) {
           this.isInitialized = true;
           if (import.meta.env.DEV) {
@@ -130,36 +130,36 @@ export const useAuthStore = defineStore('auth', {
           return false;
         }
 
-        // 🔧 PERFORMANCE: 简化token验证，避免复杂的格式检查
-        // 基本设置到tokenManager用于API调用
+        // PERFORMANCE: Simplified token validation, avoid complex format checks
+        // Basic setup to tokenManager for API calls
         tokenManager.setTokens({
           accessToken: authState.token,
           refreshToken: authState.token,
-          expiresAt: Date.now() + (3600 * 1000), // 默认1小时
+          expiresAt: Date.now() + (3600 * 1000), // Default 1 hour
           issuedAt: Date.now(),
         });
 
-        // 🔧 PERFORMANCE: 跳过token过期检查和刷新，让API调用时处理
-        // 这样可以避免初始化时的网络请求
+        // PERFORMANCE: Skip token expiry check and refresh, let API calls handle it
+        // This avoids network requests during initialization
 
-        // 基本时间戳设置
+        // Basic timestamp setup
         this.lastLoginTime = Date.now();
         this.sessionStartTime = Date.now();
 
-        // 🔧 PERFORMANCE: 延迟设置监听器，避免阻塞初始化
+        // PERFORMANCE: Delay listener setup to avoid blocking initialization
         setTimeout(() => this.setupTokenManagerListeners(), 100);
 
-        // 🔧 PERFORMANCE: 跳过fetchCurrentUser，让需要时再获取
-        // 🔧 PERFORMANCE: 跳过initializeUserStores，让页面加载后再处理
-        // 🔧 PERFORMANCE: 跳过verifyAuthStateIntegrity，信任存储的数据
+        // PERFORMANCE: Skip fetchCurrentUser, get when needed
+        // PERFORMANCE: Skip initializeUserStores, handle after page load
+        // PERFORMANCE: Skip verifyAuthStateIntegrity, trust stored data
 
-        // 延迟初始化非关键组件
+        // Delayed initialization for non-critical components
         setTimeout(async () => {
           try {
-            // 后台初始化用户stores
+            // Background initialization of user stores
             await this.initializeUserStores();
 
-            // 后台获取用户数据（如果需要的话）
+            // Background user data fetch if needed
             if (!authState.user) {
               await this.fetchCurrentUser();
             }
@@ -169,22 +169,22 @@ export const useAuthStore = defineStore('auth', {
             }
           } catch (error) {
             if (import.meta.env.DEV) {
-              console.warn('⚠️ [AUTH] Background initialization failed:', error);
+              console.warn('WARNING: [AUTH] Background initialization failed:', error);
             }
           }
-        }, 500); // 500ms后台执行
+        }, 500); // 500ms background execution
 
         this.isInitialized = true;
 
         if (import.meta.env.DEV) {
           console.timeEnd('⏱️ [AUTH] Initialize');
-          console.log('✅ [AUTH] Fast initialization complete');
+          console.log('[AUTH] Fast initialization complete');
         }
 
         return true;
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.error('❌ [AUTH] Failed to initialize auth:', error);
+          console.error('ERROR: [AUTH] Failed to initialize auth:', error);
           console.timeEnd('⏱️ [AUTH] Initialize');
         }
         authStateManager.clearAuthState();
@@ -222,7 +222,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * Login user - 🔧 COMPLETE REFACTOR for reliability
+     * Login user - COMPLETE REFACTOR for reliability
      */
     async login(credentialsOrEmail, passwordArg = null, rememberMe = false) {
       this.isLoading = true;
@@ -259,7 +259,7 @@ export const useAuthStore = defineStore('auth', {
         }
 
         if (import.meta.env.DEV) {
-          console.log('✅ [AUTH] API login successful, processing authentication...');
+          console.log('[AUTH] API login successful, processing authentication...');
         }
 
         // Step 2: Create token data
@@ -270,7 +270,7 @@ export const useAuthStore = defineStore('auth', {
           issuedAt: Date.now(),
         };
 
-        // 🔧 CRITICAL REFACTOR: Immediate State Setting Before Any Storage Operations
+        // CRITICAL REFACTOR: Immediate State Setting Before Any Storage Operations
         await this.setImmediateAuthState(tokens, authResult.user);
 
         // Step 3: Enhanced storage operations (background)
@@ -286,7 +286,7 @@ export const useAuthStore = defineStore('auth', {
         this.initializeSupportingSystems();
 
         if (import.meta.env.DEV) {
-          console.log('✅ [AUTH] Refactored login process completed successfully');
+          console.log('[AUTH] Refactored login process completed successfully');
         }
 
         this.returnUrl = null;
@@ -302,15 +302,15 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * 🔧 NEW: Immediate authentication state setting - highest priority
+     * NEW: Immediate authentication state setting - highest priority
      */
     async setImmediateAuthState(tokens, user) {
       if (import.meta.env.DEV) {
-        console.log('⚡ [AUTH] Setting immediate auth state...');
+        console.log('[AUTH] Setting immediate auth state...');
       }
 
       try {
-        // 🔧 CRITICAL: Set Pinia store state FIRST and IMMEDIATELY
+        // CRITICAL: Set Pinia store state FIRST and IMMEDIATELY
         // This ensures authStore getters return correct values instantly
 
         // Set core timestamps
@@ -318,7 +318,7 @@ export const useAuthStore = defineStore('auth', {
         this.sessionStartTime = Date.now();
         this.isInitialized = true;
 
-        // 🔧 CRITICAL: Force immediate tokenManager update
+        // CRITICAL: Force immediate tokenManager update
         await tokenManager.setTokens(tokens);
 
         // Verify tokenManager is working
@@ -327,14 +327,14 @@ export const useAuthStore = defineStore('auth', {
           throw new Error('TokenManager immediate setup failed');
         }
 
-        // 🔧 CRITICAL: Force immediate authStateManager update 
+        // CRITICAL: Force immediate authStateManager update 
         authStateManager.setAuthState(tokens.accessToken, user);
 
-        // 🔧 CRITICAL: Force immediate localStorage keys for instant verification
+        // CRITICAL: Force immediate localStorage keys for instant verification
         localStorage.setItem('auth_token', tokens.accessToken);
         localStorage.setItem('auth_user', JSON.stringify(user));
 
-        // 🔧 NEW: CRITICAL STATE SYNC - Force authStateManager to refresh and verify
+        // NEW: CRITICAL STATE SYNC - Force authStateManager to refresh and verify
         // Wait for localStorage writes to complete with multiple sync points
         await new Promise(resolve => {
           requestAnimationFrame(() => {
@@ -344,7 +344,7 @@ export const useAuthStore = defineStore('auth', {
                 const authState = authStateManager.getAuthState();
 
                 if (import.meta.env.DEV) {
-                  console.log('🔍 [AUTH] Forced state sync check:', {
+                  console.log('[AUTH] Forced state sync check:', {
                     tokenExists: !!authState.token,
                     userExists: !!authState.user,
                     isAuthenticated: authState.isAuthenticated,
@@ -355,7 +355,7 @@ export const useAuthStore = defineStore('auth', {
 
                 // If still not working, this indicates a serious problem
                 if (!authState.isAuthenticated) {
-                  console.error('❌ [AUTH] CRITICAL: AuthStateManager still reports not authenticated after forced sync');
+                  console.error('ERROR: [AUTH] CRITICAL: AuthStateManager still reports not authenticated after forced sync');
                 }
 
                 resolve();
@@ -364,13 +364,13 @@ export const useAuthStore = defineStore('auth', {
           });
         });
 
-        // 🔧 VERIFICATION: Immediate verification of critical state with enhanced tolerance
+        // VERIFICATION: Immediate verification of critical state with enhanced tolerance
         const immediateVerification = this.verifyCriticalStateImmediate(tokens, user);
 
         if (!immediateVerification) {
-          // 🔧 ENHANCED TOLERANCE: Instead of failing immediately, try a more lenient check
+          // ENHANCED TOLERANCE: Instead of failing immediately, try a more lenient check
           if (import.meta.env.DEV) {
-            console.warn('⚠️ [AUTH] Initial immediate verification failed, trying fallback verification...');
+            console.warn('WARNING: [AUTH] Initial immediate verification failed, trying fallback verification...');
           }
 
           // Fallback verification - only check the most essential requirements
@@ -385,7 +385,7 @@ export const useAuthStore = defineStore('auth', {
               const fallbackPassed = hasTokenManager && hasValidTokens && hasValidUser && hasBasicStorage;
 
               if (import.meta.env.DEV) {
-                console.log('🔍 [AUTH] Fallback verification:', {
+                console.log('[AUTH] Fallback verification:', {
                   hasTokenManager,
                   hasValidTokens,
                   hasValidUser,
@@ -397,7 +397,7 @@ export const useAuthStore = defineStore('auth', {
               return fallbackPassed;
             } catch (error) {
               if (import.meta.env.DEV) {
-                console.error('❌ [AUTH] Fallback verification error:', error);
+                console.error('ERROR: [AUTH] Fallback verification error:', error);
               }
               return false;
             }
@@ -408,30 +408,30 @@ export const useAuthStore = defineStore('auth', {
             throw new Error('Both immediate and fallback auth state verification failed');
           } else {
             if (import.meta.env.DEV) {
-              console.warn('⚠️ [AUTH] Using fallback verification - some checks failed but core auth is valid');
+              console.warn('WARNING: [AUTH] Using fallback verification - some checks failed but core auth is valid');
             }
           }
         }
 
         if (import.meta.env.DEV) {
-          console.log('✅ [AUTH] Immediate auth state set and verified');
+          console.log('[AUTH] Immediate auth state set and verified');
         }
 
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.error('❌ [AUTH] Immediate auth state setting failed:', error);
+          console.error('ERROR: [AUTH] Immediate auth state setting failed:', error);
         }
         throw error;
       }
     },
 
     /**
-     * 🔧 FIXED: Verify critical state immediately - more tolerant and reliable
+     * FIXED: Verify critical state immediately - more tolerant and reliable
      */
     verifyCriticalStateImmediate(tokens, user) {
       try {
         if (import.meta.env.DEV) {
-          console.log('⚡ [AUTH] Starting immediate verification with tokens:', {
+          console.log('[AUTH] Starting immediate verification with tokens:', {
             hasAccessToken: !!tokens?.accessToken,
             tokenLength: tokens?.accessToken?.length,
             hasUser: !!user,
@@ -440,7 +440,7 @@ export const useAuthStore = defineStore('auth', {
           });
         }
 
-        // 🔧 CRITICAL FIX: More tolerance and detailed checking
+        // CRITICAL FIX: More tolerance and detailed checking
         const checks = {
           // 1. TokenManager check - CRITICAL
           tokenManager: (() => {
@@ -448,7 +448,7 @@ export const useAuthStore = defineStore('auth', {
               const managerToken = tokenManager.getAccessToken();
               const isValid = managerToken === tokens.accessToken;
               if (import.meta.env.DEV && !isValid) {
-                console.warn('⚠️ [AUTH] TokenManager mismatch:', {
+                console.warn('WARNING: [AUTH] TokenManager mismatch:', {
                   expected: tokens.accessToken?.substring(0, 20) + '...',
                   actual: managerToken?.substring(0, 20) + '...'
                 });
@@ -456,7 +456,7 @@ export const useAuthStore = defineStore('auth', {
               return isValid;
             } catch (error) {
               if (import.meta.env.DEV) {
-                console.error('❌ [AUTH] TokenManager check error:', error);
+                console.error('ERROR: [AUTH] TokenManager check error:', error);
               }
               return false;
             }
@@ -471,7 +471,7 @@ export const useAuthStore = defineStore('auth', {
               const hasUser = !!authUser;
 
               if (import.meta.env.DEV && (!tokenMatch || !hasUser)) {
-                console.warn('⚠️ [AUTH] LocalStorage check failed:', {
+                console.warn('WARNING: [AUTH] LocalStorage check failed:', {
                   tokenMatch,
                   hasUser,
                   expectedToken: tokens.accessToken?.substring(0, 20) + '...',
@@ -482,7 +482,7 @@ export const useAuthStore = defineStore('auth', {
               return tokenMatch && hasUser;
             } catch (error) {
               if (import.meta.env.DEV) {
-                console.error('❌ [AUTH] LocalStorage check error:', error);
+                console.error('ERROR: [AUTH] LocalStorage check error:', error);
               }
               return false;
             }
@@ -496,7 +496,7 @@ export const useAuthStore = defineStore('auth', {
               const hasBasicState = !!(authState && authState.token && authState.user);
 
               if (import.meta.env.DEV) {
-                console.log('🔍 [AUTH] AuthState basic check:', {
+                console.log('[AUTH] AuthState basic check:', {
                   hasAuthState: !!authState,
                   hasToken: !!authState?.token,
                   hasUser: !!authState?.user,
@@ -508,7 +508,7 @@ export const useAuthStore = defineStore('auth', {
               return hasBasicState;
             } catch (error) {
               if (import.meta.env.DEV) {
-                console.warn('⚠️ [AUTH] AuthState basic check error:', error);
+                console.warn('WARNING: [AUTH] AuthState basic check error:', error);
               }
               return false; // Not critical, just warn
             }
@@ -521,7 +521,7 @@ export const useAuthStore = defineStore('auth', {
               const hasStoreData = !!(this.lastLoginTime && this.sessionStartTime && this.isInitialized);
 
               if (import.meta.env.DEV) {
-                console.log('🔍 [AUTH] Store state check:', {
+                console.log('[AUTH] Store state check:', {
                   lastLoginTime: this.lastLoginTime,
                   sessionStartTime: this.sessionStartTime,
                   isInitialized: this.isInitialized,
@@ -532,20 +532,20 @@ export const useAuthStore = defineStore('auth', {
               return hasStoreData;
             } catch (error) {
               if (import.meta.env.DEV) {
-                console.warn('⚠️ [AUTH] Store state check error:', error);
+                console.warn('WARNING: [AUTH] Store state check error:', error);
               }
               return false;
             }
           })()
         };
 
-        // 🔧 CRITICAL FIX: Relaxed success criteria
+        // CRITICAL FIX: Relaxed success criteria
         // Only require the two most critical checks: tokenManager + localStorage
         // AuthState and store state are supporting checks
         const criticalChecks = [checks.tokenManager, checks.localStorage];
         const supportingChecks = [checks.authStateBasic, checks.storeState];
 
-        // 🔧 ULTRA-TOLERANT SUCCESS CRITERIA: Multiple acceptable scenarios
+        // ULTRA-TOLERANT SUCCESS CRITERIA: Multiple acceptable scenarios
         const criticalPassed = criticalChecks.filter(Boolean).length;
         const supportingPassed = supportingChecks.filter(Boolean).length;
 
@@ -562,7 +562,7 @@ export const useAuthStore = defineStore('auth', {
         const allPassed = idealCase || goodCase || acceptableCase || minimumCase;
 
         if (import.meta.env.DEV) {
-          console.log('⚡ [AUTH] Immediate verification result:', {
+          console.log('[AUTH] Immediate verification result:', {
             checks,
             criticalPassed: `${criticalPassed}/${criticalChecks.length}`,
             supportingPassed: `${supportingPassed}/${supportingChecks.length}`,
@@ -597,14 +597,14 @@ export const useAuthStore = defineStore('auth', {
         return allPassed;
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.error('❌ [AUTH] Immediate verification exception:', error);
+          console.error('ERROR: [AUTH] Immediate verification exception:', error);
         }
         return false;
       }
     },
 
     /**
-     * 🔧 NEW: Background storage operations - lower priority
+     * NEW: Background storage operations - lower priority
      */
     async performBackgroundStorageOperations(tokens, user) {
       // Run in background without blocking login completion
@@ -629,11 +629,11 @@ export const useAuthStore = defineStore('auth', {
           this.setupTokenManagerListeners();
 
           if (import.meta.env.DEV) {
-            console.log('✅ [AUTH] Background storage operations completed');
+            console.log('[AUTH] Background storage operations completed');
           }
         } catch (error) {
           if (import.meta.env.DEV) {
-            console.warn('⚠️ [AUTH] Background storage operations failed:', error);
+            console.warn('WARNING: [AUTH] Background storage operations failed:', error);
           }
           // Don't fail login for background operations
         }
@@ -641,7 +641,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * 🔧 NEW: Initialize supporting systems in background
+     * NEW: Initialize supporting systems in background
      */
     async initializeSupportingSystems() {
       // Run supporting system initialization in background
@@ -655,11 +655,11 @@ export const useAuthStore = defineStore('auth', {
           await this.initializeUserStores();
 
           if (import.meta.env.DEV) {
-            console.log('✅ [AUTH] Supporting systems initialized');
+            console.log('[AUTH] Supporting systems initialized');
           }
         } catch (error) {
           if (import.meta.env.DEV) {
-            console.warn('⚠️ [AUTH] Supporting systems initialization failed:', error);
+            console.warn('WARNING: [AUTH] Supporting systems initialization failed:', error);
           }
           // Don't fail login for supporting systems
         }
@@ -667,7 +667,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * 🔧 NEW: Enhanced login failure handling
+     * NEW: Enhanced login failure handling
      */
     async handleLoginFailure(error) {
       try {
@@ -676,7 +676,7 @@ export const useAuthStore = defineStore('auth', {
         this.error = error.message || 'Login failed';
 
         if (import.meta.env.DEV) {
-          console.error('❌ [AUTH] Login failed, cleaning up:', error);
+          console.error('ERROR: [AUTH] Login failed, cleaning up:', error);
         }
 
         errorHandler.handle(error, {
@@ -685,17 +685,17 @@ export const useAuthStore = defineStore('auth', {
         });
       } catch (cleanupError) {
         if (import.meta.env.DEV) {
-          console.error('❌ [AUTH] Cleanup failed:', cleanupError);
+          console.error('ERROR: [AUTH] Cleanup failed:', cleanupError);
         }
       }
     },
 
     /**
-     * 🔧 ENHANCED: Atomic auth state setting with improved synchronization
+     * ENHANCED: Atomic auth state setting with improved synchronization
      */
     async setAuthStateAtomically(tokens, user) {
       if (import.meta.env.DEV) {
-        console.log('🔧 [AUTH] Starting atomic auth state setting...');
+        console.log('[AUTH] Starting atomic auth state setting...');
       }
 
       try {
@@ -729,10 +729,10 @@ export const useAuthStore = defineStore('auth', {
         // Step 6: Persist refresh token separately for backward compatibility
         localStorage.setItem('refresh_token', tokens.refreshToken);
 
-        // 🔧 CRITICAL FIX: Enhanced timing with progressive verification
+        // CRITICAL FIX: Enhanced timing with progressive verification
         await this.waitForStorageStabilization();
 
-        // Step 7: 🔧 ENHANCED: Progressive verification with exponential backoff
+        // Step 7: ENHANCED: Progressive verification with exponential backoff
         const verificationSuccess = await this.verifyStorageConsistencyWithRetry(tokens, user, 5);
 
         if (!verificationSuccess) {
@@ -740,12 +740,12 @@ export const useAuthStore = defineStore('auth', {
         }
 
         if (import.meta.env.DEV) {
-          console.log('✅ [AUTH] Auth state set atomically and verified successfully');
+          console.log('[AUTH] Auth state set atomically and verified successfully');
         }
 
         return true;
       } catch (error) {
-        console.error('❌ [AUTH] Atomic auth state setting failed:', error);
+        console.error('ERROR: [AUTH] Atomic auth state setting failed:', error);
         // Clean up on failure
         await this.cleanupFailedAuthState();
         throw error;
@@ -753,7 +753,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * 🔧 NEW: Wait for storage operations to stabilize with multiple sync points
+     * NEW: Wait for storage operations to stabilize with multiple sync points
      */
     async waitForStorageStabilization() {
       // Multiple synchronization layers for maximum compatibility
@@ -774,7 +774,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * 🔧 NEW: Enhanced storage consistency verification with exponential backoff
+     * NEW: Enhanced storage consistency verification with exponential backoff
      */
     async verifyStorageConsistencyWithRetry(tokens, user, maxAttempts = 5) {
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -793,7 +793,7 @@ export const useAuthStore = defineStore('auth', {
             crossSystem: this.verifyCrossSystemConsistency(tokens)
           };
 
-          // 🔧 CRITICAL FIX: More lenient verification - don't require ALL to pass
+          // CRITICAL FIX: More lenient verification - don't require ALL to pass
           const criticalComponents = ['tokenManager', 'localStorage', 'crossSystem'];
           const criticalPassed = criticalComponents.filter(key => verificationResults[key] === true).length;
           const criticalTotal = criticalComponents.length;
@@ -807,7 +807,7 @@ export const useAuthStore = defineStore('auth', {
             (criticalSuccessRate >= 0.67 && authStateManagerPassed);
 
           if (import.meta.env.DEV) {
-            console.log(`📊 [AUTH] Verification attempt ${attempt} results:`, {
+            console.log(`[AUTH] Verification attempt ${attempt} results:`, {
               criticalSuccessRate: (criticalSuccessRate * 100).toFixed(1) + '%',
               authStateManagerPassed,
               allVerified,
@@ -817,13 +817,13 @@ export const useAuthStore = defineStore('auth', {
 
           if (allVerified) {
             if (import.meta.env.DEV) {
-              console.log(`✅ [AUTH] Storage verification successful on attempt ${attempt}`);
+              console.log(`[AUTH] Storage verification successful on attempt ${attempt}`);
             }
             return true;
           }
 
           if (import.meta.env.DEV) {
-            console.warn(`⚠️ [AUTH] Verification attempt ${attempt}/${maxAttempts} failed:`, verificationResults);
+            console.warn(`WARNING: [AUTH] Verification attempt ${attempt}/${maxAttempts} failed:`, verificationResults);
           }
 
           // On failure, retry storage operations before next verification
@@ -837,7 +837,7 @@ export const useAuthStore = defineStore('auth', {
           }
 
           if (attempt >= maxAttempts) {
-            // 🔧 ULTIMATE SAFETY NET: If all verification attempts failed, 
+            // ULTIMATE SAFETY NET: If all verification attempts failed, 
             // but we have valid core authentication data, allow login to proceed
             if (import.meta.env.DEV) {
               console.warn('🚨 [AUTH] All verification attempts failed, checking ultimate safety net...');
@@ -855,7 +855,7 @@ export const useAuthStore = defineStore('auth', {
               if (coreAuthValid) {
                 if (import.meta.env.DEV) {
                   console.warn('🛡️ [AUTH] Safety net activated: Core auth is valid, allowing login despite verification failures');
-                  console.log('📊 [AUTH] Safety net details:', {
+                  console.log('[AUTH] Safety net details:', {
                     hasValidTokenManager,
                     hasValidTokens,
                     hasValidUser,
@@ -878,11 +878,11 @@ export const useAuthStore = defineStore('auth', {
                   localStorage.setItem('auth', JSON.stringify(safetyAuth));
 
                   if (import.meta.env.DEV) {
-                    console.log('✅ [AUTH] Safety net storage completed');
+                    console.log('[AUTH] Safety net storage completed');
                   }
                 } catch (storageError) {
                   if (import.meta.env.DEV) {
-                    console.warn('⚠️ [AUTH] Safety net storage failed:', storageError);
+                    console.warn('WARNING: [AUTH] Safety net storage failed:', storageError);
                   }
                 }
 
@@ -890,7 +890,7 @@ export const useAuthStore = defineStore('auth', {
               }
 
               if (import.meta.env.DEV) {
-                console.warn('❌ [AUTH] Safety net check failed:', {
+                console.warn('ERROR: [AUTH] Safety net check failed:', {
                   hasValidTokenManager,
                   hasValidTokens,
                   hasValidUser
@@ -898,7 +898,7 @@ export const useAuthStore = defineStore('auth', {
               }
             } catch (safetyError) {
               if (import.meta.env.DEV) {
-                console.error('❌ [AUTH] Safety net exception:', safetyError);
+                console.error('ERROR: [AUTH] Safety net exception:', safetyError);
               }
             }
 
@@ -911,7 +911,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * 🔧 NEW: Individual verification methods
+     * NEW: Individual verification methods
      */
     verifyTokenManager(tokens) {
       try {
@@ -929,7 +929,7 @@ export const useAuthStore = defineStore('auth', {
       try {
         const authState = authStateManager.getAuthState();
 
-        // 🔧 ENHANCED: More detailed verification with better error reporting
+        // ENHANCED: More detailed verification with better error reporting
         const checks = {
           hasAuthState: !!authState,
           tokenMatch: authState?.token === tokens.accessToken,
@@ -939,7 +939,7 @@ export const useAuthStore = defineStore('auth', {
         };
 
         if (import.meta.env.DEV) {
-          console.log('🔍 [AUTH] AuthStateManager verification details:', {
+          console.log('[AUTH] AuthStateManager verification details:', {
             checks,
             authStateToken: authState?.token?.substring(0, 20) + '...',
             expectedToken: tokens.accessToken?.substring(0, 20) + '...',
@@ -949,7 +949,7 @@ export const useAuthStore = defineStore('auth', {
           });
         }
 
-        // 🔧 CRITICAL FIX: More lenient verification - allow minor inconsistencies
+        // CRITICAL FIX: More lenient verification - allow minor inconsistencies
         // Core requirements: must have token, user, and be authenticated
         const hasCore = checks.hasAuthState && checks.hasUser && checks.isAuthenticated;
 
@@ -970,7 +970,7 @@ export const useAuthStore = defineStore('auth', {
         const isValid = hasCore && tokenMatchOrClose && userMatchOrFallback;
 
         if (!isValid && import.meta.env.DEV) {
-          console.warn('❌ [AUTH] AuthStateManager verification failed:', {
+          console.warn('ERROR: [AUTH] AuthStateManager verification failed:', {
             hasCore,
             tokenMatchOrClose,
             userMatchOrFallback,
@@ -981,7 +981,7 @@ export const useAuthStore = defineStore('auth', {
         return isValid;
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.warn('❌ [AUTH] AuthStateManager verification exception:', error);
+          console.warn('ERROR: [AUTH] AuthStateManager verification exception:', error);
         }
         return false;
       }
@@ -1010,9 +1010,9 @@ export const useAuthStore = defineStore('auth', {
         const tokenManagerToken = tokenManager.getAccessToken();
         const authStateToken = authStateManager.getAuthState().token;
 
-        // 🔧 ENHANCED: More detailed logging and lenient checking
+        // ENHANCED: More detailed logging and lenient checking
         if (import.meta.env.DEV) {
-          console.log('🔍 [AUTH] Cross-system consistency check:', {
+          console.log('[AUTH] Cross-system consistency check:', {
             tokenManagerToken: tokenManagerToken?.substring(0, 20) + '...',
             authStateToken: authStateToken?.substring(0, 20) + '...',
             expectedToken: tokens.accessToken?.substring(0, 20) + '...',
@@ -1022,7 +1022,7 @@ export const useAuthStore = defineStore('auth', {
           });
         }
 
-        // 🔧 CRITICAL FIX: More lenient cross-system verification
+        // CRITICAL FIX: More lenient cross-system verification
         // Primary requirement: tokenManager must match expected token
         const primaryMatch = tokenManagerToken === tokens.accessToken;
 
@@ -1037,7 +1037,7 @@ export const useAuthStore = defineStore('auth', {
         const isValid = primaryMatch && (authStateMatch || crossConsistent);
 
         if (import.meta.env.DEV) {
-          console.log('📊 [AUTH] Cross-system consistency result:', {
+          console.log('[AUTH] Cross-system consistency result:', {
             primaryMatch,
             authStateMatch,
             crossConsistent,
@@ -1048,9 +1048,9 @@ export const useAuthStore = defineStore('auth', {
         return isValid;
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.warn('❌ [AUTH] Cross-system consistency verification exception:', error);
+          console.warn('ERROR: [AUTH] Cross-system consistency verification exception:', error);
         }
-        // 🔧 FALLBACK: If verification fails, check if tokenManager at least has the right token
+        // FALLBACK: If verification fails, check if tokenManager at least has the right token
         try {
           const fallbackCheck = tokenManager.getAccessToken() === tokens.accessToken;
           if (import.meta.env.DEV) {
@@ -1059,7 +1059,7 @@ export const useAuthStore = defineStore('auth', {
           return fallbackCheck;
         } catch (fallbackError) {
           if (import.meta.env.DEV) {
-            console.error('❌ [AUTH] Cross-system fallback also failed:', fallbackError);
+            console.error('ERROR: [AUTH] Cross-system fallback also failed:', fallbackError);
           }
           return false;
         }
@@ -1067,7 +1067,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * 🔧 ENHANCED: Retry storage operations with targeted fixes
+     * ENHANCED: Retry storage operations with targeted fixes
      */
     async retryStorageOperations(tokens, user) {
       try {
@@ -1075,33 +1075,33 @@ export const useAuthStore = defineStore('auth', {
           console.log('🔄 [AUTH] Retrying storage operations with targeted fixes...');
         }
 
-        // 🔧 STEP 1: Clear any corrupted state first
+        // STEP 1: Clear any corrupted state first
         try {
           authStateManager.clearAuthState();
           if (import.meta.env.DEV) {
-            console.log('✅ [AUTH] Cleared potentially corrupted authStateManager state');
+            console.log('[AUTH] Cleared potentially corrupted authStateManager state');
           }
         } catch (clearError) {
           if (import.meta.env.DEV) {
-            console.warn('⚠️ [AUTH] Failed to clear authStateManager:', clearError);
+            console.warn('WARNING: [AUTH] Failed to clear authStateManager:', clearError);
           }
         }
 
-        // 🔧 STEP 2: Re-execute core storage operations in sequence
+        // STEP 2: Re-execute core storage operations in sequence
         await tokenManager.setTokens(tokens);
         if (import.meta.env.DEV) {
-          console.log('✅ [AUTH] TokenManager updated');
+          console.log('[AUTH] TokenManager updated');
         }
 
-        // 🔧 STEP 3: Set authStateManager with enhanced error handling
+        // STEP 3: Set authStateManager with enhanced error handling
         try {
           authStateManager.setAuthState(tokens.accessToken, user);
           if (import.meta.env.DEV) {
-            console.log('✅ [AUTH] AuthStateManager updated');
+            console.log('[AUTH] AuthStateManager updated');
           }
         } catch (authStateError) {
           if (import.meta.env.DEV) {
-            console.warn('⚠️ [AUTH] AuthStateManager setAuthState failed, trying alternative approach:', authStateError);
+            console.warn('WARNING: [AUTH] AuthStateManager setAuthState failed, trying alternative approach:', authStateError);
           }
 
           // Alternative: Set individual keys directly
@@ -1109,17 +1109,17 @@ export const useAuthStore = defineStore('auth', {
             localStorage.setItem('auth_token', tokens.accessToken);
             localStorage.setItem('auth_user', JSON.stringify(user));
             if (import.meta.env.DEV) {
-              console.log('✅ [AUTH] Set auth state via direct localStorage');
+              console.log('[AUTH] Set auth state via direct localStorage');
             }
           } catch (directError) {
             if (import.meta.env.DEV) {
-              console.error('❌ [AUTH] Direct localStorage approach also failed:', directError);
+              console.error('ERROR: [AUTH] Direct localStorage approach also failed:', directError);
             }
             throw directError;
           }
         }
 
-        // 🔧 STEP 4: Create comprehensive backup
+        // STEP 4: Create comprehensive backup
         const authBackup = {
           user: user,
           tokens: tokens,
@@ -1130,34 +1130,34 @@ export const useAuthStore = defineStore('auth', {
         localStorage.setItem('auth', JSON.stringify(authBackup));
         localStorage.setItem('refresh_token', tokens.refreshToken);
         if (import.meta.env.DEV) {
-          console.log('✅ [AUTH] Backup auth data stored');
+          console.log('[AUTH] Backup auth data stored');
         }
 
-        // 🔧 STEP 5: Enhanced stabilization wait
+        // STEP 5: Enhanced stabilization wait
         await new Promise(resolve => setTimeout(resolve, 100)); // Increased from 50ms
 
-        // 🔧 STEP 6: Immediate verification to ensure success
+        // STEP 6: Immediate verification to ensure success
         const immediateVerification = this.verifyAuthStateManager(tokens, user);
         if (import.meta.env.DEV) {
-          console.log('📊 [AUTH] Immediate post-retry verification:', immediateVerification);
+          console.log('[AUTH] Immediate post-retry verification:', immediateVerification);
         }
 
         if (!immediateVerification) {
           if (import.meta.env.DEV) {
-            console.warn('⚠️ [AUTH] Immediate verification still failed, but continuing...');
+            console.warn('WARNING: [AUTH] Immediate verification still failed, but continuing...');
           }
         }
 
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.error('❌ [AUTH] Enhanced storage retry failed:', error);
+          console.error('ERROR: [AUTH] Enhanced storage retry failed:', error);
         }
         throw error;
       }
     },
 
     /**
-     * 🔧 NEW: Enhanced cleanup for failed auth state
+     * NEW: Enhanced cleanup for failed auth state
      */
     async cleanupFailedAuthState() {
       try {
@@ -1180,7 +1180,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * 🔧 NEW: Comprehensive auth state integrity verification
+     * NEW: Comprehensive auth state integrity verification
      */
     async verifyAuthStateIntegrity() {
       const checks = [];
@@ -1235,7 +1235,7 @@ export const useAuthStore = defineStore('auth', {
       const allValid = checks.every(check => check.valid);
 
       if (import.meta.env.DEV) {
-        console.log('🔍 [AUTH] State integrity check:', {
+        console.log('[AUTH] State integrity check:', {
           overall: allValid ? 'PASS' : 'FAIL',
           checks
         });
@@ -1244,7 +1244,7 @@ export const useAuthStore = defineStore('auth', {
       if (!allValid) {
         // Log details of failed checks
         const failures = checks.filter(check => !check.valid);
-        console.error('❌ [AUTH] Auth state integrity check failed:', failures);
+        console.error('ERROR: [AUTH] Auth state integrity check failed:', failures);
         throw new Error(`Auth state integrity check failed: ${failures.map(f => f.name).join(', ')}`);
       }
 
@@ -1291,12 +1291,11 @@ export const useAuthStore = defineStore('auth', {
         const verifyToken = tokenManager.getAccessToken();
         if (!verifyToken) {
           if (import.meta.env.DEV) {
-            console.error('❌ [AUTH] Token not set correctly in tokenManager after registration');
+            console.error('ERROR: [AUTH] Token not set correctly in tokenManager after registration');
           }
           throw new Error('Failed to store authentication token');
         }
 
-        // console.log('✅ [AUTH] Registration token verified:', verifyToken.substring(0, 20) + '...');
 
         // ONLY NOW set auth state via authStateManager
         authStateManager.setAuthState(result.accessToken, result.user);
@@ -1352,7 +1351,7 @@ export const useAuthStore = defineStore('auth', {
         await this.clearAllAuthState();
 
         if (import.meta.env.DEV) {
-          console.log('✅ [AUTH] All state cleared successfully');
+          console.log('[AUTH] All state cleared successfully');
         }
 
         // Navigate to login page
@@ -1360,7 +1359,7 @@ export const useAuthStore = defineStore('auth', {
 
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.error('❌ [AUTH] Logout process failed:', error);
+          console.error('ERROR: [AUTH] Logout process failed:', error);
         }
         // Fallback: Force page reload to login
         window.location.href = '/login';
@@ -1373,8 +1372,6 @@ export const useAuthStore = defineStore('auth', {
     },
 
     clearAllState(storesToReset) {
-      // console.log('🧹 [AUTH] Clearing all application state...');
-
       // 1. Reset all provided stores
       storesToReset.forEach(store => {
         if (store && typeof store.$reset === 'function') {
@@ -1382,12 +1379,11 @@ export const useAuthStore = defineStore('auth', {
             store.$reset();
           } catch (e) {
             if (import.meta.env.DEV) {
-              console.error(`❌ [AUTH] Error resetting a store:`, e);
+              console.error(`ERROR: [AUTH] Error resetting a store:`, e);
             }
           }
         }
       });
-      // console.log('✅ [AUTH] All Pinia stores reset.');
 
       // 2. Clear token manager
       tokenManager.clearTokens();
@@ -1398,8 +1394,6 @@ export const useAuthStore = defineStore('auth', {
         'fechatter_token_expiry', 'remember_me', 'user', 'token', 'refreshToken',
       ];
       authKeys.forEach(key => localStorage.removeItem(key));
-
-      // console.log('✅ [AUTH] Auth state cleared completely.');
     },
 
     /**
@@ -1459,25 +1453,25 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * Initialize user-related stores - 🔧 ENHANCED: With deduplication
+     * Initialize user-related stores - ENHANCED: With deduplication
      */
     async initializeUserStores() {
-      // 🔧 CRITICAL FIX: Prevent multiple concurrent initializations
+      // CRITICAL FIX: Prevent multiple concurrent initializations
       if (this.userStoresInitialized) {
         if (import.meta.env.DEV) {
-          console.log('ℹ️ [AUTH] User stores already initialized, skipping');
+          console.log('INFO: [AUTH] User stores already initialized, skipping');
         }
         return;
       }
 
       if (this.userStoresInitializationInProgress) {
         if (import.meta.env.DEV) {
-          console.log('ℹ️ [AUTH] User stores initialization already in progress, skipping');
+          console.log('INFO: [AUTH] User stores initialization already in progress, skipping');
         }
         return;
       }
 
-      // 🔧 NEW: Mark initialization as in progress
+      // NEW: Mark initialization as in progress
       this.userStoresInitializationInProgress = true;
 
       try {
@@ -1504,11 +1498,11 @@ export const useAuthStore = defineStore('auth', {
         const workspaceId = this.user?.workspace_id || 1;
         workspaceStore.setCurrentWorkspaceId(workspaceId);
 
-        // 🔧 NEW: Mark as successfully initialized
+        // NEW: Mark as successfully initialized
         this.userStoresInitialized = true;
 
         if (import.meta.env.DEV) {
-          console.log('✅ [AUTH] User stores initialized during app startup');
+          console.log('[AUTH] User stores initialized during app startup');
         }
       } catch (error) {
         if (import.meta.env.DEV) {
@@ -1527,7 +1521,7 @@ export const useAuthStore = defineStore('auth', {
           }
         }
       } finally {
-        // 🔧 CRITICAL: Always clear the in-progress flag
+        // CRITICAL: Always clear the in-progress flag
         this.userStoresInitializationInProgress = false;
       }
     },

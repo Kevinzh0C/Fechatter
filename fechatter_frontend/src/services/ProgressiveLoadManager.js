@@ -164,7 +164,7 @@ export class ProgressiveLoadManager {
   }
 
   /**
-   * 🎯 智能加载决策引擎
+   * 智能加载决策引擎
    */
   shouldLoadMore(scrollAnalysis, hasMoreMessages) {
     if (!this.isActive || !hasMoreMessages || this.loadingState.isLoading) {
@@ -188,7 +188,7 @@ export class ProgressiveLoadManager {
       isStabilizing
     } = scrollAnalysis;
 
-    // 🔍 多层次触发区域检测
+    // 多层次触发区域检测
     const triggers = this.evaluateLoadTriggers(scrollAnalysis);
 
     if (triggers.immediate) {
@@ -222,7 +222,7 @@ export class ProgressiveLoadManager {
   }
 
   /**
-   * 📊 评估加载触发器
+   * 评估加载触发器
    */
   evaluateLoadTriggers(scrollAnalysis) {
     const { distanceFromTop } = scrollAnalysis;
@@ -313,7 +313,7 @@ export class ProgressiveLoadManager {
         progressive: true
       });
 
-      // 🔧 改进结果处理：支持各种成功情况
+      // 改进结果处理：支持各种成功情况
       if (result.success) {
         const messageCount = result.messageCount || 0;
         this.loadingState.totalLoaded += messageCount;
@@ -329,17 +329,17 @@ export class ProgressiveLoadManager {
 
         if (import.meta.env.DEV) {
           if (messageCount > 0) {
-            console.log(`✅ [ProgressiveLoadManager] ${strategy.type} 加载完成: +${messageCount} 条消息`);
+            console.log(`[ProgressiveLoadManager] ${strategy.type} 加载完成: +${messageCount} 条消息`);
           } else {
-            console.log(`ℹ️ [ProgressiveLoadManager] ${strategy.type} 加载完成但无新消息 (${result.reason || '可能已到底部'})`);
+            console.log(`INFO: [ProgressiveLoadManager] ${strategy.type} 加载完成但无新消息 (${result.reason || '可能已到底部'})`);
           }
         }
 
         return { success: true, messageCount, reason: result.reason };
       } else {
-        // 🔧 处理加载失败但不抛出错误的情况
+        // 处理加载失败但不抛出错误的情况
         if (import.meta.env.DEV) {
-          console.log(`⚠️ [ProgressiveLoadManager] ${strategy.type} 加载未成功:`, result.reason || 'unknown');
+          console.log(`WARNING: [ProgressiveLoadManager] ${strategy.type} 加载未成功:`, result.reason || 'unknown');
         }
 
         this.emit('load-complete', {
@@ -354,7 +354,7 @@ export class ProgressiveLoadManager {
       }
 
     } catch (error) {
-      // 🔧 区分不同类型的错误
+      // 区分不同类型的错误
       const isTimeoutError = error.message.includes('timeout');
       const isNetworkError = error.message.includes('network') || error.message.includes('fetch');
 
@@ -364,11 +364,11 @@ export class ProgressiveLoadManager {
         } else if (isNetworkError) {
           console.warn(`🌐 [ProgressiveLoadManager] ${strategy.type} 网络错误:`, error.message);
         } else {
-          console.error(`❌ [ProgressiveLoadManager] ${strategy.type} 加载失败:`, error);
+          console.error(`ERROR: [ProgressiveLoadManager] ${strategy.type} 加载失败:`, error);
         }
       }
 
-      // 🔧 根据错误类型决定是否继续尝试
+      // 根据错误类型决定是否继续尝试
       const shouldRetry = !isTimeoutError && !error.message.includes('no more messages');
 
       this.emit('load-error', {
@@ -492,7 +492,7 @@ export class ProgressiveLoadManager {
   }
 
   /**
-   * 📊 获取性能指标
+   * 获取性能指标
    */
   getMetrics() {
     return {

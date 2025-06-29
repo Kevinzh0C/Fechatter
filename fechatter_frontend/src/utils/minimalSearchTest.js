@@ -12,7 +12,7 @@ async function minimalSearchTest() {
     const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
     if (!token) {
       if (import.meta.env.DEV) {
-        console.error('❌ No token found');
+        console.error('ERROR: No token found');
       return;
     }
 
@@ -66,25 +66,25 @@ async function minimalSearchTest() {
       // 检查预期结构
       if (jsonResponse.success && jsonResponse.data) {
         if (import.meta.env.DEV) {
-          console.log('✅ [MINIMAL] Expected structure found!');
+          console.log('[MINIMAL] Expected structure found!');
         if (import.meta.env.DEV) {
           console.log('  Results count:', jsonResponse.data.results?.length || 0);
         }
       } else {
         if (import.meta.env.DEV) {
-          console.warn('⚠️ [MINIMAL] Unexpected structure');
+          console.warn('WARNING: [MINIMAL] Unexpected structure');
         }
 
     } catch (parseError) {
       if (import.meta.env.DEV) {
-        console.error('❌ [MINIMAL] JSON parse failed:', parseError);
+        console.error('ERROR: [MINIMAL] JSON parse failed:', parseError);
       if (import.meta.env.DEV) {
         console.log('Raw response was:', textResponse);
       }
 
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('❌ [MINIMAL] Test failed:', error);
+      console.error('ERROR: [MINIMAL] Test failed:', error);
     }
 
 // 立即可用

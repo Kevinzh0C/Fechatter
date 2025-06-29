@@ -45,7 +45,7 @@ export const optimizeLoginPerformance = () => {
     setupPerformanceMonitoring();
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.warn('⚠️ 登录优化失败，继续使用标准流程:', error);
+      console.warn('WARNING: 登录优化失败，继续使用标准流程:', error);
     }
   }
 };

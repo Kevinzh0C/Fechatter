@@ -382,7 +382,7 @@ const searchStateManager = new SearchStateManager();
 // if (typeof window !== 'undefined') {
 //   window.searchStateManager = searchStateManager;
 
-//   console.log('🔍 Search State Manager loaded. Available commands:');
+//   console.log('Search State Manager loaded. Available commands:');
 //   console.log('   window.searchStateManager.getCurrentState() - Get current state');
 //   console.log('   window.searchStateManager.getStats() - Get statistics');
 //   console.log('   window.searchStateManager.clearCache() - Clear cache');

@@ -8,7 +8,7 @@ use validator::Validate;
 
 use super::{ChatId, Message, MessageId, UserId, WorkspaceId};
 
-// ── Domain Models ──────────────────────────────────────────────────────────
+// Domain Models
 
 fn default_uuid() -> Option<Uuid> {
   Some(Uuid::new_v4())
@@ -19,7 +19,7 @@ pub struct CreateMessage {
   pub content: String,
   #[serde(default)]
   pub files: Option<Vec<String>>,
-  #[serde(default = "default_uuid")] // Default to UUID v7 (time-based UUID)
+  #[serde(default = "default_uuid")]
   #[schema(value_type = String, format = "uuid", example = "01834abd-8c37-7d82-9206-54b2f6b4f7c4")]
   pub idempotency_key: Option<Uuid>,
 }
@@ -32,7 +32,7 @@ pub struct ListMessages {
   pub limit: i64,
 }
 
-// ── Application Models ─────────────────────────────────────────────────────
+// Application Models
 
 /// Sender information for message view
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -118,7 +118,7 @@ impl From<GetMessagesInput> for ListMessages {
   }
 }
 
-// ── Event Models ───────────────────────────────────────────────────────────
+// Event Models
 
 /// Message Event Types for the event system
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -153,28 +153,28 @@ pub struct StreamMessage {
   pub timestamp: i64,
 }
 
-// ── Search Models ──────────────────────────────────────────────────────────
+// Search Models
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, Validate)]
 pub struct SearchMessages {
-  /// 搜索关键词
+  /// Search keywords
   #[validate(length(min = 1, max = 200))]
   pub query: String,
 
-  /// 工作空间ID（从用户token自动填充）
+  /// Workspace ID (auto-filled from user token)
   #[serde(skip)]
   pub workspace_id: WorkspaceId,
 
-  /// 聊天ID（从URL路径自动填充）
+  /// Chat ID (auto-filled from URL path)
   #[serde(skip)]
   pub chat_id: Option<ChatId>,
 
-  /// 分页偏移
+  /// Pagination offset
   #[serde(default)]
   #[validate(range(min = 0, max = 10000))]
   pub offset: i64,
 
-  /// 每页结果数
+  /// Results per page
   #[serde(default = "default_limit")]
   #[validate(range(min = 1, max = 100))]
   pub limit: i64,
@@ -193,23 +193,23 @@ pub struct SearchableMessage {
   pub content: String,
   pub files: Option<Vec<String>>,
   pub created_at: DateTime<Utc>,
-  /// 相关性得分（可选）
+  /// Relevance score (optional)
   pub relevance_score: Option<f32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct SearchResult {
-  /// 搜索到的消息
+  /// Found messages
   pub messages: Vec<SearchableMessage>,
-  /// 总命中数
+  /// Total hits count
   pub total_hits: usize,
-  /// 是否有更多结果
+  /// Whether there are more results
   pub has_more: bool,
-  /// 查询耗时（毫秒）
+  /// Query time in milliseconds
   pub query_time_ms: u64,
 }
 
-// ── NATS Event Models ──────────────────────────────────────────────────────
+// NATS Event Models
 
 /// Event published to NATS when a message is created
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -225,7 +225,7 @@ pub struct MessageCreatedEvent {
   pub sequence_number: Option<i64>,
 }
 
-// ── Repository Trait ───────────────────────────────────────────────────────
+// Repository Trait
 
 pub trait MessageRepository: Send + Sync {
   fn create_message(

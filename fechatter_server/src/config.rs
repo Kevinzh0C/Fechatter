@@ -669,13 +669,13 @@ impl AppConfig {
       println!("📍 Loading from FECHATTER_CONFIG: {}", config_path);
       match Self::from_file(&config_path) {
         Ok(config) => {
-          println!("✅ Configuration loaded successfully!");
+          println!("Configuration loaded successfully!");
           Self::print_config_summary(&config);
           return Ok(config);
         }
         Err(e) => {
           return Err(anyhow::anyhow!(
-            "❌ Failed to load config from FECHATTER_CONFIG ({}): {}",
+            "ERROR: Failed to load config from FECHATTER_CONFIG ({}): {}",
             config_path,
             e
           ));
@@ -691,12 +691,12 @@ impl AppConfig {
         println!("📁 Found config: {} ({})", path.display(), desc);
         match Self::from_file(path.to_str().unwrap()) {
           Ok(config) => {
-            println!("✅ Configuration loaded successfully!");
+            println!("Configuration loaded successfully!");
             Self::print_config_summary(&config);
             return Ok(config);
           }
           Err(e) => {
-            println!("⚠️  Parse error in {}: {}", path.display(), e);
+            println!("WARNING: Parse error in {}: {}", path.display(), e);
             continue;
           }
         }
@@ -857,7 +857,7 @@ impl AppConfig {
 
   /// Print configuration summary
   fn print_config_summary(config: &Self) {
-    println!("🎯 Configuration Summary:");
+    println!("Configuration Summary:");
     println!(
       "   Server: Port {}, DB: {}",
       config.server.port,
@@ -866,25 +866,25 @@ impl AppConfig {
     println!(
       "   Cache: {}",
       if config.features.cache.enabled {
-        "✅ Enabled"
+        "Enabled"
       } else {
-        "❌ Disabled"
+        "ERROR: Disabled"
       }
     );
     println!(
       "   Search: {}",
       if config.features.search.enabled {
-        "✅ Enabled"
+        "Enabled"
       } else {
-        "❌ Disabled"
+        "ERROR: Disabled"
       }
     );
     println!(
       "   Messaging: {}",
       if config.features.messaging.enabled {
-        "✅ Enabled"
+        "Enabled"
       } else {
-        "❌ Disabled"
+        "ERROR: Disabled"
       }
     );
   }
@@ -904,12 +904,12 @@ impl AppConfig {
 
   /// Show helpful error message when no config is found (simplified)
   fn show_helpful_error(search_locations: &[(String, PathBuf)]) {
-    println!("\n🔍 Searched for configuration in:");
+    println!("\nSearched for configuration in:");
     for (desc, path) in search_locations {
-      println!("   ❌ {}: {}", desc, path.display());
+      println!("   ERROR: {}: {}", desc, path.display());
     }
 
-    println!("\n💡 To fix this:");
+    println!("\nTo fix this:");
     println!("   1. 📋 Set FECHATTER_CONFIG environment variable to your config file path");
     println!("   2. 📄 Use supported formats: .yml, .yaml, .toml, .json");
 
@@ -934,12 +934,12 @@ impl AppConfig {
           println!("   📁 cp {} ./chat.yml", config.display());
         }
 
-        println!("\n🚀 Quick Fix Command:");
+        println!("\nQuick Fix Command:");
         if let Some(first_config) = found_configs.first() {
           println!("   cp {} ./chat.yml", first_config.display());
         }
       } else {
-        println!("\n⚠️  No existing config files found in common locations.");
+        println!("\nWARNING: No existing config files found in common locations.");
         println!("   Please ensure you have a valid chat.yml file.");
       }
     }

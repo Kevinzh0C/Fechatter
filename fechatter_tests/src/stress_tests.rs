@@ -75,7 +75,7 @@ async fn test_concurrent_user_creation() -> Result<()> {
 
   let users_per_sec = concurrent_users as f64 / duration.as_secs_f64();
   info!(
-    "✅ Created {} users in {:?} ({:.2} users/sec)",
+    "Created {} users in {:?} ({:.2} users/sec)",
     concurrent_users, duration, users_per_sec
   );
 
@@ -158,7 +158,7 @@ async fn test_concurrent_message_sending() -> Result<()> {
 
   let msg_per_sec = success_count as f64 / duration.as_secs_f64();
   info!(
-    "✅ Sent {} messages in {:?} ({:.2} msg/sec)",
+    "Sent {} messages in {:?} ({:.2} msg/sec)",
     success_count, duration, msg_per_sec
   );
 
@@ -221,7 +221,7 @@ async fn test_large_chat_room() -> Result<()> {
   let msg_duration = msg_start.elapsed();
 
   info!(
-    "✅ Large chat room test: {} members, created in {:?}, 10 messages in {:?}",
+    "Large chat room test: {} members, created in {:?}, 10 messages in {:?}",
     member_count, creation_duration, msg_duration
   );
 
@@ -306,7 +306,7 @@ async fn test_message_history_performance() -> Result<()> {
   );
 
   info!(
-    "✅ Message history performance: loaded {} messages in {:?}",
+    "Message history performance: loaded {} messages in {:?}",
     total_loaded, duration
   );
 
@@ -405,7 +405,7 @@ async fn test_resource_limits() -> Result<()> {
     "System should either accept or reject long messages gracefully"
   );
 
-  info!("✅ Resource limits test passed");
+  info!("Resource limits test passed");
   Ok(())
 }
 
@@ -417,7 +417,7 @@ async fn test_concurrent_search() -> Result<()> {
   // Check if search service is available upfront
   if env_mut.app_state.search_service().is_none() {
     warn!("Search service not available, skipping concurrent search test");
-    info!("✅ Concurrent search test completed (search service not available)");
+    info!("Concurrent search test completed (search service not available)");
     return Ok(());
   }
 
@@ -519,13 +519,13 @@ async fn test_concurrent_search() -> Result<()> {
   // Be more lenient with success rate since search service might not be fully functional
   if success_count == 0 {
     warn!("No searches succeeded - search service may not be properly configured");
-    info!("✅ Concurrent search test completed (search service not functional)");
+    info!("Concurrent search test completed (search service not functional)");
     return Ok(());
   }
 
   let searches_per_sec = concurrent_searches as f64 / duration.as_secs_f64();
   info!(
-    "✅ Concurrent search: {} searches in {:?} ({:.2} searches/sec)",
+    "Concurrent search: {} searches in {:?} ({:.2} searches/sec)",
     concurrent_searches, duration, searches_per_sec
   );
 

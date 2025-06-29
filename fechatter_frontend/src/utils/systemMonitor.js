@@ -1,5 +1,5 @@
 /**
- * 🔧 System Monitor - Comprehensive debugging and performance monitoring
+ * System Monitor - Comprehensive debugging and performance monitoring
  * 
  * Provides real-time monitoring of:
  * - Message service health
@@ -73,7 +73,7 @@ class SystemMonitor {
         memory: this.getMemoryUsage()
       };
 
-      console.log('🔍 [SystemMonitor] Full System Report:', report);
+      console.log('[SystemMonitor] Full System Report:', report);
       return report;
     };
   }
@@ -229,7 +229,7 @@ class SystemMonitor {
     const isHealthy = criticalFailures.length === 0;
 
     if (!isHealthy && import.meta.env.DEV) {
-      console.log('🔍 [SystemMonitor] Failed health checks:', failedChecks.map(c => c.name));
+      console.log('[SystemMonitor] Failed health checks:', failedChecks.map(c => c.name));
     }
 
     return isHealthy;
@@ -273,7 +273,7 @@ class SystemMonitor {
 
         // Report recovery after being unhealthy
         if (consecutiveHealthyCount === 1) {
-          console.log('✅ [SystemMonitor] System health restored');
+          console.log('[SystemMonitor] System health restored');
         }
       } else {
         consecutiveUnhealthyCount++;
@@ -281,7 +281,7 @@ class SystemMonitor {
 
         // Only report first few failures to avoid spam
         if (consecutiveUnhealthyCount <= 3) {
-          console.warn('⚠️ [SystemMonitor] System health check failed:', status);
+          console.warn('WARNING: [SystemMonitor] System health check failed:', status);
 
           if (consecutiveUnhealthyCount === 3) {
             console.log('🔇 [SystemMonitor] Further health check failures will be suppressed until recovery');
@@ -307,7 +307,7 @@ class SystemMonitor {
   logPerformanceEvent(event, details = {}) {
     if (!this.isEnabled) return;
 
-    console.log(`📊 [SystemMonitor] ${event}:`, {
+    console.log(`[SystemMonitor] ${event}:`, {
       timestamp: new Date().toISOString(),
       ...details
     });

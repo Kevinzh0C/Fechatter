@@ -5,7 +5,7 @@
 
 async function quickFix() {
   if (import.meta.env.DEV) {
-    console.log('🚀 Starting Quick Fix for all frontend issues...');
+    console.log('Starting Quick Fix for all frontend issues...');
   }
 
   const results = [];
@@ -16,34 +16,34 @@ async function quickFix() {
       console.log('1️⃣ Activating log suppression...');
     if (window.logSuppressor) {
       window.logSuppressor.activate();
-      results.push('✅ Log suppression activated');
+      results.push('Log suppression activated');
     } else {
-      results.push('⚠️ Log suppressor not available');
+      results.push('WARNING: Log suppressor not available');
     }
 
     // 2. Suppress extension conflicts immediately
     if (import.meta.env.DEV) {
       console.log('2️⃣ Suppressing extension conflicts...');
     suppressExtensionConflicts();
-    results.push('✅ Extension conflict suppression added');
+    results.push('Extension conflict suppression added');
 
     // 3. Suppress API 404 errors for missing endpoints
     if (import.meta.env.DEV) {
       console.log('3️⃣ Suppressing API 404 errors...');
     suppressApiNotFoundErrors();
-    results.push('✅ API 404 error suppression added');
+    results.push('API 404 error suppression added');
 
     // 4. Clear repetitive debug script errors
     if (import.meta.env.DEV) {
       console.log('4️⃣ Clearing repetitive errors...');
     clearRepetitiveErrors();
-    results.push('✅ Repetitive error patterns cleared');
+    results.push('Repetitive error patterns cleared');
 
     // 5. Fix API authentication
     if (import.meta.env.DEV) {
       console.log('5️⃣ Fixing API authentication...');
     const authFixed = await fixApiAuth();
-    results.push(authFixed ? '✅ API auth checked/fixed' : '⚠️ API auth needs attention');
+    results.push(authFixed ? 'API auth checked/fixed' : 'WARNING: API auth needs attention');
 
     // 6. Fix SSE connection
     if (import.meta.env.DEV) {
@@ -51,12 +51,12 @@ async function quickFix() {
     if (window.sseConnectionFix) {
       const sseResult = await window.sseConnectionFix.autoFix();
       if (sseResult) {
-        results.push('✅ SSE connection fixed');
+        results.push('SSE connection fixed');
       } else {
-        results.push('⚠️ SSE connection needs manual attention');
+        results.push('WARNING: SSE connection needs manual attention');
       }
     } else {
-      results.push('⚠️ SSE connection fix not available');
+      results.push('WARNING: SSE connection fix not available');
     }
 
     // 7. Reset navigation fix state
@@ -64,9 +64,9 @@ async function quickFix() {
       console.log('7️⃣ Resetting navigation fixes...');
     if (window.navigationFix) {
       window.navigationFix.resetLogCounts();
-      results.push('✅ Navigation fix state reset');
+      results.push('Navigation fix state reset');
     } else {
-      results.push('⚠️ Navigation fix not available');
+      results.push('WARNING: Navigation fix not available');
     }
 
     // 8. Clear any problematic state
@@ -74,9 +74,9 @@ async function quickFix() {
       console.log('8️⃣ Clearing problematic state...');
     if (window.emergencyCleanup) {
       window.emergencyCleanup();
-      results.push('✅ Emergency cleanup completed');
+      results.push('Emergency cleanup completed');
     } else {
-      results.push('⚠️ Emergency cleanup not available');
+      results.push('WARNING: Emergency cleanup not available');
     }
 
     // 9. Check overall system health
@@ -86,15 +86,15 @@ async function quickFix() {
       try {
         const healthResult = await window.healthHelper.run();
         if (healthResult.healthScore >= 80) {
-          results.push('✅ System health is good');
+          results.push('System health is good');
         } else {
-          results.push(`⚠️ System health score: ${healthResult.healthScore}%`);
+          results.push(`WARNING: System health score: ${healthResult.healthScore}%`);
         }
       } catch (error) {
-        results.push('⚠️ Health check failed');
+        results.push('WARNING: Health check failed');
       }
     } else {
-      results.push('⚠️ Health helper not available');
+      results.push('WARNING: Health helper not available');
     }
 
     // 10. Final verification
@@ -104,9 +104,9 @@ async function quickFix() {
       setTimeout(async () => {
         await window.verifyFixes();
       }, 1000);
-      results.push('✅ Verification scheduled');
+      results.push('Verification scheduled');
     } else {
-      results.push('⚠️ Verification not available');
+      results.push('WARNING: Verification not available');
     }
 
     // Show results
@@ -114,11 +114,11 @@ async function quickFix() {
       console.log('\n🎉 Quick Fix Results:');
     results.forEach(result => console.log(result));
 
-    const successCount = results.filter(r => r.startsWith('✅')).length;
+    const successCount = results.filter(r => r.startsWith('')).length;
     const totalCount = results.length;
 
     if (import.meta.env.DEV) {
-      console.log(`\n📊 Success Rate: ${successCount}/${totalCount} (${Math.round(successCount / totalCount * 100)}%)`);
+      console.log(`\nSuccess Rate: ${successCount}/${totalCount} (${Math.round(successCount / totalCount * 100)}%)`);
     }
 
     if (successCount === totalCount) {
@@ -131,7 +131,7 @@ async function quickFix() {
       }
     } else {
       if (import.meta.env.DEV) {
-        console.log('⚠️ Some fixes failed, manual intervention may be needed');
+        console.log('WARNING: Some fixes failed, manual intervention may be needed');
       }
 
     return {
@@ -142,7 +142,7 @@ async function quickFix() {
 
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('❌ Quick Fix failed:', error);
+      console.error('ERROR: Quick Fix failed:', error);
     return {
       success: false,
       error: error.message,
@@ -161,13 +161,13 @@ function quickSilence() {
 
     // Add extra patterns for maximum silence
     window.logSuppressor.addPattern(/\[.*\]/); // Any square bracket logs
-    window.logSuppressor.addPattern(/📡|✅|🔧|🔍|🚀|🔑|🔐|🏠|📍|🔄|📥|📋|🛡️|⏰|📨/); // Emoji-heavy logs
+    window.logSuppressor.addPattern(/📡|||||🔑|🔐|🏠|📍|🔄|📥|📋|🛡️|⏰|📨/); // Emoji-heavy logs
     window.logSuppressor.addPattern(/PM\]/); // Timestamp logs
     window.logSuppressor.addPattern(/developmentOptimizer/); // Any developmentOptimizer mentions
     window.logSuppressor.addPattern(/\d+:\d+:\d+/); // Any timestamp
 
     if (import.meta.env.DEV) {
-      console.log('✅ Maximum silence mode activated');
+      console.log('Maximum silence mode activated');
     }
 
     // Clear existing logs if possible
@@ -177,13 +177,13 @@ function quickSilence() {
         if (import.meta.env.DEV) {
           console.log('🔇 Console cleared - Maximum silence mode active');
         if (import.meta.env.DEV) {
-          console.log('💡 Use window.allowLogs() to restore full logging');
+          console.log('Use window.allowLogs() to restore full logging');
         }
       }, 100);
     }
   } else {
     if (import.meta.env.DEV) {
-      console.log('⚠️ Log suppressor not available');
+      console.log('WARNING: Log suppressor not available');
     }
 
 // Nuclear option - complete silence
@@ -208,11 +208,11 @@ function emergencySilence() {
 
     console.clear();
     originalConsole.warn('🚨 EMERGENCY SILENCE ACTIVE - Only errors and warnings will show');
-    originalConsole.warn('💡 Use window.allowLogs() to restore logging');
+    originalConsole.warn('Use window.allowLogs() to restore logging');
   }
 
 function showFixStatus() {
-  console.group('🔍 Frontend Fix Status');
+  console.group('Frontend Fix Status');
 
   const status = {
     logSuppression: window.logSuppressor?.isActive || false,
@@ -229,7 +229,7 @@ function showFixStatus() {
   const totalCount = Object.keys(status).length;
 
   if (import.meta.env.DEV) {
-    console.log(`📊 Available tools: ${availableCount}/${totalCount}`);
+    console.log(`Available tools: ${availableCount}/${totalCount}`);
   console.groupEnd();
 
   return status;
@@ -244,7 +244,7 @@ function silenceTests() {
   if (window.logSuppressor) {
     // Add test-specific patterns
     window.logSuppressor.addPattern(/🧪.*Test/);
-    window.logSuppressor.addPattern(/🔍.*Test/);
+    window.logSuppressor.addPattern(/.*Test/);
     window.logSuppressor.addPattern(/Test \d+:/);
     window.logSuppressor.addPattern(/Check:/);
     window.logSuppressor.addPattern(/Summary:/);
@@ -252,11 +252,11 @@ function silenceTests() {
     window.logSuppressor.addPattern(/window\.\w+\(\)/);
 
     if (import.meta.env.DEV) {
-      console.log('✅ Test noise silenced');
+      console.log('Test noise silenced');
     }
   } else {
     if (import.meta.env.DEV) {
-      console.log('⚠️ Log suppressor not available');
+      console.log('WARNING: Log suppressor not available');
     }
 
 // Specialized function to fix API authentication issues
@@ -278,26 +278,26 @@ async function fixApiAuth() {
           console.log('  - Refreshing token...');
         await window.tokenManager.refreshToken();
         if (import.meta.env.DEV) {
-          console.log('  ✅ Token refreshed');
+          console.log('  Token refreshed');
         }
       } else {
         if (import.meta.env.DEV) {
-          console.log('  ✅ Token is valid');
+          console.log('  Token is valid');
         }
 
     // Check auth state
     if (window.authStateManager) {
       const authState = window.authStateManager.getAuthState();
       if (import.meta.env.DEV) {
-        console.log('  - Auth state:', authState.isAuthenticated ? '✅ Authenticated' : '❌ Not authenticated');
+        console.log('  - Auth state:', authState.isAuthenticated ? 'Authenticated' : 'ERROR: Not authenticated');
       }
 
     if (import.meta.env.DEV) {
-      console.log('✅ API authentication check completed');
+      console.log('API authentication check completed');
     return true;
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('❌ Failed to fix API auth:', error);
+      console.error('ERROR: Failed to fix API auth:', error);
     return false;
   }
 
@@ -316,11 +316,11 @@ function suppressExtensionConflicts() {
     window.logSuppressor.addPattern(/content script\.js/);
 
     if (import.meta.env.DEV) {
-      console.log('✅ Extension conflict patterns added');
+      console.log('Extension conflict patterns added');
     }
   } else {
     if (import.meta.env.DEV) {
-      console.log('⚠️ Log suppressor not available');
+      console.log('WARNING: Log suppressor not available');
     }
 
 // Specialized function to handle API 404 errors
@@ -338,11 +338,11 @@ function suppressApiNotFoundErrors() {
     window.logSuppressor.addPattern(/Request failed with status code 404/);
 
     if (import.meta.env.DEV) {
-      console.log('✅ API 404 error patterns added');
+      console.log('API 404 error patterns added');
     }
   } else {
     if (import.meta.env.DEV) {
-      console.log('⚠️ Log suppressor not available');
+      console.log('WARNING: Log suppressor not available');
     }
 
 // Enhanced function to clear repetitive errors
@@ -359,7 +359,7 @@ function clearRepetitiveErrors() {
     window.logSuppressor.addPattern(/testManager\.js/);
 
     if (import.meta.env.DEV) {
-      console.log('✅ Debug script patterns added');
+      console.log('Debug script patterns added');
     }
 
   // Clear console if possible
@@ -385,13 +385,13 @@ if (typeof window !== 'undefined') {
   window.clearRepetitiveErrors = clearRepetitiveErrors;
 
   if (import.meta.env.DEV) {
-    console.log('🚀 Quick Fix loaded - use window.quickFix() for one-click repair');
+    console.log('Quick Fix loaded - use window.quickFix() for one-click repair');
   if (import.meta.env.DEV) {
     console.log('🔇 Use window.quickSilence() for maximum noise reduction');
   if (import.meta.env.DEV) {
     console.log('🚨 Use window.emergencySilence() for nuclear silence option');
   if (import.meta.env.DEV) {
-    console.log('🔍 Use window.showFixStatus() to check available tools');
+    console.log('Use window.showFixStatus() to check available tools');
   if (import.meta.env.DEV) {
     console.log('🧪 Use window.silenceTests() to silence test automation noise');
   if (import.meta.env.DEV) {

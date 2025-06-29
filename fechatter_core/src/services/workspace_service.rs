@@ -20,19 +20,19 @@ pub struct SwitchWorkspaceResponse {
   pub workspace: Workspace,
 }
 
-/// Workspace服务trait
+/// Service trait for workspace operations
 pub trait WorkspaceService: Send + Sync {
-  /// 切换用户的workspace
+  /// Switch user's workspace
   async fn switch_user_workspace(
     &self,
     user_id: UserId,
     workspace_id: WorkspaceId,
   ) -> Result<SwitchWorkspaceResponse, CoreError>;
 
-  /// 列出所有可用的workspace
+  /// List all available workspaces
   async fn list_all_workspaces(&self) -> Result<Vec<Workspace>, CoreError>;
 
-  /// 检查用户是否可以访问指定workspace
+  /// Check if user has access to the specified workspace
   async fn check_workspace_access(
     &self,
     user_id: UserId,
@@ -40,7 +40,7 @@ pub trait WorkspaceService: Send + Sync {
   ) -> Result<bool, CoreError>;
 }
 
-/// 核心Workspace服务实现
+/// Core workspace service implementation
 pub struct CoreWorkspaceService<U, W> {
   user_repository: U,
   workspace_repository: W,
@@ -69,7 +69,7 @@ where
     user_id: UserId,
     workspace_id: WorkspaceId,
   ) -> Result<SwitchWorkspaceResponse, CoreError> {
-    // 首先验证workspace是否存在
+    // First verify that the workspace exists
     let workspace = self
       .workspace_repository
       .find_by_id(workspace_id)
@@ -78,7 +78,7 @@ where
         CoreError::NotFound(format!("Workspace {} not found", workspace_id.inner()))
       })?;
 
-    // 检查用户是否可以访问这个workspace
+    // Check if user has access to this workspace
     let has_access = self
       .workspace_repository
       .check_user_access(user_id, workspace_id)
@@ -90,7 +90,7 @@ where
       ));
     }
 
-    // 切换用户的workspace
+    // Switch user's workspace
     let updated_user = self
       .user_repository
       .switch_workspace(user_id, workspace_id)

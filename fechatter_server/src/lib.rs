@@ -246,19 +246,19 @@ async fn route_debug_middleware(req: Request, next: Next) -> Response {
   let uri = req.uri().clone();
   let path = uri.path();
 
-  debug!("🔍 [ROUTE_DEBUG] {} {} - Processing request", method, path);
+  debug!("[ROUTE_DEBUG] {} {} - Processing request", method, path);
 
   let response = next.run(req).await;
   let status = response.status();
 
   if status.is_client_error() || status.is_server_error() {
     warn!(
-      "🔍 [ROUTE_DEBUG] {} {} - Response: {}",
+      "[ROUTE_DEBUG] {} {} - Response: {}",
       method, path, status
     );
   } else {
     debug!(
-      "🔍 [ROUTE_DEBUG] {} {} - Response: {}",
+      "[ROUTE_DEBUG] {} {} - Response: {}",
       method, path, status
     );
   }
@@ -427,16 +427,16 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
   
   // Verify storage directory exists
   if !std::path::Path::new(storage_path).exists() {
-    warn!("⚠️ [STATIC_FILES] Storage directory does not exist: {}", storage_path);
-    warn!("⚠️ [STATIC_FILES] Attempting to create directory...");
+    warn!("WARNING: [STATIC_FILES] Storage directory does not exist: {}", storage_path);
+    warn!("WARNING: [STATIC_FILES] Attempting to create directory...");
     if let Err(e) = std::fs::create_dir_all(storage_path) {
       return Err(AppError::ChatFileError(format!(
         "Failed to create storage directory {}: {}", storage_path, e
       )));
     }
-    info!("✅ [STATIC_FILES] Created storage directory: {}", storage_path);
+    info!("[STATIC_FILES] Created storage directory: {}", storage_path);
   } else {
-    info!("✅ [STATIC_FILES] Storage directory exists: {}", storage_path);
+    info!("[STATIC_FILES] Storage directory exists: {}", storage_path);
     
     // Log directory contents for debugging
     if let Ok(entries) = std::fs::read_dir(storage_path) {

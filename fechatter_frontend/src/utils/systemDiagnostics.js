@@ -1,5 +1,5 @@
 /**
- * 🔍 System Diagnostics - Comprehensive Health Check
+ * System Diagnostics - Comprehensive Health Check
  * 系统诊断工具 - 验证修复效果
  */
 
@@ -10,7 +10,7 @@ export class SystemDiagnostics {
   }
 
   /**
-   * 🔧 Test 1: MessageDisplayGuarantee Fallback Optimization
+   * Test 1: MessageDisplayGuarantee Fallback Optimization
    */
   async testMessageDisplayGuarantee() {
     const testName = 'MessageDisplayGuarantee Fallback Prevention';
@@ -67,7 +67,7 @@ export class SystemDiagnostics {
   }
 
   /**
-   * 🔧 Test 2: Auth Store Initialization Deduplication
+   * Test 2: Auth Store Initialization Deduplication
    */
   async testAuthStoreDeduplication() {
     const testName = 'Auth Store Initialization Deduplication';
@@ -136,7 +136,7 @@ export class SystemDiagnostics {
   }
 
   /**
-   * 🔧 Test 3: CircuitBreaker Enhanced State Management
+   * Test 3: CircuitBreaker Enhanced State Management
    */
   async testCircuitBreakerStates() {
     const testName = 'CircuitBreaker Enhanced State Management';
@@ -216,7 +216,7 @@ export class SystemDiagnostics {
   }
 
   /**
-   * 🔧 Test 4: System Integration Health Check
+   * Test 4: System Integration Health Check
    */
   async testSystemIntegration() {
     const testName = 'System Integration Health Check';
@@ -273,10 +273,10 @@ export class SystemDiagnostics {
   }
 
   /**
-   * 🔍 Run All Diagnostic Tests
+   * Run All Diagnostic Tests
    */
   async runAllTests() {
-    console.log('🔍 Starting System Diagnostics...');
+    console.log('Starting System Diagnostics...');
 
     const tests = [
       this.testMessageDisplayGuarantee(),
@@ -298,7 +298,7 @@ export class SystemDiagnostics {
       timestamp: new Date().toISOString()
     };
 
-    console.log('✅ System Diagnostics Complete:', summary);
+    console.log('System Diagnostics Complete:', summary);
     console.table(this.diagnosticResults);
 
     return {
@@ -309,7 +309,7 @@ export class SystemDiagnostics {
   }
 
   /**
-   * 🔧 Generate Diagnostic Report
+   * Generate Diagnostic Report
    */
   generateReport() {
     return {
@@ -360,7 +360,7 @@ export class SystemDiagnostics {
   }
 }
 
-// 🔧 Global diagnostic functions
+// Global diagnostic functions
 if (typeof window !== 'undefined' && import.meta.env.DEV) {
   window.runSystemDiagnostics = async () => {
     const diagnostics = new SystemDiagnostics();
@@ -372,5 +372,5 @@ if (typeof window !== 'undefined' && import.meta.env.DEV) {
     return diagnostics.generateReport();
   };
 
-  console.log('🔍 System Diagnostics loaded - use runSystemDiagnostics() to test fixes');
+  console.log('System Diagnostics loaded - use runSystemDiagnostics() to test fixes');
 } 

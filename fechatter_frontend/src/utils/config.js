@@ -7,9 +7,9 @@
 // Environment Configuration
 // =============================================================================
 
-// 统一配置文件 - 通过vite代理访问，避免CORS
+// Configuration unified through Vite proxy to avoid CORS
 export const config = {
-  // API配置 - 使用相对路径
+  // API configuration - using relative paths
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   sseURL: import.meta.env.VITE_SSE_URL || '/events',
   fileBaseURL: import.meta.env.VITE_FILE_BASE_URL || '/files',
@@ -172,7 +172,7 @@ export const initializeConfig = () => {
   const validation = validateEnvironment();
 
   if (config.dev.debug) {
-    console.group('🔧 Fechatter Configuration');
+    console.group('Fechatter Configuration');
     if (import.meta.env.DEV) {
       console.log('Environment:', config.app.environment);
     }

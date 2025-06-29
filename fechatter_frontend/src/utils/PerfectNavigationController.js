@@ -1,5 +1,5 @@
 /**
- * 🎯 Perfect Navigation Controller - The Ultimate Message Jump System
+ * Perfect Navigation Controller - The Ultimate Message Jump System
  * 
  * This is the pinnacle of message navigation - designed to achieve 95%+ success rate
  * for all message jumps including historical messages, cross-chat navigation, and
@@ -16,7 +16,7 @@
 import { nextTick } from 'vue'
 
 /**
- * 🎯 Navigation Pipeline - Tracks multi-stage execution
+ * Navigation Pipeline - Tracks multi-stage execution
  */
 class NavigationPipeline {
   constructor(navigationId, params) {
@@ -33,14 +33,14 @@ class NavigationPipeline {
       timestamp: Date.now(),
       duration: Date.now() - this.startTime
     })
-    console.log(`🎯 [Pipeline ${this.navigationId}] Stage ${stageName}:`, result)
+    console.log(`[Pipeline ${this.navigationId}] Stage ${stageName}:`, result)
   }
 
   complete() {
     this.status = 'completed'
     const totalDuration = Date.now() - this.startTime
 
-    console.log(`✅ [Pipeline ${this.navigationId}] Completed in ${totalDuration}ms`)
+    console.log(`[Pipeline ${this.navigationId}] Completed in ${totalDuration}ms`)
 
     return {
       success: true,
@@ -55,7 +55,7 @@ class NavigationPipeline {
     this.status = 'failed'
     const totalDuration = Date.now() - this.startTime
 
-    console.error(`❌ [Pipeline ${this.navigationId}] Failed: ${reason} (${totalDuration}ms)`)
+    console.error(`ERROR: [Pipeline ${this.navigationId}] Failed: ${reason} (${totalDuration}ms)`)
 
     return {
       success: false,
@@ -69,7 +69,7 @@ class NavigationPipeline {
 }
 
 /**
- * 🎯 Chat State Manager - Ensures chat readiness before navigation
+ * Chat State Manager - Ensures chat readiness before navigation
  */
 class ChatStateManager {
   constructor(perfectController) {
@@ -86,13 +86,13 @@ class ChatStateManager {
       initialMessagesLoaded: false
     }
 
-    console.log(`🎯 [ChatState] Ensuring chat ${chatId} readiness...`)
+    console.log(`[ChatState] Ensuring chat ${chatId} readiness...`)
 
     try {
-      // 🔧 Step 0: 预检查 - 避免不必要的导航
+      // Step 0: 预检查 - 避免不必要的导航
       const quickCheck = await this.quickReadinessCheck(chatId)
       if (quickCheck.isReady) {
-        console.log(`⚡ [ChatState] Chat ${chatId} already ready`)
+        console.log(`[ChatState] Chat ${chatId} already ready`)
         return quickCheck.steps
       }
 
@@ -110,7 +110,7 @@ class ChatStateManager {
       await this.waitForChatData(chatId)
       readinessSteps.chatDataLoaded = true
 
-      // 🔧 Step 2.5: 强制设置当前chat（防止状态不同步）
+      // Step 2.5: 强制设置当前chat（防止状态不同步）
       await this.ensureCurrentChat(chatId)
 
       // Step 3: 等待消息列表组件挂载
@@ -125,13 +125,13 @@ class ChatStateManager {
       await this.verifyInitialMessages(chatId)
       readinessSteps.initialMessagesLoaded = true
 
-      console.log(`✅ [ChatState] Chat ${chatId} fully ready`)
+      console.log(`[ChatState] Chat ${chatId} fully ready`)
       return readinessSteps
 
     } catch (error) {
-      console.error(`❌ [ChatState] Failed to ensure chat ${chatId} readiness:`, error)
+      console.error(`ERROR: [ChatState] Failed to ensure chat ${chatId} readiness:`, error)
 
-      // 🔧 增强错误处理：提供详细的失败信息
+      // 增强错误处理：提供详细的失败信息
       const detailedError = new Error(`Chat ${chatId} readiness failed: ${error.message}`)
       detailedError.chatId = chatId
       detailedError.completedSteps = readinessSteps
@@ -141,7 +141,7 @@ class ChatStateManager {
     }
   }
 
-  // 🔧 新增：快速就绪检查
+  // 新增：快速就绪检查
   async quickReadinessCheck(chatId) {
     try {
       const chatStore = await this.getChatStore()
@@ -167,20 +167,20 @@ class ChatStateManager {
     }
   }
 
-  // 🔧 新增：强制设置当前chat
+  // 新增：强制设置当前chat
   async ensureCurrentChat(chatId) {
     try {
       const chatStore = await this.getChatStore()
       if (chatStore && typeof chatStore.setCurrentChat === 'function') {
         await chatStore.setCurrentChat(chatId)
-        console.log(`🎯 [ChatState] Set current chat to ${chatId}`)
+        console.log(`[ChatState] Set current chat to ${chatId}`)
       }
     } catch (error) {
-      console.warn(`⚠️ [ChatState] Failed to set current chat:`, error.message)
+      console.warn(`WARNING: [ChatState] Failed to set current chat:`, error.message)
     }
   }
 
-  // 🔧 新增：获取最后完成的步骤
+  // 新增：获取最后完成的步骤
   getLastCompletedStep(steps) {
     const stepOrder = ['routeNavigation', 'chatDataLoaded', 'messageListMounted', 'scrollContainerReady', 'initialMessagesLoaded']
     for (let i = stepOrder.length - 1; i >= 0; i--) {
@@ -217,7 +217,7 @@ class ChatStateManager {
         return true
 
       } catch (error) {
-        console.warn(`⚠️ [ChatState] Navigation attempt ${attempt} failed:`, error.message)
+        console.warn(`WARNING: [ChatState] Navigation attempt ${attempt} failed:`, error.message)
 
         if (attempt === maxRetries) {
           throw new Error(`Failed to navigate to chat ${chatId} after ${maxRetries} attempts`)
@@ -249,9 +249,9 @@ class ChatStateManager {
   }
 
   async waitForChatData(chatId) {
-    const maxWait = 5000 // 🔧 增加到5秒
+    const maxWait = 5000 // 增加到5秒
     const checkInterval = 100
-    const maxRetries = 3 // 🔧 新增重试机制
+    const maxRetries = 3 // 新增重试机制
 
     for (let retry = 0; retry < maxRetries; retry++) {
       console.log(`🔄 [ChatState] Wait for chat ${chatId} data (attempt ${retry + 1}/${maxRetries})`)
@@ -261,28 +261,28 @@ class ChatStateManager {
         try {
           const chatStore = await this.getChatStore()
 
-          // 🔧 增强的检查逻辑
+          // 增强的检查逻辑
           if (!chatStore) {
-            console.warn(`⚠️ [ChatState] Chat store not available (attempt ${retry + 1})`)
+            console.warn(`WARNING: [ChatState] Chat store not available (attempt ${retry + 1})`)
             break // 退出内部循环，进行重试
           }
 
-          // 🔧 使用增强的智能检查
+          // 使用增强的智能检查
           if (typeof chatStore.smartChatCheck === 'function') {
             const checkResult = await chatStore.smartChatCheck(chatId)
-            console.log(`🔍 [ChatState] Smart check result:`, checkResult)
+            console.log(`[ChatState] Smart check result:`, checkResult)
 
             // Chat存在且有权限访问
             if (checkResult.exists && checkResult.hasAccess) {
               // 检查currentChatId同步
               if (chatStore.currentChatId == chatId) {
-                console.log(`✅ [ChatState] Chat ${chatId} fully ready`)
+                console.log(`[ChatState] Chat ${chatId} fully ready`)
                 return true
               }
 
               // 2秒后放宽条件：只要chat存在就继续
               if (elapsed > 2000) {
-                console.log(`⚡ [ChatState] Chat ${chatId} exists, proceeding with relaxed condition`)
+                console.log(`[ChatState] Chat ${chatId} exists, proceeding with relaxed condition`)
                 return true
               }
             }
@@ -297,22 +297,22 @@ class ChatStateManager {
             const chat = chatStore.getChatById?.(chatId)
             const currentId = chatStore.currentChatId
 
-            console.log(`🔍 [ChatState] Fallback check - chat ${chatId}: exists=${!!chat}, current=${currentId}`)
+            console.log(`[ChatState] Fallback check - chat ${chatId}: exists=${!!chat}, current=${currentId}`)
 
             if (chat) {
               if (currentId == chatId) {
-                console.log(`✅ [ChatState] Chat ${chatId} ready via fallback`)
+                console.log(`[ChatState] Chat ${chatId} ready via fallback`)
                 return true
               }
 
               if (elapsed > 2000) {
-                console.log(`⚡ [ChatState] Chat ${chatId} exists via fallback, proceeding`)
+                console.log(`[ChatState] Chat ${chatId} exists via fallback, proceeding`)
                 return true
               }
             }
           }
 
-          // 🔧 改进的主动触发chat加载
+          // 改进的主动触发chat加载
           if (elapsed > 1000) {
             console.log(`📥 [ChatState] Attempting to load chat ${chatId}`)
             await this.enhancedTriggerChatLoading(chatId, chatStore)
@@ -322,18 +322,18 @@ class ChatStateManager {
           // 特定错误立即退出重试
           if (error.message.includes('does not exist') ||
             error.message.includes('no access permission')) {
-            console.error(`❌ [ChatState] Chat ${chatId} access denied:`, error.message)
+            console.error(`ERROR: [ChatState] Chat ${chatId} access denied:`, error.message)
             throw error
           }
 
-          console.warn(`⚠️ [ChatState] Check error:`, error.message)
+          console.warn(`WARNING: [ChatState] Check error:`, error.message)
         }
 
         await new Promise(resolve => setTimeout(resolve, checkInterval))
         elapsed += checkInterval
       }
 
-      // 🔧 重试间隔
+      // 重试间隔
       if (retry < maxRetries - 1) {
         console.log(`🔄 [ChatState] Retrying chat ${chatId} after ${500 * (retry + 1)}ms`)
         await new Promise(resolve => setTimeout(resolve, 500 * (retry + 1)))
@@ -343,7 +343,7 @@ class ChatStateManager {
     throw new Error(`Chat data loading timeout for chat ${chatId} after ${maxRetries} attempts`)
   }
 
-  // 🔧 新增：主动触发chat加载
+  // 新增：主动触发chat加载
   async triggerChatLoading(chatId, chatStore) {
     try {
       // 尝试多种加载方法
@@ -362,7 +362,7 @@ class ChatStateManager {
           // 检查是否成功加载
           const chat = chatStore.getChatById?.(chatId)
           if (chat) {
-            console.log(`✅ [ChatState] Successfully loaded chat ${chatId} via ${method}`)
+            console.log(`[ChatState] Successfully loaded chat ${chatId} via ${method}`)
             return true
           }
         }
@@ -370,12 +370,12 @@ class ChatStateManager {
 
       return false
     } catch (error) {
-      console.warn(`⚠️ [ChatState] Failed to trigger chat loading:`, error.message)
+      console.warn(`WARNING: [ChatState] Failed to trigger chat loading:`, error.message)
       return false
     }
   }
 
-  // 🔧 新增：增强的chat加载触发
+  // 新增：增强的chat加载触发
   async enhancedTriggerChatLoading(chatId, chatStore) {
     try {
       // 按优先级尝试方法
@@ -400,11 +400,11 @@ class ChatStateManager {
             // 检查是否成功加载
             const chat = chatStore.getChatById?.(chatId)
             if (chat) {
-              console.log(`✅ [ChatState] Successfully loaded chat ${chatId} via ${name}`)
+              console.log(`[ChatState] Successfully loaded chat ${chatId} via ${name}`)
               return true
             }
           } catch (methodError) {
-            console.warn(`⚠️ [ChatState] Method ${name} failed:`, methodError.message)
+            console.warn(`WARNING: [ChatState] Method ${name} failed:`, methodError.message)
 
             // 如果是404错误，说明chat确实不存在
             if (methodError.response?.status === 404) {
@@ -416,7 +416,7 @@ class ChatStateManager {
 
       return false
     } catch (error) {
-      console.warn(`⚠️ [ChatState] Enhanced chat loading failed:`, error.message)
+      console.warn(`WARNING: [ChatState] Enhanced chat loading failed:`, error.message)
       throw error
     }
   }
@@ -450,18 +450,18 @@ class ChatStateManager {
   }
 
   async waitForScrollContainer(chatId) {
-    const maxWait = 3000 // 🚀 从5秒减少到3秒
-    const checkInterval = 50 // 🚀 从100ms减少到50ms提高响应速度
+    const maxWait = 3000 // 从5秒减少到3秒
+    const checkInterval = 50 // 从100ms减少到50ms提高响应速度
     let elapsed = 0
 
-    console.log(`🔄 [ChatState] 🎯 DAG-Enhanced: Waiting for scroll container for chat ${chatId}`)
+    console.log(`🔄 [ChatState] DAG-Enhanced: Waiting for scroll container for chat ${chatId}`)
 
-    // 🔧 新增：增强的滚动容器检测和调试
+    // 新增：增强的滚动容器检测和调试
     while (elapsed < maxWait) {
       // 基础容器检测
       const container = this.controller.domSynchronizer.getScrollContainer(chatId)
       if (container) {
-        console.log(`✅ [ChatState] 🎯 DAG: Found valid scroll container:`, {
+        console.log(`[ChatState] DAG: Found valid scroll container:`, {
           className: container.className,
           id: container.id,
           scrollHeight: container.scrollHeight,
@@ -470,16 +470,16 @@ class ChatStateManager {
         return true
       }
 
-      // 🔧 新增：详细诊断信息 🚀 减少诊断频率提高速度
+      // 新增：详细诊断信息 减少诊断频率提高速度
       if (elapsed === 0 || elapsed % 500 === 0) {
-        console.log(`🔍 [ChatState] 🎯 DAG-Debug: Scroll container search attempt (${elapsed}ms)`)
+        console.log(`[ChatState] DAG-Debug: Scroll container search attempt (${elapsed}ms)`)
         this.debugScrollContainerSearch(chatId)
       }
 
-      // 🔧 新增：渐进式容错检测
+      // 新增：渐进式容错检测
       const fallbackContainer = this.findFallbackScrollContainer(chatId)
       if (fallbackContainer) {
-        console.log(`✅ [ChatState] 🎯 DAG-Fallback: Using fallback scroll container:`, {
+        console.log(`[ChatState] DAG-Fallback: Using fallback scroll container:`, {
           className: fallbackContainer.className,
           id: fallbackContainer.id
         })
@@ -490,18 +490,18 @@ class ChatStateManager {
       elapsed += checkInterval
     }
 
-    // 🔧 新增：最终诊断和错误报告
-    console.error(`❌ [ChatState] 🎯 DAG-Error: Scroll container timeout after ${elapsed}ms`)
+    // 新增：最终诊断和错误报告
+    console.error(`ERROR: [ChatState] DAG-Error: Scroll container timeout after ${elapsed}ms`)
     this.debugScrollContainerSearch(chatId, true)
 
     throw new Error(`Scroll container availability timeout for chat ${chatId} (${elapsed}ms)`)
   }
 
-  // 🔧 新增：调试滚动容器搜索过程
+  // 新增：调试滚动容器搜索过程
   debugScrollContainerSearch(chatId, isError = false) {
     const logLevel = isError ? 'error' : 'log'
 
-    console[logLevel](`🔍 [ChatState] 🎯 DAG-Debug: Scroll container search diagnostic for chat ${chatId}`)
+    console[logLevel](`[ChatState] DAG-Debug: Scroll container search diagnostic for chat ${chatId}`)
 
     // 检查各种可能的选择器
     const selectors = [
@@ -519,7 +519,7 @@ class ChatStateManager {
       const element = document.querySelector(selector)
       if (element) {
         const style = getComputedStyle(element)
-        console[logLevel](`  🎯 Found element "${selector}":`, {
+        console[logLevel](`  Found element "${selector}":`, {
           className: element.className,
           id: element.id,
           scrollHeight: element.scrollHeight,
@@ -528,16 +528,16 @@ class ChatStateManager {
           isValid: this.controller.domSynchronizer.isValidScrollContainer(element)
         })
       } else {
-        console[logLevel](`  ❌ Not found: "${selector}"`)
+        console[logLevel](`  ERROR: Not found: "${selector}"`)
       }
     })
 
     // 检查整体DOM状态
     const messageElements = document.querySelectorAll('[data-message-id]')
-    console[logLevel](`  📊 DOM State: ${messageElements.length} messages loaded`)
+    console[logLevel](`  DOM State: ${messageElements.length} messages loaded`)
   }
 
-  // 🔧 新增：查找备用滚动容器
+  // 新增：查找备用滚动容器
   findFallbackScrollContainer(chatId) {
     // 扩展的备用选择器列表
     const fallbackSelectors = [
@@ -587,7 +587,7 @@ class ChatStateManager {
     return null
   }
 
-  // 🔧 新增：检查是否为潜在的滚动容器
+  // 新增：检查是否为潜在的滚动容器
   isPotentialScrollContainer(element) {
     if (!element) return false
 
@@ -620,7 +620,7 @@ class ChatStateManager {
       try {
         const messageElements = document.querySelectorAll('[data-message-id]')
         if (messageElements.length > 0) {
-          console.log(`✅ [ChatState] Found ${messageElements.length} initial messages`)
+          console.log(`[ChatState] Found ${messageElements.length} initial messages`)
           return true
         }
       } catch (error) {
@@ -693,7 +693,7 @@ class ChatStateManager {
 }
 
 /**
- * 🎯 Enhanced Message Context Loader - 历史消息智能预加载
+ * Enhanced Message Context Loader - 历史消息智能预加载
  */
 class MessageContextLoader {
   constructor(perfectController) {
@@ -720,7 +720,7 @@ class MessageContextLoader {
 
     // Pre-check: Message already in DOM?
     if (this.isMessageInDOM(messageId)) {
-      console.log(`✅ [MessageContext] Message ${messageId} already in DOM`)
+      console.log(`[MessageContext] Message ${messageId} already in DOM`)
       return { success: true, strategy: 'already_present', messageFound: true }
     }
 
@@ -743,15 +743,15 @@ class MessageContextLoader {
             loadingResult.success = true
             loadingResult.strategy = strategyName
             loadingResult.messageFound = true
-            console.log(`✅ [MessageContext] Successfully loaded via ${strategyName}`)
+            console.log(`[MessageContext] Successfully loaded via ${strategyName}`)
             return loadingResult
           } else {
-            console.warn(`⚠️ [MessageContext] ${strategyName} reported success but message not in DOM`)
+            console.warn(`WARNING: [MessageContext] ${strategyName} reported success but message not in DOM`)
           }
         }
 
       } catch (error) {
-        console.warn(`⚠️ [MessageContext] ${strategyName} failed:`, error.message)
+        console.warn(`WARNING: [MessageContext] ${strategyName} failed:`, error.message)
         loadingResult.attempts.push({
           strategy: strategyName,
           success: false,
@@ -760,22 +760,22 @@ class MessageContextLoader {
       }
     }
 
-    console.error(`❌ [MessageContext] All strategies failed for message ${messageId}`)
+    console.error(`ERROR: [MessageContext] All strategies failed for message ${messageId}`)
     return loadingResult
   }
 
-  // 🔧 新增：增强的消息上下文预加载
+  // 新增：增强的消息上下文预加载
   async loadMessageWithContext(chatId, messageId, options = {}) {
     console.log(`📜 [EnhancedContext] Starting enhanced context loading for message ${messageId}`)
 
     try {
       // 1. 分析消息位置和上下文需求
       const contextAnalysis = await this.analyzeMessageContext(chatId, messageId)
-      console.log(`🔍 [EnhancedContext] Context analysis:`, contextAnalysis)
+      console.log(`[EnhancedContext] Context analysis:`, contextAnalysis)
 
       // 2. 根据分析结果确定加载策略
       const strategy = this.selectOptimalStrategy(contextAnalysis)
-      console.log(`🎯 [EnhancedContext] Selected strategy: ${strategy.constructor.name}`)
+      console.log(`[EnhancedContext] Selected strategy: ${strategy.constructor.name}`)
 
       // 3. 执行上下文加载
       const loadResult = await strategy.execute(chatId, messageId)
@@ -796,7 +796,7 @@ class MessageContextLoader {
         verificationResult
       }
     } catch (error) {
-      console.error(`❌ [EnhancedContext] Enhanced context loading failed:`, error)
+      console.error(`ERROR: [EnhancedContext] Enhanced context loading failed:`, error)
       return {
         success: false,
         error: error.message,
@@ -805,7 +805,7 @@ class MessageContextLoader {
     }
   }
 
-  // 🔧 新增：消息上下文分析
+  // 新增：消息上下文分析
   async analyzeMessageContext(chatId, messageId) {
     try {
       // 获取当前已加载的消息
@@ -826,7 +826,7 @@ class MessageContextLoader {
         estimatedTimestamp: messageTimestamp
       }
     } catch (error) {
-      console.warn(`⚠️ [EnhancedContext] Context analysis failed:`, error)
+      console.warn(`WARNING: [EnhancedContext] Context analysis failed:`, error)
       return {
         isInCurrentRange: false,
         loadingRequired: true,
@@ -835,10 +835,10 @@ class MessageContextLoader {
     }
   }
 
-  // 🔧 新增：选择最优加载策略
+  // 新增：选择最优加载策略
   selectOptimalStrategy(analysis) {
     if (!analysis.loadingRequired) {
-      console.log(`⚡ [EnhancedContext] Message already loaded, using AlreadyLoadedStrategy`)
+      console.log(`[EnhancedContext] Message already loaded, using AlreadyLoadedStrategy`)
       return new AlreadyLoadedStrategy()
     }
 
@@ -849,12 +849,12 @@ class MessageContextLoader {
       console.log(`📆 [EnhancedContext] Medium history message (${Math.round(analysis.estimatedAge / 86400000)}d ago), using MediumHistoryStrategy`)
       return new MediumHistoryStrategy()
     } else {
-      console.log(`📚 [EnhancedContext] Deep history message, using DeepHistoryStrategy`)
+      console.log(`[EnhancedContext] Deep history message, using DeepHistoryStrategy`)
       return new DeepHistoryStrategy()
     }
   }
 
-  // 🔧 新增：获取当前已加载消息
+  // 新增：获取当前已加载消息
   async getCurrentLoadedMessages(chatId) {
     try {
       // 尝试从UnifiedMessageService获取
@@ -869,12 +869,12 @@ class MessageContextLoader {
         timestamp: el.getAttribute('data-timestamp') || Date.now()
       }))
     } catch (error) {
-      console.warn(`⚠️ [EnhancedContext] Failed to get current messages:`, error)
+      console.warn(`WARNING: [EnhancedContext] Failed to get current messages:`, error)
       return []
     }
   }
 
-  // 🔧 新增：估算消息时间戳
+  // 新增：估算消息时间戳
   async estimateMessageTimestamp(messageId) {
     try {
       // 方法1：从搜索结果中获取（如果有的话）
@@ -895,18 +895,18 @@ class MessageContextLoader {
 
       return null
     } catch (error) {
-      console.warn(`⚠️ [EnhancedContext] Failed to estimate timestamp:`, error)
+      console.warn(`WARNING: [EnhancedContext] Failed to estimate timestamp:`, error)
       return null
     }
   }
 
-  // 🔧 新增：检查消息是否在范围内
+  // 新增：检查消息是否在范围内
   isMessageInRange(messageId, messages) {
     if (!messages || messages.length === 0) return false
     return messages.some(msg => msg.id == messageId)
   }
 
-  // 🔧 新增：估算消息位置
+  // 新增：估算消息位置
   estimateMessagePosition(messageId, messages) {
     if (!messages || messages.length === 0) return -1
 
@@ -923,7 +923,7 @@ class MessageContextLoader {
     return position
   }
 
-  // 🔧 新增：等待消息完全稳定
+  // 新增：等待消息完全稳定
   async waitForCompleteMessageStability(messageId, timeout = 5000) {
     console.log(`⏳ [EnhancedContext] Waiting for complete stability of message ${messageId}`)
 
@@ -936,10 +936,10 @@ class MessageContextLoader {
     // 等待整体DOM稳定
     await this.waitForDOMUpdate(500)
 
-    console.log(`✅ [EnhancedContext] Message ${messageId} is completely stable`)
+    console.log(`[EnhancedContext] Message ${messageId} is completely stable`)
   }
 
-  // 🔧 新增：等待消息内容稳定性
+  // 新增：等待消息内容稳定性
   async waitForMessageContentStability(messageId) {
     const messageElement = document.querySelector(`[data-message-id="${messageId}"]`)
     if (!messageElement) return
@@ -961,7 +961,7 @@ class MessageContextLoader {
     await new Promise(resolve => setTimeout(resolve, 200))
   }
 
-  // 🔧 新增：等待消息元素存在
+  // 新增：等待消息元素存在
   async waitForMessageElement(messageId, timeout = 5000) {
     const startTime = Date.now()
 
@@ -976,7 +976,7 @@ class MessageContextLoader {
     throw new Error(`Message element ${messageId} not found within ${timeout}ms`)
   }
 
-  // 🔧 新增：验证消息可达性
+  // 新增：验证消息可达性
   async verifyMessageAccessibility(messageId) {
     const element = document.querySelector(`[data-message-id="${messageId}"]`)
 
@@ -1011,13 +1011,13 @@ class MessageContextLoader {
 }
 
 /**
- * 🎯 Enhanced Strategy Classes for Message Loading
+ * Enhanced Strategy Classes for Message Loading
  */
 
-// 🔧 新增：已加载策略
+// 新增：已加载策略
 class AlreadyLoadedStrategy {
   async execute(chatId, messageId) {
-    console.log(`⚡ [AlreadyLoaded] Message ${messageId} already in DOM`)
+    console.log(`[AlreadyLoaded] Message ${messageId} already in DOM`)
     return {
       success: true,
       method: 'already_loaded',
@@ -1026,7 +1026,7 @@ class AlreadyLoadedStrategy {
   }
 }
 
-// 🔧 新增：近期消息策略
+// 新增：近期消息策略
 class RecentMessageStrategy {
   async execute(chatId, messageId) {
     console.log(`📅 [RecentMessage] Loading recent messages for ${messageId}`)
@@ -1045,7 +1045,7 @@ class RecentMessageStrategy {
         batchSize
       }
     } catch (error) {
-      console.warn(`⚠️ [RecentMessage] Failed to load recent messages:`, error)
+      console.warn(`WARNING: [RecentMessage] Failed to load recent messages:`, error)
       return {
         success: false,
         error: error.message,
@@ -1080,7 +1080,7 @@ class RecentMessageStrategy {
 
       return []
     } catch (error) {
-      console.warn(`⚠️ [RecentMessage] Load recent messages failed:`, error)
+      console.warn(`WARNING: [RecentMessage] Load recent messages failed:`, error)
       return []
     }
   }
@@ -1118,7 +1118,7 @@ class RecentMessageStrategy {
   }
 }
 
-// 🔧 新增：中等历史策略
+// 新增：中等历史策略
 class MediumHistoryStrategy {
   async execute(chatId, messageId) {
     console.log(`📆 [MediumHistory] Using binary search for message ${messageId}`)
@@ -1132,7 +1132,7 @@ class MediumHistoryStrategy {
 
       return result
     } catch (error) {
-      console.warn(`⚠️ [MediumHistory] Binary search failed:`, error)
+      console.warn(`WARNING: [MediumHistory] Binary search failed:`, error)
       return {
         success: false,
         error: error.message,
@@ -1149,7 +1149,7 @@ class MediumHistoryStrategy {
     const currentMessages = await this.getCurrentMessages(chatId)
     let searchRange = this.determineSearchRange(targetMessageId, currentMessages)
 
-    console.log(`🔍 [MediumHistory] Binary search range:`, searchRange)
+    console.log(`[MediumHistory] Binary search range:`, searchRange)
 
     while (iterations < options.maxIterations) {
       console.log(`🔄 [MediumHistory] Binary search iteration ${iterations + 1}`)
@@ -1158,7 +1158,7 @@ class MediumHistoryStrategy {
       const batch = await this.loadMessageBatch(chatId, midOffset, options.batchSize)
 
       if (this.containsMessage(batch, messageId)) {
-        console.log(`✅ [MediumHistory] Found message ${messageId} in iteration ${iterations + 1}`)
+        console.log(`[MediumHistory] Found message ${messageId} in iteration ${iterations + 1}`)
         return {
           success: true,
           method: 'binary_search',
@@ -1172,7 +1172,7 @@ class MediumHistoryStrategy {
       iterations++
     }
 
-    console.warn(`⚠️ [MediumHistory] Binary search exhausted after ${iterations} iterations`)
+    console.warn(`WARNING: [MediumHistory] Binary search exhausted after ${iterations} iterations`)
     return {
       success: false,
       method: 'binary_search',
@@ -1226,7 +1226,7 @@ class MediumHistoryStrategy {
 
       return []
     } catch (error) {
-      console.warn(`⚠️ [MediumHistory] Failed to load batch:`, error)
+      console.warn(`WARNING: [MediumHistory] Failed to load batch:`, error)
       return []
     }
   }
@@ -1443,7 +1443,7 @@ class DeepHistoryStrategy {
         return { success: false, reason: 'Message not old enough for deep history search' }
       }
 
-      console.log(`🔍 [DeepHistory] Attempting binary search for old message ${messageId}`)
+      console.log(`[DeepHistory] Attempting binary search for old message ${messageId}`)
 
       // Estimate total message count
       const totalMessages = await this.estimateTotalMessageCount(chatId)
@@ -1522,7 +1522,7 @@ class DeepHistoryStrategy {
 }
 
 /**
- * 🎯 DOM Synchronizer - Perfect scroll and element management
+ * DOM Synchronizer - Perfect scroll and element management
  */
 class DOMSynchronizer {
   constructor(perfectController) {
@@ -1538,7 +1538,7 @@ class DOMSynchronizer {
       messageVisible: false
     }
 
-    console.log(`🎯 [DOMSync] Scrolling to message ${messageId} in chat ${chatId}`)
+    console.log(`[DOMSync] Scrolling to message ${messageId} in chat ${chatId}`)
 
     // Step 1: Ensure message element exists
     const messageElement = await this.waitForMessageElement(messageId, 2000)
@@ -1563,7 +1563,7 @@ class DOMSynchronizer {
     const maxAttempts = 3
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        console.log(`🎯 [DOMSync] Scroll attempt ${attempt}, target position: ${targetPosition}`)
+        console.log(`[DOMSync] Scroll attempt ${attempt}, target position: ${targetPosition}`)
 
         // Perform scroll
         scrollContainer.scrollTo({
@@ -1594,15 +1594,15 @@ class DOMSynchronizer {
             scrollResult.success = true
             scrollResult.messageVisible = true
             scrollResult.finalPosition = scrollContainer.scrollTop
-            console.log(`✅ [DOMSync] Successfully scrolled to message ${messageId}`)
+            console.log(`[DOMSync] Successfully scrolled to message ${messageId}`)
             break
           } else {
-            console.warn(`⚠️ [DOMSync] Scroll completed but message not visible`)
+            console.warn(`WARNING: [DOMSync] Scroll completed but message not visible`)
           }
         }
 
       } catch (error) {
-        console.warn(`⚠️ [DOMSync] Scroll attempt ${attempt} failed:`, error.message)
+        console.warn(`WARNING: [DOMSync] Scroll attempt ${attempt} failed:`, error.message)
         scrollResult.attempts.push({
           attempt,
           success: false,
@@ -1666,17 +1666,17 @@ class DOMSynchronizer {
 
     const rect = element.getBoundingClientRect()
 
-    // 🔧 基本检查：元素必须可见
+    // 基本检查：元素必须可见
     if (rect.height === 0 || rect.width === 0) {
-      console.log(`❌ [ScrollContainer] Invalid: element not visible`)
+      console.log(`ERROR: [ScrollContainer] Invalid: element not visible`)
       return false
     }
 
-    // 🔧 检查是否包含消息内容
+    // 检查是否包含消息内容
     const messageElements = element.querySelectorAll('[data-message-id]')
     const hasMessageContent = messageElements.length > 0
 
-    console.log(`🔍 [ScrollContainer] Simple analysis:`, {
+    console.log(`[ScrollContainer] Simple analysis:`, {
       className: element.className,
       id: element.id,
       elementVisible: rect.height > 0 && rect.width > 0,
@@ -1686,13 +1686,13 @@ class DOMSynchronizer {
       elementWidth: rect.width
     })
 
-    // 🔧 超简单判断：只要包含消息就认为是有效容器
+    // 超简单判断：只要包含消息就认为是有效容器
     if (hasMessageContent) {
-      console.log(`✅ [ScrollContainer] VALID: Container has ${messageElements.length} messages`)
+      console.log(`[ScrollContainer] VALID: Container has ${messageElements.length} messages`)
       return true
     }
 
-    console.log(`❌ [ScrollContainer] INVALID: No message content found`)
+    console.log(`ERROR: [ScrollContainer] INVALID: No message content found`)
     return false
   }
 
@@ -1744,13 +1744,13 @@ class DOMSynchronizer {
     const elementRect = element.getBoundingClientRect()
     const containerRect = container.getBoundingClientRect()
 
-    // 🔧 CRITICAL FIX: 更宽松的可见性检查 - 只要有部分可见就算可见
+    // CRITICAL FIX: 更宽松的可见性检查 - 只要有部分可见就算可见
     const isVerticallyVisible = elementRect.bottom > containerRect.top &&
       elementRect.top < containerRect.bottom
     const isHorizontallyVisible = elementRect.right > containerRect.left &&
       elementRect.left < containerRect.right
 
-    // 🔧 ENHANCED: 至少需要25%的垂直可见度才算真正可见
+    // ENHANCED: 至少需要25%的垂直可见度才算真正可见
     const visibleHeight = Math.min(elementRect.bottom, containerRect.bottom) -
       Math.max(elementRect.top, containerRect.top)
     const elementHeight = elementRect.height
@@ -1758,7 +1758,7 @@ class DOMSynchronizer {
 
     const isPartiallyVisible = isVerticallyVisible && isHorizontallyVisible && visibilityRatio > 0.25
 
-    console.log(`🔍 [Visibility] Element ${element.dataset?.messageId}: visible=${isPartiallyVisible}, ratio=${(visibilityRatio * 100).toFixed(1)}%`)
+    console.log(`[Visibility] Element ${element.dataset?.messageId}: visible=${isPartiallyVisible}, ratio=${(visibilityRatio * 100).toFixed(1)}%`)
 
     return isPartiallyVisible
   }
@@ -1766,7 +1766,7 @@ class DOMSynchronizer {
   async waitForDOMStability(timeout = 1000) {
     await nextTick()
 
-    // 🚀 减少DOM稳定性等待时间，提高速度
+    // 减少DOM稳定性等待时间，提高速度
     return new Promise(resolve => {
       let stabilityTimer
 
@@ -1775,7 +1775,7 @@ class DOMSynchronizer {
         stabilityTimer = setTimeout(() => {
           observer.disconnect()
           resolve()
-        }, 50) // 🚀 从100ms减少到50ms
+        }, 50) // 从100ms减少到50ms
       })
 
       observer.observe(document.body, {
@@ -1783,31 +1783,31 @@ class DOMSynchronizer {
         subtree: true
       })
 
-      // 🚀 Force resolution after reduced timeout
+      // Force resolution after reduced timeout
       setTimeout(() => {
         observer.disconnect()
         resolve()
-      }, Math.min(timeout, 500)) // 🚀 最大等待时间减少到500ms
+      }, Math.min(timeout, 500)) // 最大等待时间减少到500ms
 
-      // 🚀 Initial stability timer - 快速响应
+      // Initial stability timer - 快速响应
       stabilityTimer = setTimeout(() => {
         observer.disconnect()
         resolve()
-      }, 50) // 🚀 从100ms减少到50ms
+      }, 50) // 从100ms减少到50ms
     })
   }
 
-  // 🔧 新增：等待完整DOM稳定性（增强版）🚀 高速优化版
-  async waitForCompleteStability(messageId, timeout = 2000) { // 🚀 从5秒减少到2秒
-    console.log(`⏳ [DOMSync] 🚀 Fast-track stability for message ${messageId}`)
+  // 新增：等待完整DOM稳定性（增强版）高速优化版
+  async waitForCompleteStability(messageId, timeout = 2000) { // 从5秒减少到2秒
+    console.log(`⏳ [DOMSync] Fast-track stability for message ${messageId}`)
 
-    // 1. 🚀 快速DOM稳定
-    await this.waitForDOMStability(300) // 🚀 从1000ms减少到300ms
+    // 1. 快速DOM稳定
+    await this.waitForDOMStability(300) // 从1000ms减少到300ms
 
-    // 2. 🚀 快速等待目标消息元素存在
-    await this.waitForMessageElement(messageId, 1000) // 🚀 从timeout减少到1000ms
+    // 2. 快速等待目标消息元素存在
+    await this.waitForMessageElement(messageId, 1000) // 从timeout减少到1000ms
 
-    // 3. 🚀 快速等待消息内容加载
+    // 3. 快速等待消息内容加载
     await this.waitForMessageContentStability(messageId)
 
     // 4. 最终验证
@@ -1816,16 +1816,16 @@ class DOMSynchronizer {
       throw new Error(`Message element ${messageId} not found after stability wait`)
     }
 
-    console.log(`✅ [DOMSync] 🚀 Fast stability achieved for message ${messageId}`)
+    console.log(`[DOMSync] Fast stability achieved for message ${messageId}`)
     return true
   }
 
-  // 🔧 新增：等待消息内容稳定性 🚀 快速版本
+  // 新增：等待消息内容稳定性 快速版本
   async waitForMessageContentStability(messageId) {
     const messageElement = document.querySelector(`[data-message-id="${messageId}"]`)
     if (!messageElement) return
 
-    // 🚀 快速等待图片加载
+    // 快速等待图片加载
     const images = messageElement.querySelectorAll('img')
     if (images.length > 0) {
       await Promise.all(Array.from(images).map(img => {
@@ -1833,12 +1833,12 @@ class DOMSynchronizer {
         return new Promise(resolve => {
           img.onload = resolve
           img.onerror = resolve
-          setTimeout(resolve, 1000) // 🚀 从3000ms减少到1000ms
+          setTimeout(resolve, 1000) // 从3000ms减少到1000ms
         })
       }))
     }
 
-    // 🚀 快速等待视频准备
+    // 快速等待视频准备
     const videos = messageElement.querySelectorAll('video')
     if (videos.length > 0) {
       await Promise.all(Array.from(videos).map(video => {
@@ -1846,30 +1846,30 @@ class DOMSynchronizer {
         return new Promise(resolve => {
           video.onloadeddata = resolve
           video.onerror = resolve
-          setTimeout(resolve, 800) // 🚀 从2000ms减少到800ms
+          setTimeout(resolve, 800) // 从2000ms减少到800ms
         })
       }))
     }
 
-    // 🚀 快速等待代码高亮完成
+    // 快速等待代码高亮完成
     await this.waitForCodeHighlighting(messageElement)
 
-    // 🚀 减少最终等待时间
-    await new Promise(resolve => setTimeout(resolve, 50)) // 🚀 从200ms减少到50ms
+    // 减少最终等待时间
+    await new Promise(resolve => setTimeout(resolve, 50)) // 从200ms减少到50ms
   }
 
-  // 🔧 新增：等待代码高亮完成 🚀 快速版本
+  // 新增：等待代码高亮完成 快速版本
   async waitForCodeHighlighting(messageElement) {
     const codeBlocks = messageElement.querySelectorAll('pre, code')
     if (codeBlocks.length === 0) return
 
-    // 🚀 快速等待代码高亮加载
-    await new Promise(resolve => setTimeout(resolve, 100)) // 🚀 从300ms减少到100ms
+    // 快速等待代码高亮加载
+    await new Promise(resolve => setTimeout(resolve, 100)) // 从300ms减少到100ms
   }
 
-  // 🔧 新增：执行稳定滚动到消息（一次到位）🚀 快速滚动版本
+  // 新增：执行稳定滚动到消息（一次到位）快速滚动版本
   async executeStableScrollToMessage(chatId, messageId, options = {}) {
-    console.log(`🎯 [DOMSync] 🚀 Fast scroll to message ${messageId}`)
+    console.log(`[DOMSync] Fast scroll to message ${messageId}`)
 
     // 1. 确保目标元素存在并稳定
     const messageElement = document.querySelector(`[data-message-id="${messageId}"]`)
@@ -1890,39 +1890,39 @@ class DOMSynchronizer {
       options
     )
 
-    // 4. 🚀 使用instant滚动实现最快速度
-    const scrollBehavior = options.behavior === 'smooth' ? 'smooth' : 'instant' // 🚀 默认使用instant
+    // 4. 使用instant滚动实现最快速度
+    const scrollBehavior = options.behavior === 'smooth' ? 'smooth' : 'instant' // 默认使用instant
     scrollContainer.scrollTo({
       top: targetPosition,
       behavior: scrollBehavior
     })
 
-    // 5. 🚀 快速等待滚动完成
+    // 5. 快速等待滚动完成
     const scrollComplete = await this.waitForScrollCompletion(
       scrollContainer,
       targetPosition,
-      { timeout: 1000, tolerance: 15 } // 🚀 从3000ms减少到1000ms，容差增加到15px
+      { timeout: 1000, tolerance: 15 } // 从3000ms减少到1000ms，容差增加到15px
     )
 
     if (!scrollComplete) {
-      console.warn(`⚠️ [DOMSync] Fast scroll timeout for message ${messageId}`)
+      console.warn(`WARNING: [DOMSync] Fast scroll timeout for message ${messageId}`)
     }
 
     // 6. 最终验证元素可见性
     const isVisible = this.isElementInViewport(messageElement, scrollContainer)
 
-    console.log(`${isVisible ? '✅' : '⚠️'} [DOMSync] 🚀 Fast scroll result for message ${messageId}: visible=${isVisible}`)
+    console.log(`${isVisible ? '' : '⚠️'} [DOMSync] Fast scroll result for message ${messageId}: visible=${isVisible}`)
 
     return {
       success: isVisible,
       targetPosition,
       finalPosition: scrollContainer.scrollTop,
       elementVisible: isVisible,
-      speed: 'instant' // 🚀 标记为高速模式
+      speed: 'instant' // 标记为高速模式
     }
   }
 
-  // 🔧 新增：计算精确滚动位置
+  // 新增：计算精确滚动位置
   calculatePreciseScrollPosition(messageElement, scrollContainer, options) {
     const messageRect = messageElement.getBoundingClientRect()
     const containerRect = scrollContainer.getBoundingClientRect()
@@ -1961,7 +1961,7 @@ class DOMSynchronizer {
 }
 
 /**
- * 🎯 Perfect Navigation Controller - Main Class
+ * Perfect Navigation Controller - Main Class
  */
 export class PerfectNavigationController {
   constructor() {
@@ -1984,17 +1984,17 @@ export class PerfectNavigationController {
       navigationHistory: []
     }
 
-    console.log('🎯 [PerfectNavigation] Controller initialized')
+    console.log('[PerfectNavigation] Controller initialized')
   }
 
   /**
-   * 🎯 Master navigation method - single entry point for all message jumps
+   * Master navigation method - single entry point for all message jumps
    */
   async navigateToMessage(params) {
     const navigationId = this.generateNavigationId()
 
     try {
-      console.log(`🎯 [PerfectNavigation] Starting navigation ${navigationId}:`, params)
+      console.log(`[PerfectNavigation] Starting navigation ${navigationId}:`, params)
 
       // Step 1: Validate and normalize parameters
       const normalizedParams = await this.validateAndNormalize(params)
@@ -2015,7 +2015,7 @@ export class PerfectNavigationController {
       return this.executePerfectNavigation(navigationId, normalizedParams)
 
     } catch (error) {
-      console.error(`❌ [PerfectNavigation] Navigation ${navigationId} failed:`, error)
+      console.error(`ERROR: [PerfectNavigation] Navigation ${navigationId} failed:`, error)
       this.updateAnalytics(false, Date.now())
       return {
         success: false,
@@ -2032,11 +2032,11 @@ export class PerfectNavigationController {
       // Mark navigation as active
       this.activeNavigations.set(params.messageId, { navigationId, pipeline, params })
 
-      // 🎯 Pipeline Stage 1: Chat Readiness
+      // Pipeline Stage 1: Chat Readiness
       const chatReadiness = await this.chatStateManager.ensureChatReady(params.chatId)
       pipeline.addStage('chat_readiness', chatReadiness)
 
-      // 🎯 Pipeline Stage 2: 增强的消息上下文预加载
+      // Pipeline Stage 2: 增强的消息上下文预加载
       const contextResult = await this.messageContextLoader.loadMessageWithContext(
         params.chatId,
         params.messageId,
@@ -2049,7 +2049,7 @@ export class PerfectNavigationController {
       pipeline.addStage('enhanced_message_context', contextResult)
 
       if (!contextResult.success) {
-        console.warn(`⚠️ [PerfectNav] Enhanced context loading failed:`, contextResult)
+        console.warn(`WARNING: [PerfectNav] Enhanced context loading failed:`, contextResult)
 
         // 回退到原有的加载方式
         console.log(`🔄 [PerfectNav] Falling back to legacy context loading`)
@@ -2061,11 +2061,11 @@ export class PerfectNavigationController {
         }
       }
 
-      // 🎯 Pipeline Stage 3: DOM完全稳定性确保（增强版）
+      // Pipeline Stage 3: DOM完全稳定性确保（增强版）
       await this.domSynchronizer.waitForCompleteStability(params.messageId)
       pipeline.addStage('complete_dom_stability', { success: true })
 
-      // 🎯 Pipeline Stage 4: 精确滚动执行（一次到位）
+      // Pipeline Stage 4: 精确滚动执行（一次到位）
       const scrollResult = await this.domSynchronizer.executeStableScrollToMessage(
         params.chatId,
         params.messageId,
@@ -2082,11 +2082,11 @@ export class PerfectNavigationController {
         return pipeline.fail('Scroll execution failed')
       }
 
-      // 🎯 Pipeline Stage 5: Visual Feedback
+      // Pipeline Stage 5: Visual Feedback
       const highlightResult = await this.applyPerfectHighlighting(params)
       pipeline.addStage('highlighting', highlightResult)
 
-      // 🎯 Pipeline Stage 6: Verification & Analytics
+      // Pipeline Stage 6: Verification & Analytics
       const verification = await this.verifyNavigationSuccess(params)
       pipeline.addStage('verification', verification)
 
@@ -2121,11 +2121,11 @@ export class PerfectNavigationController {
         this.applySearchTermHighlighting(messageElement, params.searchQuery)
       }
 
-      // 🚀 Apply Blue Pulse Beam Effect - 蓝色脉冲光束效果
+      // Apply Blue Pulse Beam Effect - 蓝色脉冲光束效果
       this.applyBluePulseBeamHighlight(messageElement, {
-        fastMode: true, // 🚀 快速模式
-        pulseSpeed: params.pulseSpeed || 'fast', // 🚀 脉冲速度
-        duration: params.highlightDuration || 2000, // 🚀 从3000ms减少到2000ms
+        fastMode: true, // 快速模式
+        pulseSpeed: params.pulseSpeed || 'fast', // 脉冲速度
+        duration: params.highlightDuration || 2000, // 从3000ms减少到2000ms
         intensity: params.intensity || 'high', // 光束强度
         beamEffect: params.beamEffect !== false // 光束特效
       })
@@ -2133,7 +2133,7 @@ export class PerfectNavigationController {
       return {
         success: true,
         hasSearchHighlight: !!params.searchQuery,
-        effectType: 'blue_pulse_beam', // 🚀 标记为蓝色脉冲光束
+        effectType: 'blue_pulse_beam', // 标记为蓝色脉冲光束
         speed: 'fast'
       }
     } catch (error) {
@@ -2141,22 +2141,22 @@ export class PerfectNavigationController {
     }
   }
 
-  // 🚀 增强：蓝色脉冲光束高亮效果 - 更明显的特效
+  // 增强：蓝色脉冲光束高亮效果 - 更明显的特效
   applyBluePulseBeamHighlight(messageElement, options = {}) {
     // 移除旧的高亮类
     messageElement.classList.remove('message-navigation-highlight', 'message-navigation-pulse')
 
-    console.log(`🔵 [BlueBeam] 🚀 Applying enhanced border rotation effect to message ${messageElement.dataset.messageId}`)
+    console.log(`🔵 [BlueBeam] Applying enhanced border rotation effect to message ${messageElement.dataset.messageId}`)
 
-    // 🚀 添加蓝色脉冲光束类（边框转动）
+    // 添加蓝色脉冲光束类（边框转动）
     messageElement.classList.add('blue-pulse-beam-highlight')
 
-    // 🚀 根据速度添加对应的动画类
+    // 根据速度添加对应的动画类
     const speedClass = options.pulseSpeed === 'fast' ? 'blue-beam-fast' :
       options.pulseSpeed === 'ultra' ? 'blue-beam-ultra' : 'blue-beam-normal'
     messageElement.classList.add(speedClass)
 
-    // 🚀 添加强度类（仅影响边框颜色）
+    // 添加强度类（仅影响边框颜色）
     const intensityClass = options.intensity === 'high' ? 'blue-beam-intense' :
       options.intensity === 'low' ? 'blue-beam-soft' : 'blue-beam-medium'
     messageElement.classList.add(intensityClass)
@@ -2172,17 +2172,17 @@ export class PerfectNavigationController {
     messageElement.style.background = 'linear-gradient(135deg, rgba(0, 122, 255, 0.08) 0%, rgba(64, 156, 255, 0.05) 100%)'
     messageElement.style.boxShadow = '0 0 30px rgba(0, 122, 255, 0.2), 0 8px 32px rgba(0, 122, 255, 0.15)'
 
-    // 🚀 增强持续时间（从2秒增加到6秒）
+    // 增强持续时间（从2秒增加到6秒）
     const duration = options.duration || 6000
 
     setTimeout(() => {
       this.removeBlueBeamHighlight(messageElement, originalBackground)
     }, duration)
 
-    console.log(`🔵 [BlueBeam] ✅ Enhanced border rotation applied with ${speedClass}, ${intensityClass}, duration: ${duration}ms`)
+    console.log(`🔵 [BlueBeam] Enhanced border rotation applied with ${speedClass}, ${intensityClass}, duration: ${duration}ms`)
   }
 
-  // 🚀 增强：移除蓝色光束高亮
+  // 增强：移除蓝色光束高亮
   removeBlueBeamHighlight(messageElement, originalBackground = '') {
     messageElement.classList.remove(
       'blue-pulse-beam-highlight',
@@ -2201,11 +2201,11 @@ export class PerfectNavigationController {
     messageElement.style.background = originalBackground
     messageElement.style.boxShadow = ''
 
-    console.log(`🔵 [BlueBeam] 🚀 Enhanced border rotation removed from message ${messageElement.dataset.messageId}`)
+    console.log(`🔵 [BlueBeam] Enhanced border rotation removed from message ${messageElement.dataset.messageId}`)
   }
 
   applyNavigationHighlight(messageElement, options) {
-    // 🚀 保留原有方法作为fallback，默认使用蓝色脉冲光束
+    // 保留原有方法作为fallback，默认使用蓝色脉冲光束
     if (options.effectType === 'classic') {
       // Add navigation highlight class
       messageElement.classList.add('message-navigation-highlight')
@@ -2215,7 +2215,7 @@ export class PerfectNavigationController {
         messageElement.classList.add('message-navigation-pulse')
         setTimeout(() => {
           messageElement.classList.remove('message-navigation-pulse')
-        }, 600) // 🚀 从1000ms减少到600ms
+        }, 600) // 从1000ms减少到600ms
       }
 
       // Add visual indicator
@@ -2228,7 +2228,7 @@ export class PerfectNavigationController {
         this.removeHighlightForMessage(messageElement)
       }, options.duration)
     } else {
-      // 🚀 默认使用蓝色脉冲光束效果
+      // 默认使用蓝色脉冲光束效果
       this.applyBluePulseBeamHighlight(messageElement, {
         fastMode: true,
         pulseSpeed: 'fast',
@@ -2270,7 +2270,7 @@ export class PerfectNavigationController {
     indicator.className = 'navigation-indicator'
     indicator.innerHTML = `
       <div class="indicator-pulse"></div>
-      <div class="indicator-label">🎯 Located</div>
+      <div class="indicator-label">Located</div>
     `
 
     messageElement.style.position = 'relative'
@@ -2334,7 +2334,7 @@ export class PerfectNavigationController {
 
     verification.overallSuccess = verification.messageInDOM && verification.messageVisible
 
-    console.log(`🔍 [PerfectNavigation] Verification result:`, verification)
+    console.log(`[PerfectNavigation] Verification result:`, verification)
 
     return verification
   }
@@ -2438,7 +2438,7 @@ export class PerfectNavigationController {
   registerScrollContainer(chatId, container) {
     if (container) {
       this.scrollContainerRegistry.set(String(chatId), container)
-      console.log(`✅ [PerfectNavigation] Registered scroll container for chat ${chatId}`)
+      console.log(`[PerfectNavigation] Registered scroll container for chat ${chatId}`)
     }
   }
 
@@ -2455,10 +2455,10 @@ export class PerfectNavigationController {
   }
 }
 
-// 🌟 Global Instance
+// Global Instance
 export const perfectNavigationController = new PerfectNavigationController()
 
-// 🎯 Vue Integration Helper
+// Vue Integration Helper
 export function usePerfectNavigation() {
   return {
     navigateToMessage: (params) => perfectNavigationController.navigateToMessage(params),
@@ -2472,6 +2472,6 @@ export function usePerfectNavigation() {
 // Make globally available
 window.perfectNavigationController = perfectNavigationController
 
-console.log('🎯 Perfect Navigation Controller loaded - Ready for 95%+ success rate!')
+console.log('Perfect Navigation Controller loaded - Ready for 95%+ success rate!')
 
 export default perfectNavigationController 

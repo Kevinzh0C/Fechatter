@@ -126,7 +126,7 @@ impl WorkflowEngine {
         match execution_result {
             Ok(result) => match result {
                 Ok(final_output) => {
-                    tracing::info!("✅ Workflow completed: {}", workflow.name);
+                    tracing::info!("Workflow completed: {}", workflow.name);
                     Ok(WorkflowResult {
                         workflow_name: workflow.name.clone(),
                         success: true,
@@ -138,7 +138,7 @@ impl WorkflowEngine {
                     })
                 },
                 Err(error) => {
-                    tracing::error!("❌ Workflow failed: {} - {}", workflow.name, error);
+                    tracing::error!("ERROR: Workflow failed: {} - {}", workflow.name, error);
                     Ok(WorkflowResult {
                         workflow_name: workflow.name.clone(),
                         success: false,
@@ -185,7 +185,7 @@ impl WorkflowEngine {
             match result {
                 Ok(mut step_result) => {
                     step_result.execution_time_ms = execution_time;
-                    tracing::debug!("✅ Step completed: {}", step.name());
+                    tracing::debug!("Step completed: {}", step.name());
                     
                     // Update final output with this step's output
                     final_output = step_result.output.clone();
@@ -201,7 +201,7 @@ impl WorkflowEngine {
                         execution_time_ms: execution_time,
                     };
                     
-                    tracing::error!("❌ Step failed: {} - {}", step.name(), error);
+                    tracing::error!("ERROR: Step failed: {} - {}", step.name(), error);
                     step_results.push(step_result);
                     *steps_executed += 1;
                     

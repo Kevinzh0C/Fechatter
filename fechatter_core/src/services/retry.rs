@@ -32,10 +32,10 @@ pub struct ExponentialBackoffRetry {
 impl Default for ExponentialBackoffRetry {
   fn default() -> Self {
     Self {
-      base_delay_ms: 1000, // 1秒
+      base_delay_ms: 1000, // 1 second
       max_retries: 3,
       backoff_multiplier: 2.0,
-      max_delay_ms: 30000, // 30秒
+      max_delay_ms: 30000, // 30 seconds
     }
   }
 }
@@ -70,19 +70,19 @@ impl ExponentialBackoffRetry {
       match operation().await {
         Ok(result) => return Ok(result),
         Err(error) => {
-          // 如果错误不可重试，立即返回
+          // If error is not retryable, return immediately
           if !error.is_retryable() {
             return Err(error);
           }
 
           last_error = Some(error.clone());
 
-          // 如果这是最后一次尝试，返回错误
+          // If this is the last attempt, return error
           if attempt == self.max_retries {
             return Err(error);
           }
 
-          // 计算延迟并等待
+          // Calculate delay and wait
           let delay = self.calculate_delay(attempt);
           tracing::warn!(
             "Publish attempt {} failed: {}. Retrying in {:?}",
@@ -95,7 +95,7 @@ impl ExponentialBackoffRetry {
       }
     }
 
-    // 理论上不应该到达这里，但为了安全起见
+    // Should not reach here theoretically, but for safety
     Err(last_error.unwrap_or_else(|| PublishError::Network("Max retries exceeded".to_string())))
   }
 }
@@ -200,13 +200,13 @@ mod tests {
       .await;
 
     assert!(result.is_err());
-    // 序列化错误不重试，所以只应该调用一次
+    // Serialization errors are not retried, so should only be called once
     assert_eq!(counter.load(Ordering::SeqCst), 1);
   }
 
   #[tokio::test]
   async fn test_max_retries_exceeded() {
-    let retry_strategy = ExponentialBackoffRetry::new(50, 2); // 快速测试
+    let retry_strategy = ExponentialBackoffRetry::new(50, 2); // Fast test
     let counter = Arc::new(AtomicU32::new(0));
     let counter_clone = counter.clone();
 
@@ -221,7 +221,7 @@ mod tests {
       .await;
 
     assert!(result.is_err());
-    // 应该尝试 max_retries + 1 次 (初始尝试 + 2次重试)
+    // Should attempt max_retries + 1 times (initial attempt + 2 retries)
     assert_eq!(counter.load(Ordering::SeqCst), 3);
   }
 

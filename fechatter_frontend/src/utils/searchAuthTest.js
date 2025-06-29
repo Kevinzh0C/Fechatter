@@ -17,7 +17,7 @@ export async function testSearchAuth() {
     
     // Get current auth state
     if (import.meta.env.DEV) {
-      console.log('\n📊 Current Auth State:');
+      console.log('\nCurrent Auth State:');
     if (import.meta.env.DEV) {
       console.log('- isAuthenticated:', authStore.isAuthenticated);
     if (import.meta.env.DEV) {
@@ -52,12 +52,12 @@ export async function testSearchAuth() {
     
     // Test consistency
     if (import.meta.env.DEV) {
-      console.log('\n🔧 Testing Auth State Consistency:');
+      console.log('\nTesting Auth State Consistency:');
     await authStore.ensureAuthStateConsistency();
     
     // Re-check after consistency
     if (import.meta.env.DEV) {
-      console.log('\n📊 Auth State After Consistency Check:');
+      console.log('\nAuth State After Consistency Check:');
     if (import.meta.env.DEV) {
       console.log('- isAuthenticated:', authStore.isAuthenticated);
     if (import.meta.env.DEV) {
@@ -66,19 +66,19 @@ export async function testSearchAuth() {
     
     // Simulate search button click logic
     if (import.meta.env.DEV) {
-      console.log('\n🔍 Simulating Search Button Click:');
+      console.log('\nSimulating Search Button Click:');
     if (!authStore.isAuthenticated && !authStore.token) {
       if (import.meta.env.DEV) {
-        console.log('❌ Would redirect to login');
+        console.log('ERROR: Would redirect to login');
       }
     } else {
       if (import.meta.env.DEV) {
-        console.log('✅ Would open search modal');
+        console.log('Would open search modal');
       }
     
     // Test API call
     if (import.meta.env.DEV) {
-      console.log('\n📡 Testing API Call with Auth:');
+      console.log('\nSUBSCRIPTION: Testing API Call with Auth:');
     try {
       const { SearchService } = await import('@/services/api');
       const response = await SearchService.search({
@@ -87,25 +87,25 @@ export async function testSearchAuth() {
         limit: 1
       });
       if (import.meta.env.DEV) {
-        console.log('✅ API call successful');
+        console.log('API call successful');
       }
     } catch (error) {
       if (error.response?.status === 401) {
         if (import.meta.env.DEV) {
-          console.log('❌ API call failed with 401');
+          console.log('ERROR: API call failed with 401');
         }
       } else {
         if (import.meta.env.DEV) {
-          console.log('❌ API call failed:', error.message);
+          console.log('ERROR: API call failed:', error.message);
         }
     
     if (import.meta.env.DEV) {
-      console.log('\n✅ Test completed');
+      console.log('\nTest completed');
     }
     
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('❌ Test failed:', error);
+      console.error('ERROR: Test failed:', error);
     }
 
 // Add to window for easy access

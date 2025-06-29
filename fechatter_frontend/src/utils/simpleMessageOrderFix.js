@@ -6,7 +6,7 @@
 class SimpleMessageOrderFix {
   constructor() {
     if (import.meta.env.DEV) {
-      console.log('🔧 Simple Message Order Fix initialized');
+      console.log('Simple Message Order Fix initialized');
     }
 
   /**
@@ -15,7 +15,7 @@ class SimpleMessageOrderFix {
    */
   fixNow() {
     if (import.meta.env.DEV) {
-      console.log('\n🔧 FIXING MESSAGE ORDER NOW');
+      console.log('\nFIXING MESSAGE ORDER NOW');
     if (import.meta.env.DEV) {
       console.log('===========================');
     }
@@ -23,19 +23,19 @@ class SimpleMessageOrderFix {
     const chatStore = this.getChatStore();
     if (!chatStore) {
       if (import.meta.env.DEV) {
-        console.log('❌ Chat store not found');
+        console.log('ERROR: Chat store not found');
       return false;
     }
 
     const messages = chatStore.messages || [];
     if (messages.length === 0) {
       if (import.meta.env.DEV) {
-        console.log('⚠️ No messages to fix');
+        console.log('WARNING: No messages to fix');
       return false;
     }
 
     if (import.meta.env.DEV) {
-      console.log(`🔧 Current messages: ${messages.length}`);
+      console.log(`Current messages: ${messages.length}`);
     if (import.meta.env.DEV) {
       console.log(`   First: ${this.formatTime(messages[0].created_at)} - "${messages[0].content?.substring(0, 30)}..."`);
     if (import.meta.env.DEV) {
@@ -50,7 +50,7 @@ class SimpleMessageOrderFix {
     });
 
     if (import.meta.env.DEV) {
-      console.log(`✅ Fixed messages:`);
+      console.log(`Fixed messages:`);
     if (import.meta.env.DEV) {
       console.log(`   First: ${this.formatTime(messages[0].created_at)} - "${messages[0].content?.substring(0, 30)}..."`);
     if (import.meta.env.DEV) {
@@ -61,7 +61,7 @@ class SimpleMessageOrderFix {
     chatStore.messages = [...messages];
 
     if (import.meta.env.DEV) {
-      console.log('✅ Message order fixed! Messages now display oldest→newest');
+      console.log('Message order fixed! Messages now display oldest→newest');
     return true;
   }
 
@@ -71,7 +71,7 @@ class SimpleMessageOrderFix {
    */
   fixAllCaches() {
     if (import.meta.env.DEV) {
-      console.log('\n🔧 FIXING ALL MESSAGE CACHES');
+      console.log('\nFIXING ALL MESSAGE CACHES');
     if (import.meta.env.DEV) {
       console.log('=============================');
     }
@@ -79,7 +79,7 @@ class SimpleMessageOrderFix {
     const chatStore = this.getChatStore();
     if (!chatStore) {
       if (import.meta.env.DEV) {
-        console.log('❌ Chat store not found');
+        console.log('ERROR: Chat store not found');
       return false;
     }
 
@@ -96,7 +96,7 @@ class SimpleMessageOrderFix {
       const cache = messageCache[chatId];
       if (cache && cache.messages && cache.messages.length > 0) {
         if (import.meta.env.DEV) {
-          console.log(`🔧 Fixing cache for chat ${chatId} (${cache.messages.length} messages)`);
+          console.log(`Fixing cache for chat ${chatId} (${cache.messages.length} messages)`);
         }
 
         cache.messages.sort((a, b) => {
@@ -110,7 +110,7 @@ class SimpleMessageOrderFix {
     });
 
     if (import.meta.env.DEV) {
-      console.log(`✅ Fixed ${fixCount} message collections`);
+      console.log(`Fixed ${fixCount} message collections`);
     return fixCount > 0;
   }
 
@@ -120,7 +120,7 @@ class SimpleMessageOrderFix {
    */
   verify() {
     if (import.meta.env.DEV) {
-      console.log('\n🔍 VERIFYING MESSAGE ORDER');
+      console.log('\nVERIFYING MESSAGE ORDER');
     if (import.meta.env.DEV) {
       console.log('==========================');
     }
@@ -128,14 +128,14 @@ class SimpleMessageOrderFix {
     const chatStore = this.getChatStore();
     if (!chatStore) {
       if (import.meta.env.DEV) {
-        console.log('❌ Chat store not found');
+        console.log('ERROR: Chat store not found');
       return false;
     }
 
     const messages = chatStore.messages || [];
     if (messages.length < 2) {
       if (import.meta.env.DEV) {
-        console.log('⚠️ Not enough messages to verify order');
+        console.log('WARNING: Not enough messages to verify order');
       return true;
     }
 
@@ -150,7 +150,7 @@ class SimpleMessageOrderFix {
         isCorrect = false;
         violations++;
         if (import.meta.env.DEV) {
-          console.log(`❌ Order violation at position ${i}:`);
+          console.log(`ERROR: Order violation at position ${i}:`);
         if (import.meta.env.DEV) {
           console.log(`   Previous: ${this.formatTime(messages[i - 1].created_at)}`);
         if (import.meta.env.DEV) {
@@ -159,7 +159,7 @@ class SimpleMessageOrderFix {
 
     if (isCorrect) {
       if (import.meta.env.DEV) {
-        console.log('✅ Message order is CORRECT (oldest→newest)');
+        console.log('Message order is CORRECT (oldest→newest)');
       if (import.meta.env.DEV) {
         console.log(`   First: ${this.formatTime(messages[0].created_at)}`);
       if (import.meta.env.DEV) {
@@ -167,7 +167,7 @@ class SimpleMessageOrderFix {
       }
     } else {
       if (import.meta.env.DEV) {
-        console.log(`❌ Message order is WRONG (${violations} violations)`);
+        console.log(`ERROR: Message order is WRONG (${violations} violations)`);
       if (import.meta.env.DEV) {
         console.log('   Expected: oldest→newest');
       if (import.meta.env.DEV) {
@@ -211,7 +211,7 @@ if (typeof window !== 'undefined') {
     verify: () => simpleMessageOrderFix.verify(),
     run: () => {
       if (import.meta.env.DEV) {
-        console.log('🔧 Running simple message order fix...');
+        console.log('Running simple message order fix...');
       const result = simpleMessageOrderFix.fixAllCaches();
       simpleMessageOrderFix.verify();
       return result;
@@ -219,7 +219,7 @@ if (typeof window !== 'undefined') {
   };
 
   if (import.meta.env.DEV) {
-    console.log('🔧 Simple Message Order Fix loaded');
+    console.log('Simple Message Order Fix loaded');
   if (import.meta.env.DEV) {
     console.log('   Commands:');
   if (import.meta.env.DEV) {

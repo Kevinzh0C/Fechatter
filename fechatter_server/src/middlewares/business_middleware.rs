@@ -27,13 +27,13 @@ pub async fn validate_state(
   req: Request<Body>,
   next: Next,
 ) -> Response {
-  debug!("🔧 [STATE_VALIDATION] Validating application state");
+  debug!("[STATE_VALIDATION] Validating application state");
   
   // Verify critical components exist
   let _pool = state.pool(); // This returns Arc<PgPool>
   let _token_manager = state.token_manager(); // This returns Arc<TokenManager>
   
-  debug!("🔧 [STATE_VALIDATION] ✅ AppState validated - all components available");
+  debug!("[STATE_VALIDATION] AppState validated - all components available");
   next.run(req).await
 }
 
@@ -55,9 +55,9 @@ pub async fn create_request_context(
   if let Some(auth_user) = auth_user_clone {
     let context = RequestContext::new(auth_user.clone());
     req.extensions_mut().insert(context);
-    debug!("📋 [REQUEST_CONTEXT] ✅ RequestContext created for user: {}", auth_user.id);
+    debug!("📋 [REQUEST_CONTEXT] RequestContext created for user: {}", auth_user.id);
   } else {
-    debug!("📋 [REQUEST_CONTEXT] ⚠️ No AuthUser found, RequestContext not created");
+    debug!("📋 [REQUEST_CONTEXT] WARNING: No AuthUser found, RequestContext not created");
   }
   
   next.run(req).await
@@ -74,7 +74,7 @@ pub async fn audit_business_operation(
   let uri = req.uri().clone();
   let start_time = Instant::now();
   
-  debug!("📊 [AUDIT] Recording business operation: {} {}", method, uri.path());
+  debug!("[AUDIT] Recording business operation: {} {}", method, uri.path());
   
   // Check if this operation should be audited
   if should_audit_business_operation(&method, uri.path()) {
@@ -140,7 +140,7 @@ pub async fn enforce_permission(
     ).into_response();
   }
   
-  debug!("🛡️ [PERMISSION] ✅ Permission granted for user: {}", context.user.id);
+  debug!("🛡️ [PERMISSION] Permission granted for user: {}", context.user.id);
   next.run(req).await
 }
 
@@ -185,11 +185,11 @@ pub async fn validate_chat_access(
   let user_id: i64 = auth_user.id.into();
   match verify_chat_membership(&state, user_id, chat_id).await {
     Ok(true) => {
-      debug!("🔒 [CHAT_ACCESS] ✅ Chat access granted for user {} in chat {}", user_id, chat_id);
+      debug!("🔒 [CHAT_ACCESS] Chat access granted for user {} in chat {}", user_id, chat_id);
       next.run(req).await
     }
     Ok(false) => {
-      warn!("🔒 [CHAT_ACCESS] ❌ User {} not a member of chat {}", user_id, chat_id);
+      warn!("🔒 [CHAT_ACCESS] ERROR: User {} not a member of chat {}", user_id, chat_id);
       (
         StatusCode::FORBIDDEN,
         format!("Access denied to chat {}", chat_id),
@@ -214,7 +214,7 @@ pub async fn validate_workspace_access(
   debug!("🏢 [WORKSPACE] Validating workspace access (simplified)");
   
   if req.extensions().get::<fechatter_core::AuthUser>().is_some() {
-    debug!("🏢 [WORKSPACE] ✅ AuthUser found, proceeding");
+    debug!("🏢 [WORKSPACE] AuthUser found, proceeding");
     next.run(req).await
   } else {
     warn!("🏢 [WORKSPACE] No authenticated user found");
@@ -296,7 +296,7 @@ async fn log_business_operation(
   client_ip: String,
 ) {
   info!(
-    "📊 [BUSINESS_AUDIT] {} {} -> {} ({}ms) from {}",
+    "[BUSINESS_AUDIT] {} {} -> {} ({}ms) from {}",
     method,
     uri.path(),
     status.as_u16(),

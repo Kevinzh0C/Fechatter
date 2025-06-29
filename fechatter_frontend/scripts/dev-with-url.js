@@ -3,7 +3,7 @@
 import { spawn } from 'child_process';
 import chalk from 'chalk';
 
-console.log(chalk.cyan('🚀 启动 Fechatter 开发服务器...'));
+console.log(chalk.cyan('启动 Fechatter 开发服务器...'));
 console.log(chalk.gray('📋 复制配置文件中...'));
 
 // 先运行配置复制
@@ -14,8 +14,8 @@ const copyConfigs = spawn('node', ['scripts/copy-configs.js'], {
 
 copyConfigs.on('close', (code) => {
   if (code === 0) {
-    console.log(chalk.green('✅ 配置文件复制完成'));
-    console.log(chalk.cyan('🔧 启动 Vite 开发服务器...'));
+    console.log(chalk.green('配置文件复制完成'));
+    console.log(chalk.cyan('启动 Vite 开发服务器...'));
 
     // 启动Vite服务器
     const vite = spawn('vite', ['--host'], {
@@ -41,8 +41,8 @@ copyConfigs.on('close', (code) => {
         console.log(chalk.cyan('🔗 网络访问地址:'));
         console.log(chalk.white('   ') + chalk.underline.blue('http://192.168.x.x:5173'));
         console.log(chalk.yellow('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
-        console.log(chalk.green('💡 请复制上面的 URL 到浏览器中打开'));
-        console.log(chalk.gray('📝 按 Ctrl+C 停止服务器'));
+        console.log(chalk.green('请复制上面的 URL 到浏览器中打开'));
+        console.log(chalk.gray('按 Ctrl+C 停止服务器'));
         console.log(chalk.yellow('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'));
       } else {
         // 显示其他Vite输出
@@ -61,7 +61,7 @@ copyConfigs.on('close', (code) => {
 
     vite.on('close', (code) => {
       if (code !== 0) {
-        console.log(chalk.red(`❌ Vite 服务器异常退出，代码: ${code}`));
+        console.log(chalk.red(`ERROR: Vite 服务器异常退出，代码: ${code}`));
       } else {
         console.log(chalk.yellow('👋 开发服务器已停止'));
       }
@@ -78,12 +78,12 @@ copyConfigs.on('close', (code) => {
     });
 
   } else {
-    console.log(chalk.red(`❌ 配置复制失败，代码: ${code}`));
+    console.log(chalk.red(`ERROR: 配置复制失败，代码: ${code}`));
     process.exit(1);
   }
 });
 
 copyConfigs.on('error', (err) => {
-  console.log(chalk.red('❌ 启动失败:'), err.message);
+  console.log(chalk.red('ERROR: 启动失败:'), err.message);
   process.exit(1);
 }); 

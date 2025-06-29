@@ -558,7 +558,7 @@ impl GatewayAuditLogger {
             status_code = ?event.status_code,
             response_time_ms = ?event.response_time_ms,
             details = ?event.details,
-            "⚠️ [AUDIT] Security/warning event"
+            "WARNING: [AUDIT] Security/warning event"
           );
         }
         _ => {

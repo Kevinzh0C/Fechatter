@@ -270,7 +270,7 @@ export async function highlightCode(code, language = 'plaintext', options = {}) 
           const btn = block.querySelector('.copy-btn, .copy-btn-floating');
           if (btn) {
             const original = btn.textContent;
-            btn.textContent = '✅';
+            btn.textContent = '';
             setTimeout(() => { btn.textContent = original; }, 2000);
           }
         });

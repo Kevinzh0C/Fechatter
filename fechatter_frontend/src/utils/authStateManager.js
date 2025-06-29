@@ -20,16 +20,16 @@ class AuthStateManager {
     const token = this.getToken();
     const user = this.getUser();
 
-    // 🔧 ENHANCED: More robust authentication check
+    // ENHANCED: More robust authentication check
     // Check multiple conditions for a more reliable auth state
     const hasValidToken = !!token && this.isValidTokenFormat(token);
     const hasValidUser = !!user && typeof user === 'object' && user.id;
 
-    // 🔧 CRITICAL FIX: Enhanced authentication logic - ensure boolean return
+    // CRITICAL FIX: Enhanced authentication logic - ensure boolean return
     // User must have BOTH valid token AND valid user to be authenticated
     const isAuthenticated = Boolean(hasValidToken && hasValidUser);
 
-    // 🔧 DEBUG: Development logging for troubleshooting
+    // DEBUG: Development logging for troubleshooting
     if (import.meta.env.DEV && token) {
       console.log('🔐 [AuthStateManager] Auth state calculation:', {
         hasToken: !!token,
@@ -51,7 +51,7 @@ class AuthStateManager {
       // Derived state - all based on comprehensive checks
       isValid: isAuthenticated,
       needsRefresh: hasValidToken && !hasValidUser,
-      // 🔧 NEW: Additional diagnostic information
+      // NEW: Additional diagnostic information
       tokenValid: hasValidToken,
       userValid: hasValidUser,
       lastChecked: Date.now()
@@ -145,21 +145,21 @@ class AuthStateManager {
   }
 
   /**
-   * Validate token format - 🔧 ENHANCED: More tolerant validation
+   * Validate token format - ENHANCED: More tolerant validation
    */
   isValidTokenFormat(token) {
     if (!token || typeof token !== 'string') return false;
 
-    // 🔧 RELAXED: Accept any non-empty string token with reasonable length
+    // RELAXED: Accept any non-empty string token with reasonable length
     // Don't enforce strict JWT format as it may break with mock tokens or different auth systems
     if (token.length < 10) return false; // Too short to be meaningful
     if (token.length > 2000) return false; // Unreasonably long
 
-    // 🔧 PRACTICAL: Basic token format validation
+    // PRACTICAL: Basic token format validation
     // Accept JWT format (xxx.yyy.zzz) OR other reasonable token formats
     const hasBasicStructure = token.includes('.') || token.length >= 20;
 
-    // 🔧 ENHANCED: Check for obviously invalid tokens
+    // ENHANCED: Check for obviously invalid tokens
     const notObviouslyInvalid =
       !token.includes(' ') && // No spaces
       !token.includes('\n') && // No newlines
@@ -169,7 +169,7 @@ class AuthStateManager {
     const isValid = hasBasicStructure && notObviouslyInvalid;
 
     if (import.meta.env.DEV && !isValid) {
-      console.warn('⚠️ [AuthStateManager] Token validation failed:', {
+      console.warn('WARNING: [AuthStateManager] Token validation failed:', {
         tokenLength: token.length,
         hasBasicStructure,
         notObviouslyInvalid,

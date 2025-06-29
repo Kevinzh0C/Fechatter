@@ -1,5 +1,5 @@
 /**
- * 🎯 Z-Index Manager - 统一层级管理系统
+ * Z-Index Manager - 统一层级管理系统
  * 解决层级穿透、冲突等问题
  * 
  * Design Philosophy:
@@ -10,7 +10,7 @@
  */
 
 export class ZIndexManager {
-  // 🎯 层级定义 - 分层管理，避免冲突
+  // 层级定义 - 分层管理，避免冲突
   static layers = {
     // 基础层 (1-99)
     base: 1,
@@ -42,14 +42,14 @@ export class ZIndexManager {
     emergency: 20000        // 紧急情况
   }
 
-  // 🎯 分配记录 - 跟踪已分配的z-index
+  // 分配记录 - 跟踪已分配的z-index
   static allocations = new Map()
 
-  // 🎯 冲突检测器
+  // 冲突检测器
   static conflicts = new Set()
 
   /**
-   * 🔧 分配Z-Index - 智能分配策略
+   * 分配Z-Index - 智能分配策略
    * @param {string} componentId - 组件唯一标识
    * @param {string} layer - 层级类型
    * @param {number} priority - 优先级调整 (-10 到 +10)
@@ -88,7 +88,7 @@ export class ZIndexManager {
   }
 
   /**
-   * 🔧 释放Z-Index - 清理分配记录
+   * 释放Z-Index - 清理分配记录
    * @param {string} componentId - 组件标识
    */
   static release(componentId) {
@@ -105,7 +105,7 @@ export class ZIndexManager {
   }
 
   /**
-   * 🔧 冲突检测 - 检测同层级冲突
+   * 冲突检测 - 检测同层级冲突
    * @param {string} componentId - 组件标识  
    * @param {number} zIndex - z-index值
    * @param {string} layer - 层级
@@ -130,7 +130,7 @@ export class ZIndexManager {
   }
 
   /**
-   * 🔧 冲突解决 - 智能冲突解决策略
+   * 冲突解决 - 智能冲突解决策略
    * @param {string} componentId - 新组件标识
    * @param {string} layer - 层级
    */
@@ -159,7 +159,7 @@ export class ZIndexManager {
   }
 
   /**
-   * 🔧 获取解决策略 - 根据层级确定冲突解决策略
+   * 获取解决策略 - 根据层级确定冲突解决策略
    * @param {string} layer - 层级
    * @returns {string} 解决策略
    */
@@ -177,7 +177,7 @@ export class ZIndexManager {
   }
 
   /**
-   * 🔧 关闭同层级其他组件
+   * 关闭同层级其他组件
    * @param {string} layer - 层级
    * @param {string} exceptId - 排除的组件ID
    */
@@ -197,7 +197,7 @@ export class ZIndexManager {
   }
 
   /**
-   * 🔧 触发组件关闭 - 通过事件通知组件关闭
+   * 触发组件关闭 - 通过事件通知组件关闭
    * @param {string} componentId - 组件ID
    * @param {object} allocation - 分配信息
    */
@@ -216,7 +216,7 @@ export class ZIndexManager {
   }
 
   /**
-   * 🔧 堆叠管理 - 模态框等需要堆叠的组件
+   * 堆叠管理 - 模态框等需要堆叠的组件
    * @param {string} layer - 层级
    * @param {string} componentId - 组件ID
    */
@@ -237,7 +237,7 @@ export class ZIndexManager {
   }
 
   /**
-   * 🔧 替换策略 - tooltip等瞬时组件
+   * 替换策略 - tooltip等瞬时组件
    * @param {string} layer - 层级
    * @param {string} componentId - 组件ID
    */
@@ -247,7 +247,7 @@ export class ZIndexManager {
   }
 
   /**
-   * 🔧 获取层级信息 - 调试和监控用
+   * 获取层级信息 - 调试和监控用
    * @returns {object} 层级信息
    */
   static getLayerInfo() {
@@ -274,7 +274,7 @@ export class ZIndexManager {
   }
 
   /**
-   * 🔧 紧急重置 - 清除所有分配，恢复默认状态
+   * 紧急重置 - 清除所有分配，恢复默认状态
    */
   static emergencyReset() {
     console.warn('[ZIndexManager] Emergency reset triggered')
@@ -294,12 +294,12 @@ export class ZIndexManager {
   }
 
   /**
-   * 🔧 调试信息 - 开发环境下的详细信息
+   * 调试信息 - 开发环境下的详细信息
    */
   static debugInfo() {
     if (import.meta.env.DEV) {
       const info = this.getLayerInfo()
-      console.group('🎯 ZIndexManager Debug Info')
+      console.group('ZIndexManager Debug Info')
       console.log('Available Layers:', info.layers)
       console.log('Active Allocations:', info.allocations)
       console.log('Conflict Count:', info.conflictCount)
@@ -312,7 +312,7 @@ export class ZIndexManager {
 }
 
 /**
- * 🔧 Vue Composable - 在Vue组件中使用Z-Index管理
+ * Vue Composable - 在Vue组件中使用Z-Index管理
  */
 export function useZIndex() {
   const allocate = (componentId, layer = 'dropdown', priority = 0) => {

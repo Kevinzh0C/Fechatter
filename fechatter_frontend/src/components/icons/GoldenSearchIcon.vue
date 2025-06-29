@@ -1,11 +1,11 @@
 <template>
   <svg class="golden-search-icon" :width="size" :height="size" viewBox="0 0 100 100" fill="none"
     xmlns="http://www.w3.org/2000/svg">
-    <!-- 🔍 主搜索圆环 - 黄金分割比例设计 -->
+    <!-- 主搜索圆环 - 黄金分割比例设计 -->
     <circle cx="38.2" cy="38.2" r="23.6" stroke="currentColor" :stroke-width="strokeWidth" fill="none"
       stroke-linecap="round" />
 
-    <!-- 🔍 搜索手柄 - 黄金分割角度 -->
+    <!-- 搜索手柄 - 黄金分割角度 -->
     <line x1="55.9" y1="55.9" x2="76.4" y2="76.4" stroke="currentColor" :stroke-width="strokeWidth"
       stroke-linecap="round" />
 
@@ -32,7 +32,7 @@ const props = defineProps({
   }
 })
 
-// 🎨 黄金分割比例计算
+// 黄金分割比例计算
 // 主圆直径：47.2 (100 * 0.472, 接近黄金分割比例)
 // 中心点：38.2 (100 * 0.382, 黄金分割点)
 // 半径：23.6 (47.2 / 2)

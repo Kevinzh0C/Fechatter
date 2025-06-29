@@ -1,6 +1,6 @@
 /**
  * Message Display Diagnostics
- * 🔧 Production-grade debugging tools for message display issues
+ * Production-grade debugging tools for message display issues
  */
 
 class MessageDisplayDiagnostics {
@@ -47,11 +47,11 @@ class MessageDisplayDiagnostics {
       const duration = Date.now() - startTime;
       result.duration = duration;
 
-      console.log(`✅ [Diagnostics] Analysis completed in ${duration}ms`);
+      console.log(`[Diagnostics] Analysis completed in ${duration}ms`);
       console.table(result.summary);
 
       if (result.recommendations.length > 0) {
-        console.log(`💡 [Diagnostics] Recommendations:`);
+        console.log(`[Diagnostics] Recommendations:`);
         result.recommendations.forEach((rec, idx) => {
           console.log(`  ${idx + 1}. ${rec}`);
         });
@@ -61,7 +61,7 @@ class MessageDisplayDiagnostics {
       return result;
 
     } catch (error) {
-      console.error(`❌ [Diagnostics] Error during analysis:`, error);
+      console.error(`ERROR: [Diagnostics] Error during analysis:`, error);
       result.error = error.message;
       return result;
     }
@@ -192,7 +192,7 @@ class MessageDisplayDiagnostics {
       'Tracking': checks.guaranteeState.hasContext ?
         `${checks.guaranteeState.currentTracking?.displayedMessages}/${checks.guaranteeState.currentTracking?.expectedMessages} tracked` :
         'No active tracking',
-      'Container': checks.domElements.containerExists ? '✅ Present' : '❌ Missing',
+      'Container': checks.domElements.containerExists ? 'Present' : 'ERROR: Missing',
       'Scroll Position': checks.viewport.error ? 'Error' : `${checks.viewport.scrollPercentage}%`
     };
   }

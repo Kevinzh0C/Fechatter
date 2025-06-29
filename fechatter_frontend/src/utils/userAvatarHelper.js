@@ -17,7 +17,7 @@ export function getUserInitials(name) {
     return '?';
   }
 
-  // 🔧 CRITICAL FIX: Filter out placeholder/invalid names
+  // CRITICAL FIX: Filter out placeholder/invalid names
   const trimmedName = name.trim();
   const invalidNames = [
     '(fullname)', 'fullname', 'undefined', 'null',

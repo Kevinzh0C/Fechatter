@@ -88,7 +88,7 @@ export function useMessageSystem(chatId: number | string) {
    */
   const loadMessages = async (params: { limit?: number; before?: number } = {}) => {
     if (state.loading) {
-      console.warn('⚠️ [useMessageSystem] Already loading messages, ignoring request');
+      console.warn('WARNING: [useMessageSystem] Already loading messages, ignoring request');
       return;
     }
 
@@ -106,7 +106,7 @@ export function useMessageSystem(chatId: number | string) {
 
       // 检查是否是最新的请求（防止过期响应覆盖新数据）
       if (currentRequestId !== loadingRequestId) {
-        console.warn('⚠️ [useMessageSystem] Discarding outdated load response');
+        console.warn('WARNING: [useMessageSystem] Discarding outdated load response');
         return;
       }
 
@@ -129,7 +129,7 @@ export function useMessageSystem(chatId: number | string) {
     } catch (error) {
       // 只有当前请求才报告错误
       if (currentRequestId === loadingRequestId) {
-        console.error('❌ [useMessageSystem] Load messages failed:', error);
+        console.error('ERROR: [useMessageSystem] Load messages failed:', error);
         throw error;
       }
     } finally {
@@ -162,7 +162,7 @@ export function useMessageSystem(chatId: number | string) {
   const sendMessage = async (messageData: SendMessageRequest): Promise<ChatMessage | null> => {
     // 防止重复发送 - 使用返回而非抛出错误
     if (state.sending) {
-      console.warn('⚠️ [useMessageSystem] Message already being sent, ignoring duplicate request');
+      console.warn('WARNING: [useMessageSystem] Message already being sent, ignoring duplicate request');
       return null;
     }
 
@@ -179,7 +179,7 @@ export function useMessageSystem(chatId: number | string) {
 
       return sentMessage;
     } catch (error) {
-      console.error('❌ [useMessageSystem] Send message failed:', error);
+      console.error('ERROR: [useMessageSystem] Send message failed:', error);
       throw error;
     } finally {
       state.sending = false;
@@ -280,7 +280,7 @@ export function useMessageSystem(chatId: number | string) {
           }
         }
       } catch (error) {
-        console.error('❌ [useMessageSystem] File send failed:', error);
+        console.error('ERROR: [useMessageSystem] File send failed:', error);
         const index = state.messages.findIndex(m => m.id === tempMessage.id);
         if (index !== -1) {
           state.messages[index].status = 'failed';
@@ -330,7 +330,7 @@ export function useMessageSystem(chatId: number | string) {
 
       cancelEditMessage();
     } catch (error) {
-      console.error('❌ [useMessageSystem] Edit message failed:', error);
+      console.error('ERROR: [useMessageSystem] Edit message failed:', error);
       throw error;
     }
   };
@@ -352,7 +352,7 @@ export function useMessageSystem(chatId: number | string) {
         state.messages.splice(index, 1);
       }
     } catch (error) {
-      console.error('❌ [useMessageSystem] Delete message failed:', error);
+      console.error('ERROR: [useMessageSystem] Delete message failed:', error);
       throw error;
     }
   };
@@ -375,7 +375,7 @@ export function useMessageSystem(chatId: number | string) {
         }
       }
     } catch (error) {
-      console.warn('⚠️ [useMessageSystem] Update unread count failed:', error);
+      console.warn('WARNING: [useMessageSystem] Update unread count failed:', error);
       // 可以考虑触发错误恢复机制或用户通知
     }
   };
@@ -390,7 +390,7 @@ export function useMessageSystem(chatId: number | string) {
         state.unreadCount = 0;
       }
     } catch (error) {
-      console.warn('⚠️ [useMessageSystem] Mark as read failed:', error);
+      console.warn('WARNING: [useMessageSystem] Mark as read failed:', error);
     }
   };
 
@@ -402,7 +402,7 @@ export function useMessageSystem(chatId: number | string) {
       await ChatService.markMessagesAsRead(numericChatId.value, messageIds);
       state.unreadCount = Math.max(0, state.unreadCount - messageIds.length);
     } catch (error) {
-      console.warn('⚠️ [useMessageSystem] Batch mark as read failed:', error);
+      console.warn('WARNING: [useMessageSystem] Batch mark as read failed:', error);
     }
   };
 
@@ -431,7 +431,7 @@ export function useMessageSystem(chatId: number | string) {
       state.searchResults.hits = results.hits;
       state.searchResults.total = results.total;
     } catch (error) {
-      console.error('❌ [useMessageSystem] Search messages failed:', error);
+      console.error('ERROR: [useMessageSystem] Search messages failed:', error);
       state.searchResults.hits = [];
       state.searchResults.total = 0;
     } finally {
@@ -465,7 +465,7 @@ export function useMessageSystem(chatId: number | string) {
         stopTyping();
       }, 3000);
     } catch (error) {
-      console.warn('⚠️ [useMessageSystem] Start typing failed:', error);
+      console.warn('WARNING: [useMessageSystem] Start typing failed:', error);
     }
   };
 
@@ -480,7 +480,7 @@ export function useMessageSystem(chatId: number | string) {
       }
       await ChatService.stopTyping(numericChatId.value);
     } catch (error) {
-      console.warn('⚠️ [useMessageSystem] Stop typing failed:', error);
+      console.warn('WARNING: [useMessageSystem] Stop typing failed:', error);
     }
   };
 
@@ -493,7 +493,7 @@ export function useMessageSystem(chatId: number | string) {
       state.typing.users = users;
       state.typing.lastUpdate = Date.now();
     } catch (error) {
-      console.warn('⚠️ [useMessageSystem] Update typing users failed:', error);
+      console.warn('WARNING: [useMessageSystem] Update typing users failed:', error);
     }
   };
 

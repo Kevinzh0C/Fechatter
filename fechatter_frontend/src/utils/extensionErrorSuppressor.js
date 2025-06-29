@@ -86,7 +86,7 @@ class ExtensionErrorSuppressor {
       }
     } else {
       if (import.meta.env.DEV) {
-        console.log('🔧 Extension Error Suppressor disabled (Development Mode)');
+        console.log('Extension Error Suppressor disabled (Development Mode)');
       }
 
       // In development, just log extension errors but don't suppress them

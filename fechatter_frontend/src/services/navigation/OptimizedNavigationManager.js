@@ -1,5 +1,5 @@
 /**
- * 🚀 Optimized Navigation Manager - Predictive Data Pipeline
+ * Optimized Navigation Manager - Predictive Data Pipeline
  * 
  * Features:
  * - Predictive preloading based on user behavior
@@ -59,7 +59,7 @@ class OptimizedNavigationManager {
   }
 
   /**
-   * 🎯 Phase 1: Intelligent Initialization (0-50ms)
+   * Phase 1: Intelligent Initialization (0-50ms)
    */
   initialize(router, chatStore) {
     if (this.isInitialized) return;
@@ -77,11 +77,11 @@ class OptimizedNavigationManager {
     // Initialize background preloading
     this.initializeBackgroundPreloading();
 
-    console.log('🚀 Optimized Navigation Manager initialized');
+    console.log('Optimized Navigation Manager initialized');
   }
 
   /**
-   * 🎯 Phase 2: Instant UI Response (50-100ms)
+   * Phase 2: Instant UI Response (50-100ms)
    */
   async navigateToChat(chatId, options = {}) {
     const normalizedId = parseInt(chatId);
@@ -93,7 +93,7 @@ class OptimizedNavigationManager {
     // Check for instant cache hit
     const cachedData = this.getCachedChatData(normalizedId);
     if (cachedData && cachedData.isComplete) {
-      console.log(`⚡ Instant navigation to chat ${normalizedId} (cached)`);
+      console.log(`Instant navigation to chat ${normalizedId} (cached)`);
 
       // Instant UI update
       await this.instantUIUpdate(normalizedId, cachedData);
@@ -109,7 +109,7 @@ class OptimizedNavigationManager {
   }
 
   /**
-   * 🎯 Phase 3: Progressive Data Loading (100-300ms)
+   * Phase 3: Progressive Data Loading (100-300ms)
    */
   async progressiveNavigation(chatId, options, startTime) {
     try {
@@ -133,14 +133,14 @@ class OptimizedNavigationManager {
       return { success: true, duration };
 
     } catch (error) {
-      console.error(`❌ Navigation failed for chat ${chatId}:`, error);
+      console.error(`ERROR: Navigation failed for chat ${chatId}:`, error);
       await this.handleNavigationError(chatId, error);
       throw error;
     }
   }
 
   /**
-   * 🎯 Smart Data Fetching with Priority Queue
+   * Smart Data Fetching with Priority Queue
    */
   async fetchDataWithPriorities(chatId, priorities) {
     const results = new Map();
@@ -179,7 +179,7 @@ class OptimizedNavigationManager {
   }
 
   /**
-   * 🎯 Predictive Preloading Based on User Patterns
+   * Predictive Preloading Based on User Patterns
    */
   initializeBackgroundPreloading() {
     // Preload based on navigation patterns
@@ -209,7 +209,7 @@ class OptimizedNavigationManager {
   }
 
   /**
-   * 🎯 Behavior Pattern Learning
+   * Behavior Pattern Learning
    */
   recordNavigationAttempt(chatId) {
     // Update frequency score
@@ -233,7 +233,7 @@ class OptimizedNavigationManager {
   }
 
   /**
-   * 🎯 Advanced Caching with Intelligent Invalidation
+   * Advanced Caching with Intelligent Invalidation
    */
   getCachedChatData(chatId) {
     const memoryData = this.memoryCache.messages.get(chatId);
@@ -271,7 +271,7 @@ class OptimizedNavigationManager {
   }
 
   /**
-   * 🎯 Progressive UI Updates with Optimistic Rendering
+   * Progressive UI Updates with Optimistic Rendering
    */
   async showProgressiveUI(chatId, partialData) {
     // Set loading state with any available data
@@ -307,7 +307,7 @@ class OptimizedNavigationManager {
   }
 
   /**
-   * 🎯 Error Recovery with User Experience Focus
+   * Error Recovery with User Experience Focus
    */
   async handleNavigationError(chatId, error) {
     // Try cached data as fallback
@@ -328,7 +328,7 @@ class OptimizedNavigationManager {
   }
 
   /**
-   * 🎯 Performance Monitoring and Optimization
+   * Performance Monitoring and Optimization
    */
   recordSuccessfulNavigation(chatId, duration) {
     this.metrics.totalNavigations++;
@@ -348,11 +348,11 @@ class OptimizedNavigationManager {
       (timeSpent * 0.7) + (duration * 0.3)
     );
 
-    console.log(`📊 Navigation metrics: ${duration}ms, satisfaction: ${satisfaction}`);
+    console.log(`Navigation metrics: ${duration}ms, satisfaction: ${satisfaction}`);
   }
 
   /**
-   * 🎯 Helper Methods
+   * Helper Methods
    */
   calculateDataPriorities(chatId, options) {
     const isFrequentlyUsed = this.userBehaviorPattern.frequentChats.get(chatId) > 5;
@@ -425,7 +425,7 @@ class OptimizedNavigationManager {
   }
 
   /**
-   * 🎯 Public API
+   * Public API
    */
   getOptimizationMetrics() {
     return {
@@ -453,7 +453,7 @@ class OptimizedNavigationManager {
   }
 
   /**
-   * 🎯 Missing Method Implementations
+   * Missing Method Implementations
    */
 
   // Data fetching methods

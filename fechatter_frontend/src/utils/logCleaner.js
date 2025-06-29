@@ -1,6 +1,6 @@
 /**
  * Log Cleaner - Production-grade console management
- * 🔧 FIXED: Prevents log aggregation pollution while preserving debug info
+ * FIXED: Prevents log aggregation pollution while preserving debug info
  */
 
 class LogCleaner {
@@ -26,10 +26,10 @@ class LogCleaner {
       /content.*script/,
       /quillbot/i,
 
-      // Development noise - 🔧 ENHANCED: More specific patterns
+      // Development noise - ENHANCED: More specific patterns
       /loaded.*use window\./,
       /Performance Monitor loaded/,
-      /📊.*loaded/,
+      /.*loaded/,
       /Commands:/,
       /available:/,
 
@@ -38,29 +38,29 @@ class LogCleaner {
       /SSE.*connected/,
 
       // Routine operations
-      /✅.*applied/,
-      /🔧.*active/,
+      /.*applied/,
+      /.*active/,
 
-      // 🔧 NEW: Debug channels auto-execution noise
+      // NEW: Debug channels auto-execution noise
       /📋 ChannelsList Analysis/,
-      /📡 API Response Analysis/,
-      /🔍 Duplicate Detection/,
-      /📊 Data Flow Trace/,
+      /SUBSCRIPTION: API Response Analysis/,
+      /Duplicate Detection/,
+      /Data Flow Trace/,
       /🏠 Home\.vue Computed Properties/,
       /Total channels:/,
-      /✅ No duplicates/,
+      /No duplicates/,
 
-      // 🔧 NEW: Ultra-fast system startup noise
-      /⚡ Ultra-fast message system active/,
-      /💡 Development commands:/,
-      /🛠️ Development Commands:/,
-      /🚀 Features:/,
+      // NEW: Ultra-fast system startup noise
+      /Ultra-fast message system active/,
+      /Development commands:/,
+      /Development Commands:/,
+      /Features:/,
       /✓.*delay/,
       /✓.*processing/,
       /✓.*updates/,
       /===================================/,
 
-      // 🔧 NEW: Performance measurement spam
+      // NEW: Performance measurement spam
       /\[PERF\].*color:/,
       /Breakdown:.*complete:/,
       /instant-nav-start:/,
@@ -71,18 +71,18 @@ class LogCleaner {
   }
 
   initialize() {
-    // 🔧 CRITICAL FIX: Only apply filtering in development with opt-in
+    // CRITICAL FIX: Only apply filtering in development with opt-in
     // Prevents production log pollution and maintains debugging capability
     if (this.isDev && this.shouldEnableFiltering()) {
       this.setupSelectiveFiltering();
     }
 
-    // 🔧 FIXED: Don't log the cleaner itself to prevent aggregation
+    // FIXED: Don't log the cleaner itself to prevent aggregation
     // console.log('🧹 Log cleaner initialized -', this.isDev ? 'Development' : 'Production', 'mode');
   }
 
   shouldEnableFiltering() {
-    // 🔧 SMART FILTERING: Only enable if noise levels are detected
+    // SMART FILTERING: Only enable if noise levels are detected
     // Check if debug channels are running (indicating noise)
     return window.location.search.includes('debug=quiet') ||
       localStorage.getItem('enable_log_filtering') === 'true';
@@ -92,13 +92,13 @@ class LogCleaner {
     const originalLog = console.log;
     const originalInfo = console.info;
 
-    // 🔧 ENHANCED: Preserve source information while filtering noise
+    // ENHANCED: Preserve source information while filtering noise
     console.log = (...args) => {
       if (this.shouldFilter(args)) {
         return; // Silent suppression
       }
 
-      // 🔧 CRITICAL FIX: Preserve original call stack
+      // CRITICAL FIX: Preserve original call stack
       // Don't call through this wrapper to avoid logCleaner.js:65
       originalLog.apply(console, args);
     };
@@ -109,7 +109,7 @@ class LogCleaner {
       originalInfo.apply(console, args);
     };
 
-    // 🔧 NEW: Add control methods
+    // NEW: Add control methods
     window.enableLogFiltering = () => {
       localStorage.setItem('enable_log_filtering', 'true');
       if (import.meta.env.DEV) {
@@ -148,7 +148,7 @@ class LogCleaner {
       return false;
     }
 
-    // 🔧 ENHANCED: More intelligent filtering
+    // ENHANCED: More intelligent filtering
     // Filter known noise patterns
     return this.noisePatterns.some(pattern => pattern.test(message));
   }
@@ -175,7 +175,7 @@ class LogCleaner {
       console.debug(...args);
     }
 
-  // 🔧 NEW: Manual control methods
+  // NEW: Manual control methods
   suppressDebugChannels() {
     // Add temporary suppression for debug channels
     if (window.debugDuplicateChannels) {
@@ -198,7 +198,7 @@ class LogCleaner {
 
 const logCleaner = new LogCleaner();
 
-// 🔧 EXPOSE CONTROL: Allow manual control in development
+// EXPOSE CONTROL: Allow manual control in development
 if (import.meta.env.DEV) {
   window.logCleaner = logCleaner;
 }

@@ -37,12 +37,12 @@ configFiles.forEach(fileName => {
   try {
     if (fs.existsSync(sourcePath)) {
       fs.copyFileSync(sourcePath, destPath);
-      console.log(`✅ Copied ${fileName} to public/config/`);
+      console.log(`Copied ${fileName} to public/config/`);
     } else {
-      console.warn(`⚠️  Source file not found: ${fileName}`);
+      console.warn(`WARNING: Source file not found: ${fileName}`);
     }
   } catch (error) {
-    console.error(`❌ Failed to copy ${fileName}:`, error.message);
+    console.error(`ERROR: Failed to copy ${fileName}:`, error.message);
   }
 });
 

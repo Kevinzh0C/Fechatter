@@ -52,7 +52,7 @@ class CodeHighlighterManager {
       });
 
       if (import.meta.env.DEV) {
-        console.log('✅ Code highlighter initialized as singleton');
+        console.log('Code highlighter initialized as singleton');
       return this.highlighter;
     } catch (error) {
       if (import.meta.env.DEV) {

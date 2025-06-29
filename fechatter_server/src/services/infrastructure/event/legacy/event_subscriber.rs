@@ -490,7 +490,7 @@ pub fn register_cache_event_subscriber(
   let subscriber = Arc::new(CacheEventSubscriber::new(unified_cache, config));
   event_publisher.register_handler(subscriber);
 
-  info!("✅ Cache event subscriber registered successfully");
+  info!("Cache event subscriber registered successfully");
   Ok(())
 }
 

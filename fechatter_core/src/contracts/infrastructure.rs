@@ -6,10 +6,10 @@
 //!
 //! ## Architectural Benefits
 //!
-//! - ✅ **Testability**: Core layer can be unit tested with mock implementations
-//! - ✅ **Replaceability**: Easy to swap underlying implementations (Redis → Memory Cache)
-//! - ✅ **Loose Coupling**: Core layer is independent of specific infrastructure implementations
-//! - ✅ **Clear Contracts**: Interfaces clearly define service boundaries
+//! - **Testability**: Core layer can be unit tested with mock implementations
+//! - **Replaceability**: Easy to swap underlying implementations (Redis → Memory Cache)
+//! - **Loose Coupling**: Core layer is independent of specific infrastructure implementations
+//! - **Clear Contracts**: Interfaces clearly define service boundaries
 //!
 //! ## Usage Examples
 //!

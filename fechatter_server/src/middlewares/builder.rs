@@ -59,7 +59,7 @@ where
 
   /// Add JWT authentication middleware with refresh token support (from core)
   pub fn with_auth(mut self) -> Self {
-    debug!("🔧 [SIMPLE_BUILDER] Adding authentication middleware with refresh token support");
+    debug!("[SIMPLE_BUILDER] Adding authentication middleware with refresh token support");
     // First add refresh token middleware, then auth middleware
     self.router = add_refresh_middleware(self.router, self.state.clone());
     self.router = add_auth_middleware(self.router, self.state.clone());
@@ -72,7 +72,7 @@ where
 
   /// Add workspace validation middleware (simple version)
   pub fn with_workspace(mut self) -> Self {
-    debug!("🔧 [SIMPLE_BUILDER] Adding simple workspace middleware");
+    debug!("[SIMPLE_BUILDER] Adding simple workspace middleware");
     let state_clone = self.state.clone();
     self.router = self.router.layer(from_fn(move |req: Request<Body>, next: Next| {
       let state = state_clone.clone();
@@ -89,7 +89,7 @@ where
           ).await
         } else {
           let req = Request::from_parts(parts, body);
-          debug!("🔧 [SIMPLE_BUILDER] No AuthUser found, proceeding without workspace context");
+          debug!("[SIMPLE_BUILDER] No AuthUser found, proceeding without workspace context");
           next.run(req).await
         }
       }
@@ -103,17 +103,17 @@ where
 
   /// Add chat access control middleware (simple version)
   pub fn with_chat_access(mut self) -> Self {
-    debug!("🔧 [SIMPLE_BUILDER] Adding simple chat access middleware");
+    debug!("[SIMPLE_BUILDER] Adding simple chat access middleware");
     let state_clone = self.state.clone();
     self.router = self.router.layer(from_fn(move |req: Request<Body>, next: Next| {
       let state = state_clone.clone();
       async move {
         // Apply to all routes containing "/chat/" in the path
         if req.uri().path().contains("/chat/") {
-          info!("🔧 [SIMPLE_BUILDER] Applying chat middleware to path: {}", req.uri().path());
+          info!("[SIMPLE_BUILDER] Applying chat middleware to path: {}", req.uri().path());
           verify_chat_membership_middleware(state, req, next).await
         } else {
-          info!("🔧 [SIMPLE_BUILDER] Skipping chat middleware for path: {}", req.uri().path());
+          info!("[SIMPLE_BUILDER] Skipping chat middleware for path: {}", req.uri().path());
           next.run(req).await
         }
       }
@@ -127,7 +127,7 @@ where
 
   /// Add simple authentication requirement (check AuthUser exists)
   pub fn with_auth_required(mut self) -> Self {
-    debug!("🔧 [SIMPLE_BUILDER] Adding auth required middleware");
+    debug!("[SIMPLE_BUILDER] Adding auth required middleware");
     self.router = self.router.layer(from_fn(|req: Request<Body>, next: Next| async move {
       if req.extensions().get::<AuthUser>().is_some() {
         next.run(req).await
@@ -144,19 +144,19 @@ where
 
   /// Public routes (no authentication required)
   pub fn with_public_stack(self) -> Self {
-    debug!("🔧 [SIMPLE_BUILDER] Applying public stack (no middleware)");
+    debug!("[SIMPLE_BUILDER] Applying public stack (no middleware)");
     self
   }
 
   /// Basic authenticated routes (Auth only)
   pub fn with_auth_stack(self) -> Self {
-    debug!("🔧 [SIMPLE_BUILDER] Applying auth stack (auth only)");
+    debug!("[SIMPLE_BUILDER] Applying auth stack (auth only)");
     self.with_auth()
   }
 
   /// Workspace routes (Auth + Workspace)
   pub fn with_workspace_stack(self) -> Self {
-    debug!("🔧 [SIMPLE_BUILDER] Applying workspace stack (auth + workspace)");
+    debug!("[SIMPLE_BUILDER] Applying workspace stack (auth + workspace)");
     self
       .with_auth()
       .with_workspace()
@@ -164,18 +164,18 @@ where
 
   /// Chat routes (Auth + Chat access)
   pub fn with_chat_stack(self) -> Self {
-    debug!("🔧 [SIMPLE_BUILDER] Applying chat stack (auth + chat access)");
+    debug!("[SIMPLE_BUILDER] Applying chat stack (auth + chat access)");
     // Apply auth and chat access middleware
     let result = self
       .with_auth()
       .with_chat_access();
-    debug!("🔧 [SIMPLE_BUILDER] Chat stack applied successfully");
+    debug!("[SIMPLE_BUILDER] Chat stack applied successfully");
     result
   }
 
   /// Chat with workspace routes (Auth + Workspace + Chat access)
   pub fn with_chat_workspace_stack(self) -> Self {
-    debug!("🔧 [SIMPLE_BUILDER] Applying chat+workspace stack");
+    debug!("[SIMPLE_BUILDER] Applying chat+workspace stack");
     self
       .with_auth()
       .with_workspace()
@@ -188,7 +188,7 @@ where
 
   /// Build the final router with minimal infrastructure middleware
   pub fn build(self) -> Router<S> {
-    debug!("🔧 [SIMPLE_BUILDER] Building final simple router");
+    debug!("[SIMPLE_BUILDER] Building final simple router");
     // Apply minimal infrastructure middleware (ServerTime, RequestId)
     self.router.set_layer()
   }
@@ -231,9 +231,9 @@ where
   }
 
   fn with_chat_stack(self, state: AppState) -> Router<S> {
-    debug!("🔧 [ROUTER_EXT] 🧪 with_chat_stack() called!");
+    debug!("[ROUTER_EXT] 🧪 with_chat_stack() called!");
     let result = self.with_middlewares(state).with_chat_stack().build();
-    debug!("🔧 [ROUTER_EXT] 🧪 with_chat_stack() completed!");
+    debug!("[ROUTER_EXT] 🧪 with_chat_stack() completed!");
     result
   }
 

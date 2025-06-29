@@ -1,5 +1,5 @@
 /**
- * 🔧 Recursive Updates Fix Verification Script
+ * Recursive Updates Fix Verification Script
  * 
  * This script verifies that the recursive update issues have been resolved
  * and provides monitoring tools for detecting potential issues.
@@ -15,13 +15,13 @@ export class RecursiveUpdatesFixer {
   }
 
   /**
-   * 🔧 Start monitoring for recursive updates
+   * Start monitoring for recursive updates
    */
   startMonitoring() {
     if (this.isMonitoring) return;
 
     this.isMonitoring = true;
-    console.log('🔍 Starting recursive updates monitoring...');
+    console.log('Starting recursive updates monitoring...');
 
     // Monitor Vue warnings
     this._monitorVueWarnings();
@@ -36,7 +36,7 @@ export class RecursiveUpdatesFixer {
   }
 
   /**
-   * 🔧 Stop monitoring
+   * Stop monitoring
    */
   stopMonitoring() {
     this.isMonitoring = false;
@@ -45,10 +45,10 @@ export class RecursiveUpdatesFixer {
   }
 
   /**
-   * 🔧 Apply fixes to existing components
+   * Apply fixes to existing components
    */
   async applyFixes() {
-    console.log('🔧 Applying recursive update fixes...');
+    console.log('Applying recursive update fixes...');
 
     const fixes = [
       this._fixUnifiedMessageService,
@@ -78,10 +78,10 @@ export class RecursiveUpdatesFixer {
   }
 
   /**
-   * 🔧 Fix UnifiedMessageService
+   * Fix UnifiedMessageService
    */
   _fixUnifiedMessageService() {
-    console.log('🔧 Fixing UnifiedMessageService...');
+    console.log('Fixing UnifiedMessageService...');
 
     // Check if fixed version is available
     if (window.unifiedMessageServiceFixed) {
@@ -104,10 +104,10 @@ export class RecursiveUpdatesFixer {
   }
 
   /**
-   * 🔧 Fix SimpleMessageList components
+   * Fix SimpleMessageList components
    */
   _fixSimpleMessageList() {
-    console.log('🔧 Fixing SimpleMessageList components...');
+    console.log('Fixing SimpleMessageList components...');
 
     // Remove problematic event listeners
     const eventsToRemove = [
@@ -138,10 +138,10 @@ export class RecursiveUpdatesFixer {
   }
 
   /**
-   * 🔧 Fix event listeners
+   * Fix event listeners
    */
   _fixEventListeners() {
-    console.log('🔧 Fixing event listeners...');
+    console.log('Fixing event listeners...');
 
     // Create event listener tracking
     if (!window._eventListeners) {
@@ -180,10 +180,10 @@ export class RecursiveUpdatesFixer {
   }
 
   /**
-   * 🔧 Fix transition components
+   * Fix transition components
    */
   _fixTransitionComponents() {
-    console.log('🔧 Fixing transition components...');
+    console.log('Fixing transition components...');
 
     // Add CSS to prevent transition-related recursive updates
     const style = document.createElement('style');
@@ -214,10 +214,10 @@ export class RecursiveUpdatesFixer {
   }
 
   /**
-   * 🔧 Add debouncing to critical functions
+   * Add debouncing to critical functions
    */
   _addDebouncing() {
-    console.log('🔧 Adding debouncing...');
+    console.log('Adding debouncing...');
 
     // Global debounce utility
     window.debounce = function (func, wait) {
@@ -256,7 +256,7 @@ export class RecursiveUpdatesFixer {
   }
 
   /**
-   * 🔍 Monitor Vue warnings
+   * Monitor Vue warnings
    */
   _monitorVueWarnings() {
     const originalWarn = console.warn;
@@ -282,7 +282,7 @@ export class RecursiveUpdatesFixer {
   }
 
   /**
-   * 🔍 Monitor excessive function calls
+   * Monitor excessive function calls
    */
   _monitorExcessiveCalls() {
     const functionsToMonitor = [
@@ -300,7 +300,7 @@ export class RecursiveUpdatesFixer {
     setInterval(() => {
       this.updateCounts.forEach((count, funcName) => {
         if (count > 50) { // More than 50 calls in 5 seconds
-          console.warn(`⚠️ Excessive calls detected: ${funcName} called ${count} times`);
+          console.warn(`WARNING: Excessive calls detected: ${funcName} called ${count} times`);
           this._emergencyFix();
         }
         this.updateCounts.set(funcName, 0); // Reset counter
@@ -309,7 +309,7 @@ export class RecursiveUpdatesFixer {
   }
 
   /**
-   * 🔍 Monitor memory usage
+   * Monitor memory usage
    */
   _monitorMemoryUsage() {
     if (!performance.memory) return;
@@ -322,7 +322,7 @@ export class RecursiveUpdatesFixer {
 
       // If memory increased by more than 50MB, there might be a leak
       if (memoryIncrease > 50 * 1024 * 1024) {
-        console.warn('⚠️ Potential memory leak detected:', {
+        console.warn('WARNING: Potential memory leak detected:', {
           initial: Math.round(initialMemory / 1024 / 1024) + 'MB',
           current: Math.round(currentMemory / 1024 / 1024) + 'MB',
           increase: Math.round(memoryIncrease / 1024 / 1024) + 'MB'
@@ -356,19 +356,19 @@ export class RecursiveUpdatesFixer {
   }
 
   /**
-   * 📊 Generate fix report
+   * Generate fix report
    */
   _generateFixReport(results) {
     const totalTime = Date.now() - this.startTime;
     const successCount = results.filter(r => r.success).length;
 
-    console.group('🔧 Recursive Updates Fix Report');
+    console.group('Recursive Updates Fix Report');
     console.log(`⏱️ Total fix time: ${totalTime}ms`);
-    console.log(`✅ Successful fixes: ${successCount}/${results.length}`);
-    console.log(`🔧 Fixed components: ${Array.from(this.fixedComponents).join(', ')}`);
+    console.log(`Successful fixes: ${successCount}/${results.length}`);
+    console.log(`Fixed components: ${Array.from(this.fixedComponents).join(', ')}`);
 
     results.forEach(result => {
-      const icon = result.success ? '✅' : '❌';
+      const icon = result.success ? '' : '❌';
       console.log(`${icon} ${result.name}: ${result.details || result.error}`);
     });
 
@@ -420,9 +420,9 @@ export class RecursiveUpdatesFixer {
     const passedCount = results.filter(r => r.passed).length;
     const healthScore = Math.round((passedCount / tests.length) * 100);
 
-    console.log(`🎯 Health Score: ${healthScore}%`);
+    console.log(`Health Score: ${healthScore}%`);
     results.forEach(result => {
-      const icon = result.passed ? '✅' : '❌';
+      const icon = result.passed ? '' : '❌';
       console.log(`${icon} ${result.name}`);
     });
 

@@ -24,7 +24,7 @@ async fn test_database_connection() -> Result<(), Box<dyn std::error::Error>> {
   let test_value: i32 = result.try_get("test_value")?;
   assert_eq!(test_value, 1);
 
-  info!("✅ Database connection test passed");
+  info!("Database connection test passed");
   Ok(())
 }
 
@@ -73,7 +73,7 @@ async fn test_database_transactions() -> Result<(), Box<dyn std::error::Error>> 
     tx.rollback().await?;
   }
 
-  info!("✅ Database transaction test passed");
+  info!("Database transaction test passed");
   Ok(())
 }
 
@@ -94,7 +94,7 @@ async fn test_database_constraints() -> Result<(), Box<dyn std::error::Error>> {
   // Should fail due to foreign key constraints
   assert!(result.is_err());
 
-  info!("✅ Database constraints test passed");
+  info!("Database constraints test passed");
   Ok(())
 }
 
@@ -133,6 +133,6 @@ async fn test_data_integrity() -> Result<(), Box<dyn std::error::Error>> {
   assert_ne!(user1.id, user2.id);
   assert_eq!(user1.workspace_id, user2.workspace_id); // Same workspace
 
-  info!("✅ Data integrity test passed");
+  info!("Data integrity test passed");
   Ok(())
 }

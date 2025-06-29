@@ -24,7 +24,7 @@ export class LoginFlowDebugger {
 
     this.logs.push(logEntry);
     if (import.meta.env.DEV) {
-      console.log(`🔍 [${timestamp}ms] ${message}`, data || '');
+      console.log(`[${timestamp}ms] ${message}`, data || '');
     return logEntry;
   }
 
@@ -70,16 +70,16 @@ export class LoginFlowDebugger {
   }
 
   async debugLogin(email, password) {
-    this.log('🚀 Starting complete login flow debug');
+    this.log('Starting complete login flow debug');
 
     // Step 1: Initial state
-    this.log('📊 Initial state', this.getCurrentState());
+    this.log('Initial state', this.getCurrentState());
 
     // Step 2: Direct API call
     this.log('🔗 Testing direct API call');
     try {
       const apiResponse = await authService.login(email, password);
-      this.log('✅ Direct API call successful', {
+      this.log('Direct API call successful', {
         hasUser: !!apiResponse.user,
         hasAccessToken: !!apiResponse.accessToken,
         hasRefreshToken: !!apiResponse.refreshToken,
@@ -87,7 +87,7 @@ export class LoginFlowDebugger {
         expiresIn: apiResponse.expiresIn,
       });
     } catch (error) {
-      this.log('❌ Direct API call failed', { error: error.message });
+      this.log('ERROR: Direct API call failed', { error: error.message });
       return this.generateReport();
     }
 
@@ -97,28 +97,28 @@ export class LoginFlowDebugger {
 
     try {
       // Monitor state before login
-      this.log('📊 Pre-login state', this.getCurrentState());
+      this.log('Pre-login state', this.getCurrentState());
 
       const loginResult = await authStore.login(email, password);
 
       // Monitor state immediately after login
-      this.log('📊 Immediate post-login state', this.getCurrentState());
+      this.log('Immediate post-login state', this.getCurrentState());
 
       if (loginResult) {
-        this.log('✅ Auth store login successful');
+        this.log('Auth store login successful');
 
         // Wait a bit for any async operations
         await new Promise(resolve => setTimeout(resolve, 100));
 
         // Monitor state after delay
-        this.log('📊 Delayed post-login state', this.getCurrentState());
+        this.log('Delayed post-login state', this.getCurrentState());
 
       } else {
-        this.log('❌ Auth store login returned false');
+        this.log('ERROR: Auth store login returned false');
       }
 
     } catch (error) {
-      this.log('❌ Auth store login failed', { error: error.message });
+      this.log('ERROR: Auth store login failed', { error: error.message });
 
     // Step 4: Test token retrieval
     this.log('🔑 Testing token retrieval methods');
@@ -136,7 +136,7 @@ export class LoginFlowDebugger {
     });
 
     // Step 5: Final state
-    this.log('📊 Final state', this.getCurrentState());
+    this.log('Final state', this.getCurrentState());
 
     return this.generateReport();
   }
@@ -157,13 +157,13 @@ export class LoginFlowDebugger {
       recommendations: this.generateRecommendations(finalState),
     };
 
-    console.group('🔍 Login Flow Debug Report');
+    console.group('Login Flow Debug Report');
     if (import.meta.env.DEV) {
       console.log('📋 Summary:', report.summary);
     if (import.meta.env.DEV) {
-      console.log('📊 Final State:', report.finalState);
+      console.log('Final State:', report.finalState);
     if (import.meta.env.DEV) {
-      console.log('💡 Recommendations:', report.recommendations);
+      console.log('Recommendations:', report.recommendations);
     console.groupEnd();
 
     return report;

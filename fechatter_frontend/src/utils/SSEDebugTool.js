@@ -1,5 +1,5 @@
 /**
- * 🔧 SSE调试工具 - 帮助监控和诊断SSE连接问题
+ * SSE调试工具 - 帮助监控和诊断SSE连接问题
  */
 
 class SSEDebugTool {
@@ -18,7 +18,7 @@ class SSEDebugTool {
   enable() {
     this.isEnabled = true;
     if (import.meta.env.DEV) {
-      console.log('🔧 SSE Debug Tool enabled');
+      console.log('SSE Debug Tool enabled');
     this.showCurrentStatus();
   }
 
@@ -28,7 +28,7 @@ class SSEDebugTool {
   disable() {
     this.isEnabled = false;
     if (import.meta.env.DEV) {
-      console.log('🔧 SSE Debug Tool disabled');
+      console.log('SSE Debug Tool disabled');
     }
 
   /**
@@ -53,20 +53,20 @@ class SSEDebugTool {
 
     // 输出到控制台
     const consoleMethod = level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log';
-    console[consoleMethod](`🔧 SSE Debug [${level.toUpperCase()}]: ${message}`, data);
+    console[consoleMethod](`SSE Debug [${level.toUpperCase()}]: ${message}`, data);
   }
 
   /**
    * 显示当前状态
    */
   showCurrentStatus() {
-    console.group('🔧 SSE系统当前状态');
+    console.group('SSE系统当前状态');
     
     // 全局管理器状态
     if (typeof window !== 'undefined' && window.sseGlobalManager) {
       const status = window.sseGlobalManager.getStatus();
       if (import.meta.env.DEV) {
-        console.log('📊 全局管理器状态:', status);
+        console.log('全局管理器状态:', status);
       }
 
     // 连接服务状态
@@ -186,7 +186,7 @@ class SSEDebugTool {
     if (import.meta.env.DEV) {
       console.log(`
     }
-🔧 SSE调试工具使用指南
+SSE调试工具使用指南
 
 可用命令:
   sseDebugTool.enable()              - 启用调试模式

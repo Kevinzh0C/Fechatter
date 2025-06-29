@@ -46,7 +46,7 @@ impl PingoraGateway {
         // Use enhanced loading method that searches multiple paths including Docker containers
         match GatewayConfig::load() {
           Ok(cfg) => {
-            info!("✅ Gateway configuration loaded successfully with enhanced Docker-aware loading!");
+            info!("Gateway configuration loaded successfully with enhanced Docker-aware loading!");
             Arc::new(cfg)
           }
           Err(load_e) => {
@@ -118,18 +118,18 @@ impl PingoraGateway {
         }
       });
 
-    info!("🔍 Auto-detected environment: {}", environment);
+    info!("Auto-detected environment: {}", environment);
     Self::new_with_env(&environment).await
   }
 
   /// Create new Pingora Gateway using enhanced configuration loading with Docker container support
   pub async fn new_from_enhanced_config() -> Result<Self> {
-    info!("🔍 Loading gateway configuration with enhanced Docker container support");
+    info!("Loading gateway configuration with enhanced Docker container support");
 
     // Use enhanced loading method that searches multiple paths including Docker containers
     let config = match GatewayConfig::load() {
       Ok(cfg) => {
-        info!("✅ Gateway configuration loaded successfully with enhanced Docker-aware loading!");
+        info!("Gateway configuration loaded successfully with enhanced Docker-aware loading!");
         Arc::new(cfg)
       }
       Err(e) => {
@@ -203,7 +203,7 @@ impl PingoraGateway {
   /// Start gateway server using Pingora runtime with error recovery
   pub async fn run(self) -> Result<()> {
     info!(
-      "🚀 Starting Pingora Gateway server on {}",
+      "Starting Pingora Gateway server on {}",
       self.config.server.listen_addr
     );
 
@@ -227,7 +227,7 @@ impl PingoraGateway {
     server.add_service(proxy_service);
 
     // Run server with graceful shutdown handling
-    info!("🎯 Gateway listening and ready to serve requests");
+    info!("Gateway listening and ready to serve requests");
     info!("Press Ctrl+C to gracefully shutdown");
     
     // Run server (blocks until shutdown signal)

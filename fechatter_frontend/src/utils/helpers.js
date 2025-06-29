@@ -1,4 +1,4 @@
-// 防抖函数
+// Debounce function
 export function debounce(func, wait) {
   let timeout;
   return function executedFunction(...args) {
@@ -11,7 +11,7 @@ export function debounce(func, wait) {
   };
 }
 
-// 节流函数
+// Throttle function
 export function throttle(func, limit) {
   let inThrottle;
   return function() {
@@ -25,7 +25,7 @@ export function throttle(func, limit) {
   };
 }
 
-// 格式化文件大小
+// Format file size
 export function formatFileSize(bytes) {
   if (!bytes) return '0 B';
   
@@ -34,13 +34,13 @@ export function formatFileSize(bytes) {
   return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
 }
 
-// 获取用户名首字母
+// Get user name initials
 export function getUserInitials(user) {
   if (!user || !user.username) return '?';
   return user.username.charAt(0).toUpperCase();
 }
 
-// 格式化时间
+// Format time
 export function formatTime(timestamp) {
   if (!timestamp) return '';
   
@@ -49,20 +49,20 @@ export function formatTime(timestamp) {
   const diffInHours = (now - date) / (1000 * 60 * 60);
   
   if (diffInHours < 24) {
-    return date.toLocaleTimeString('zh-CN', { 
+    return date.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit',
       hour12: false 
     });
   } else if (diffInHours < 24 * 7) {
-    return date.toLocaleDateString('zh-CN', { 
+    return date.toLocaleDateString('en-US', { 
       weekday: 'short',
       hour: '2-digit', 
       minute: '2-digit',
       hour12: false 
     });
   } else {
-    return date.toLocaleDateString('zh-CN', { 
+    return date.toLocaleDateString('en-US', { 
       month: 'short', 
       day: 'numeric',
       hour: '2-digit', 

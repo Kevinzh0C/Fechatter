@@ -51,16 +51,16 @@ impl EventProcessor {
         let payload_size = message.payload.len();
         
         // Add INFO level logging for event reception
-        info!("📨 [NOTIFY] Received NATS event from subject: {} (size: {} bytes)", subject, payload_size);
+        info!("EVENT: [NOTIFY] Received NATS event from subject: {} (size: {} bytes)", subject, payload_size);
 
         // Parse message payload
         let payload: Value = match serde_json::from_slice(&message.payload) {
             Ok(payload) => {
-                info!("✅ [NOTIFY] Successfully parsed JSON payload from: {}", subject);
+                info!("[NOTIFY] Successfully parsed JSON payload from: {}", subject);
                 payload
             }
             Err(e) => {
-                error!("❌ [NOTIFY] Failed to parse JSON from {}: {}", subject, e);
+                error!("ERROR: [NOTIFY] Failed to parse JSON from {}: {}", subject, e);
                 return Err(NotifyError::InvalidJson(format!("Failed to parse JSON: {}", e)));
             }
         };
@@ -72,23 +72,23 @@ impl EventProcessor {
                 self.handle_chat_event(payload).await?;
             }
             s if s.starts_with("fechatter.user.") => {
-                info!("👤 [NOTIFY] Processing user event from: {}", s);
+                info!("USER: [NOTIFY] Processing user event from: {}", s);
                 self.handle_user_event(payload).await?;
             }
             s if s.starts_with("fechatter.message.") => {
-                info!("💬 [NOTIFY] Processing message event from: {}", s);
+                info!("MESSAGE: [NOTIFY] Processing message event from: {}", s);
                 self.handle_message_event(payload).await?;
             }
             s if s.starts_with("fechatter.realtime.") => {
-                info!("⚡ [NOTIFY] Processing realtime event from: {}", s);
+                info!("[NOTIFY] Processing realtime event from: {}", s);
                 self.handle_realtime_event(payload).await?;
             }
             _ => {
-                warn!("⚠️ [NOTIFY] Unhandled subject: {}", subject);
+                warn!("WARNING: [NOTIFY] Unhandled subject: {}", subject);
             }
         }
 
-        info!("✅ [NOTIFY] Successfully processed event from: {}", subject);
+        info!("[NOTIFY] Successfully processed event from: {}", subject);
         Ok(())
     }
 
@@ -342,10 +342,10 @@ impl EventProcessor {
     async fn handle_realtime_event(&self, payload: Value) -> Result<(), NotifyError> {
         debug!("Processing realtime event: {:?}", payload);
 
-        // 🔧 CRITICAL FIX: Handle MessageReceived events from fechatter-server
+        // CRITICAL FIX: Handle MessageReceived events from fechatter-server
         // Check if this is a MessageReceived event (from fechatter-server enum format)
         if let Some(message_received_data) = payload.get("MessageReceived") {
-            info!("📨 [REALTIME] Processing MessageReceived event");
+            info!("EVENT: [REALTIME] Processing MessageReceived event");
             return self.handle_message_received_realtime(message_received_data).await;
         }
 
@@ -399,14 +399,14 @@ impl EventProcessor {
         Ok(())
     }
 
-    /// 🔧 CRITICAL FIX: Handle MessageReceived events from fechatter-server
+    /// CRITICAL FIX: Handle MessageReceived events from fechatter-server
     async fn handle_message_received_realtime(&self, payload: &Value) -> Result<(), NotifyError> {
         let chat_id = payload.get("chat_id").and_then(|v| v.as_i64()).map(ChatId);
         let message = payload.get("message");
         let recipients = payload.get("recipients").and_then(|v| v.as_array());
         
         if let (Some(chat_id), Some(message), Some(recipients)) = (chat_id, message, recipients) {
-            info!("📨 [REALTIME] Processing MessageReceived for chat {} with {} recipients", 
+            info!("EVENT: [REALTIME] Processing MessageReceived for chat {} with {} recipients", 
                   chat_id.0, recipients.len());
             
             // Extract message details
@@ -414,11 +414,11 @@ impl EventProcessor {
             let sender_id = message.get("sender_id").and_then(|v| v.as_i64()).map(UserId);
             let content = message.get("content").and_then(|v| v.as_str()).unwrap_or("");
             
-            info!("📨 [REALTIME] Message {} from user {:?} in chat {}: {}", 
+            info!("EVENT: [REALTIME] Message {} from user {:?} in chat {}: {}", 
                   message_id, sender_id, chat_id.0, 
                   if content.len() > 50 { format!("{}...", &content[..50]) } else { content.to_string() });
             
-            // 🚀 CRITICAL: Send SSE to ALL recipients INCLUDING the sender for message confirmation
+            // CRITICAL: Send SSE to ALL recipients INCLUDING the sender for message confirmation
             for recipient_value in recipients {
                 if let Some(user_id) = recipient_value.as_i64() {
                     let user_id = UserId(user_id);
@@ -434,12 +434,12 @@ impl EventProcessor {
                     if let Err(e) = self.state.send_notification_to_user(user_id, notification).await {
                         warn!("Failed to send SSE to user {}: {}", user_id.0, e);
                     } else {
-                        info!("✅ [REALTIME] Sent SSE notification to user {} for message {}", user_id.0, message_id);
+                        info!("[REALTIME] Sent SSE notification to user {} for message {}", user_id.0, message_id);
                     }
                 }
             }
         } else {
-            warn!("❌ [REALTIME] Invalid MessageReceived payload: missing required fields");
+            warn!("ERROR: [REALTIME] Invalid MessageReceived payload: missing required fields");
         }
         
         Ok(())

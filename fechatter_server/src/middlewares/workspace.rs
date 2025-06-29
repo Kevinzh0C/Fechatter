@@ -138,7 +138,7 @@ pub async fn with_workspace_context(
     }
   }
 
-  debug!("🏢 [WORKSPACE] ✅ SIMPLIFIED workspace access granted for user: {} in workspace: {}", 
+  debug!("🏢 [WORKSPACE] SIMPLIFIED workspace access granted for user: {} in workspace: {}", 
          user_id, workspace_id);
   response
 
@@ -147,24 +147,24 @@ pub async fn with_workspace_context(
   // Find workspace using the AppState method
   let workspace = match state.find_by_id_with_pool(workspace_id).await {
     Ok(Some(workspace)) => {
-      debug!("🏢 [WORKSPACE] ✅ Workspace found: id={}, name={}, owner_id={}", 
+      debug!("🏢 [WORKSPACE] Workspace found: id={}, name={}, owner_id={}", 
              workspace.id, workspace.name, workspace.owner_id);
       workspace
     }
     Ok(None) => {
       // Workspace not found - attempt to create it
-      warn!("🏢 [WORKSPACE] ⚠️ Workspace {} not found for user {}, attempting to create", 
+      warn!("🏢 [WORKSPACE] WARNING: Workspace {} not found for user {}, attempting to create", 
             workspace_id, user_id);
       
       let new_workspace_name = format!("Workspace-{}", workspace_id);
       match state.create_workspace_with_pool(&new_workspace_name, user_id).await {
         Ok(new_workspace) => {
-          info!("🏢 [WORKSPACE] ✅ Created new workspace: id={}, name={}", 
+          info!("🏢 [WORKSPACE] Created new workspace: id={}, name={}", 
                 new_workspace.id, new_workspace.name);
           new_workspace
         }
         Err(e) => {
-          error!("🏢 [WORKSPACE] ❌ Failed to create workspace: {:?}", e);
+          error!("🏢 [WORKSPACE] ERROR: Failed to create workspace: {:?}", e);
           return AppError::Internal("Failed to create workspace".to_string()).into_response();
         }
       }
@@ -198,7 +198,7 @@ pub async fn with_workspace_context(
     }
   }
 
-  debug!("🏢 [WORKSPACE] ✅ Workspace access granted for user: {} in workspace: {}", 
+  debug!("🏢 [WORKSPACE] Workspace access granted for user: {} in workspace: {}", 
          user_id, workspace_id);
   response
   */

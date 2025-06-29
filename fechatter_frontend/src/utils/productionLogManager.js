@@ -128,8 +128,8 @@ export class ProductionLogManager {
       [this.logLevels.ERROR]: '❌',
       [this.logLevels.WARN]: '⚠️',
       [this.logLevels.INFO]: 'ℹ️',
-      [this.logLevels.DEBUG]: '🔧',
-      [this.logLevels.VERBOSE]: '📝'
+      [this.logLevels.DEBUG]: '',
+      [this.logLevels.VERBOSE]: ''
     };
 
     return `${levelPrefixes[level]} [${category}]`;
@@ -157,7 +157,7 @@ export class ProductionLogManager {
 
     setTimeout(() => {
       this.suppressedLogs.delete(category);
-      console.log(`🔧 [LogManager] Re-enabled logging for category: ${category}`);
+      console.log(`[LogManager] Re-enabled logging for category: ${category}`);
     }, duration);
 
     console.log(`🔇 [LogManager] Temporarily suppressing noisy category: ${category} for ${duration}ms`);
@@ -224,7 +224,7 @@ export class ProductionLogManager {
    */
   setLevel(level) {
     this.currentLevel = level;
-    console.log(`🔧 [LogManager] Log level set to: ${Object.keys(this.logLevels)[level]}`);
+    console.log(`[LogManager] Log level set to: ${Object.keys(this.logLevels)[level]}`);
   }
 
   /**
@@ -232,12 +232,12 @@ export class ProductionLogManager {
    */
   enableCategory(category) {
     this.suppressedLogs.delete(category);
-    console.log(`🔧 [LogManager] Enabled logging for category: ${category}`);
+    console.log(`[LogManager] Enabled logging for category: ${category}`);
   }
 
   disableCategory(category) {
     this.suppressedLogs.add(category);
-    console.log(`🔧 [LogManager] Disabled logging for category: ${category}`);
+    console.log(`[LogManager] Disabled logging for category: ${category}`);
   }
 
   /**

@@ -68,7 +68,7 @@ export interface MessageListEmits {
   'auto-load-more': []
 }
 
-// 🔥 NEW: Extended props for enhanced message list
+// NEW: Extended props for enhanced message list
 export interface ExtendedMessageListProps extends MessageListProps {
   autoLoadIndicatorVisible?: boolean
   isNearTop?: boolean
@@ -77,10 +77,10 @@ export interface ExtendedMessageListProps extends MessageListProps {
   showDebugInfo?: boolean
 }
 
-// 🔥 NEW: Load more trigger types
+// NEW: Load more trigger types
 export type LoadMoreTriggerType = 'manual' | 'auto' | 'scroll'
 
-// 🔥 NEW: Load more state interface
+// NEW: Load more state interface
 export interface LoadMoreState {
   isLoadingMore: boolean
   indicatorVisible: boolean
@@ -89,7 +89,7 @@ export interface LoadMoreState {
   triggerType?: LoadMoreTriggerType
 }
 
-// 🔥 NEW: Auto load more event detail
+// NEW: Auto load more event detail
 export interface AutoLoadMoreEventDetail {
   chatId: number
   triggerType: LoadMoreTriggerType

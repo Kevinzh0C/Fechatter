@@ -1,6 +1,6 @@
 /**
  * Auth Types
- * 认证相关类型定义
+ * Authentication related type definitions
  */
 
 export interface User {

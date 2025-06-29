@@ -214,7 +214,7 @@ impl AppState {
     user_id: i64,
   ) -> Result<bool, AppError> {
     info!(
-      "🔍 [APPSTATE] ========== Enhanced membership check: user {} in chat {} ==========",
+      "[APPSTATE] ========== Enhanced membership check: user {} in chat {} ==========",
       user_id, chat_id
     );
 
@@ -230,25 +230,25 @@ impl AppState {
         match status {
           ChatMembershipStatus::ActiveMember { role, .. } => {
             info!(
-              "🔍 [APPSTATE] ✅ SUCCESS: User {} is active member of chat {} with role '{}'",
+              "[APPSTATE] SUCCESS: User {} is active member of chat {} with role '{}'",
               user_id, chat_id, role
             );
             Ok(true)
           }
           other_status => {
             let error_msg = other_status.error_message();
-            warn!("🔍 [APPSTATE] 🚫 FAILED: Chat access denied: {}", error_msg);
+            warn!("[APPSTATE] 🚫 FAILED: Chat access denied: {}", error_msg);
 
             // Convert membership status to appropriate AppError
             let app_error = membership_status_to_app_error(other_status);
-            error!("🔍 [APPSTATE] ❌ Generated AppError: {:?}", app_error);
+            error!("[APPSTATE] ERROR: Generated AppError: {:?}", app_error);
 
             Err(app_error)
           }
         }
       }
       Err(e) => {
-        error!("🔍 [APPSTATE] ❌ Database error during membership validation for user {} in chat {}: {:?}", user_id, chat_id, e);
+        error!("[APPSTATE] ERROR: Database error during membership validation for user {} in chat {}: {:?}", user_id, chat_id, e);
         Err(AppError::from(e))
       }
     }
@@ -360,21 +360,21 @@ pub async fn create_production_state(config: AppConfig) -> Result<AppState, AppE
       .map_err(|e| AppError::Internal(format!("Failed to create token manager: {}", e)))?;
 
   // ============================================================================
-  // 🔧 Enhanced Event Publisher for notify_server Integration
+  // Enhanced Event Publisher for notify_server Integration
   // ============================================================================
 
   let enhanced_event_publisher = if config.features.messaging.enabled {
-    info!("🚀 Initializing enhanced event publisher for notify_server integration...");
+    info!("Initializing enhanced event publisher for notify_server integration...");
     match crate::services::infrastructure::event::create_enhanced_publisher_for_notify_server(
       &config.features.messaging.nats_url
     ).await {
       Ok(publisher) => {
-        info!("✅ Enhanced event publisher created successfully for notify_server SSE");
+        info!("Enhanced event publisher created successfully for notify_server SSE");
         Some(Arc::new(publisher))
       }
       Err(e) => {
-        error!("❌ Failed to create enhanced event publisher: {}. notify_server SSE limited.", e);
-        warn!("⚠️ Application will run with limited real-time notification functionality");
+        error!("ERROR: Failed to create enhanced event publisher: {}. notify_server SSE limited.", e);
+        warn!("WARNING: Application will run with limited real-time notification functionality");
         None
       }
     }
@@ -384,23 +384,23 @@ pub async fn create_production_state(config: AppConfig) -> Result<AppState, AppE
   };
 
   // ============================================================================
-  // 🔧 NATS Event Publisher Initialization
+  // NATS Event Publisher Initialization
   // ============================================================================
 
   let event_publisher = if config.features.messaging.enabled {
-    info!("🚀 Initializing NATS event publisher...");
+    info!("Initializing NATS event publisher...");
     match TransportFactory::create_from_config(&config).await {
       Ok(transport) => {
         info!(
-          "✅ NATS transport created successfully: {}",
+          "NATS transport created successfully: {}",
           config.features.messaging.nats_url
         );
         let publisher = Arc::new(LegacyEventPublisher::with_dyn_transport(transport));
         Some(publisher)
       }
       Err(e) => {
-        error!("❌ Failed to create NATS transport: {}. Using fallback.", e);
-        warn!("⚠️ Application will run with limited messaging functionality");
+        error!("ERROR: Failed to create NATS transport: {}. Using fallback.", e);
+        warn!("WARNING: Application will run with limited messaging functionality");
         None
       }
     }
@@ -410,7 +410,7 @@ pub async fn create_production_state(config: AppConfig) -> Result<AppState, AppE
   };
 
   // ============================================================================
-  // 🔧 Analytics Publisher Initialization
+  // Analytics Publisher Initialization
   // ============================================================================
 
   let analytics_publisher = if config.features.messaging.enabled {
@@ -421,7 +421,7 @@ pub async fn create_production_state(config: AppConfig) -> Result<AppState, AppE
         .as_any()
         .downcast_ref::<crate::services::infrastructure::event::NatsTransport>(
       ) {
-        info!("🔧 Creating NATS analytics publisher...");
+        info!("Creating NATS analytics publisher...");
         let analytics_config = AnalyticsConfig {
           enabled: true,
           subject_prefix: "fechatter.analytics".to_string(),
@@ -432,10 +432,10 @@ pub async fn create_production_state(config: AppConfig) -> Result<AppState, AppE
         // Clone the transport and wrap in Arc for the analytics publisher
         let transport_arc = Arc::new(nats_transport.clone());
         let publisher = NatsAnalyticsPublisher::new(transport_arc, analytics_config);
-        info!("✅ NATS analytics publisher initialized successfully");
+        info!("NATS analytics publisher initialized successfully");
         Some(Arc::new(publisher))
       } else {
-        warn!("⚠️ No NATS transport available, analytics disabled");
+        warn!("WARNING: No NATS transport available, analytics disabled");
         None
       }
     } else {
@@ -448,7 +448,7 @@ pub async fn create_production_state(config: AppConfig) -> Result<AppState, AppE
   };
 
   // ============================================================================
-  // 🔧 Application Services with Search Support
+  // Application Services with Search Support
   // ============================================================================
 
   // Create application services with proper search configuration
@@ -464,11 +464,11 @@ pub async fn create_production_state(config: AppConfig) -> Result<AppState, AppE
   // Add search service if enabled
   if config.features.search.enabled {
     info!(
-      "🔍 Initializing search service with provider: {}",
+      "Initializing search service with provider: {}",
       config.features.search.provider
     );
     info!(
-      "🔍 Search config details: url={}, batch_size={}, async_indexing={}",
+      "Search config details: url={}, batch_size={}, async_indexing={}",
       config.features.search.meilisearch_url,
       config.features.search.batch_size,
       config.features.search.async_indexing
@@ -477,7 +477,7 @@ pub async fn create_production_state(config: AppConfig) -> Result<AppState, AppE
     match crate::services::SearchService::new_from_config(&config.features.search).await {
       Ok(search_service) => {
         info!(
-          "✅ Search service initialized successfully: {}",
+          "Search service initialized successfully: {}",
           config.features.search.meilisearch_url
         );
         application_services_builder =
@@ -485,7 +485,7 @@ pub async fn create_production_state(config: AppConfig) -> Result<AppState, AppE
       }
       Err(e) => {
         error!(
-          "⚠️ Failed to initialize search service: {}. Search functionality disabled. Config: {:?}",
+          "WARNING: Failed to initialize search service: {}. Search functionality disabled. Config: {:?}",
           e, config.features.search
         );
       }
@@ -500,12 +500,12 @@ pub async fn create_production_state(config: AppConfig) -> Result<AppState, AppE
   let cache_service = if config.features.cache.enabled {
     match RedisCacheService::new(&config.features.cache.redis_url, "fechatter").await {
       Ok(redis_service) => {
-        info!("✅ Redis cache service initialized successfully");
+        info!("Redis cache service initialized successfully");
         Some(Arc::new(redis_service))
       }
       Err(e) => {
         warn!(
-          "⚠️ Failed to initialize Redis cache service: {}. Continuing without cache.",
+          "WARNING: Failed to initialize Redis cache service: {}. Continuing without cache.",
           e
         );
         None
@@ -538,49 +538,49 @@ pub async fn create_production_state(config: AppConfig) -> Result<AppState, AppE
   };
 
   // ============================================================================
-  // 🔧 System Status Summary
+  // System Status Summary
   // ============================================================================
 
-  info!("🎯 System initialization complete:");
-  info!("  📄 Database: ✅ Connected");
+  info!("System initialization complete:");
+  info!("  📄 Database: Connected");
   info!(
     "  📄 Cache: {}",
     if app_state.cache_service().is_some() {
-      "✅ Enabled"
+      "Enabled"
     } else {
-      "❌ Disabled"
+      "ERROR: Disabled"
     }
   );
   info!(
     "  📄 NATS: {}",
     if app_state.nats_client().is_some() {
-      "✅ Connected"
+      "Connected"
     } else {
-      "❌ Not connected"
+      "ERROR: Not connected"
     }
   );
   info!(
     "  📄 Search: {}",
     if app_state.is_search_enabled() {
-      "✅ Enabled"
+      "Enabled"
     } else {
-      "❌ Disabled"
+      "ERROR: Disabled"
     }
   );
   info!(
     "  📄 Analytics: {}",
     if app_state.analytics_publisher().is_some() {
-      "✅ Enabled"
+      "Enabled"
     } else {
-      "❌ Disabled"
+      "ERROR: Disabled"
     }
   );
   info!(
     "  📄 notify_server SSE: {}",
     if app_state.enhanced_event_publisher().is_some() {
-      "✅ Enabled"
+      "Enabled"
     } else {
-      "❌ Disabled"
+      "ERROR: Disabled"
     }
   );
 

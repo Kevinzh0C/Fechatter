@@ -140,7 +140,7 @@ impl<T: EventTransport + 'static> AnalyticsEventPublisher<T> {
                     debug!("📤 Published analytics event: {}", event_type_name);
                 }
                 Err(e) => {
-                    error!("❌ Failed to publish analytics event {}: {}", event_type_name, e);
+                    error!("ERROR: Failed to publish analytics event {}: {}", event_type_name, e);
                 }
             }
         }
@@ -168,7 +168,7 @@ impl<T: EventTransport + 'static> AnalyticsEventPublisher<T> {
             .await
             .map_err(|e| anyhow::anyhow!("Failed to publish to NATS: {}", e))?;
 
-        debug!("📡 Published analytics event to subject: {}", subject);
+        debug!("SUBSCRIPTION: Published analytics event to subject: {}", subject);
         Ok(())
     }
 
@@ -200,7 +200,7 @@ impl<T: EventTransport + 'static> AnalyticsEventPublisher<T> {
     /// Publish analytics event (non-blocking)
     pub fn publish(&self, event: AnalyticsEvent) -> Result<(), AppError> {
         if !self.config.enabled {
-            debug!("📊 Analytics disabled, skipping event");
+            debug!("Analytics disabled, skipping event");
             return Ok(());
         }
 
@@ -214,16 +214,16 @@ impl<T: EventTransport + 'static> AnalyticsEventPublisher<T> {
             _ => "unknown",
         };
 
-        debug!("📊 Queuing analytics event: {} for user: {}", 
+        debug!("Queuing analytics event: {} for user: {}", 
                event_type_name, 
                event.context.as_ref().map(|c| &c.user_id).unwrap_or(&"unknown".to_string()));
 
         self.sender.send(event).map_err(|e| {
-            error!("❌ Failed to queue analytics event {}: {}", event_type_name, e);
+            error!("ERROR: Failed to queue analytics event {}: {}", event_type_name, e);
             AppError::Internal(format!("Failed to queue analytics event: {}", e))
         })?;
 
-        debug!("✅ Analytics event {} queued successfully", event_type_name);
+        debug!("Analytics event {} queued successfully", event_type_name);
         Ok(())
     }
 

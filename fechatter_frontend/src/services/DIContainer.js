@@ -113,12 +113,12 @@ class DIContainer {
     app.config.globalProperties.$container = this;
 
     if (import.meta.env.DEV) {
-      console.log('✅ DIContainer installed into Vue app');
+      console.log('DIContainer installed into Vue app');
 
       // Add debug helpers
       window.container = this;
       window.debugContainer = () => {
-        console.group('🔧 DIContainer Debug Info');
+        console.group('DIContainer Debug Info');
         console.log('Registered Services:', Array.from(this.services.keys()));
         console.log('Singletons:', Array.from(this.singletons.keys()));
         console.log('Factories:', Array.from(this.factories.keys()));
@@ -166,7 +166,7 @@ export function configureServices(container) {
   // container.factory('eventBus', () => new EventBus());
 
   if (import.meta.env.DEV) {
-    console.log('🔧 Core services configured');
+    console.log('Core services configured');
   }
 }
 

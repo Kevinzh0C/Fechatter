@@ -1,5 +1,5 @@
 /**
- * 🔍 AutoLoadManager 加载模式验证工具
+ * AutoLoadManager 加载模式验证工具
  * 
  * 验证自动模式和滚动触发模式的正确实现
  */
@@ -13,18 +13,18 @@ export class AutoLoadModeValidator {
   }
 
   /**
-   * 🎯 运行完整的双模式验证测试
+   * 运行完整的双模式验证测试
    */
   async runModeValidation() {
     if (this.isRunning) {
-      console.warn('🔍 [ModeValidator] 验证正在进行中...');
+      console.warn('[ModeValidator] 验证正在进行中...');
       return;
     }
 
     this.isRunning = true;
     this.testResults = [];
 
-    console.log('🎯 [ModeValidator] 开始AutoLoadManager双模式验证测试');
+    console.log('[ModeValidator] 开始AutoLoadManager双模式验证测试');
 
     try {
       // 测试自动模式
@@ -48,10 +48,10 @@ export class AutoLoadModeValidator {
   }
 
   /**
-   * 🚀 测试自动模式
+   * 测试自动模式
    */
   async testAutoMode() {
-    console.log('🔍 [ModeValidator] 测试自动模式');
+    console.log('[ModeValidator] 测试自动模式');
 
     autoLoadManager.reset();
 
@@ -112,14 +112,14 @@ export class AutoLoadModeValidator {
     this.recordTest('Auto Mode No Waiting', !stateLog.includes('waiting_for_scroll'), 'Should not enter waiting state in auto mode');
     this.recordTest('Auto Mode Completion Time', endTime - startTime < 3000, `Should complete quickly, took ${endTime - startTime}ms`);
 
-    console.log(`✅ [Auto Mode] 完成验证 - 加载了 ${batchCount} 批，共 ${finalState.totalLoaded} 条消息`);
+    console.log(`[Auto Mode] 完成验证 - 加载了 ${batchCount} 批，共 ${finalState.totalLoaded} 条消息`);
   }
 
   /**
    * 📜 测试滚动触发模式
    */
   async testScrollTriggeredMode() {
-    console.log('🔍 [ModeValidator] 测试滚动触发模式');
+    console.log('[ModeValidator] 测试滚动触发模式');
 
     autoLoadManager.reset();
 
@@ -165,7 +165,7 @@ export class AutoLoadModeValidator {
         // 模拟用户滚动行为 (延迟后自动恢复)
         setTimeout(() => {
           if (autoLoadManager.waitingForScroll) {
-            console.log('👤 [Scroll Mode] 模拟用户滚动恢复');
+            console.log('USER: [Scroll Mode] 模拟用户滚动恢复');
             autoLoadManager.resumeFromScroll(() => { });
           }
         }, 500);
@@ -198,14 +198,14 @@ export class AutoLoadModeValidator {
     this.recordTest('Scroll Mode Has Waiting', stateLog.includes('waiting_for_scroll'), 'Should enter waiting state in scroll mode');
     this.recordTest('Scroll Mode Duration', endTime - startTime > 1000, `Should take longer due to waits, took ${endTime - startTime}ms`);
 
-    console.log(`✅ [Scroll Mode] 完成验证 - 等待了 ${waitingCount} 次，加载了 ${batchCount} 批，共 ${finalState.totalLoaded} 条消息`);
+    console.log(`[Scroll Mode] 完成验证 - 等待了 ${waitingCount} 次，加载了 ${batchCount} 批，共 ${finalState.totalLoaded} 条消息`);
   }
 
   /**
    * 🔄 测试模式切换
    */
   async testModeSwitching() {
-    console.log('🔍 [ModeValidator] 测试模式切换');
+    console.log('[ModeValidator] 测试模式切换');
 
     // 测试从自动模式切换到滚动模式
     autoLoadManager.reset();
@@ -242,11 +242,11 @@ export class AutoLoadModeValidator {
     this.recordTest('Auto Mode State Reset', autoResult.current === 'completed', 'Auto mode completed successfully');
     this.recordTest('Scroll Mode State Reset', scrollResult.success === true, 'Scroll mode started successfully');
 
-    console.log('✅ [Mode Switching] 模式切换验证完成');
+    console.log('[Mode Switching] 模式切换验证完成');
   }
 
   /**
-   * ⚡ 快速滚动模式测试 (用于模式切换验证)
+   * 快速滚动模式测试 (用于模式切换验证)
    */
   async testQuickScrollMode() {
     let quickCallCount = 0;
@@ -286,13 +286,13 @@ export class AutoLoadModeValidator {
   }
 
   /**
-   * 📝 记录测试结果
+   * 记录测试结果
    */
   recordTest(testName, passed, details = '') {
     if (passed) {
-      console.log(`✅ [ModeValidator] ${testName}: PASSED`);
+      console.log(`[ModeValidator] ${testName}: PASSED`);
     } else {
-      console.log(`❌ [ModeValidator] ${testName}: FAILED - ${details}`);
+      console.log(`ERROR: [ModeValidator] ${testName}: FAILED - ${details}`);
     }
 
     this.testResults.push({
@@ -334,23 +334,23 @@ export class AutoLoadModeValidator {
       }
     };
 
-    console.log('\n🎯 [ModeValidator] 双模式验证报告:');
-    console.log(`📊 总测试数: ${total}`);
-    console.log(`✅ 通过测试: ${passed}`);
-    console.log(`❌ 失败测试: ${failed}`);
-    console.log(`🎯 成功率: ${successRate}%`);
-    console.log(`🔒 双模式可靠性: ${report.summary.bothModesWorking ? '✅ 100% 可靠' : '❌ 需要修复'}`);
+    console.log('\n[ModeValidator] 双模式验证报告:');
+    console.log(`总测试数: ${total}`);
+    console.log(`通过测试: ${passed}`);
+    console.log(`ERROR: 失败测试: ${failed}`);
+    console.log(`成功率: ${successRate}%`);
+    console.log(`🔒 双模式可靠性: ${report.summary.bothModesWorking ? '100% 可靠' : 'ERROR: 需要修复'}`);
 
     if (failed > 0) {
-      console.log('\n❌ 失败的测试:');
+      console.log('\nERROR: 失败的测试:');
       this.testResults.filter(t => !t.passed).forEach(test => {
         console.log(`  - ${test.name}: ${test.details}`);
       });
     }
 
     console.log('\n🔄 模式特性验证:');
-    console.log(`📈 自动模式: ${report.modeComparison.autoMode.validated ? '✅ 验证通过' : '❌ 验证失败'}`);
-    console.log(`📜 滚动触发模式: ${report.modeComparison.scrollTriggeredMode.validated ? '✅ 验证通过' : '❌ 验证失败'}`);
+    console.log(`📈 自动模式: ${report.modeComparison.autoMode.validated ? '验证通过' : 'ERROR: 验证失败'}`);
+    console.log(`📜 滚动触发模式: ${report.modeComparison.scrollTriggeredMode.validated ? '验证通过' : 'ERROR: 验证失败'}`);
 
     return report;
   }
@@ -387,6 +387,6 @@ if (typeof window !== 'undefined' && import.meta.env.DEV) {
     autoLoadModeValidator.cleanup();
   };
 
-  console.log('🔍 AutoLoadModeValidator 调试功能已加载');
+  console.log('AutoLoadModeValidator 调试功能已加载');
   console.log('使用 validateLoadingModes() 运行双模式验证测试');
 } 

@@ -155,7 +155,7 @@ onMounted(() => {
 .chat-sidebar-stable::-webkit-scrollbar,
 .message-area-stable::-webkit-scrollbar {
   width: 6px;
-  /* 🔧 确保滚动条不占用内容空间 */
+  /* 确保滚动条不占用内容空间 */
   position: absolute;
 }
 
@@ -168,12 +168,12 @@ onMounted(() => {
 .message-area-stable::-webkit-scrollbar-thumb {
   background: rgba(124, 58, 237, 0.2);
   border-radius: 3px;
-  /* 🔧 防止滚动条变化影响布局 */
+  /* 防止滚动条变化影响布局 */
   border: none;
   outline: none;
 }
 
-/* 🔧 响应式：保持稳定性 */
+/* 响应式：保持稳定性 */
 @media (max-width: 768px) {
   .chat-grid-layout {
     grid-template-columns: 1fr;
@@ -190,7 +190,7 @@ onMounted(() => {
   }
 }
 
-/* 🔧 强制GPU加速，减少重排 */
+/* 强制GPU加速，减少重排 */
 .chat-grid-layout,
 .chat-sidebar-stable,
 .chat-main-stable,
@@ -202,13 +202,13 @@ onMounted(() => {
   perspective: 1000px;
 }
 
-/* 🔧 防止字体加载导致的布局偏移 */
+/* 防止字体加载导致的布局偏移 */
 .stable-layout-container {
   font-display: swap;
   font-synthesis: none;
 }
 
-/* 🔧 禁用可能导致布局变化的动画 */
+/* 禁用可能导致布局变化的动画 */
 @media (prefers-reduced-motion: reduce) {
   .debug-toggle-btn {
     transition: none;
@@ -220,14 +220,14 @@ onMounted(() => {
   }
 }
 
-/* 🔧 高对比度模式下的稳定性 */
+/* 高对比度模式下的稳定性 */
 @media (prefers-contrast: high) {
   .debug-toggle-btn {
     border-width: 3px;
   }
 }
 
-/* 🔧 打印时的布局稳定性 */
+/* 打印时的布局稳定性 */
 @media print {
   .stable-layout-container {
     position: static;

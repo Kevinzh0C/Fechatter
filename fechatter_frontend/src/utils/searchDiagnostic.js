@@ -16,7 +16,7 @@ export class SearchDiagnostic {
    */
   async runFullDiagnostic() {
     if (import.meta.env.DEV) {
-      console.log('🔍 [SearchDiagnostic] Starting comprehensive search diagnostic...');
+      console.log('[SearchDiagnostic] Starting comprehensive search diagnostic...');
     }
     
     const results = {
@@ -276,7 +276,7 @@ export class SearchDiagnostic {
    */
   async attemptAutoFix() {
     if (import.meta.env.DEV) {
-      console.log('🔧 [SearchDiagnostic] Attempting automatic fixes...');
+      console.log('[SearchDiagnostic] Attempting automatic fixes...');
     }
     
     const fixes = [];
@@ -312,21 +312,21 @@ export class SearchDiagnostic {
     const { results } = this;
     
     if (import.meta.env.DEV) {
-      console.log('\n🔍 ========== SEARCH DIAGNOSTIC REPORT ==========');
+      console.log('\n========== SEARCH DIAGNOSTIC REPORT ==========');
     if (import.meta.env.DEV) {
       console.log(`⏰ Timestamp: ${results.timestamp}`);
     if (import.meta.env.DEV) {
-      console.log(`✅ Passed: ${results.summary.passed}`);
+      console.log(`Passed: ${results.summary.passed}`);
     if (import.meta.env.DEV) {
-      console.log(`❌ Failed: ${results.summary.failed}`);
+      console.log(`ERROR: Failed: ${results.summary.failed}`);
     if (import.meta.env.DEV) {
-      console.log(`⚠️  Warnings: ${results.summary.warnings}`);
+      console.log(`WARNING: Warnings: ${results.summary.warnings}`);
     if (import.meta.env.DEV) {
       console.log('\n📋 Test Results:');
     }
     
     Object.entries(results.tests).forEach(([testName, result]) => {
-      const icon = result.status === 'PASS' ? '✅' : result.status === 'FAIL' ? '❌' : '⚠️';
+      const icon = result.status === 'PASS' ? '' : result.status === 'FAIL' ? '❌' : '⚠️';
       if (import.meta.env.DEV) {
         console.log(`${icon} ${testName}: ${result.message}`);
       }
@@ -343,12 +343,12 @@ export class SearchDiagnostic {
       
       if (result.suggestion) {
         if (import.meta.env.DEV) {
-          console.log('   💡 Suggestion:', result.suggestion);
+          console.log('   Suggestion:', result.suggestion);
         }
     });
     
     if (import.meta.env.DEV) {
-      console.log('🔍 ============================================\n');
+      console.log('============================================\n');
     }
 
   /**
@@ -385,7 +385,7 @@ if (typeof window !== 'undefined') {
   window.fixSearch = () => searchDiagnostic.attemptAutoFix();
   
   if (import.meta.env.DEV) {
-    console.log('🔍 Search diagnostic tools available:');
+    console.log('Search diagnostic tools available:');
   if (import.meta.env.DEV) {
     console.log('   window.searchDiagnostic.runFullDiagnostic() - Full diagnostic');
   if (import.meta.env.DEV) {

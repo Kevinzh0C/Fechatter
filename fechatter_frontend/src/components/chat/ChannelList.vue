@@ -1,5 +1,5 @@
 <template>
-  <!-- 🎨 人体工学设计的频道列表 -->
+  <!-- 人体工学设计的频道列表 -->
   <div class="modern-channel-list">
     <!-- 🔄 优雅的加载状态 -->
     <div v-if="loading && allChats.length === 0" class="loading-container">
@@ -63,7 +63,7 @@
       </div>
     </div>
 
-    <!-- 💬 直接消息列表 (DMs) -->
+    <!-- MESSAGE: 直接消息列表 (DMs) -->
     <div v-else-if="listType === 'dms' && sortedDMs.length > 0" class="dms-container">
       <div v-for="dm in sortedDMs" :key="`dm-${dm.id}`" @click="navigateToChat(dm.id)" class="dm-card"
         :class="{ 'active': isActiveChat(dm.id) }" :title="getDMDisplayName(dm)">
@@ -159,7 +159,7 @@ const loading = ref(false);
 // Navigation function
 async function navigateToChat(chatId: number) {
   try {
-    console.log('🔧 Navigating to chat:', chatId);
+    console.log('Navigating to chat:', chatId);
     await router.push(`/chat/${chatId}`);
   } catch (error) {
     console.error('Navigation error:', error);
@@ -180,12 +180,12 @@ const allChats = computed(() => {
 });
 
 const sortedChannels = computed(() => {
-  console.log('🔍 [ChannelList] All chats for debugging:', allChats.value);
-  console.log('🔍 [ChannelList] Filtering for channels, listType:', props.listType);
+  console.log('[ChannelList] All chats for debugging:', allChats.value);
+  console.log('[ChannelList] Filtering for channels, listType:', props.listType);
 
   const filtered = allChats.value.filter(c => {
     const chat = c as any; // Type bypass
-    console.log(`🔍 [ChannelList] Chat ${chat.id}: name="${chat.name}", chat_type="${chat.chat_type}"`);
+    console.log(`[ChannelList] Chat ${chat.id}: name="${chat.name}", chat_type="${chat.chat_type}"`);
     // Filter for channels (both public and private)
     return chat.chat_type === 'PublicChannel' ||
       chat.chat_type === 'PrivateChannel' ||
@@ -194,16 +194,16 @@ const sortedChannels = computed(() => {
       chat.chat_type === 'private_channel';
   });
 
-  console.log('🔍 [ChannelList] Filtered channels:', filtered);
+  console.log('[ChannelList] Filtered channels:', filtered);
   return filtered.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
 });
 
 const sortedDMs = computed(() => {
-  console.log('🔍 [ChannelList] Filtering for DMs, listType:', props.listType);
+  console.log('[ChannelList] Filtering for DMs, listType:', props.listType);
 
   const filtered = allChats.value.filter(c => {
     const chat = c as any; // Type bypass
-    console.log(`🔍 [ChannelList] Chat ${chat.id}: name="${chat.name}", chat_type="${chat.chat_type}"`);
+    console.log(`[ChannelList] Chat ${chat.id}: name="${chat.name}", chat_type="${chat.chat_type}"`);
     // Filter for direct messages/single chats
     return chat.chat_type === 'Single' ||
       chat.chat_type === 'direct' ||
@@ -211,7 +211,7 @@ const sortedDMs = computed(() => {
       chat.chat_type === 'direct_message';
   });
 
-  console.log('🔍 [ChannelList] Filtered DMs:', filtered);
+  console.log('[ChannelList] Filtered DMs:', filtered);
   return filtered.sort((a: any, b: any) => {
     const aTime = a.last_message?.created_at || a.updated_at || '';
     const bTime = b.last_message?.created_at || b.updated_at || '';
@@ -375,7 +375,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 🎨 现代人体工学设计的频道列表 */
+/* 现代人体工学设计的频道列表 */
 .modern-channel-list {
   padding: 8px 12px;
   max-height: 100%;
@@ -450,7 +450,7 @@ onMounted(() => {
   gap: 4px;
 }
 
-/* 🎯 频道卡片 - 人体工学设计 */
+/* 频道卡片 - 人体工学设计 */
 .channel-card,
 .dm-card {
   display: flex;
@@ -549,7 +549,7 @@ onMounted(() => {
   transform: scale(1.05);
 }
 
-/* 📝 频道信息区域 */
+/* 频道信息区域 */
 .channel-info,
 .dm-info {
   flex: 1;
@@ -642,7 +642,7 @@ onMounted(() => {
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* 📊 状态指示器和操作区域 */
+/* 状态指示器和操作区域 */
 .channel-status,
 .dm-actions {
   display: flex;
@@ -684,7 +684,7 @@ onMounted(() => {
   height: 12px;
 }
 
-/* 👤 用户头像设计 */
+/* USER: 用户头像设计 */
 .dm-avatar-container {
   margin-right: 16px;
   flex-shrink: 0;
@@ -743,7 +743,7 @@ onMounted(() => {
   background: #80848e;
 }
 
-/* ❌ 关闭按钮 */
+/* ERROR: 关闭按钮 */
 .close-dm-btn {
   width: 32px;
   height: 32px;
@@ -854,7 +854,7 @@ onMounted(() => {
   }
 }
 
-/* 🎯 高对比度支持 */
+/* 高对比度支持 */
 @media (prefers-contrast: high) {
 
   .channel-card,

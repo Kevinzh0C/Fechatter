@@ -28,7 +28,7 @@ export function getPresenceConfig() {
 
 export function enableAutoAway() {
   if (import.meta.env.DEV) {
-    console.warn('⚠️ Auto-away is currently disabled by design');
+    console.warn('WARNING: Auto-away is currently disabled by design');
   if (import.meta.env.DEV) {
     console.log('To enable, uncomment code in:');
   if (import.meta.env.DEV) {

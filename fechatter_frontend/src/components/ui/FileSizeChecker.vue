@@ -24,7 +24,7 @@
         </div>
         
         <div class="file-status">
-          <span v-if="result.isValid && !result.isNearLimit" class="status-success">✅</span>
+          <span v-if="result.isValid && !result.isNearLimit" class="status-success"></span>
           <span v-else-if="result.isNearLimit" class="status-warning">⚠️</span>
           <span v-else class="status-error">❌</span>
         </div>

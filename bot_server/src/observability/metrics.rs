@@ -18,7 +18,7 @@ pub async fn init_metrics() -> Result<()> {
         .with_http_listener(bind_address.parse::<std::net::SocketAddr>()?)
         .install()?;
 
-    info!("📊 [BOT] Prometheus metrics server started on {}", bind_address);
+    info!("[BOT] Prometheus metrics server started on {}", bind_address);
     Ok(())
 }
 

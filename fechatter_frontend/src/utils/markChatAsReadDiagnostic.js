@@ -34,7 +34,7 @@ class MarkChatAsReadDiagnostic {
 
       if (!chatStore.currentChatId) {
         if (import.meta.env.DEV) {
-          console.warn('⚠️ No current chat selected. Navigate to a chat first.');
+          console.warn('WARNING: No current chat selected. Navigate to a chat first.');
         return;
       }
 
@@ -61,29 +61,29 @@ class MarkChatAsReadDiagnostic {
 
         const updatedChat = chatStore.chats.find(c => c.id === currentChatId);
         if (import.meta.env.DEV) {
-          console.log('✅ markChatAsRead completed successfully');
+          console.log('markChatAsRead completed successfully');
         if (import.meta.env.DEV) {
           console.log('- Unread count after:', updatedChat?.unread_count);
         }
 
         if (updatedChat?.unread_count === 0) {
           if (import.meta.env.DEV) {
-            console.log('✅ Local unread count properly reset');
+            console.log('Local unread count properly reset');
           }
         } else {
           if (import.meta.env.DEV) {
-            console.warn('⚠️ Unread count not reset, value:', updatedChat?.unread_count);
+            console.warn('WARNING: Unread count not reset, value:', updatedChat?.unread_count);
           }
 
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.error('❌ markChatAsRead failed:', error);
+          console.error('ERROR: markChatAsRead failed:', error);
         }
 
         // Analyze the error
         if (error.response?.status === 404) {
           if (import.meta.env.DEV) {
-            console.log('📊 404 Error Analysis:');
+            console.log('404 Error Analysis:');
           if (import.meta.env.DEV) {
             console.log('- URL attempted:', error.config?.url);
           if (import.meta.env.DEV) {
@@ -127,11 +127,11 @@ class MarkChatAsReadDiagnostic {
               }
 
           if (import.meta.env.DEV) {
-            console.log(`✅ Endpoint ${endpoint} format validated`);
+            console.log(`Endpoint ${endpoint} format validated`);
           }
         } catch (error) {
           if (import.meta.env.DEV) {
-            console.log(`❌ Endpoint ${endpoint} failed:`, error.response?.status);
+            console.log(`ERROR: Endpoint ${endpoint} failed:`, error.response?.status);
           }
 
       if (import.meta.env.DEV) {
@@ -145,7 +145,7 @@ class MarkChatAsReadDiagnostic {
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Diagnostic failed:', error);
+        console.error('ERROR: Diagnostic failed:', error);
       }
 
     console.groupEnd();
@@ -156,7 +156,7 @@ class MarkChatAsReadDiagnostic {
    */
   monitorMarkChatAsReadCalls() {
     if (import.meta.env.DEV) {
-      console.log('🔍 Starting markChatAsRead monitoring...');
+      console.log('Starting markChatAsRead monitoring...');
     }
 
     // Hook into chat store if available
@@ -185,13 +185,13 @@ class MarkChatAsReadDiagnostic {
           const endTime = performance.now();
 
           if (import.meta.env.DEV) {
-            console.log(`✅ Success in ${(endTime - startTime).toFixed(2)}ms`);
+            console.log(`Success in ${(endTime - startTime).toFixed(2)}ms`);
           return result;
         } catch (error) {
           const endTime = performance.now();
 
           if (import.meta.env.DEV) {
-            console.error(`❌ Failed in ${(endTime - startTime).toFixed(2)}ms:`, error.message);
+            console.error(`ERROR: Failed in ${(endTime - startTime).toFixed(2)}ms:`, error.message);
           throw error;
         } finally {
           console.groupEnd();
@@ -199,11 +199,11 @@ class MarkChatAsReadDiagnostic {
       };
 
       if (import.meta.env.DEV) {
-        console.log('✅ markChatAsRead monitoring active');
+        console.log('markChatAsRead monitoring active');
       return true;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Failed to setup monitoring:', error);
+        console.error('ERROR: Failed to setup monitoring:', error);
       return false;
     }
 
@@ -230,9 +230,9 @@ if (typeof window !== 'undefined') {
   if (import.meta.env.DEV) {
     console.log('🧪 Mark Chat As Read Diagnostic loaded');
   if (import.meta.env.DEV) {
-    console.log('💡 Use window.testMarkChatAsRead() to test the fix');
+    console.log('Use window.testMarkChatAsRead() to test the fix');
   if (import.meta.env.DEV) {
-    console.log('💡 Use window.monitorMarkChatAsRead() to monitor calls');
+    console.log('Use window.monitorMarkChatAsRead() to monitor calls');
   }
 
 export default markChatAsReadDiagnostic; 

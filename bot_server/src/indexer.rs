@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
   tracing_subscriber::registry().with(layer).init();
 
   let config = AppConfig::load()?;
-  info!("✅ {}", config.get_summary());
+  info!("{}", config.get_summary());
 
   let db_url = &config.server.db_url;
   let vector_size = config.bot.vector.size;
@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
   let store = PgVector::try_new(pool, vector_size as _).await?;
 
   info!(
-    "🚀 Starting code indexing with vector size: {}",
+    "Starting code indexing with vector size: {}",
     vector_size
   );
 
@@ -49,6 +49,6 @@ async fn main() -> Result<()> {
     .run()
     .await?;
 
-  info!("✅ Code indexing completed successfully");
+  info!("Code indexing completed successfully");
   Ok(())
 }

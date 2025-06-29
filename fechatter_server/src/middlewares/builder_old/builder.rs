@@ -40,7 +40,7 @@ pub fn add_workspace_middleware<S>(router: Router<S>, state: AppState) -> Router
 where
   S: Clone + Send + Sync + 'static,
 {
-  // 🎯 EXTENSION-BASED: Use Extension pattern for AuthUser, but use the provided AppState parameter
+  // EXTENSION-BASED: Use Extension pattern for AuthUser, but use the provided AppState parameter
   router.layer(from_fn(move |mut req: Request<Body>, next: Next| {
     let state_clone = state.clone();
 
@@ -68,7 +68,7 @@ pub fn add_chat_membership_middleware<S>(router: Router<S>, state: AppState) -> 
 where
   S: Clone + Send + Sync + 'static,
 {
-  // 🎯 EXTENSION-BASED: Use Extension pattern for AuthUser, but use the provided AppState parameter
+  // EXTENSION-BASED: Use Extension pattern for AuthUser, but use the provided AppState parameter
   router.layer(from_fn(move |req: Request<Body>, next: Next| {
     let state_clone = state.clone();
 
@@ -111,7 +111,7 @@ impl MiddlewareFlags {
   }
 }
 
-/// 🎯 EXTENSION-BASED: Enhanced MiddlewareBuilder that works with Extension pattern
+/// EXTENSION-BASED: Enhanced MiddlewareBuilder that works with Extension pattern
 ///
 /// This builder now internally uses Extension pattern while maintaining the same API
 pub struct MiddlewareBuilder<S, T> {
@@ -148,7 +148,7 @@ where
     }
   }
 
-  /// 🎯 Create a new middleware builder in Extension mode
+  /// Create a new middleware builder in Extension mode
   pub fn new_extension_based(router: Router<S>, state: T) -> Self {
     Self {
       router,
@@ -170,7 +170,7 @@ where
     }
   }
 
-  /// 🎯 Add AppState as Extension middleware (must be called first in Extension mode)
+  /// Add AppState as Extension middleware (must be called first in Extension mode)
   pub fn with_state_extension(mut self) -> Self {
     if self.use_extension {
       let app_state = self.get_or_create_app_state();
@@ -193,7 +193,7 @@ where
   pub fn with_auth(mut self) -> Self {
     if !self.applied.contains(MiddlewareFlags::AUTH) {
       if self.use_extension {
-        // 🎯 Extension-based auth middleware
+        // Extension-based auth middleware
         let state = self.state.clone();
         self.router = self
           .router
@@ -237,7 +237,7 @@ where
   pub fn with_refresh(mut self) -> Self {
     if !self.applied.contains(MiddlewareFlags::REFRESH) {
       if self.use_extension {
-        // 🎯 Extension-based refresh middleware
+        // Extension-based refresh middleware
         // For now, use the original refresh middleware since it's complex
         self.router = add_refresh_middleware(self.router, self.state.clone());
       } else {
@@ -269,10 +269,10 @@ where
   }
 
   /// Add all business middlewares (Auth, Refresh, Workspace, Chat Membership)
-  /// 🔧 CRITICAL FIX: Reverse order so auth middleware executes first and adds AuthUser extension
+  /// CRITICAL FIX: Reverse order so auth middleware executes first and adds AuthUser extension
   /// Application order: chat_membership -> workspace -> refresh -> auth (auth applied last, executes first)
   pub fn with_all_middlewares(self) -> Self {
-    tracing::debug!("🔧 [MIDDLEWARE_BUILDER] Applying middleware chain: chat -> workspace -> refresh -> auth");
+    tracing::debug!("[MIDDLEWARE_BUILDER] Applying middleware chain: chat -> workspace -> refresh -> auth");
     
     self
       .with_chat_membership()
@@ -339,7 +339,7 @@ impl<S> RouterExt<S> for Router<S> {
   }
 }
 
-// 🎯 Extension trait for Extension-based builder - Works with stateless routers
+// Extension trait for Extension-based builder - Works with stateless routers
 pub trait RouterExtExtension: Sized {
   fn with_extension_middlewares<T>(self, state: T) -> StatelessMiddlewareBuilder<T>
   where

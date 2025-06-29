@@ -26,7 +26,7 @@ use fechatter_core::{ChatId, MessageId, UserId};
 use serde::{Deserialize, Serialize};
 use tracing::error;
 
-// ── Cache Service Adapter ────────────────────────────────────────────────────────────
+// Cache Service Adapter
 
 /// Adapter to bridge between application cache service and core cache service trait
 struct CacheServiceAdapter {
@@ -90,7 +90,7 @@ impl fechatter_core::contracts::CacheService for CacheServiceAdapter {
   }
 }
 
-// ── Dual Stream Event Types ────────────────────────────────────────────────────────
+// Dual Stream Event Types
 
 /// Async Index Event - Sent to @indexer.rs
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -153,7 +153,7 @@ pub enum RealtimeEvent {
   },
 }
 
-// ── Dual Stream Dispatcher ──────────────────────────────────────────────────────────
+// Dual Stream Dispatcher
 
 /// Dual Stream Dispatcher - Event dispatcher for both streams
 pub struct DualStreamDispatcher {
@@ -265,7 +265,7 @@ impl DualStreamDispatcher {
     // Non-persistent publish - prioritize low latency
     match client.publish(subject.clone(), payload.into()).await {
       Ok(_) => {
-        info!("⚡ Realtime event sent to notify-server: {}", subject);
+        info!("Realtime event sent to notify-server: {}", subject);
         Ok(())
       }
       Err(e) => {
@@ -276,7 +276,7 @@ impl DualStreamDispatcher {
   }
 }
 
-// ── Event Publisher Trait ──────────────────────────────────────────────────────────
+// Event Publisher Trait
 
 /// Event publisher trait for dependency injection
 #[async_trait::async_trait]
@@ -309,18 +309,18 @@ impl EventPublisherTrait for AppStateEventPublisher {
     chat_members: Vec<i64>,
   ) -> Result<(), AppError> {
     info!(
-      "🔍 [DEBUG] AppStateEventPublisher::publish_message_created called for message_id={}",
+      "[DEBUG] AppStateEventPublisher::publish_message_created called for message_id={}",
       message.id
     );
     info!(
-      "🔍 [DEBUG] Publisher available: {}",
+      "[DEBUG] Publisher available: {}",
       self.publisher.is_some()
     );
-    info!("🔍 [DEBUG] Chat members count: {}", chat_members.len());
+    info!("[DEBUG] Chat members count: {}", chat_members.len());
 
     if let Some(publisher) = &self.publisher {
       info!(
-        "🔍 [DEBUG] Publisher type: {}",
+        "[DEBUG] Publisher type: {}",
         std::any::type_name_of_val(publisher.as_ref())
       );
 
@@ -331,8 +331,8 @@ impl EventPublisherTrait for AppStateEventPublisher {
         .map(|&id| fechatter_core::UserId(id))
         .collect();
 
-      info!("🔍 [DEBUG] About to call publish_message_event with MessageLifecycle::Created");
-      info!("🔍 [DEBUG] ChatId: {:?}, UserIds: {:?}", chat_id, user_ids);
+      info!("[DEBUG] About to call publish_message_event with MessageLifecycle::Created");
+      info!("[DEBUG] ChatId: {:?}, UserIds: {:?}", chat_id, user_ids);
 
       let result = publisher
         .publish_message_event(
@@ -342,16 +342,16 @@ impl EventPublisherTrait for AppStateEventPublisher {
         )
         .await;
 
-      info!("🔍 [DEBUG] publish_message_event result: {:?}", result);
+      info!("[DEBUG] publish_message_event result: {:?}", result);
       result
     } else {
-      warn!("🔍 [DEBUG] Event publisher not available, skipping message created event");
+      warn!("[DEBUG] Event publisher not available, skipping message created event");
       Ok(())
     }
   }
 }
 
-// ── Dual Stream Message Service ─────────────────────────────────────────────────────
+// Dual Stream Message Service
 
 /// Dual Stream Message Service - Complete dual-stream architecture implementation
 ///
@@ -505,26 +505,26 @@ impl DualStreamMessageService {
       .await
       .map_err(AppError::from)?;
 
-    // 🎯 2. MISSING LINK: Publish message created event to NATS JetStream
-    info!("🔍 [DEBUG] About to spawn task for NATS JetStream event publishing");
+    // 2. MISSING LINK: Publish message created event to NATS JetStream
+    info!("[DEBUG] About to spawn task for NATS JetStream event publishing");
     let event_publisher = Arc::clone(&self.event_publisher);
     let jetstream_message = saved_message.clone();
     let jetstream_members = chat_members.clone();
     tokio::spawn(async move {
       info!(
-        "🔍 [DEBUG] Inside event publishing task, calling event_publisher.publish_message_created"
+        "[DEBUG] Inside event publishing task, calling event_publisher.publish_message_created"
       );
       if let Err(e) = event_publisher
         .publish_message_created(&jetstream_message, jetstream_members)
         .await
       {
         warn!(
-          "🔍 [DEBUG] Failed to publish message created event to NATS JetStream: {}",
+          "[DEBUG] Failed to publish message created event to NATS JetStream: {}",
           e
         );
       } else {
         info!(
-          "🔍 [DEBUG] ✅ Message created event published to NATS JetStream: message_id={}",
+          "[DEBUG] Message created event published to NATS JetStream: message_id={}",
           jetstream_message.id
         );
       }
@@ -1082,25 +1082,22 @@ impl DualStreamMessageService {
   }
 }
 
-// ── Factory Functions ────────────────────────────────────────────────────────────
+// Factory Functions
 
 /// Create dual stream message service
 pub fn create_dual_stream_message_service(state: &AppState) -> DualStreamMessageService {
-  // 1. Create domain service
   let pool = state.pool().clone();
   let repository = Arc::new(MessageRepository::new(pool));
   let config = MessageConfig::default();
   let domain_impl = Arc::new(MessageDomainServiceImpl::new(repository, config));
   let domain_service: Arc<dyn MessageDomainService> = domain_impl;
 
-  // 2. Prepare NATS client and dispatcher
   let nats = state
     .nats_client()
     .expect("NATS client required for dual stream")
     .clone();
   let dispatcher = Arc::new(DualStreamDispatcher::new(nats.clone()));
 
-  // 3. Create notification flow & application-level notification service
   let flow_service = create_notification_flow_service_with_nats(nats);
   let notification_service: Arc<dyn NotificationServiceTrait> =
     create_notification_service(flow_service);
@@ -1135,7 +1132,7 @@ pub fn create_dual_stream_message_service(state: &AppState) -> DualStreamMessage
   )
 }
 
-// ── Backward Compatibility ────────────────────────────────────────────────────────────
+// Backward Compatibility
 
 /// Backward compatible aliases
 pub type CompleteMessageService = DualStreamMessageService;

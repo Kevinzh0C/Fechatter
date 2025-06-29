@@ -134,7 +134,7 @@ const handleClick = (event) => {
 </script>
 
 <style scoped>
-/* 🎨 Discord Markdown 样式 */
+/* Discord Markdown 样式 */
 .discord-markdown {
   color: var(--text-primary);
   line-height: 1.375;

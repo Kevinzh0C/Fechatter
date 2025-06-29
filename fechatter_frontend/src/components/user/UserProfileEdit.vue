@@ -1,12 +1,12 @@
 <template>
   <div class="user-profile-edit">
-    <!-- 页面标题 -->
+    <!-- Page Header -->
     <div class="profile-header">
-      <h2 class="profile-title">编辑个人资料</h2>
-      <p class="profile-subtitle">更新您的个人信息和偏好设置</p>
+      <h2 class="profile-title">Edit Profile</h2>
+      <p class="profile-subtitle">Update your personal information and preferences</p>
     </div>
 
-    <!-- 错误提示 -->
+    <!-- Error Alert -->
     <div v-if="error" class="error-alert">
       <svg class="error-icon" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd"
@@ -16,7 +16,7 @@
       <span>{{ error }}</span>
     </div>
 
-    <!-- 成功提示 -->
+    <!-- Success Alert -->
     <div v-if="successMessage" class="success-alert">
       <svg class="success-icon" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd"
@@ -26,7 +26,7 @@
       <span>{{ successMessage }}</span>
     </div>
 
-    <!-- 头像编辑 -->
+    <!-- Avatar Upload -->
     <div class="avatar-section">
       <div class="avatar-container">
         <img :src="avatarUrl || defaultAvatarUrl" :alt="formData.fullname || 'User Avatar'" class="avatar" />
@@ -37,78 +37,78 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          上传头像
+          Upload Avatar
         </button>
         <input ref="avatarInput" type="file" accept="image/*" @change="handleAvatarUpload" class="hidden-file-input" />
       </div>
     </div>
 
-    <!-- 表单 -->
+    <!-- Profile Form -->
     <form @submit.prevent="handleSubmit" class="profile-form">
-      <!-- 基本信息 -->
+      <!-- Basic Information -->
       <div class="form-section">
-        <h3 class="section-title">基本信息</h3>
+        <h3 class="section-title">Basic Information</h3>
 
         <div class="form-grid">
-          <!-- 姓名 -->
+          <!-- Full Name -->
           <div class="form-group">
-            <label for="fullname" class="form-label">姓名 *</label>
+            <label for="fullname" class="form-label">Full Name *</label>
             <input id="fullname" v-model="formData.fullname" type="text" class="form-input"
-              :class="{ 'form-input-error': validationErrors.fullname }" placeholder="请输入您的姓名" required />
+              :class="{ 'form-input-error': validationErrors.fullname }" placeholder="Enter your full name" required />
             <span v-if="validationErrors.fullname" class="form-error">
               {{ validationErrors.fullname }}
             </span>
           </div>
 
-          <!-- 邮箱 -->
+          <!-- Email -->
           <div class="form-group">
-            <label for="email" class="form-label">邮箱 *</label>
+            <label for="email" class="form-label">Email *</label>
             <input id="email" v-model="formData.email" type="email" class="form-input"
-              :class="{ 'form-input-error': validationErrors.email }" placeholder="请输入您的邮箱" required />
+              :class="{ 'form-input-error': validationErrors.email }" placeholder="Enter your email address" required />
             <span v-if="validationErrors.email" class="form-error">
               {{ validationErrors.email }}
             </span>
           </div>
 
-          <!-- 电话 -->
+          <!-- Phone -->
           <div class="form-group">
-            <label for="phone" class="form-label">电话</label>
-            <input id="phone" v-model="formData.phone" type="tel" class="form-input" placeholder="请输入您的电话号码" />
+            <label for="phone" class="form-label">Phone</label>
+            <input id="phone" v-model="formData.phone" type="tel" class="form-input" placeholder="Enter your phone number" />
           </div>
 
-          <!-- 职位 -->
+          <!-- Job Title -->
           <div class="form-group">
-            <label for="title" class="form-label">职位</label>
-            <input id="title" v-model="formData.title" type="text" class="form-input" placeholder="请输入您的职位" />
+            <label for="title" class="form-label">Job Title</label>
+            <input id="title" v-model="formData.title" type="text" class="form-input" placeholder="Enter your job title" />
           </div>
 
-          <!-- 部门 -->
+          <!-- Department -->
           <div class="form-group">
-            <label for="department" class="form-label">部门</label>
-            <input id="department" v-model="formData.department" type="text" class="form-input" placeholder="请输入您的部门" />
+            <label for="department" class="form-label">Department</label>
+            <input id="department" v-model="formData.department" type="text" class="form-input" placeholder="Enter your department" />
           </div>
 
-          <!-- 时区 -->
+          <!-- Timezone -->
           <div class="form-group">
-            <label for="timezone" class="form-label">时区</label>
+            <label for="timezone" class="form-label">Timezone</label>
             <select id="timezone" v-model="formData.timezone" class="form-select">
-              <option value="">选择时区</option>
-              <option value="Asia/Shanghai">北京时间 (UTC+8)</option>
-              <option value="Asia/Tokyo">东京时间 (UTC+9)</option>
-              <option value="America/New_York">纽约时间 (UTC-5)</option>
-              <option value="America/Los_Angeles">洛杉矶时间 (UTC-8)</option>
-              <option value="Europe/London">伦敦时间 (UTC+0)</option>
-              <option value="Europe/Paris">巴黎时间 (UTC+1)</option>
+              <option value="">Select timezone</option>
+              <option value="Asia/Shanghai">Beijing Time (UTC+8)</option>
+              <option value="Asia/Tokyo">Tokyo Time (UTC+9)</option>
+              <option value="America/New_York">New York Time (UTC-5)</option>
+              <option value="America/Los_Angeles">Los Angeles Time (UTC-8)</option>
+              <option value="Europe/London">London Time (UTC+0)</option>
+              <option value="Europe/Paris">Paris Time (UTC+1)</option>
             </select>
           </div>
 
-          <!-- 语言 -->
+          <!-- Language -->
           <div class="form-group">
-            <label for="language" class="form-label">语言</label>
+            <label for="language" class="form-label">Language</label>
             <select id="language" v-model="formData.language" class="form-select">
-              <option value="">选择语言</option>
-              <option value="zh-CN">简体中文</option>
-              <option value="zh-TW">繁體中文</option>
+              <option value="">Select language</option>
+              <option value="zh-CN">Simplified Chinese</option>
+              <option value="zh-TW">Traditional Chinese</option>
               <option value="en">English</option>
               <option value="ja">日本語</option>
               <option value="ko">한국어</option>
@@ -117,29 +117,29 @@
         </div>
       </div>
 
-      <!-- 个人简介 -->
+      <!-- Bio Section -->
       <div class="form-section">
-        <h3 class="section-title">个人简介</h3>
+        <h3 class="section-title">Bio</h3>
 
         <div class="form-group">
-          <label for="bio" class="form-label">简介</label>
+          <label for="bio" class="form-label">Bio</label>
           <textarea id="bio" v-model="formData.bio" class="form-textarea" rows="4" maxlength="500"
-            placeholder="简单介绍一下自己..." />
+            placeholder="Tell us about yourself..." />
           <div class="character-count">
             {{ (formData.bio || '').length }}/500
           </div>
         </div>
       </div>
 
-      <!-- 表单操作 -->
+      <!-- Form Actions -->
       <div class="form-actions">
         <button type="button" @click="handleCancel" class="btn btn-secondary" :disabled="loading">
-          取消
+          Cancel
         </button>
 
         <button type="submit" class="btn btn-primary" :disabled="loading || !hasChanges">
           <span v-if="loading" class="loading-spinner" />
-          {{ loading ? '保存中...' : '保存' }}
+          {{ loading ? 'Saving...' : 'Save' }}
         </button>
       </div>
     </form>
@@ -156,7 +156,7 @@ import type { UserProfileResponse, UpdateUserProfileRequest } from '@/types/api'
 
 // Props
 interface Props {
-  userId?: number; // 如果提供，编辑指定用户；否则编辑当前用户
+  userId?: number; // If provided, edit specified user; otherwise edit current user
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -168,14 +168,14 @@ const router = useRouter();
 const authStore = useAuthStore();
 const { notifySuccess, notifyError } = useToast();
 
-// 状态
+// State
 const loading = ref(false);
 const error = ref('');
 const successMessage = ref('');
 const originalData = ref<UserProfileResponse | null>(null);
 const avatarInput = ref<HTMLInputElement>();
 
-// 表单数据
+// Form data
 const formData = reactive<UpdateUserProfileRequest & { email: string }>({
   fullname: '',
   email: '',
@@ -188,10 +188,10 @@ const formData = reactive<UpdateUserProfileRequest & { email: string }>({
   language: ''
 });
 
-// 验证错误
+// Validation errors
 const validationErrors = reactive<Record<string, string>>({});
 
-// 头像 URL
+// Avatar URL
 const avatarUrl = computed(() => formData.avatar_url);
 const defaultAvatarUrl = computed(() => {
   const name = formData.fullname || formData.email || '?';
@@ -199,7 +199,7 @@ const defaultAvatarUrl = computed(() => {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=6366f1&color=fff&size=128`;
 });
 
-// 检查是否有变更
+// Check for changes
 const hasChanges = computed(() => {
   if (!originalData.value) return false;
 
@@ -210,43 +210,43 @@ const hasChanges = computed(() => {
   });
 });
 
-// 表单验证
+// Form validation
 const validateForm = (): boolean => {
-  // 清除之前的验证错误
+  // Clear previous validation errors
   Object.keys(validationErrors).forEach(key => {
     delete validationErrors[key];
   });
 
   let isValid = true;
 
-  // 验证姓名
+  // Validate name
   if (!formData.fullname?.trim()) {
-    validationErrors.fullname = '姓名不能为空';
+    validationErrors.fullname = 'Name cannot be empty';
     isValid = false;
   } else if (formData.fullname.length < 2) {
-    validationErrors.fullname = '姓名至少需要2个字符';
+    validationErrors.fullname = 'Name must be at least 2 characters';
     isValid = false;
   }
 
-  // 验证邮箱
+  // Validate email
   if (!formData.email?.trim()) {
-    validationErrors.email = '邮箱不能为空';
+    validationErrors.email = 'Email cannot be empty';
     isValid = false;
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-    validationErrors.email = '邮箱格式不正确';
+    validationErrors.email = 'Email format is invalid';
     isValid = false;
   }
 
-  // 验证电话（如果提供）
+  // Validate phone (if provided)
   if (formData.phone && !/^[+]?[\d\s\-()]+$/.test(formData.phone)) {
-    validationErrors.phone = '电话号码格式不正确';
+    validationErrors.phone = 'Phone number format is invalid';
     isValid = false;
   }
 
   return isValid;
 };
 
-// 加载用户数据
+// Load user data
 const loadUserProfile = async () => {
   try {
     loading.value = true;
@@ -255,17 +255,17 @@ const loadUserProfile = async () => {
     let profile: UserProfileResponse;
 
     if (props.userId) {
-      // 加载指定用户的档案
+      // Load specified user profile
       profile = await UserService.getUserProfile(props.userId);
     } else {
-      // 加载当前用户的档案
+      // Load current user profile
       profile = await UserService.getCurrentUserProfile();
     }
 
-    // 保存原始数据
+    // Save original data
     originalData.value = profile;
 
-    // 填充表单
+    // Populate form
     Object.assign(formData, {
       fullname: profile.fullname || '',
       email: profile.email || '',
@@ -279,14 +279,14 @@ const loadUserProfile = async () => {
     });
 
   } catch (err: any) {
-    error.value = err.message || '加载用户档案失败';
-    notifyError('加载用户档案失败', err.message);
+    error.value = err.message || 'Failed to load user profile';
+    notifyError('Failed to load user profile', err.message);
   } finally {
     loading.value = false;
   }
 };
 
-// 处理头像上传
+// Handle avatar upload
 const triggerAvatarUpload = () => {
   avatarInput.value?.click();
 };
@@ -297,15 +297,15 @@ const handleAvatarUpload = async (event: Event) => {
 
   if (!file) return;
 
-  // 验证文件类型
+  // Validate file type
   if (!file.type.startsWith('image/')) {
-    notifyError('上传失败：请选择图片文件');
+    notifyError('Upload failed: Please select an image file');
     return;
   }
 
-  // 验证文件大小（5MB）
+  // Validate file size (5MB)
   if (file.size > 5 * 1024 * 1024) {
-    notifyError('上传失败：图片文件大小不能超过5MB');
+    notifyError('Upload failed: Image file size cannot exceed 5MB');
     return;
   }
 
@@ -313,15 +313,15 @@ const handleAvatarUpload = async (event: Event) => {
     loading.value = true;
     const avatarUrl = await UserService.uploadAvatar(file);
     formData.avatar_url = avatarUrl;
-    notifySuccess('头像上传成功');
+    notifySuccess('Avatar uploaded successfully');
   } catch (err: any) {
-    notifyError('头像上传失败', err.message);
+    notifyError('Avatar upload failed', err.message);
   } finally {
     loading.value = false;
   }
 };
 
-// 处理表单提交
+// Handle form submission
 const handleSubmit = async () => {
   if (!validateForm()) {
     return;
@@ -332,7 +332,7 @@ const handleSubmit = async () => {
     error.value = '';
     successMessage.value = '';
 
-    // 构建更新请求（排除邮箱，邮箱不能通过这个接口修改）
+    // Build update request (exclude email, cannot be modified through this interface)
     const updateRequest: UpdateUserProfileRequest = {
       fullname: formData.fullname,
       phone: formData.phone || undefined,
@@ -346,42 +346,42 @@ const handleSubmit = async () => {
 
     let result;
     if (props.userId) {
-      // 更新指定用户档案
+      // Update specified user profile
       result = await UserService.updateUserProfile(props.userId, updateRequest);
     } else {
-      // 更新当前用户档案
+      // Update current user profile
       result = await UserService.updateCurrentUserProfile(updateRequest);
     }
 
-    // 更新成功
+    // Update successful
     successMessage.value = result.message;
-    notifySuccess(`档案更新成功 - 已更新: ${result.updated_fields.join(', ')}`);
+    notifySuccess(`Profile updated successfully - Updated: ${result.updated_fields.join(', ')}`);
 
-    // 如果是当前用户，更新认证状态
+    // If current user, update auth state
     if (!props.userId && authStore.user) {
-      // authStore.user = { ...authStore.user, ...result.profile }; // TODO: Use a setter method
+      // authStore.user = { ...authStore.user, ...result.profile }; // TODO: Use setter method
     }
 
-    // 更新原始数据
+    // Update original data
     originalData.value = result.profile;
 
-    // 3秒后清除成功消息
+    // Clear success message after 3 seconds
     setTimeout(() => {
       successMessage.value = '';
     }, 3000);
 
   } catch (err: any) {
-    error.value = err.message || '更新档案失败';
-    notifyError('更新失败', err.message);
+    error.value = err.message || 'Failed to update profile';
+    notifyError('Update failed', err.message);
   } finally {
     loading.value = false;
   }
 };
 
-// 处理取消
+// Handle cancel
 const handleCancel = () => {
   if (hasChanges.value) {
-    if (confirm('您有未保存的更改，确定要离开吗？')) {
+    if (confirm('You have unsaved changes. Are you sure you want to leave?')) {
       router.back();
     }
   } else {
@@ -389,7 +389,7 @@ const handleCancel = () => {
   }
 };
 
-// 清除错误消息当用户输入时
+// Clear error messages when user types
 watch([() => formData.fullname, () => formData.email], () => {
   if (error.value) {
     error.value = '';
@@ -399,7 +399,7 @@ watch([() => formData.fullname, () => formData.email], () => {
   }
 });
 
-// 组件挂载时加载数据
+// Load data on component mount
 onMounted(() => {
   loadUserProfile();
 });
@@ -432,7 +432,7 @@ onMounted(() => {
   color: #6b7280;
 }
 
-/* 警告样式 */
+/* Alert styles */
 .error-alert {
   display: flex;
   align-items: center;
@@ -463,7 +463,7 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-/* 头像样式 */
+/* Avatar styles */
 .avatar-section {
   margin-bottom: 32px;
   text-align: center;
@@ -516,7 +516,7 @@ onMounted(() => {
   display: none;
 }
 
-/* 表单样式 */
+/* Form styles */
 .profile-form {
   space-y: 32px;
 }
@@ -597,7 +597,7 @@ onMounted(() => {
   margin-top: 4px;
 }
 
-/* 按钮样式 */
+/* Button styles */
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -659,7 +659,7 @@ onMounted(() => {
   }
 }
 
-/* 响应式设计 */
+/* Responsive design */
 @media (max-width: 768px) {
   .user-profile-edit {
     padding: 16px;

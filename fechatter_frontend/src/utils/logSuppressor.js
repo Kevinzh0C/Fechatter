@@ -11,11 +11,11 @@ class LogSuppressor {
       /\[DEV_OPTIMIZER\]/,
       /Development mode optimizations/,
       /Development helpers available/,
-      /🔧 \[DEV\]/,
-      /🔧 \[AUTH\]/,
-      /🔍 \[ROUTER\]/,
-      /🚀 API Request \(via Gateway\)/,
-      /✅ API Response \(via Gateway\)/,
+      /\[DEV\]/,
+      /\[AUTH\]/,
+      /\[ROUTER\]/,
+      /API Request \(via Gateway\)/,
+      /API Response \(via Gateway\)/,
       /🔑 Added auth token/,
       /developmentOptimizer\.js:\d+/,  // Any line from developmentOptimizer.js
       /\[\d+:\d+:\d+ [AP]M\]/,  // Any timestamp pattern
@@ -25,12 +25,12 @@ class LogSuppressor {
       /Logout fixed/,
       /Router fixed/,
       /All navigation fixes applied/,
-      /🔧 Applying navigation fixes/,
+      /Applying navigation fixes/,
 
       // Health check spam
       /Health monitoring/,
       /Health check/,
-      /✅ Health monitoring started/,
+      /Health monitoring started/,
 
       // Test loading spam and auto-execution
       /test loaded/i,
@@ -40,20 +40,20 @@ class LogSuppressor {
       /loaded - use/,
       /🧪 Testing/,
       /🧪 Test available/,
-      /🔍 Extension Pattern Test/,
+      /Extension Pattern Test/,
       /🧪 Extension Conflict Fix Test/,
-      /🔍 Error Source Preservation Test/,
+      /Error Source Preservation Test/,
       /🧪 Testing Pragmatic Error Suppressor/,
       /🧪 Testing Content Script Error Suppression/,
       /🧪 Testing Unified Error Handler/,
       /🔬 Transparent Error Handling Verification/,
-      /🔍 Verifying All Error Suppression Fixes/,
+      /Verifying All Error Suppression Fixes/,
       /🧪 Test Manager Initialization/,
       /📋 ChannelsList Analysis/,
-      /📡 API Response Analysis/,
-      /🔍 Duplicate Detection/,
+      /SUBSCRIPTION: API Response Analysis/,
+      /Duplicate Detection/,
       /🏠 Home\.vue Computed Properties/,
-      /📊 Data Flow Trace/,
+      /Data Flow Trace/,
       /Direct error from/,
       /Error from level\d+ function/,
       /Error \d+ - rapid/,
@@ -63,11 +63,11 @@ class LogSuppressor {
       /🧪.*Test loaded.*available for manual execution/,
       /🛡️.*Test loaded.*available for manual execution/,
       /🤝.*Test loaded.*available for manual execution/,
-      /🔧.*Test loaded.*available for manual execution/,
+      /.*Test loaded.*available for manual execution/,
       /🔐.*Test loaded.*available for manual execution/,
       /loaded.*available for manual execution/,
-      /💡 Use window\.test/,
-      /💡 Use window\..*\(\) to test/,
+      /Use window\.test/,
+      /Use window\..*\(\) to test/,
       /Test.*loaded.*manual execution/,
       /available for manual execution/,
 
@@ -76,26 +76,26 @@ class LogSuppressor {
       /Connection.*loaded/,
 
       // Authentication noise
-      /🔧 \[AUTH\] Checking auth state/,
-      /🔧 \[AUTH\] Restoring token/,
+      /\[AUTH\] Checking auth state/,
+      /\[AUTH\] Restoring token/,
       /🔐 \[AUTH\] Initializing/,
       /Authentication initialized/,
       /Auth state/,
 
       // API noise - but keep real errors visible
-      /🚀 API Request/,
-      /✅ API Response/,
+      /API Request/,
+      /API Response/,
       /🔑 Added auth token to request/,
 
       // Router noise
-      /🔍 \[ROUTER\] Navigation/,
-      /🔍 \[ROUTER\] Public route/,
-      /🔍 \[ROUTER\] Navigation allowed/,
+      /\[ROUTER\] Navigation/,
+      /\[ROUTER\] Public route/,
+      /\[ROUTER\] Navigation allowed/,
 
       // Channel analysis noise
       /📋 ChannelsList Analysis/,
       /Total channels:/,
-      /✅ No duplicates/,
+      /No duplicates/,
 
       // Extension blocker noise
       /🛡️ Aggressive Extension Blocker/,
@@ -146,11 +146,11 @@ class LogSuppressor {
 
       // Debug tools auto-execution spam
       /📋 ChannelsList Analysis/,
-      /📡 API Response Analysis/,
-      /🔍 Duplicate Detection/,
+      /SUBSCRIPTION: API Response Analysis/,
+      /Duplicate Detection/,
       /🏠 Home\.vue Computed Properties/,
-      /📊 Data Flow Trace/,
-      /🔍 Starting automatic duplicate channels analysis/,
+      /Data Flow Trace/,
+      /Starting automatic duplicate channels analysis/,
       /Duplicate Channels Debug Tool loaded/,
 
       // Home layout noise
@@ -189,14 +189,14 @@ class LogSuppressor {
       /🔐 Token Manager initialized/,
 
       // API server noise
-      /📡 API Server \(via Gateway\)/,
+      /SUBSCRIPTION: API Server \(via Gateway\)/,
       /🔌 SSE Server \(via Gateway\)/,
 
       // Error suppressor noise
       /🔇 Suppressed Content Script Errors/,
 
       // Log suppressor self-noise
-      /🔧 Added suppression pattern/,
+      /Added suppression pattern/,
       /🔇 Log suppressor activated/,
 
       // Duplicate loading messages
@@ -329,7 +329,7 @@ class LogSuppressor {
     this.logCount = 0;
     this.suppressedCount = 0;
     if (import.meta.env.DEV) {
-      console.log('🔧 Log suppressor counters reset');
+      console.log('Log suppressor counters reset');
     }
 
   /**
@@ -338,7 +338,7 @@ class LogSuppressor {
   addPattern(pattern) {
     this.suppressedPatterns.push(pattern);
     // Remove the console.log to make suppressor itself silent
-    // console.log('🔧 Added suppression pattern:', pattern);
+    // console.log('Added suppression pattern:', pattern);
   }
 
   /**

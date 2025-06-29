@@ -1,0 +1,73 @@
+server:
+  port: 6687
+  db_url: "postgres://postgres:postgres@localhost:5432/fechatter"
+  request_timeout_ms: 30000
+
+auth:
+  sk: |
+    -----BEGIN PRIVATE KEY-----
+    MC4CAQAwBQYDK2VwBCIEIP/S+etN7RQJctehWKkdjgnrtQ0AUDIMkCnYS4Zk8RFR
+    -----END PRIVATE KEY-----
+  pk: |
+    -----BEGIN PUBLIC KEY-----
+    MCowBQYDK2VwAyEAMnnmEdL53E3O5UTdVW/VEs9qT6To/48iU7jWpKuVb2c=
+    -----END PUBLIC KEY-----
+  token_expiration: 86400
+
+messaging:
+  enabled: false
+  provider: "nats"
+  nats:
+    url: "nats://localhost:4222"
+    auth:
+      enabled: false
+    subscription_subjects: []
+    jetstream:
+      enabled: false
+      stream: "fechatter_events"
+      storage: "file"
+      max_bytes: 1073741824
+      max_msg_size: 1048576
+      max_age: 86400
+      consumers:
+        notification_processor:
+          name: "notification_processor"
+          filter_subjects: []
+          ack_wait: "10s"
+          max_deliver: 3
+          max_batch: 50
+          idle_heartbeat: "5s"
+
+search:
+  enabled: false
+  provider: "meilisearch"
+  meilisearch:
+    url: "http://localhost:7700"
+    api_key: ""
+    connection_timeout_ms: 3000
+    request_timeout_ms: 5000
+    indexes:
+      messages:
+        name: "fechatter_messages"
+        primary_key: "id"
+        searchable_fields: ["content"]
+        displayed_fields: ["id", "chat_id", "sender_id", "content", "created_at"]
+        filterable_fields: ["chat_id", "sender_id", "created_at"]
+        sortable_fields: ["created_at"]
+    settings:
+      pagination_limit: 50
+
+notification:
+  delivery:
+    web:
+      enabled: true
+      sse_enabled: true
+      connection_timeout_ms: 30000
+      heartbeat_interval_ms: 25000
+
+analytics:
+  enabled: false
+  nats_url: "nats://localhost:4222"
+  subject_prefix: "fechatter.analytics.notify"
+  batch_size: 100
+  flush_interval_ms: 5000

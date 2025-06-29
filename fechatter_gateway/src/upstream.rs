@@ -38,7 +38,7 @@ impl UpstreamManager {
     let mut upstreams = HashMap::new();
 
     for (name, upstream_config) in &config.upstreams {
-      info!("⚡ Creating upstream group: {}", name);
+      info!("Creating upstream group: {}", name);
 
       // Create backends with proper socket address parsing
       let mut backends = Vec::new();
@@ -46,11 +46,11 @@ impl UpstreamManager {
         match create_backend_safe(server) {
           Ok(backend) => {
             backends.push(backend);
-            debug!("✅ Backend created successfully for {}", server);
+            debug!("Backend created successfully for {}", server);
           }
           Err(e) => {
             warn!(
-              "⚠️  Failed to create backend for {}: {}. Continuing with other backends.",
+              "WARNING: Failed to create backend for {}: {}. Continuing with other backends.",
               server, e
             );
             // Continue processing other backends instead of failing completely
@@ -61,12 +61,12 @@ impl UpstreamManager {
       // Log status but continue even with empty backends (for development)
       if backends.is_empty() {
         warn!(
-          "⚠️  Upstream group '{}' has no healthy backends. This may cause 503 errors.",
+          "WARNING: Upstream group '{}' has no healthy backends. This may cause 503 errors.",
           name
         );
       } else {
         info!(
-          "✅ Upstream group '{}' created with {} healthy servers",
+          "Upstream group '{}' created with {} healthy servers",
           name,
           backends.len()
         );
@@ -94,7 +94,7 @@ impl UpstreamManager {
     let mut upstreams = HashMap::new();
 
     for (name, upstream_config) in &config.upstreams {
-      info!("⚡ Creating upstream group (basic mode): {}", name);
+      info!("Creating upstream group (basic mode): {}", name);
 
       // Create backends with basic error handling
       let backends = upstream_config
@@ -103,12 +103,12 @@ impl UpstreamManager {
         .filter_map(|server| {
           match create_backend_safe(server) {
             Ok(backend) => {
-              debug!("✅ Backend created for {} (basic mode)", server);
+              debug!("Backend created for {} (basic mode)", server);
               Some(backend)
             }
             Err(e) => {
               warn!(
-                "⚠️  Skipping backend {} in basic mode: {}",
+                "WARNING: Skipping backend {} in basic mode: {}",
                 server, e
               );
               None
@@ -118,10 +118,10 @@ impl UpstreamManager {
         .collect::<Vec<_>>();
 
       if backends.is_empty() {
-        warn!("⚠️  Upstream group '{}' has no backends in basic mode", name);
+        warn!("WARNING: Upstream group '{}' has no backends in basic mode", name);
       } else {
         info!(
-          "✅ Upstream group '{}' created with {} backends (basic mode)",
+          "Upstream group '{}' created with {} backends (basic mode)",
           name,
           backends.len()
         );
@@ -212,7 +212,7 @@ fn create_backend_safe(server: &str) -> Result<Backend> {
   // Approach 1: Direct socket address
   match Backend::new(server) {
     Ok(backend) => {
-      debug!("✅ Backend created with direct address: {}", server);
+      debug!("Backend created with direct address: {}", server);
       return Ok(backend);
     }
     Err(e) => {
@@ -224,7 +224,7 @@ fn create_backend_safe(server: &str) -> Result<Backend> {
   let http_url = format!("http://{}", server);
   match Backend::new(&http_url) {
     Ok(backend) => {
-      debug!("✅ Backend created with HTTP URL: {}", http_url);
+      debug!("Backend created with HTTP URL: {}", http_url);
       return Ok(backend);
     }
     Err(e) => {
@@ -235,7 +235,7 @@ fn create_backend_safe(server: &str) -> Result<Backend> {
   // Approach 3: Just the host:port without protocol
   match Backend::new(&format!("{}", socket_addr)) {
     Ok(backend) => {
-      debug!("✅ Backend created with formatted socket address: {}", socket_addr);
+      debug!("Backend created with formatted socket address: {}", socket_addr);
       return Ok(backend);
     }
     Err(e) => {

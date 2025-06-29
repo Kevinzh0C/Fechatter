@@ -20,7 +20,7 @@ class BackendPerformanceDiagnostic {
    */
   async runDiagnostic() {
     if (import.meta.env.DEV) {
-      console.log('🔍 Starting Backend Performance Diagnostic...');
+      console.log('Starting Backend Performance Diagnostic...');
     if (import.meta.env.DEV) {
       console.log('📍 Server:', this.serverInfo.ip + ':' + this.serverInfo.port);
     }
@@ -56,7 +56,7 @@ class BackendPerformanceDiagnostic {
    */
   async testNetworkLatency() {
     if (import.meta.env.DEV) {
-      console.log('\n📡 Test 1: Network Latency Analysis');
+      console.log('\nSUBSCRIPTION: Test 1: Network Latency Analysis');
     }
 
     const results = {
@@ -144,7 +144,7 @@ class BackendPerformanceDiagnostic {
    */
   async analyzeMessageProcessing() {
     if (import.meta.env.DEV) {
-      console.log('\n💬 Test 3: Message Processing Analysis');
+      console.log('\nMESSAGE: Test 3: Message Processing Analysis');
     }
 
     const messagePerf = window.msgPerf?.getStats() || {};
@@ -197,7 +197,7 @@ class BackendPerformanceDiagnostic {
    */
   analyzeBackendArchitecture() {
     if (import.meta.env.DEV) {
-      console.log('\n🏗️ Test 5: Backend Architecture Analysis');
+      console.log('\nTest 5: Backend Architecture Analysis');
     }
 
     return {
@@ -263,13 +263,13 @@ class BackendPerformanceDiagnostic {
     if (import.meta.env.DEV) {
       console.log('\n' + '='.repeat(60));
     if (import.meta.env.DEV) {
-      console.log('📊 BACKEND PERFORMANCE DIAGNOSTIC REPORT');
+      console.log('BACKEND PERFORMANCE DIAGNOSTIC REPORT');
     if (import.meta.env.DEV) {
       console.log('='.repeat(60));
     }
 
     if (import.meta.env.DEV) {
-      console.log('\n🔍 ROOT CAUSE ANALYSIS:');
+      console.log('\nROOT CAUSE ANALYSIS:');
     if (import.meta.env.DEV) {
       console.log('\nBased on the 8-second delay pattern, the most likely causes are:');
     }
@@ -315,7 +315,7 @@ class BackendPerformanceDiagnostic {
     }
 
     if (import.meta.env.DEV) {
-      console.log('\n✅ RECOMMENDED ACTIONS:');
+      console.log('\nRECOMMENDED ACTIONS:');
     if (import.meta.env.DEV) {
       console.log('1. Enable database query logging and analyze slow queries');
     if (import.meta.env.DEV) {
@@ -333,7 +333,7 @@ class BackendPerformanceDiagnostic {
     }
 
     if (import.meta.env.DEV) {
-      console.log('\n💡 QUICK FIXES:');
+      console.log('\nQUICK FIXES:');
     if (import.meta.env.DEV) {
       console.log('1. Increase Docker container memory/CPU limits');
     if (import.meta.env.DEV) {
@@ -362,7 +362,7 @@ if (typeof window !== 'undefined') {
   };
 
   if (import.meta.env.DEV) {
-    console.log('🔍 Backend Performance Diagnostic loaded');
+    console.log('Backend Performance Diagnostic loaded');
   if (import.meta.env.DEV) {
     console.log('   Run diagnostic: window.backendDiag.run()');
   if (import.meta.env.DEV) {

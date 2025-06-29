@@ -150,7 +150,7 @@ class ErrorTrackingManager {
     this.logUpdate(errorId, oldStatus, updates.status || oldStatus, updates);
 
     if (import.meta.env.DEV) {
-      console.log(`📊 [ErrorTracker] Updated ${errorId}: ${oldStatus} → ${updates.status || oldStatus}`);
+      console.log(`[ErrorTracker] Updated ${errorId}: ${oldStatus} → ${updates.status || oldStatus}`);
     return true;
   }
 
@@ -209,15 +209,15 @@ class ErrorTrackingManager {
     const stats = this.getStatistics();
 
     if (import.meta.env.DEV) {
-      console.log('📊 Error Tracking Report');
+      console.log('Error Tracking Report');
     if (import.meta.env.DEV) {
       console.log('========================');
     if (import.meta.env.DEV) {
       console.log(`📅 Session: ${new Date(this.sessionStartTime).toLocaleString('zh-CN')}`);
     if (import.meta.env.DEV) {
-      console.log(`📊 Total Errors: ${stats.total}`);
+      console.log(`Total Errors: ${stats.total}`);
     if (import.meta.env.DEV) {
-      console.log(`✅ Fixed: ${stats.fixed}`);
+      console.log(`Fixed: ${stats.fixed}`);
     if (import.meta.env.DEV) {
       console.log(`🔴 Active: ${stats.active}`);
     if (import.meta.env.DEV) {
@@ -254,7 +254,7 @@ class ErrorTrackingManager {
     // Show recent updates
     if (this.updateLog.length > 0) {
       if (import.meta.env.DEV) {
-        console.log('📝 Recent Updates:');
+        console.log('Recent Updates:');
       this.updateLog.slice(-5).forEach(update => {
         if (import.meta.env.DEV) {
           console.log(`   ${update.timestamp.substring(11, 19)} [${update.errorId}] ${update.oldStatus} → ${update.newStatus}`);
@@ -371,7 +371,7 @@ if (typeof window !== 'undefined') {
   errorTracker.monitorConsoleErrors();
 
   if (import.meta.env.DEV) {
-    console.log('📊 Error Tracking Manager loaded');
+    console.log('Error Tracking Manager loaded');
   if (import.meta.env.DEV) {
     console.log('   - window.getErrorReport() - Get current status');
   if (import.meta.env.DEV) {

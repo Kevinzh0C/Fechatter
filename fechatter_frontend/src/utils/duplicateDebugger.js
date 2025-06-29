@@ -30,7 +30,7 @@ window.debugDuplicates = function () {
     return duplicates;
   } else {
     if (import.meta.env.DEV) {
-      console.log('✅ No duplicates found in data');
+      console.log('No duplicates found in data');
     }
     return [];
   }
@@ -64,7 +64,7 @@ window.debugVirtualList = function () {
     return duplicates;
   } else {
     if (import.meta.env.DEV) {
-      console.log('✅ No duplicate DOM elements');
+      console.log('No duplicate DOM elements');
     }
     return [];
   }
@@ -99,7 +99,7 @@ window.debugDuplicateContent = function () {
     return duplicates;
   } else {
     if (import.meta.env.DEV) {
-      console.log('✅ No duplicate content found');
+      console.log('No duplicate content found');
     }
     return [];
   }
@@ -130,5 +130,5 @@ window.debugAllDuplicates = function () {
 };
 
 if (import.meta.env.DEV) {
-  console.log('💡 Duplicate debugger loaded. Use window.debugAllDuplicates() to check for duplicates');
+  console.log('Duplicate debugger loaded. Use window.debugAllDuplicates() to check for duplicates');
 }

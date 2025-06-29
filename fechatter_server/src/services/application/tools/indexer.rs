@@ -58,7 +58,7 @@ impl IndexerSyncWorker {
     let mut batch_timer = interval(self.batch_timeout);
 
     info!(
-      "🚀 Indexer sync worker started | batch_size: {} | timeout: {:?}",
+      "Indexer sync worker started | batch_size: {} | timeout: {:?}",
       self.batch_size, self.batch_timeout
     );
 

@@ -260,11 +260,11 @@ mod tests {
     // Verify token validity
     match state.inner.token_manager.verify_token(&token) {
       Ok(claims) => println!(
-        "✅ Token verification succeeded! Claims user id: {}",
+        "Token verification succeeded! Claims user id: {}",
         claims.id
       ),
       Err(e) => {
-        eprintln!("❌ Token verification failed: {:?}", e);
+        eprintln!("ERROR: Token verification failed: {:?}", e);
         // Don't return error here, continue with request processing
       }
     }

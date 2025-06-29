@@ -129,7 +129,7 @@ class TokenManager {
       this.state.lastRefreshTime = Date.now();
 
       if (import.meta.env.DEV) {
-        console.log('✅ Token refreshed successfully');
+        console.log('Token refreshed successfully');
       }
 
       this.emit('token-refreshed', this.tokens);
@@ -138,7 +138,7 @@ class TokenManager {
       this.state.refreshFailureCount++;
 
       if (import.meta.env.DEV) {
-        console.error('❌ Token refresh failed:', error);
+        console.error('ERROR: Token refresh failed:', error);
       }
 
       this.emit('refresh-failed', error);

@@ -1,6 +1,6 @@
 <template>
   <div class="enhanced-search-effects">
-    <!-- 🎯 Enhanced Search Navigation Bar -->
+    <!-- Enhanced Search Navigation Bar -->
     <div v-if="isSearchActive" class="search-navigation-bar">
       <div class="search-info">
         <div class="search-status">
@@ -58,7 +58,7 @@
       </div>
     </div>
 
-    <!-- 🌟 Search Progress Indicator -->
+    <!-- Search Progress Indicator -->
     <div v-if="isSearching" class="search-progress">
       <div class="progress-bar" :style="{ width: `${searchProgress}%` }"></div>
     </div>
@@ -242,7 +242,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 🎯 Enhanced Search Navigation Bar */
+/* Enhanced Search Navigation Bar */
 .enhanced-search-effects {
   position: relative;
   z-index: 50;
@@ -273,7 +273,7 @@ onUnmounted(() => {
   transform: translateY(-1px);
 }
 
-/* 📊 Search Info Section */
+/* Search Info Section */
 .search-info {
   display: flex;
   align-items: center;
@@ -358,7 +358,7 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
-/* 🎯 Navigation Controls */
+/* Navigation Controls */
 .navigation-controls {
   display: flex;
   align-items: center;
@@ -559,7 +559,7 @@ onUnmounted(() => {
   }
 }
 
-/* 🎨 Enhanced Focus States */
+/* Enhanced Focus States */
 .nav-button:focus,
 .mode-toggle:focus,
 .clear-button:focus {
@@ -567,7 +567,7 @@ onUnmounted(() => {
   outline-offset: 2px;
 }
 
-/* ⚡ Performance Optimizations */
+/* Performance Optimizations */
 .search-navigation-bar {
   contain: layout style;
   will-change: transform;

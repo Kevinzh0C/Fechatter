@@ -1,5 +1,5 @@
 <template>
-  <!-- 🎯 优化: 降低位置，减少闪烁，降低认知负担 -->
+  <!-- 优化: 降低位置，减少闪烁，降低认知负担 -->
   <div v-if="isVisible" class="absolute -top-8 right-2 z-40 message-toolbar-optimized" @mouseenter="keepVisible"
     @mouseleave="hideToolbar">
     <div
@@ -88,7 +88,7 @@ const isHovered = ref(false)
 
 // Methods - 完善版本，集成mention和翻译功能
 const handleReply = () => {
-  // 🎯 Reply功能: 集成mention到输入栏
+  // Reply功能: 集成mention到输入栏
   const replyData = {
     messageId: props.message.id,
     senderId: props.message.sender_id,
@@ -145,11 +145,11 @@ const hideToolbar = () => {
   }, 100) // 小延迟以防止闪烁
 }
 
-// 🎯 简化: 不再需要复杂的updatePosition方法
+// 简化: 不再需要复杂的updatePosition方法
 // 直接暴露一个空的updatePosition以保持兼容性
 defineExpose({
   updatePosition: () => {
-    console.log('🎯 原生定位模式: 无需位置计算')
+    console.log('原生定位模式: 无需位置计算')
   }
 })
 </script>
@@ -157,7 +157,7 @@ defineExpose({
 <style scoped>
 .message-toolbar-optimized {
   pointer-events: auto;
-  /* 🎯 优化: 减少闪烁，降低认知负担 */
+  /* 优化: 减少闪烁，降低认知负担 */
   will-change: opacity;
   transform-origin: top right;
   /* 简化动画，减少闪烁 */
@@ -182,7 +182,7 @@ defineExpose({
   }
 }
 
-/* 🎨 工具栏按钮容器优化 - 更紧凑 */
+/* 工具栏按钮容器优化 - 更紧凑 */
 .message-toolbar-optimized .flex {
   min-height: 28px;
   align-items: center;

@@ -24,7 +24,7 @@ class DevHealthCheckHelper {
       return result;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error(`❌ Failed to run check ${checkId}:`, error);
+        console.error(`ERROR: Failed to run check ${checkId}:`, error);
       return null;
     }
 
@@ -46,7 +46,7 @@ class DevHealthCheckHelper {
       const failed = results.results.filter(r => !r.success);
 
       if (passed.length > 0) {
-        console.group('✅ Passed Checks');
+        console.group('Passed Checks');
         passed.forEach(r => {
           if (import.meta.env.DEV) {
             console.log(`${r.checkName}:`, r.details);
@@ -56,7 +56,7 @@ class DevHealthCheckHelper {
       }
 
       if (failed.length > 0) {
-        console.group('❌ Failed Checks');
+        console.group('ERROR: Failed Checks');
         failed.forEach(r => {
           if (import.meta.env.DEV) {
             console.error(`${r.checkName}:`, r.error || r.details);
@@ -70,7 +70,7 @@ class DevHealthCheckHelper {
       return results;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Failed to run health checks:', error);
+        console.error('ERROR: Failed to run health checks:', error);
       return null;
     }
 
@@ -80,15 +80,15 @@ class DevHealthCheckHelper {
   startMonitoring(checkIds = ['stores_functional', 'sse_connection'], intervalMs = 5000) {
     if (this.isMonitoring) {
       if (import.meta.env.DEV) {
-        console.warn('⚠️ Monitoring already active');
+        console.warn('WARNING: Monitoring already active');
       return;
     }
 
     this.isMonitoring = true;
     if (import.meta.env.DEV) {
-      console.log(`🔍 Starting health check monitoring for: ${checkIds.join(', ')}`);
+      console.log(`Starting health check monitoring for: ${checkIds.join(', ')}`);
     if (import.meta.env.DEV) {
-      console.log(`📊 Interval: ${intervalMs}ms`);
+      console.log(`Interval: ${intervalMs}ms`);
     }
 
     this.monitorInterval = setInterval(async () => {
@@ -97,7 +97,7 @@ class DevHealthCheckHelper {
       for (const checkId of checkIds) {
         const result = await this.runSingleCheck(checkId);
         if (result) {
-          const status = result.success ? '✅' : '❌';
+          const status = result.success ? '' : '❌';
           if (import.meta.env.DEV) {
             console.log(`${status} ${checkId}:`, result.details || result.error);
           }
@@ -148,7 +148,7 @@ class DevHealthCheckHelper {
    * Analyze common issues
    */
   analyzeIssues() {
-    console.group('🔍 Health Check Issue Analysis');
+    console.group('Health Check Issue Analysis');
 
     // Check app initialization
     if (import.meta.env.DEV) {
@@ -188,18 +188,18 @@ class DevHealthCheckHelper {
    * Fix common issues
    */
   async attemptFixes() {
-    console.group('🔧 Attempting Common Fixes');
+    console.group('Attempting Common Fixes');
 
     // Fix 1: Ensure config is loaded
     try {
       const { initializeConfig } = await import('./configLoader.js');
       await initializeConfig();
       if (import.meta.env.DEV) {
-        console.log('✅ Configuration initialized');
+        console.log('Configuration initialized');
       }
     } catch (e) {
       if (import.meta.env.DEV) {
-        console.error('❌ Failed to initialize config:', e.message);
+        console.error('ERROR: Failed to initialize config:', e.message);
       }
 
     // Fix 2: Try to connect SSE if authenticated
@@ -211,11 +211,11 @@ class DevHealthCheckHelper {
             console.log('🔌 Attempting SSE connection...');
           await window.realtimeCommunicationService.connect(authStore.token);
           if (import.meta.env.DEV) {
-            console.log('✅ SSE connection attempted');
+            console.log('SSE connection attempted');
           }
       } catch (e) {
         if (import.meta.env.DEV) {
-          console.error('❌ Failed to connect SSE:', e.message);
+          console.error('ERROR: Failed to connect SSE:', e.message);
         }
 
     console.groupEnd();
@@ -242,7 +242,7 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   };
 
   if (import.meta.env.DEV) {
-    console.log('💡 Health Check Helper available at window.healthHelper');
+    console.log('Health Check Helper available at window.healthHelper');
   if (import.meta.env.DEV) {
     console.log('   Commands: run(), runAll(), monitor(), analyze(), fix()');
   if (import.meta.env.DEV) {

@@ -1,24 +1,24 @@
 /**
- * 🎨 Highlight.js Adapter - 轻量级代码高亮解决方案
+ * Highlight.js Adapter - Lightweight code highlighting solution
  * 
- * 替代复杂的Shiki，提供：
- * - 轻量级，无WebAssembly依赖
- * - 同步渲染，不阻塞UI
- * - 支持常用编程语言
- * - 自动语言检测
+ * Alternative to complex Shiki, providing:
+ * - Lightweight, no WebAssembly dependencies
+ * - Synchronous rendering, non-blocking UI
+ * - Support for common programming languages
+ * - Automatic language detection
  */
 
-// 注意：需要先安装 highlight.js
+// Note: Need to install highlight.js first
 // yarn add highlight.js
 
-// 模拟highlight.js的API（如果未安装）
+// Mock highlight.js API (if not installed)
 let hljs
 try {
-  // 尝试使用实际的highlight.js
+  // Try to use actual highlight.js
   const hljsModule = await import('highlight.js/lib/core')
   hljs = hljsModule.default
 
-  // 动态导入常用语言
+  // Dynamically import common languages
   const languages = {
     javascript: () => import('highlight.js/lib/languages/javascript'),
     typescript: () => import('highlight.js/lib/languages/typescript'),
@@ -40,7 +40,7 @@ try {
     markdown: () => import('highlight.js/lib/languages/markdown')
   }
 
-  // 注册语言
+  // Register languages
   for (const [name, loader] of Object.entries(languages)) {
     try {
       const lang = await loader()
@@ -258,7 +258,7 @@ if (typeof window !== 'undefined') {
 
     navigator.clipboard.writeText(code).then(() => {
       const originalText = button.textContent
-      button.textContent = '✅'
+      button.textContent = ''
       button.style.color = '#22c55e'
 
       setTimeout(() => {
@@ -275,7 +275,7 @@ if (typeof window !== 'undefined') {
       document.execCommand('copy')
       document.body.removeChild(textArea)
 
-      button.textContent = '✅'
+      button.textContent = ''
       setTimeout(() => {
         button.textContent = '📋'
       }, 2000)

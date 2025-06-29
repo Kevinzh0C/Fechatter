@@ -44,7 +44,7 @@ export class BotService {
 
   // Translate message with automatic fallback to mock
   async translateMessage(messageId, targetLanguage = 'en') {
-    // 🔧 FIX: Ensure message_id is always a string for backend API compatibility
+    // FIX: Ensure message_id is always a string for backend API compatibility
     const messageIdString = String(messageId);
 
     // Check quota
@@ -62,7 +62,7 @@ export class BotService {
         });
       }
 
-      // 🔧 CRITICAL FIX: Get message content to send with translation request
+      // CRITICAL FIX: Get message content to send with translation request
       let messageContent = '';
 
       try {
@@ -96,7 +96,7 @@ export class BotService {
         }
 
         if (import.meta.env.DEV) {
-          console.log('📝 [BotService] Message content for translation:', {
+          console.log('[BotService] Message content for translation:', {
             messageId: messageIdString,
             contentLength: messageContent.length,
             contentPreview: messageContent.substring(0, 50) + (messageContent.length > 50 ? '...' : '')
@@ -104,7 +104,7 @@ export class BotService {
         }
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.warn('⚠️ [BotService] Could not extract message content:', error);
+          console.warn('WARNING: [BotService] Could not extract message content:', error);
         }
         messageContent = `Content for message ${messageIdString}`;
       }
@@ -116,10 +116,10 @@ export class BotService {
       });
 
       if (import.meta.env.DEV) {
-        console.log('✅ [BotService] Translation API call successful');
+        console.log('[BotService] Translation API call successful');
       }
 
-      // 🔧 FIXED: Use server-side quota management and update local cache
+      // FIXED: Use server-side quota management and update local cache
       const serverQuota = {
         used: response.data.quota_used || 0,
         remaining: response.data.quota_remaining || this.dailyLimit,
@@ -147,7 +147,7 @@ export class BotService {
       };
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ [BotService] Translation API error:', {
+        console.error('ERROR: [BotService] Translation API error:', {
           message: error.message,
           status: error.response?.status,
           statusText: error.response?.statusText,
@@ -156,7 +156,7 @@ export class BotService {
         });
       }
 
-      // 🔧 ENHANCED: More comprehensive fallback detection
+      // ENHANCED: More comprehensive fallback detection
       const shouldFallbackToMock = (
         error.response?.status === 404 ||
         error.response?.status === 501 ||
@@ -180,13 +180,13 @@ export class BotService {
           const mockResult = await this.mockTranslateMessage(messageIdString, targetLanguage);
 
           if (import.meta.env.DEV) {
-            console.log('✅ [BotService] Mock translation successful');
+            console.log('[BotService] Mock translation successful');
           }
 
           return mockResult;
         } catch (mockError) {
           if (import.meta.env.DEV) {
-            console.error('❌ [BotService] Mock translation failed:', mockError);
+            console.error('ERROR: [BotService] Mock translation failed:', mockError);
           }
           throw new Error(`Translation failed: ${mockError.message}`);
         }
@@ -218,7 +218,7 @@ export class BotService {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 500));
 
-    // 🔧 ENHANCED: Try to get actual message content
+    // ENHANCED: Try to get actual message content
     let messageContent = 'Default message content'; // Fallback
 
     try {
@@ -264,7 +264,7 @@ export class BotService {
       }
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.warn('⚠️ [BotService] Could not retrieve actual message content:', error);
+        console.warn('WARNING: [BotService] Could not retrieve actual message content:', error);
       }
     }
 
@@ -274,7 +274,7 @@ export class BotService {
     }
 
     if (import.meta.env.DEV) {
-      console.log('📝 [BotService] Message content for translation:', {
+      console.log('[BotService] Message content for translation:', {
         messageId,
         content: messageContent.substring(0, 100) + (messageContent.length > 100 ? '...' : ''),
         length: messageContent.length
@@ -455,7 +455,7 @@ export class BotService {
     };
 
     if (import.meta.env.DEV) {
-      console.log('✅ [BotService] Mock translation completed:', {
+      console.log('[BotService] Mock translation completed:', {
         original: messageContent.substring(0, 50) + (messageContent.length > 50 ? '...' : ''),
         translated: translation.substring(0, 50) + (translation.length > 50 ? '...' : ''),
         confidence: result.confidence,

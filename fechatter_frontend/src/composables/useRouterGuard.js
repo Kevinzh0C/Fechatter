@@ -12,7 +12,7 @@ export function setupGlobalRouterErrorHandling(router) {
   router.onError((error) => {
     console.error('[Router Error]:', error);
 
-    // 🔧 CRITICAL FIX: 忽略更多常见的无害错误
+    // CRITICAL FIX: 忽略更多常见的无害错误
     if (error.name === 'NavigationDuplicated' ||
       error.message?.includes('redundant navigation') ||
       error.message?.includes('Avoided redundant')) {
@@ -30,7 +30,7 @@ export function setupGlobalRouterErrorHandling(router) {
       return;
     }
 
-    // 🔧 CRITICAL FIX: 只在真正严重的错误时重定向
+    // CRITICAL FIX: 只在真正严重的错误时重定向
     if (error.name === 'ChunkLoadError' ||
       error.message?.includes('Loading chunk') ||
       error.message?.includes('Loading CSS chunk')) {
@@ -43,7 +43,7 @@ export function setupGlobalRouterErrorHandling(router) {
       return;
     }
 
-    // 🔧 对于其他错误，仅记录，不强制重定向
+    // 对于其他错误，仅记录，不强制重定向
     console.warn('[Router] Non-critical error, continuing:', error.message);
   });
 

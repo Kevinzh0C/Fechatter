@@ -1,5 +1,5 @@
 /**
- * 🎯 Message State Manager - Complete Message Lifecycle Management
+ * Message State Manager - Complete Message Lifecycle Management
  * 
  * Provides unified message state management with complete closed-loop logic
  * Handles message lifecycle: DRAFT → QUEUED → SENDING → SENT → DELIVERED → READ
@@ -124,7 +124,7 @@ class CompleteMessage {
   }
 
   /**
-   * 🚀 NEW: Safe content extraction to prevent [object Object] display issues
+   * NEW: Safe content extraction to prevent [object Object] display issues
    */
   _extractSafeContent(rawContent) {
     if (!rawContent) return '';
@@ -281,7 +281,7 @@ export class MessageStateManager {
     this.updateStats(message, 'add');
 
     if (import.meta.env.DEV) {
-      console.log(`📝 Created message: ${clientId} (chat: ${chatId})`);
+      console.log(`Created message: ${clientId} (chat: ${chatId})`);
       return message;
     }
 
@@ -292,7 +292,7 @@ export class MessageStateManager {
       const message = this.messages.get(clientId);
       if (!message) {
         if (import.meta.env.DEV) {
-          console.warn(`❌ Message not found: ${clientId}`);
+          console.warn(`ERROR: Message not found: ${clientId}`);
           return false;
         }
 
@@ -301,7 +301,7 @@ export class MessageStateManager {
         // Validate state transition
         if (!this.isValidStateTransition(oldState, newState)) {
           if (import.meta.env.DEV) {
-            console.warn(`❌ Invalid state transition: ${oldState} → ${newState} for message ${clientId}`);
+            console.warn(`ERROR: Invalid state transition: ${oldState} → ${newState} for message ${clientId}`);
             return false;
           }
 
@@ -424,7 +424,7 @@ export class MessageStateManager {
                   const message = this.messages.get(clientId);
                   if (!message) {
                     if (import.meta.env.DEV) {
-                      console.warn(`❌ Message not found for server response: ${clientId}`);
+                      console.warn(`ERROR: Message not found for server response: ${clientId}`);
                       return false;
                     }
 
@@ -445,7 +445,7 @@ export class MessageStateManager {
                     });
 
                     if (import.meta.env.DEV) {
-                      console.log(`📨 Updated message from server: ${clientId} → ${serverResponse.id}`);
+                      console.log(`EVENT: Updated message from server: ${clientId} → ${serverResponse.id}`);
                       return true;
                     }
 

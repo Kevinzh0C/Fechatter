@@ -1,5 +1,5 @@
 /**
- * 🔧 FILE UPLOAD DAG FIX: Unified File Validation System
+ * FILE UPLOAD DAG FIX: Unified File Validation System
  * 
  * 符合DAG结构的统一文件验证服务
  * 解决重复验证逻辑和状态不一致问题
@@ -66,7 +66,7 @@ class FileValidator {
   }
 
   /**
-   * 🔧 DAG Entry Point: Unified file validation
+   * DAG Entry Point: Unified file validation
    */
   async validateFiles(files, currentFileCount = 0) {
     const result = {
@@ -116,7 +116,7 @@ class FileValidator {
   }
 
   /**
-   * 🔧 DAG Node: Single file validation
+   * DAG Node: Single file validation
    */
   async validateSingleFile(file, currentIndex = 0) {
     const fileId = this.generateFileId();
@@ -208,7 +208,7 @@ class FileValidator {
   }
 
   /**
-   * 🔧 DAG Flow: Determine recovery strategy based on error type
+   * DAG Flow: Determine recovery strategy based on error type
    */
   determineRecoveryStrategy(validation) {
     const sizeErrors = validation.errors.filter(e => e.type === ERROR_TYPES.SIZE_EXCEEDED);
@@ -230,7 +230,7 @@ class FileValidator {
   }
 
   /**
-   * 🔧 DAG State Management
+   * DAG State Management
    */
   setFileState(fileId, state) {
     const oldState = this.fileStates.get(fileId);
@@ -244,7 +244,7 @@ class FileValidator {
   }
 
   /**
-   * 🔧 Event System for DAG communication
+   * Event System for DAG communication
    */
   on(event, callback) {
     if (!this.listeners.has(event)) {
@@ -265,7 +265,7 @@ class FileValidator {
   }
 
   /**
-   * 🔧 Utility Methods
+   * Utility Methods
    */
   generateFileId() {
     return `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;

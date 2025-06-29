@@ -7,26 +7,26 @@
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 
-// 🎨 Configure marked with enhanced code handling
+// Configure marked with enhanced code handling
 const renderer = {
   code(code, infostring, escaped) {
-    // 🔍 DEBUG: 添加详细的代码块调试
-    console.group('🎨 [MARKDOWN] Code renderer called')
-    console.log('🔍 [MARKDOWN] Raw code parameter:', code)
-    console.log('🔍 [MARKDOWN] Code type:', typeof code)
-    console.log('🔍 [MARKDOWN] Code constructor:', code?.constructor?.name)
-    console.log('🔍 [MARKDOWN] Infostring:', infostring)
-    console.log('🔍 [MARKDOWN] Escaped flag:', escaped)
+    // DEBUG: 添加详细的代码块调试
+    console.group('[MARKDOWN] Code renderer called')
+    console.log('[MARKDOWN] Raw code parameter:', code)
+    console.log('[MARKDOWN] Code type:', typeof code)
+    console.log('[MARKDOWN] Code constructor:', code?.constructor?.name)
+    console.log('[MARKDOWN] Infostring:', infostring)
+    console.log('[MARKDOWN] Escaped flag:', escaped)
 
     // 🚨 CRITICAL: 检查code参数是否为对象
     if (typeof code === 'object') {
       console.error('🚨 [MARKDOWN] CRITICAL: Code parameter is object, not string!')
-      console.log('🔍 [MARKDOWN] Object keys:', Object.keys(code || {}))
-      console.log('🔍 [MARKDOWN] Object values:', code)
+      console.log('[MARKDOWN] Object keys:', Object.keys(code || {}))
+      console.log('[MARKDOWN] Object values:', code)
 
       // 尝试从对象中提取代码内容
       const extractedCode = code?.code || code?.content || code?.text || code?.value || String(code)
-      console.log('🔍 [MARKDOWN] Extracted code:', extractedCode)
+      console.log('[MARKDOWN] Extracted code:', extractedCode)
       code = extractedCode
     }
 
@@ -40,9 +40,9 @@ const renderer = {
     // Create a placeholder that will be replaced by Vue component
     const escapedCode = escaped ? code : escapeHtml(code)
 
-    // 🔍 DEBUG: 最终的escaped code
-    console.log('🔍 [MARKDOWN] Final escaped code:', escapedCode)
-    console.log('🔍 [MARKDOWN] Final escaped code type:', typeof escapedCode)
+    // DEBUG: 最终的escaped code
+    console.log('[MARKDOWN] Final escaped code:', escapedCode)
+    console.log('[MARKDOWN] Final escaped code type:', typeof escapedCode)
 
     const result = `<div class="code-block-placeholder" 
       data-code="${escapeAttribute(escapedCode)}"
@@ -52,7 +52,7 @@ const renderer = {
       <pre class="loading-code"><code class="language-${language}">${escapedCode}</code></pre>
     </div>`
 
-    console.log('🔍 [MARKDOWN] Final renderer result:', result)
+    console.log('[MARKDOWN] Final renderer result:', result)
     console.groupEnd()
 
     return result
@@ -102,35 +102,35 @@ const purifyConfig = {
  * @returns {string} HTML string
  */
 export function renderMarkdown(content) {
-  // 🔍 DEBUG: 添加renderMarkdown函数调试
-  console.group('📝 [MARKDOWN] renderMarkdown called')
-  console.log('🔍 [MARKDOWN] Input content:', content)
-  console.log('🔍 [MARKDOWN] Input content type:', typeof content)
-  console.log('🔍 [MARKDOWN] Input content length:', content?.length)
+  // DEBUG: 添加renderMarkdown函数调试
+  console.group('[MARKDOWN] renderMarkdown called')
+  console.log('[MARKDOWN] Input content:', content)
+  console.log('[MARKDOWN] Input content type:', typeof content)
+  console.log('[MARKDOWN] Input content length:', content?.length)
 
   if (!content || typeof content !== 'string') {
-    console.log('🔍 [MARKDOWN] No content or not string, returning empty')
+    console.log('[MARKDOWN] No content or not string, returning empty')
     console.groupEnd()
     return ''
   }
 
   try {
     // First pass: Convert markdown to HTML using marked v15 API
-    console.log('🔍 [MARKDOWN] About to call marked.parse...')
+    console.log('[MARKDOWN] About to call marked.parse...')
     let html = marked.parse(content)
-    console.log('🔍 [MARKDOWN] marked.parse result:', html)
-    console.log('🔍 [MARKDOWN] marked.parse result type:', typeof html)
+    console.log('[MARKDOWN] marked.parse result:', html)
+    console.log('[MARKDOWN] marked.parse result type:', typeof html)
 
     // Second pass: Sanitize with DOMPurify
-    console.log('🔍 [MARKDOWN] About to sanitize with DOMPurify...')
+    console.log('[MARKDOWN] About to sanitize with DOMPurify...')
     html = DOMPurify.sanitize(html, purifyConfig)
-    console.log('🔍 [MARKDOWN] DOMPurify result:', html)
-    console.log('🔍 [MARKDOWN] Final result contains [object Object]?', html.includes('[object Object]'))
+    console.log('[MARKDOWN] DOMPurify result:', html)
+    console.log('[MARKDOWN] Final result contains [object Object]?', html.includes('[object Object]'))
 
     console.groupEnd()
     return html
   } catch (error) {
-    console.error('❌ Markdown rendering failed:', error)
+    console.error('ERROR: Markdown rendering failed:', error)
     console.groupEnd()
     // Fallback to escaped plain text
     return `<p>${escapeHtml(content)}</p>`
@@ -148,7 +148,7 @@ function escapeHtml(text) {
     console.error('🚨 [MARKDOWN] escapeHtml received object:', text)
     // 尝试提取字符串内容
     text = text.code || text.content || text.text || text.value || JSON.stringify(text)
-    console.log('🔧 [MARKDOWN] escapeHtml converted object to string:', text)
+    console.log('[MARKDOWN] escapeHtml converted object to string:', text)
   }
 
   // 确保是字符串
@@ -173,9 +173,9 @@ function renderEmojis(text) {
     ':heart:': '❤️',
     ':thumbsup:': '👍',
     ':thumbsdown:': '👎',
-    ':fire:': '🔥',
-    ':rocket:': '🚀',
-    ':star:': '⭐',
+    ':fire:': '',
+    ':rocket:': '',
+    ':star:': '',
     ':eyes:': '👀',
     ':thinking:': '🤔',
     ':crying:': '😢',
@@ -428,7 +428,7 @@ function escapeAttribute(text) {
     console.error('🚨 [MARKDOWN] escapeAttribute received object:', text)
     // 尝试提取字符串内容
     text = text.code || text.content || text.text || text.value || JSON.stringify(text)
-    console.log('🔧 [MARKDOWN] Converted object to string:', text)
+    console.log('[MARKDOWN] Converted object to string:', text)
   }
 
   // 确保是字符串
@@ -445,7 +445,7 @@ function escapeAttribute(text) {
 }
 
 /**
- * 🎨 Post-process rendered HTML to replace code placeholders with highlighted code
+ * Post-process rendered HTML to replace code placeholders with highlighted code
  */
 export async function processCodeBlocks(html) {
   if (!html || typeof html !== 'string') {
@@ -495,13 +495,13 @@ export async function processCodeBlocks(html) {
     // Return processed HTML
     return doc.body.innerHTML
   } catch (error) {
-    console.error('❌ Code block processing failed:', error)
+    console.error('ERROR: Code block processing failed:', error)
     return html
   }
 }
 
 /**
- * 🚀 Complete markdown processing with code highlighting
+ * Complete markdown processing with code highlighting
  */
 export async function renderMarkdownWithCodeHighlight(content) {
   const basicHtml = renderMarkdown(content)
@@ -509,7 +509,7 @@ export async function renderMarkdownWithCodeHighlight(content) {
 }
 
 /**
- * 🔍 Extract code blocks from markdown content
+ * Extract code blocks from markdown content
  */
 export function extractCodeBlocks(content) {
   if (!content) return []

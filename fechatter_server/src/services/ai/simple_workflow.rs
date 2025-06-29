@@ -32,7 +32,7 @@ impl SimpleWorkflow {
         // Step 4: Create timeline (simple version)
         let timeline = self.create_simple_timeline(&messages, &topics).await?;
         
-        tracing::info!("✅ Chat analysis completed for chat {}", chat_id);
+        tracing::info!("Chat analysis completed for chat {}", chat_id);
         
         Ok(ChatAnalysisResult {
             chat_id,

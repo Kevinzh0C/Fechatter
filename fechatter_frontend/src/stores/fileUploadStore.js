@@ -13,7 +13,7 @@ export const useFileUploadStore = defineStore('fileUpload', () => {
 
   // Upload configuration
   const uploadConfig = {
-    maxFileSize: 100 * 1024 * 1024, // 🔧 FILE UPLOAD FIX: 100MB max file size (matching nginx limit)
+    maxFileSize: 100 * 1024 * 1024, // FILE UPLOAD FIX: 100MB max file size (matching nginx limit)
     maxFiles: 10, // Max 10 files at once
     allowedTypes: [
       'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
@@ -23,7 +23,7 @@ export const useFileUploadStore = defineStore('fileUpload', () => {
       'text/plain', 'application/json', 'text/yaml', 'application/x-yaml'
     ],
     compressionOptions: {
-      maxSizeMB: 95, // 🔧 Slightly less than 100MB to account for compression variations
+      maxSizeMB: 95, // Slightly less than 100MB to account for compression variations
       maxWidthOrHeight: 1920,
       useWebWorker: true,
       fileType: 'image/jpeg',
@@ -155,12 +155,12 @@ export const useFileUploadStore = defineStore('fileUpload', () => {
       fileEntry.preview = URL.createObjectURL(compressedFile);
 
       if (import.meta.env.DEV) {
-        console.log(`✅ Compression successful: ${fileEntry.name} (${Math.round(fileEntry.size / 1024)}KB)`);
+        console.log(`Compression successful: ${fileEntry.name} (${Math.round(fileEntry.size / 1024)}KB)`);
       }
       return compressedFile;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error(`❌ Compression failed for ${fileEntry.name}:`, error);
+        console.error(`ERROR: Compression failed for ${fileEntry.name}:`, error);
       }
       fileEntry.status = 'error';
       fileEntry.error = 'Compression failed';
@@ -209,10 +209,10 @@ export const useFileUploadStore = defineStore('fileUpload', () => {
       }
     }
 
-    // 🔧 ENHANCED: Better error and warning reporting
+    // ENHANCED: Better error and warning reporting
     if (errors.length > 0) {
       const errorMessages = errors.map(e =>
-        `❌ ${e.fileName} (${e.fileSize}): ${e.errors.join('; ')}`
+        `ERROR: ${e.fileName} (${e.fileSize}): ${e.errors.join('; ')}`
       ).join('\n');
 
       globalError.value = errorMessages;
@@ -221,13 +221,13 @@ export const useFileUploadStore = defineStore('fileUpload', () => {
         console.warn('File validation errors:', errorMessages);
       }
 
-      // 🔧 USER INTERACTION: Show user-friendly error notifications
+      // USER INTERACTION: Show user-friendly error notifications
       if (typeof window !== 'undefined' && window.showFileUploadError) {
         window.showFileUploadError(errorMessages, errors.length);
       }
     }
 
-    // 🔧 ENHANCED: Show warnings to user
+    // ENHANCED: Show warnings to user
     if (allWarnings.length > 0 && typeof window !== 'undefined' && window.showFileUploadWarning) {
       window.showFileUploadWarning(allWarnings.join('\n'), allWarnings.length);
     }
@@ -350,7 +350,7 @@ export const useFileUploadStore = defineStore('fileUpload', () => {
         console.log(`📤 Starting upload of ${readyFiles.length} files...`);
       }
 
-      // 🔧 Enhanced Upload Notification
+      // Enhanced Upload Notification
       if (typeof window !== 'undefined' && window.showFileUploadNotification) {
         window.showFileUploadNotification(`Uploading ${readyFiles.length} file(s)...`, 'info');
       }
@@ -375,16 +375,16 @@ export const useFileUploadStore = defineStore('fileUpload', () => {
           file.uploadedFile = uploadedFile;
           file.error = null;
 
-          // 🔧 CRITICAL FIX: Map file_url to url for consistent interface
+          // CRITICAL FIX: Map file_url to url for consistent interface
           const fileUrl = uploadedFile.file_url || uploadedFile.url;
           uploadedUrls.push(fileUrl);
           if (import.meta.env.DEV) {
-            console.log(`✅ Uploaded: ${file.name} -> ${fileUrl}`);
+            console.log(`Uploaded: ${file.name} -> ${fileUrl}`);
           }
 
-          // 🔧 Individual file success notification
+          // Individual file success notification
           if (typeof window !== 'undefined' && window.showFileUploadNotification) {
-            window.showFileUploadNotification(`✅ ${file.name} uploaded successfully`, 'success');
+            window.showFileUploadNotification(`${file.name} uploaded successfully`, 'success');
           }
 
         } catch (error) {
@@ -392,34 +392,34 @@ export const useFileUploadStore = defineStore('fileUpload', () => {
           file.progress = 0;
           failedUploads.push({ file, error });
 
-          // 🔧 Enhanced error handling with specific error types
+          // Enhanced error handling with specific error types
           let errorMessage = 'Upload failed';
           let errorType = 'error';
 
           if (error.code === 'NETWORK_ERROR') {
-            errorMessage = `❌ ${file.name}: Server connection failed. Please check your internet connection.`;
+            errorMessage = `ERROR: ${file.name}: Server connection failed. Please check your internet connection.`;
             errorType = 'network';
             file.error = 'Network connection failed. Server may be down.';
           } else if (error.message?.includes('exceeds')) {
-            errorMessage = `❌ ${file.name}: File too large (max 100MB)`;
+            errorMessage = `ERROR: ${file.name}: File too large (max 100MB)`;
             errorType = 'size';
             file.error = 'File size exceeds 100MB limit';
           } else if (error.message?.includes('type')) {
-            errorMessage = `❌ ${file.name}: File type not supported`;
+            errorMessage = `ERROR: ${file.name}: File type not supported`;
             errorType = 'type';
             file.error = 'File type not supported';
           } else {
-            errorMessage = `❌ ${file.name}: ${error.message || 'Unknown error'}`;
+            errorMessage = `ERROR: ${file.name}: ${error.message || 'Unknown error'}`;
             file.error = error.message || 'Upload failed';
           }
 
-          // 🔧 User-friendly error notifications
+          // User-friendly error notifications
           if (typeof window !== 'undefined' && window.showFileUploadNotification) {
             window.showFileUploadNotification(errorMessage, errorType);
           }
 
           if (import.meta.env.DEV) {
-            console.error(`❌ Upload failed: ${file.name}:`, error);
+            console.error(`ERROR: Upload failed: ${file.name}:`, error);
           }
         }
       });
@@ -427,7 +427,7 @@ export const useFileUploadStore = defineStore('fileUpload', () => {
       // Wait for all uploads to complete
       await Promise.allSettled(uploadPromises);
 
-      // 🔧 Enhanced results handling
+      // Enhanced results handling
       if (failedUploads.length > 0) {
         const networkErrors = failedUploads.filter(f => f.error.code === 'NETWORK_ERROR');
         const sizeErrors = failedUploads.filter(f => f.error.message?.includes('exceeds'));
@@ -436,21 +436,21 @@ export const useFileUploadStore = defineStore('fileUpload', () => {
         let errorMsg = `${failedUploads.length} file(s) failed to upload`;
         let suggestions = [];
 
-        // 🔧 Provide specific suggestions based on error types
+        // Provide specific suggestions based on error types
         if (networkErrors.length > 0) {
-          suggestions.push('📡 Check your internet connection and try again');
+          suggestions.push('SUBSCRIPTION: Check your internet connection and try again');
           suggestions.push('🔄 Server may be temporarily down - please retry later');
         }
         if (sizeErrors.length > 0) {
           suggestions.push('📏 Compress large files or use files under 100MB');
         }
         if (otherErrors.length > 0) {
-          suggestions.push('🔧 Check file format and try again');
+          suggestions.push('Check file format and try again');
         }
 
         globalError.value = errorMsg;
 
-        // 🔧 Enhanced user feedback with suggestions
+        // Enhanced user feedback with suggestions
         if (typeof window !== 'undefined' && window.showFileUploadError) {
           window.showFileUploadError(
             `${errorMsg}:\n${suggestions.join('\n')}`,
@@ -464,7 +464,7 @@ export const useFileUploadStore = defineStore('fileUpload', () => {
           throw new Error(`${errorMsg}. ${suggestions.join(' ')}`);
         } else {
           if (import.meta.env.DEV) {
-            console.warn(`⚠️ Partial upload failure: ${uploadedUrls.length} succeeded, ${failedUploads.length} failed`);
+            console.warn(`WARNING: Partial upload failure: ${uploadedUrls.length} succeeded, ${failedUploads.length} failed`);
           }
         }
       }
@@ -473,7 +473,7 @@ export const useFileUploadStore = defineStore('fileUpload', () => {
       const successfulFiles = readyFiles.filter(f => f.status === 'completed');
       successfulFiles.forEach(file => removeFile(file.id));
 
-      // 🔧 Success notification
+      // Success notification
       if (uploadedUrls.length > 0 && typeof window !== 'undefined' && window.showFileUploadNotification) {
         window.showFileUploadNotification(
           `🎉 ${uploadedUrls.length} file(s) uploaded successfully!`,

@@ -16,57 +16,57 @@ pub async fn verify_chat_membership_middleware(
   req: Request,
   next: Next,
 ) -> Response {
-  tracing::info!("🔍 [CHAT_MIDDLEWARE] ========== Starting Chat Membership Verification ==========");
+  tracing::info!("[CHAT_MIDDLEWARE] ========== Starting Chat Membership Verification ==========");
   
   let (mut parts, body) = req.into_parts();
 
-  tracing::debug!("🔍 [CHAT_MIDDLEWARE] Step 1: Extracting chat_id from request path");
+  tracing::debug!("[CHAT_MIDDLEWARE] Step 1: Extracting chat_id from request path");
   let chat_id = match Path::<i64>::from_request_parts(&mut parts, &State(state.clone())).await {
     Ok(path) => {
-      tracing::debug!("🔍 [CHAT_MIDDLEWARE] ✅ Successfully extracted chat_id: {}", path.0);
+      tracing::debug!("[CHAT_MIDDLEWARE] Successfully extracted chat_id: {}", path.0);
       path.0
     },
     Err(_) => {
-      tracing::debug!("🔍 [CHAT_MIDDLEWARE] ⚠️ Failed to extract via Path, trying manual parsing");
+      tracing::debug!("[CHAT_MIDDLEWARE] WARNING: Failed to extract via Path, trying manual parsing");
       if let Some(path_and_query) = parts.uri.path_and_query() {
         let path = path_and_query.path();
-        tracing::debug!("🔍 [CHAT_MIDDLEWARE] Parsing path: {}", path);
+        tracing::debug!("[CHAT_MIDDLEWARE] Parsing path: {}", path);
         let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
-        tracing::debug!("🔍 [CHAT_MIDDLEWARE] Path segments: {:?}", segments);
+        tracing::debug!("[CHAT_MIDDLEWARE] Path segments: {:?}", segments);
 
         // Enhanced pattern matching for different route structures
         let chat_id = match segments.as_slice() {
           // Standard API routes: /api/chat/{id}[/...]
           ["api", "chat", id, ..] => {
-            tracing::debug!("🔍 [CHAT_MIDDLEWARE] Matched pattern: /api/chat/{}", id);
+            tracing::debug!("[CHAT_MIDDLEWARE] Matched pattern: /api/chat/{}", id);
             id.parse::<i64>().ok()
           },
           
           // Direct chat routes: /chat/{id}[/...]
           ["chat", id, ..] => {
-            tracing::debug!("🔍 [CHAT_MIDDLEWARE] Matched pattern: /chat/{}", id);
+            tracing::debug!("[CHAT_MIDDLEWARE] Matched pattern: /chat/{}", id);
             id.parse::<i64>().ok()
           },
           
           // Legacy or alternative patterns: /{id}/chat/... or /chat/{workspace_id}/{id}/...
           [id, "chat", ..] if id.parse::<i64>().is_ok() => {
-            tracing::debug!("🔍 [CHAT_MIDDLEWARE] Matched pattern: /{}/chat/...", id);
+            tracing::debug!("[CHAT_MIDDLEWARE] Matched pattern: /{}/chat/...", id);
             id.parse::<i64>().ok()
           },
           ["chat", _workspace_id, id, ..] => {
-            tracing::debug!("🔍 [CHAT_MIDDLEWARE] Matched pattern: /chat/workspace/{}", id);
+            tracing::debug!("[CHAT_MIDDLEWARE] Matched pattern: /chat/workspace/{}", id);
             id.parse::<i64>().ok()
           },
           
           // Workspace-scoped routes: /api/workspaces/{workspace_id}/chat/{id}
           ["api", "workspaces", _workspace_id, "chat", id, ..] => {
-            tracing::debug!("🔍 [CHAT_MIDDLEWARE] Matched pattern: /api/workspaces/.../chat/{}", id);
+            tracing::debug!("[CHAT_MIDDLEWARE] Matched pattern: /api/workspaces/.../chat/{}", id);
             id.parse::<i64>().ok()
           },
           
           // Fallback: try to find any numeric segment (should be chat_id)
           _ => {
-            tracing::debug!("🔍 [CHAT_MIDDLEWARE] Using fallback: searching for numeric segment");
+            tracing::debug!("[CHAT_MIDDLEWARE] Using fallback: searching for numeric segment");
             segments.iter()
                  .filter_map(|s| s.parse::<i64>().ok())
                  .next()
@@ -75,33 +75,33 @@ pub async fn verify_chat_membership_middleware(
 
         match chat_id {
           Some(id) => {
-            tracing::info!("🔍 [CHAT_MIDDLEWARE] ✅ Successfully extracted chat_id={} from path: {}", id, path);
+            tracing::info!("[CHAT_MIDDLEWARE] Successfully extracted chat_id={} from path: {}", id, path);
             id
           }
           None => {
-            tracing::error!("🔍 [CHAT_MIDDLEWARE] ❌ Failed to extract valid chat_id from path: {} (segments: {:?})", path, segments);
+            tracing::error!("[CHAT_MIDDLEWARE] ERROR: Failed to extract valid chat_id from path: {} (segments: {:?})", path, segments);
             return (StatusCode::BAD_REQUEST, "Invalid or missing chat ID in path").into_response();
           }
         }
       } else {
-        tracing::error!("🔍 [CHAT_MIDDLEWARE] ❌ Invalid request URI: unable to extract path and query");
+        tracing::error!("[CHAT_MIDDLEWARE] ERROR: Invalid request URI: unable to extract path and query");
         return (StatusCode::BAD_REQUEST, "Invalid request URI").into_response();
       }
     }
   };
 
-  tracing::info!("🔍 [CHAT_MIDDLEWARE] Step 2: Extracting AuthUser from request");
+  tracing::info!("[CHAT_MIDDLEWARE] Step 2: Extracting AuthUser from request");
   let user = match Extension::<AuthUser>::from_request_parts(&mut parts, &State(state.clone()))
     .await
   {
     Ok(Extension(user)) => {
-      tracing::info!("🔍 [CHAT_MIDDLEWARE] ✅ Successfully extracted AuthUser: id={}, workspace_id={}", user.id, user.workspace_id);
+      tracing::info!("[CHAT_MIDDLEWARE] Successfully extracted AuthUser: id={}, workspace_id={}", user.id, user.workspace_id);
       user
     }
     Err(e) => {
       // Extended error handling and debugging
       tracing::error!(
-        "🔍 [CHAT_MIDDLEWARE] ❌ Failed to extract AuthUser extension: {}. This usually means the auth middleware didn't run or the token was invalid.",
+        "[CHAT_MIDDLEWARE] ERROR: Failed to extract AuthUser extension: {}. This usually means the auth middleware didn't run or the token was invalid.",
         e
       );
 
@@ -111,7 +111,7 @@ pub async fn verify_chat_membership_middleware(
           if auth_str.starts_with("Bearer ") {
             // Token exists but AuthUser extension is missing
             tracing::error!(
-              "🔍 [CHAT_MIDDLEWARE] Bearer token exists but AuthUser extension is missing. This indicates the token refresh middleware isn't adding the AuthUser extension after refresh."
+              "[CHAT_MIDDLEWARE] Bearer token exists but AuthUser extension is missing. This indicates the token refresh middleware isn't adding the AuthUser extension after refresh."
             );
 
             // Try to validate token directly to see if it's valid
@@ -125,20 +125,20 @@ pub async fn verify_chat_membership_middleware(
                 Ok(claims) => {
                   // Token is valid but AuthUser extension wasn't added
                   tracing::error!(
-                    "🔍 [CHAT_MIDDLEWARE] The token is valid (user_id={}), but AuthUser extension wasn't added to the request!",
+                    "[CHAT_MIDDLEWARE] The token is valid (user_id={}), but AuthUser extension wasn't added to the request!",
                     claims.id
                   );
                 }
                 Err(e) => {
                   // Token is invalid
-                  tracing::error!("🔍 [CHAT_MIDDLEWARE] The token is invalid: {}", e);
+                  tracing::error!("[CHAT_MIDDLEWARE] The token is invalid: {}", e);
                 }
               }
             }
           }
         }
       } else {
-        tracing::error!("🔍 [CHAT_MIDDLEWARE] No Authorization header found in request");
+        tracing::error!("[CHAT_MIDDLEWARE] No Authorization header found in request");
       }
 
       return (
@@ -152,18 +152,18 @@ pub async fn verify_chat_membership_middleware(
     }
   };
 
-  tracing::info!("🔍 [CHAT_MIDDLEWARE] Step 3: Calling ensure_user_is_chat_member(chat_id={}, user_id={})", chat_id, user.id);
+  tracing::info!("[CHAT_MIDDLEWARE] Step 3: Calling ensure_user_is_chat_member(chat_id={}, user_id={})", chat_id, user.id);
   
   match state.ensure_user_is_chat_member(chat_id, user.id.into()).await {
     Ok(true) => {
-      tracing::info!("🔍 [CHAT_MIDDLEWARE] ✅ SUCCESS: User {} granted access to chat {}", user.id, chat_id);
-      tracing::info!("🔍 [CHAT_MIDDLEWARE] ========== Proceeding to next middleware/handler ==========");
+      tracing::info!("[CHAT_MIDDLEWARE] SUCCESS: User {} granted access to chat {}", user.id, chat_id);
+      tracing::info!("[CHAT_MIDDLEWARE] ========== Proceeding to next middleware/handler ==========");
       let req = Request::from_parts(parts, body);
       next.run(req).await
     }
     Ok(false) => {
       // This case should not happen with enhanced error handling
-      tracing::warn!("🔍 [CHAT_MIDDLEWARE] ⚠️ Unexpected false result from membership check for user {} in chat {}", user.id, chat_id);
+      tracing::warn!("[CHAT_MIDDLEWARE] WARNING: Unexpected false result from membership check for user {} in chat {}", user.id, chat_id);
       AppError::ChatAccessDenied {
         reason: "Access denied to chat".to_string(),
         chat_id,
@@ -171,26 +171,26 @@ pub async fn verify_chat_membership_middleware(
       }.into_response()
     }
     Err(e) => {
-      tracing::error!("🔍 [CHAT_MIDDLEWARE] ❌ FAILED: Chat access error for user {} in chat {}: {}", user.id, chat_id, e);
+      tracing::error!("[CHAT_MIDDLEWARE] ERROR: FAILED: Chat access error for user {} in chat {}: {}", user.id, chat_id, e);
       
       // Enhanced error handling with precise HTTP status codes
       match &e {
         AppError::NotFound(_) => {
-          tracing::error!("🔍 [CHAT_MIDDLEWARE] 🔍 Error Type: NotFound - Chat {} not found", chat_id);
+          tracing::error!("[CHAT_MIDDLEWARE] Error Type: NotFound - Chat {} not found", chat_id);
         }
         AppError::ChatAccessDenied { reason, .. } => {
-          tracing::error!("🔍 [CHAT_MIDDLEWARE] 🔍 Error Type: ChatAccessDenied - Access denied to chat {}: {}", chat_id, reason);
+          tracing::error!("[CHAT_MIDDLEWARE] Error Type: ChatAccessDenied - Access denied to chat {}: {}", chat_id, reason);
         }
         AppError::ChatMembershipError { message, membership_status, .. } => {
-          tracing::error!("🔍 [CHAT_MIDDLEWARE] 🔍 Error Type: ChatMembershipError - Membership error for chat {}: {} (status: {})", 
+          tracing::error!("[CHAT_MIDDLEWARE] Error Type: ChatMembershipError - Membership error for chat {}: {} (status: {})", 
                          chat_id, message, membership_status);
         }
         _ => {
-          tracing::error!("🔍 [CHAT_MIDDLEWARE] 🔍 Error Type: Other - Unexpected error checking chat {} membership: {:?}", chat_id, e);
+          tracing::error!("[CHAT_MIDDLEWARE] Error Type: Other - Unexpected error checking chat {} membership: {:?}", chat_id, e);
         }
       }
       
-      tracing::error!("🔍 [CHAT_MIDDLEWARE] ========== Returning Error Response ==========");
+      tracing::error!("[CHAT_MIDDLEWARE] ========== Returning Error Response ==========");
       // Return the error directly - it now has precise status codes
       e.into_response()
     }

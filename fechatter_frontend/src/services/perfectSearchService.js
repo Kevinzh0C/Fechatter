@@ -1,5 +1,5 @@
 /**
- * 🎯 Perfect Search Service - Jobs-inspired Design
+ * Perfect Search Service - Jobs-inspired Design
  * Intelligent search with multiple strategies and elegant UX
  */
 
@@ -46,10 +46,10 @@ class PerfectSearchService {
       await this.loadSearchConfig()
 
       this.isInitialized = true
-      console.log('🔍 Perfect Search Service initialized')
+      console.log('Perfect Search Service initialized')
 
     } catch (error) {
-      console.error('❌ Failed to initialize search service:', error)
+      console.error('ERROR: Failed to initialize search service:', error)
       throw error
     }
   }
@@ -114,7 +114,7 @@ class PerfectSearchService {
       return results
 
     } catch (error) {
-      console.error('🔍 Search failed:', error)
+      console.error('Search failed:', error)
       this.updateMetrics(performance.now() - startTime, false)
 
       // Return fallback results
@@ -170,7 +170,7 @@ class PerfectSearchService {
 
     } catch (error) {
       // Fallback to local search if backend fails
-      console.warn('🔍 Backend search failed, trying local fallback:', error)
+      console.warn('Backend search failed, trying local fallback:', error)
       return await this.fallbackLocalSearch(params)
     }
   }
@@ -261,7 +261,7 @@ class PerfectSearchService {
   async fallbackLocalSearch(params) {
     // Implement basic local search using cached data
     // This would search through locally cached messages
-    console.log('🔍 Executing fallback local search')
+    console.log('Executing fallback local search')
 
     return {
       hits: [],
@@ -384,7 +384,7 @@ class PerfectSearchService {
    */
   clearCache() {
     this.cache.clear()
-    console.log('🔍 Search cache cleared')
+    console.log('Search cache cleared')
   }
 
   /**

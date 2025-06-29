@@ -98,23 +98,23 @@ pub(crate) async fn create_event_handler(
     .record("client_id", client_id)
     .record("user_id", user_id);
 
-  info!("📨 [ANALYTICS] Processing HTTP event: {} from client: {} (user: {})", 
+  info!("EVENT: [ANALYTICS] Processing HTTP event: {} from client: {} (user: {})", 
         event_type, client_id, user_id);
 
   // Convert protobuf event to database row
   let mut row = AnalyticsEventRow::try_from(event).map_err(|e| {
-    warn!("❌ [ANALYTICS] Failed to convert HTTP event to row: {}", e);
+    warn!("ERROR: [ANALYTICS] Failed to convert HTTP event to row: {}", e);
     state.metrics.increment_events_failed();
     e
   })?;
 
-  info!("✅ [ANALYTICS] Successfully converted HTTP event to database row: {}", event_type);
+  info!("[ANALYTICS] Successfully converted HTTP event to database row: {}", event_type);
 
   // Enhance with server-side information
   row.update_with_server_info(&parts, geo.0);
   row.set_session_id(&state);
 
-  info!("🔧 [ANALYTICS] Enhanced event with server info and session ID");
+  info!("[ANALYTICS] Enhanced event with server info and session ID");
 
   // Insert into ClickHouse with retry logic
   let insert_result = tokio::time::timeout(
@@ -138,7 +138,7 @@ pub(crate) async fn create_event_handler(
       ))
     }
     Ok(Err(e)) => {
-      warn!("❌ [ANALYTICS] Failed to insert HTTP event into ClickHouse: {}", e);
+      warn!("ERROR: [ANALYTICS] Failed to insert HTTP event into ClickHouse: {}", e);
       state.metrics.increment_events_failed();
       state.metrics.increment_database_errors();
       Err(e)
@@ -258,7 +258,7 @@ pub(crate) async fn create_batch_events_handler(
     ));
   }
   
-  info!("📨 [ANALYTICS] Processing HTTP batch with {} events", event_count);
+  info!("EVENT: [ANALYTICS] Processing HTTP batch with {} events", event_count);
   
   // Extract geo information from headers
   let geo = Geo::from_parts(&parts);
@@ -282,14 +282,14 @@ pub(crate) async fn create_batch_events_handler(
         }
       }
       Err(e) => {
-        warn!("❌ [ANALYTICS] Failed to convert batch event {} to row: {}", index, e);
+        warn!("ERROR: [ANALYTICS] Failed to convert batch event {} to row: {}", index, e);
         state.metrics.increment_events_failed();
         failed += 1;
       }
     }
   }
   
-  info!("✅ [ANALYTICS] Batch conversion completed: {} successful, {} failed", rows.len(), failed);
+  info!("[ANALYTICS] Batch conversion completed: {} successful, {} failed", rows.len(), failed);
   
   // Batch insert into ClickHouse
   if !rows.is_empty() {
@@ -307,10 +307,10 @@ pub(crate) async fn create_batch_events_handler(
         for _ in 0..processed {
           state.metrics.increment_events_processed();
         }
-        info!("✅ [ANALYTICS] Batch successfully stored {} events in ClickHouse", processed);
+        info!("[ANALYTICS] Batch successfully stored {} events in ClickHouse", processed);
       }
       Ok(Err(e)) => {
-        warn!("❌ [ANALYTICS] Failed to insert batch into ClickHouse: {}", e);
+        warn!("ERROR: [ANALYTICS] Failed to insert batch into ClickHouse: {}", e);
         failed += rows.len();
         for _ in 0..rows.len() {
           state.metrics.increment_events_failed();
@@ -334,7 +334,7 @@ pub(crate) async fn create_batch_events_handler(
     info!("📭 [ANALYTICS] No valid events to insert after batch processing");
   }
   
-  info!("🎯 [ANALYTICS] Batch processing completed: {} processed, {} failed, {} total", 
+  info!("[ANALYTICS] Batch processing completed: {} processed, {} failed, {} total", 
         processed, failed, event_count);
   
   Ok((

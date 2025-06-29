@@ -12,7 +12,7 @@ export class MessageDisplayGuarantee {
   constructor() {
     this.verificationQueue = new Map(); // messageId -> verification context
 
-    // 🔧 CRITICAL FIX: Use plain objects instead of reactive to prevent recursive updates
+    // CRITICAL FIX: Use plain objects instead of reactive to prevent recursive updates
     this.displayMetrics = {
       totalFetched: 0,
       totalDisplayed: 0,
@@ -24,26 +24,26 @@ export class MessageDisplayGuarantee {
       maxRetries: 2,
       baseDelay: 1500,
       maxDelay: 4000,
-      maxTimeout: 15000 // 🔧 NEW: Maximum time to spend on verification
+      maxTimeout: 15000 // NEW: Maximum time to spend on verification
     };
 
     this.isEnabled = ref(true);
 
     this.debugMode = ref(import.meta.env.DEV);
 
-    // 🔧 CRITICAL FIX: Use plain object instead of reactive
+    // CRITICAL FIX: Use plain object instead of reactive
     this.deletedMessageStats = {
       totalDetected: 0,
       chatsWithDeleted: new Set(),
       lastDetection: null
     };
 
-    // 🔧 NEW: Debounce mechanism to prevent excessive updates
+    // NEW: Debounce mechanism to prevent excessive updates
     this._updateDebounceTimer = null;
     this._pendingUpdates = new Set();
   }
 
-  // 🔧 NEW: Debounced update mechanism
+  // NEW: Debounced update mechanism
   _debouncedUpdate(updateType) {
     this._pendingUpdates.add(updateType);
 
@@ -67,7 +67,7 @@ export class MessageDisplayGuarantee {
 
   /**
    * Start tracking messages for display verification
-   * 🔧 ENHANCED: 统一的消息追踪启动入口，防止重复上下文创建
+   * ENHANCED: 统一的消息追踪启动入口，防止重复上下文创建
    */
   startMessageTracking(chatId, messageIds) {
     if (!this.isEnabled.value) return null;
@@ -84,13 +84,13 @@ export class MessageDisplayGuarantee {
       return null;
     }
 
-    // 🔧 ENHANCED: Progressive cleanup strategy to prevent race conditions during chat switching
+    // ENHANCED: Progressive cleanup strategy to prevent race conditions during chat switching
     if (this.verificationQueue.size > 0) {
       const existingContexts = Array.from(this.verificationQueue.entries())
         .filter(([_, context]) => context.chatId === normalizedChatId);
 
       if (existingContexts.length > 0) {
-        // 🔧 CRITICAL FIX: Don't immediately clear - use progressive cleanup
+        // CRITICAL FIX: Don't immediately clear - use progressive cleanup
         const activeContexts = existingContexts.filter(([_, context]) => {
           const isRecent = (Date.now() - context.fetchTimestamp) < 3000; // 3 seconds
           const hasProgress = context.displayedIds.size > 0;
@@ -134,7 +134,7 @@ export class MessageDisplayGuarantee {
       }
     }
 
-    // 🔧 CRITICAL FIX: 确保每个chat只有一个活跃的追踪上下文
+    // CRITICAL FIX: 确保每个chat只有一个活跃的追踪上下文
     // 首先清理该chat的所有旧上下文
     const existingContexts = [];
     for (const [existingTrackingId, existingContext] of this.verificationQueue.entries()) {
@@ -145,7 +145,7 @@ export class MessageDisplayGuarantee {
 
     // 如果存在活跃上下文，优先复用而不是创建新的
     if (existingContexts.length > 0) {
-      // 🔧 CRITICAL FIX: 扩展活跃上下文定义，包含最近完成的上下文以防止Vue重新渲染时的上下文丢失
+      // CRITICAL FIX: 扩展活跃上下文定义，包含最近完成的上下文以防止Vue重新渲染时的上下文丢失
       const activeContext = existingContexts.find(ctx => {
         const isActiveFetching = ctx.context.status === 'fetching' || ctx.context.status === 'partially_displayed';
         const isRecentlyCompleted = ctx.context.status === 'completed' &&
@@ -162,7 +162,7 @@ export class MessageDisplayGuarantee {
         if (newIds.length > 0) {
           newIds.forEach(id => existingIds.add(id));
 
-          // 🔧 CRITICAL FIX: 如果上下文已完成，重新激活它以处理新消息
+          // CRITICAL FIX: 如果上下文已完成，重新激活它以处理新消息
           if (activeContext.context.status === 'completed') {
             activeContext.context.status = 'partially_displayed';
           }
@@ -174,7 +174,7 @@ export class MessageDisplayGuarantee {
 
         return activeContext.trackingId;
       } else {
-        // 🔧 ENHANCED: 只清理真正无效的上下文，保留最近的已完成上下文
+        // ENHANCED: 只清理真正无效的上下文，保留最近的已完成上下文
         const contextsToClean = existingContexts.filter(({ context }) => {
           const isOldCompleted = context.status === 'completed' &&
             (Date.now() - context.fetchTimestamp) > 30000; // 超过30秒的已完成上下文
@@ -206,11 +206,11 @@ export class MessageDisplayGuarantee {
 
     this.verificationQueue.set(trackingId, context);
 
-    // 🔧 CRITICAL FIX: 同时注册按chatId的快速查找
+    // CRITICAL FIX: 同时注册按chatId的快速查找
     if (!this._chatContextMap) this._chatContextMap = new Map();
     this._chatContextMap.set(normalizedChatId, trackingId);
 
-    // 🔧 CRITICAL FIX: Use debounced update
+    // CRITICAL FIX: Use debounced update
     this.displayMetrics.totalFetched += normalizedIds.length;
     this._debouncedUpdate('totalFetched');
 
@@ -226,20 +226,20 @@ export class MessageDisplayGuarantee {
     // Set timeout for verification - 使用统一的trackingId
     setTimeout(() => {
       this.verifyDisplayCompletion(trackingId);
-    }, 800); // 🔧 OPTIMIZED: Reduced from 2000ms to 800ms for faster feedback
+    }, 800); // OPTIMIZED: Reduced from 2000ms to 800ms for faster feedback
 
     return trackingId;
   }
 
   /**
-   * 🔧 ENHANCED: Create fallback context if no context found but we have a valid chatId
+   * ENHANCED: Create fallback context if no context found but we have a valid chatId
    */
   createFallbackContext(normalizedId, normalizedChatId) {
     // Check if this is a recent message that should have a context
     const recentTimeThreshold = 30000; // 30 seconds
     const now = Date.now();
 
-    // 🔧 CRITICAL: Check if we already have a fallback for this chat to prevent spam
+    // CRITICAL: Check if we already have a fallback for this chat to prevent spam
     const existingFallback = Array.from(this.verificationQueue.values())
       .find(ctx => ctx.isFallback && ctx.chatId === normalizedChatId);
 
@@ -247,12 +247,12 @@ export class MessageDisplayGuarantee {
       // Add to existing fallback instead of creating new one
       existingFallback.messageIds.add(normalizedId);
       if (this.debugMode.value) {
-        console.log(`🔧 [MessageDisplayGuarantee] Added to existing fallback context for chat ${normalizedChatId}`);
+        console.log(`[MessageDisplayGuarantee] Added to existing fallback context for chat ${normalizedChatId}`);
       }
       return existingFallback.trackingId;
     }
 
-    // 🔧 FIX: Rate limiting - prevent excessive fallback creation during high-frequency scrolling
+    // FIX: Rate limiting - prevent excessive fallback creation during high-frequency scrolling
     if (!this._fallbackRateLimit) this._fallbackRateLimit = new Map();
 
     const rateLimitKey = `fallback_${normalizedChatId}`;
@@ -276,7 +276,7 @@ export class MessageDisplayGuarantee {
 
     // Only create fallback for recent attempts (prevent memory leaks)
     if (this.debugMode.value) {
-      console.warn(`🔧 [MessageDisplayGuarantee] Creating fallback context for orphaned message ${normalizedId} in chat ${normalizedChatId}`);
+      console.warn(`[MessageDisplayGuarantee] Creating fallback context for orphaned message ${normalizedId} in chat ${normalizedChatId}`);
     }
 
     const fallbackTrackingId = `fallback_${normalizedChatId}_${now}`;
@@ -308,16 +308,16 @@ export class MessageDisplayGuarantee {
 
   /**
    * Mark message as displayed in UI
-   * 🔧 PRODUCTION FIX: 优化上下文查找机制，优先使用chatId查找
+   * PRODUCTION FIX: 优化上下文查找机制，优先使用chatId查找
    */
   markMessageDisplayed(messageId, displayElement = null, currentChatId = null) {
     if (!this.isEnabled.value) return;
 
-    // 🔧 ENHANCED: Normalize messageId to handle both string and number types
+    // ENHANCED: Normalize messageId to handle both string and number types
     const normalizedId = parseInt(messageId);
     const normalizedChatId = currentChatId ? parseInt(currentChatId) : null;
 
-    // 🔧 RACE CONDITION FIX: If no active contexts, this might be a late retry after completion
+    // RACE CONDITION FIX: If no active contexts, this might be a late retry after completion
     if (this.verificationQueue.size === 0) {
       if (this.debugMode.value) {
         productionLogManager.debug('MessageDisplayGuarantee', `No active tracking contexts - late retry for message ${normalizedId} ignored`);
@@ -325,7 +325,7 @@ export class MessageDisplayGuarantee {
       return; // Gracefully ignore late retries
     }
 
-    // 🔧 CRITICAL FIX: 优先使用chatId快速查找策略
+    // CRITICAL FIX: 优先使用chatId快速查找策略
     let foundContext = false;
     let targetContext = null;
 
@@ -345,7 +345,7 @@ export class MessageDisplayGuarantee {
           foundContext = true;
 
           if (this.debugMode.value) {
-            console.log(`🎯 [MessageDisplayGuarantee] Fast lookup found context ${mappedTrackingId} for message ${normalizedId} in chat ${normalizedChatId}`);
+            console.log(`[MessageDisplayGuarantee] Fast lookup found context ${mappedTrackingId} for message ${normalizedId} in chat ${normalizedChatId}`);
           }
         }
       }
@@ -354,12 +354,12 @@ export class MessageDisplayGuarantee {
     // 策略2: 如果快速查找失败，使用传统遍历查找（向后兼容）
     if (!foundContext) {
       for (const [trackingId, context] of this.verificationQueue.entries()) {
-        // 🔧 CRITICAL FIX: Add chatId validation to prevent cross-chat interference
+        // CRITICAL FIX: Add chatId validation to prevent cross-chat interference
         if (normalizedChatId && context.chatId !== normalizedChatId) {
           continue;
         }
 
-        // 🔧 RACE CONDITION FIX: Check if context is already completed
+        // RACE CONDITION FIX: Check if context is already completed
         if (context.status === 'completed') {
           if (this.debugMode.value) {
             console.log(`🔄 [MessageDisplayGuarantee] Context ${trackingId} already completed - ignoring late retry for message ${normalizedId}`);
@@ -367,7 +367,7 @@ export class MessageDisplayGuarantee {
           continue; // 跳过已完成的上下文，但继续查找其他可能的上下文
         }
 
-        // 🔧 ENHANCED: Check for both string and number representations
+        // ENHANCED: Check for both string and number representations
         const hasMessage = context.messageIds.has(messageId) ||
           context.messageIds.has(normalizedId) ||
           context.messageIds.has(String(normalizedId));
@@ -377,7 +377,7 @@ export class MessageDisplayGuarantee {
           targetContext = { trackingId, context };
 
           if (this.debugMode.value) {
-            console.log(`🔍 [MessageDisplayGuarantee] Traditional lookup found context ${trackingId} for message ${normalizedId} in chat ${context.chatId}`);
+            console.log(`[MessageDisplayGuarantee] Traditional lookup found context ${trackingId} for message ${normalizedId} in chat ${context.chatId}`);
           }
           break;
         }
@@ -388,7 +388,7 @@ export class MessageDisplayGuarantee {
     if (!foundContext && normalizedChatId) {
       const fallbackTrackingId = this.createFallbackContext(normalizedId, normalizedChatId);
 
-      // 🔧 FIX: Handle rate limiting - fallbackTrackingId can be null
+      // FIX: Handle rate limiting - fallbackTrackingId can be null
       if (fallbackTrackingId) {
         const fallbackContext = this.verificationQueue.get(fallbackTrackingId);
         if (fallbackContext) {
@@ -415,7 +415,7 @@ export class MessageDisplayGuarantee {
         productionLogManager.debug('MessageDisplayGuarantee', `Found context ${trackingId} for message ${normalizedId} in chat ${context.chatId}`);
       }
 
-      // 🔧 RACE CONDITION FIX: Check if message already marked as displayed
+      // RACE CONDITION FIX: Check if message already marked as displayed
       if (context.displayedIds.has(normalizedId)) {
         if (this.debugMode.value) {
           productionLogManager.verbose('MessageDisplayGuarantee', `Message ${normalizedId} already marked - ignoring duplicate in context ${trackingId}`);
@@ -423,15 +423,15 @@ export class MessageDisplayGuarantee {
         return; // Gracefully ignore duplicates
       }
 
-      // 🔧 ENHANCED: Add to displayed set using the same format as stored
+      // ENHANCED: Add to displayed set using the same format as stored
       context.displayedIds.add(normalizedId);
 
-      // 🔧 CRITICAL FIX: Use debounced update to prevent recursive updates
+      // CRITICAL FIX: Use debounced update to prevent recursive updates
       this.displayMetrics.totalDisplayed++;
       this._debouncedUpdate('totalDisplayed');
 
       if (this.debugMode.value) {
-        console.log(`✅ [MessageDisplayGuarantee] Marked message ${normalizedId} as displayed in tracking ${trackingId}. Progress: ${context.displayedIds.size}/${context.messageIds.size}`);
+        console.log(`[MessageDisplayGuarantee] Marked message ${normalizedId} as displayed in tracking ${trackingId}. Progress: ${context.displayedIds.size}/${context.messageIds.size}`);
       }
 
       // Verify element is actually visible (if provided)
@@ -453,7 +453,7 @@ export class MessageDisplayGuarantee {
         }
       }
     } else {
-      // 🔧 ENHANCED: More informative error with reduced noise
+      // ENHANCED: More informative error with reduced noise
       if (this.verificationQueue.size > 0) {
         // Only log detailed error every 5th occurrence to reduce noise
         const errorKey = `${normalizedId}_${normalizedChatId}`;
@@ -477,10 +477,10 @@ export class MessageDisplayGuarantee {
             age: Date.now() - ctx.fetchTimestamp
           }));
 
-          console.error(`❌ [MessageDisplayGuarantee] NO TRACKING CONTEXT FOUND for message ${normalizedId}${normalizedChatId ? ` in chat ${normalizedChatId}` : ''}. Active contexts:`, activeContexts);
+          console.error(`ERROR: [MessageDisplayGuarantee] NO TRACKING CONTEXT FOUND for message ${normalizedId}${normalizedChatId ? ` in chat ${normalizedChatId}` : ''}. Active contexts:`, activeContexts);
 
-          // 🔧 CRITICAL DEBUG: Additional troubleshooting info (throttled)
-          console.error(`🔍 [MessageDisplayGuarantee] Troubleshooting info:`, {
+          // CRITICAL DEBUG: Additional troubleshooting info (throttled)
+          console.error(`[MessageDisplayGuarantee] Troubleshooting info:`, {
             messageId: messageId,
             normalizedId: normalizedId,
             currentChatId: normalizedChatId,
@@ -498,7 +498,7 @@ export class MessageDisplayGuarantee {
 
   /**
    * Verify completion of message display
-   * 🔧 ENHANCED: Added timeout protection
+   * ENHANCED: Added timeout protection
    */
   verifyDisplayCompletion(trackingId) {
     const context = this.verificationQueue.get(trackingId);
@@ -509,10 +509,10 @@ export class MessageDisplayGuarantee {
     const timeElapsed = Date.now() - context.fetchTimestamp;
 
     if (this.debugMode.value) {
-      console.log(`🔍 [MessageDisplayGuarantee] Verification for chat ${context.chatId}: ${totalDisplayed}/${totalExpected} messages displayed (${timeElapsed}ms elapsed)`);
+      console.log(`[MessageDisplayGuarantee] Verification for chat ${context.chatId}: ${totalDisplayed}/${totalExpected} messages displayed (${timeElapsed}ms elapsed)`);
     }
 
-    // 🔧 NEW: Timeout protection - if we've spent too long, accept partial success
+    // NEW: Timeout protection - if we've spent too long, accept partial success
     if (timeElapsed > this.retryConfig.maxTimeout) {
       if (totalDisplayed > totalExpected * 0.8) { // 80% success rate is acceptable
         if (this.debugMode.value) {
@@ -534,17 +534,17 @@ export class MessageDisplayGuarantee {
       id => !context.displayedIds.has(id)
     );
 
-    // 🔧 ENHANCED: Check if missing messages might be legitimately absent
+    // ENHANCED: Check if missing messages might be legitimately absent
     const missingCount = missingIds.length;
     const missingRatio = missingCount / totalExpected;
 
     if (this.debugMode.value) {
-      console.log(`🔍 [MessageDisplayGuarantee] Missing analysis: ${missingCount}/${totalExpected} (${(missingRatio * 100).toFixed(1)}%) missing`);
-      console.log(`🔍 [MessageDisplayGuarantee] Missing IDs:`, missingIds);
-      console.log(`🔍 [MessageDisplayGuarantee] Displayed IDs:`, Array.from(context.displayedIds));
+      console.log(`[MessageDisplayGuarantee] Missing analysis: ${missingCount}/${totalExpected} (${(missingRatio * 100).toFixed(1)}%) missing`);
+      console.log(`[MessageDisplayGuarantee] Missing IDs:`, missingIds);
+      console.log(`[MessageDisplayGuarantee] Displayed IDs:`, Array.from(context.displayedIds));
     }
 
-    // 🔧 CRITICAL FIX: Handle the case where ALL messages are missing
+    // CRITICAL FIX: Handle the case where ALL messages are missing
     if (missingRatio === 1.0) {
       // If ALL messages are missing, this is definitely a system problem, not deleted messages
       console.warn(`🚨 [MessageDisplayGuarantee] ALL ${totalExpected} messages are missing in chat ${context.chatId} - this indicates a system issue`);
@@ -563,15 +563,15 @@ export class MessageDisplayGuarantee {
       return;
     }
 
-    // 🔧 NEW: Enhanced detection for different failure scenarios
+    // NEW: Enhanced detection for different failure scenarios
     const isScatteredPattern = this.hasScatteredPattern(missingIds);
     const isLikelyViewportIssue = !isScatteredPattern && missingRatio < 0.3;
     const isLikelyDeletedMessages = missingRatio < 0.2 && isScatteredPattern;
 
-    // 🔧 VIEWPORT ISSUE HANDLING: Messages likely outside viewport
+    // VIEWPORT ISSUE HANDLING: Messages likely outside viewport
     if (isLikelyViewportIssue) {
       if (this.debugMode.value) {
-        console.log(`🔍 [MessageDisplayGuarantee] Detected ${missingCount} messages likely outside viewport in chat ${context.chatId}:`, missingIds);
+        console.log(`[MessageDisplayGuarantee] Detected ${missingCount} messages likely outside viewport in chat ${context.chatId}:`, missingIds);
       }
 
       // Mark as completed with viewport note - this is not a critical failure
@@ -579,16 +579,16 @@ export class MessageDisplayGuarantee {
       return true;
     }
 
-    // 🔧 DELETED MESSAGES HANDLING: Scattered missing messages
+    // DELETED MESSAGES HANDLING: Scattered missing messages
     if (isLikelyDeletedMessages) {
-      // 🔧 NEW: Update deleted message statistics with debounced updates
+      // NEW: Update deleted message statistics with debounced updates
       this.deletedMessageStats.totalDetected += missingCount;
       this.deletedMessageStats.chatsWithDeleted.add(context.chatId);
       this.deletedMessageStats.lastDetection = Date.now();
       this._debouncedUpdate('deletedMessages');
 
       if (this.debugMode.value) {
-        console.log(`🔍 [MessageDisplayGuarantee] Detected ${missingCount} likely deleted messages in chat ${context.chatId}:`, missingIds);
+        console.log(`[MessageDisplayGuarantee] Detected ${missingCount} likely deleted messages in chat ${context.chatId}:`, missingIds);
       }
 
       // Mark as completed with a note about deleted messages
@@ -596,7 +596,7 @@ export class MessageDisplayGuarantee {
       return true;
     }
 
-    // 🔧 ENHANCED: More detailed warning with debugging info
+    // ENHANCED: More detailed warning with debugging info
     console.warn(`🚨 [MessageDisplayGuarantee] Missing ${missingIds.length} messages in chat ${context.chatId}:`, {
       missingIds,
       missingRatio: (missingRatio * 100).toFixed(1) + '%',
@@ -614,7 +614,7 @@ export class MessageDisplayGuarantee {
 
   /**
    * Check if missing IDs form a scattered pattern (indicating deleted messages)
-   * 🔧 ENHANCED: Better detection for edge cases
+   * ENHANCED: Better detection for edge cases
    */
   hasScatteredPattern(missingIds) {
     if (missingIds.length <= 1) return true;
@@ -622,7 +622,7 @@ export class MessageDisplayGuarantee {
     // Sort the missing IDs
     const sorted = missingIds.map(id => parseInt(id)).sort((a, b) => a - b);
 
-    // 🔧 NEW: Check if missing messages are at the end (likely viewport issue)
+    // NEW: Check if missing messages are at the end (likely viewport issue)
     const allDisplayedIds = Array.from(this.verificationQueue.values())
       .flatMap(ctx => Array.from(ctx.displayedIds))
       .map(id => parseInt(id))
@@ -636,7 +636,7 @@ export class MessageDisplayGuarantee {
       // they are likely outside viewport (not scattered/deleted)
       if (minMissingId > maxDisplayedId) {
         if (this.debugMode.value) {
-          console.log(`🔍 [MessageDisplayGuarantee] Missing messages [${sorted.join(', ')}] appear to be outside viewport (after ${maxDisplayedId})`);
+          console.log(`[MessageDisplayGuarantee] Missing messages [${sorted.join(', ')}] appear to be outside viewport (after ${maxDisplayedId})`);
         }
         return false; // Not scattered - likely viewport issue
       }
@@ -672,7 +672,7 @@ export class MessageDisplayGuarantee {
     };
 
     if (import.meta.env.DEV) {
-      console.log(`✅ [MessageDisplayGuarantee] Completed tracking for chat ${context.chatId} (${timeTaken}ms) - ${note}`);
+      console.log(`[MessageDisplayGuarantee] Completed tracking for chat ${context.chatId} (${timeTaken}ms) - ${note}`);
     }
 
     this.verificationQueue.delete(trackingId);
@@ -737,11 +737,11 @@ export class MessageDisplayGuarantee {
     if (!context) return;
 
     context.status = 'failed';
-    // 🔧 CRITICAL FIX: Use debounced update
+    // CRITICAL FIX: Use debounced update
     this.displayMetrics.failedDisplays += missingIds.length;
     this._debouncedUpdate('failedDisplays');
 
-    console.error(`❌ [MessageDisplayGuarantee] CRITICAL: Failed to display ${missingIds.length} messages in chat ${context.chatId}`, {
+    console.error(`ERROR: [MessageDisplayGuarantee] CRITICAL: Failed to display ${missingIds.length} messages in chat ${context.chatId}`, {
       trackingId,
       missingIds,
       retryAttempts: context.retryAttempts,
@@ -774,14 +774,14 @@ export class MessageDisplayGuarantee {
       timestamp: Date.now()
     };
 
-    console.log(`✅ [MessageDisplayGuarantee] Successfully displayed ${context.messageIds.size} messages in chat ${context.chatId} (${timeTaken}ms)`);
+    console.log(`[MessageDisplayGuarantee] Successfully displayed ${context.messageIds.size} messages in chat ${context.chatId} (${timeTaken}ms)`);
 
     this.verificationQueue.delete(trackingId);
   }
 
   /**
    * Check if DOM element is visible within its message container
-   * 🔧 ENTERPRISE FIX: Enhanced visibility detection for enterprise chat systems
+   * ENTERPRISE FIX: Enhanced visibility detection for enterprise chat systems
    */
   isElementVisible(element) {
     if (!element) return false;
@@ -793,7 +793,7 @@ export class MessageDisplayGuarantee {
       return false;
     }
 
-    // 🔧 ENTERPRISE: Enhanced container detection with priority order
+    // ENTERPRISE: Enhanced container detection with priority order
     const messageContainer =
       element.closest('.discord-message-list') ||      // Discord system (primary)
       element.closest('.messages-container') ||        // Discord nested container
@@ -804,11 +804,11 @@ export class MessageDisplayGuarantee {
       document.querySelector('.discord-message-list'); // Global fallback
 
     if (!messageContainer) {
-      // 🔧 ENTERPRISE: Very tolerant window viewport check for edge cases
+      // ENTERPRISE: Very tolerant window viewport check for edge cases
       const viewHeight = Math.max(document.documentElement.clientHeight, window.innerHeight);
       const viewWidth = Math.max(document.documentElement.clientWidth, window.innerWidth);
 
-      // 🔧 GENEROUS: Large buffer for enterprise scenarios with complex layouts
+      // GENEROUS: Large buffer for enterprise scenarios with complex layouts
       return (
         rect.bottom >= -200 &&           // Allow 200px buffer above viewport
         rect.top <= viewHeight + 200 &&  // Allow 200px buffer below viewport
@@ -817,10 +817,10 @@ export class MessageDisplayGuarantee {
       );
     }
 
-    // 🔧 ENTERPRISE: Check visibility relative to the message container
+    // ENTERPRISE: Check visibility relative to the message container
     const containerRect = messageContainer.getBoundingClientRect();
 
-    // 🔧 CRITICAL: Enterprise-grade visibility tolerance
+    // CRITICAL: Enterprise-grade visibility tolerance
     // Much larger buffer to handle complex enterprise layouts, animations, and edge cases
     const buffer = 300; // Increased from 100px to 300px for enterprise tolerance
     const isVisible = (
@@ -830,23 +830,23 @@ export class MessageDisplayGuarantee {
       rect.left <= (containerRect.right + buffer)
     );
 
-    // 🔧 ENTERPRISE: Multiple fallback checks for message elements
+    // ENTERPRISE: Multiple fallback checks for message elements
     const hasMessageId = element.hasAttribute('data-message-id') ||
       element.querySelector('[data-message-id]') ||
       element.classList.contains('discord-message-item') ||
       element.classList.contains('message-item');
 
     if (!isVisible && hasMessageId) {
-      // 🔧 ENHANCED: More generous fallback checks for enterprise environments
+      // ENHANCED: More generous fallback checks for enterprise environments
       const isInDOM = document.contains(element);
       const hasReasonablePosition = rect.top > -2000 && rect.bottom < window.innerHeight + 2000;
       const hasReasonableSize = rect.width > 0 && rect.height > 0;
       const parentVisible = element.parentElement && this.isParentChainVisible(element.parentElement);
 
       if (isInDOM && hasReasonablePosition && hasReasonableSize) {
-        // 🔧 ENTERPRISE: Force visibility for message elements that meet basic criteria
+        // ENTERPRISE: Force visibility for message elements that meet basic criteria
         if (this.debugMode.value) {
-          console.log(`🔧 [MessageDisplayGuarantee] ENTERPRISE: Force-marking message as visible:`, {
+          console.log(`[MessageDisplayGuarantee] ENTERPRISE: Force-marking message as visible:`, {
             elementRect: rect,
             containerRect: containerRect,
             hasMessageId,
@@ -859,7 +859,7 @@ export class MessageDisplayGuarantee {
         return true;
       }
 
-      // 🔧 ADDITIONAL: Check if element is just outside a scrollable container
+      // ADDITIONAL: Check if element is just outside a scrollable container
       if (messageContainer.scrollHeight > messageContainer.clientHeight) {
         const scrollTop = messageContainer.scrollTop;
         const scrollHeight = messageContainer.scrollHeight;
@@ -876,7 +876,7 @@ export class MessageDisplayGuarantee {
 
         if (withinScrollBounds) {
           if (this.debugMode.value) {
-            console.log(`🔧 [MessageDisplayGuarantee] ENTERPRISE: Element within scroll bounds, marking visible:`, {
+            console.log(`[MessageDisplayGuarantee] ENTERPRISE: Element within scroll bounds, marking visible:`, {
               elementTopInContainer,
               elementBottomInContainer,
               scrollHeight,
@@ -889,9 +889,9 @@ export class MessageDisplayGuarantee {
       }
     }
 
-    // 🔧 DEBUG: Enhanced logging in development (batched to reduce noise)
+    // DEBUG: Enhanced logging in development (batched to reduce noise)
     if (import.meta.env.DEV && this.debugMode.value && !isVisible) {
-      console.log(`🔍 [MessageDisplayGuarantee] Element not visible:`, {
+      console.log(`[MessageDisplayGuarantee] Element not visible:`, {
         elementRect: {
           top: rect.top,
           bottom: rect.bottom,
@@ -917,7 +917,7 @@ export class MessageDisplayGuarantee {
   }
 
   /**
-   * 🔧 NEW: Check if parent chain is visible (for nested visibility detection)
+   * NEW: Check if parent chain is visible (for nested visibility detection)
    */
   isParentChainVisible(element, maxDepth = 5) {
     if (!element || maxDepth <= 0) return false;
@@ -969,7 +969,7 @@ export class MessageDisplayGuarantee {
         ? ((this.displayMetrics.totalDisplayed / this.displayMetrics.totalFetched) * 100).toFixed(2)
         : 100,
       activeTracking: this.verificationQueue.size,
-      // 🔧 NEW: Include deleted message statistics
+      // NEW: Include deleted message statistics
       deletedMessages: {
         totalDetected: this.deletedMessageStats.totalDetected,
         chatsAffected: this.deletedMessageStats.chatsWithDeleted.size,
@@ -979,7 +979,7 @@ export class MessageDisplayGuarantee {
   }
 
   /**
-   * 🔧 NEW: Get reactive metrics for components that need to watch values
+   * NEW: Get reactive metrics for components that need to watch values
    * This creates a fresh reactive object to avoid recursive update issues
    */
   getReactiveMetrics() {
@@ -999,31 +999,31 @@ export class MessageDisplayGuarantee {
   }
 
   /**
-   * 🔧 NEW: Quick methods for testing and debugging
+   * NEW: Quick methods for testing and debugging
    */
   enableDebugMode() {
     this.debugMode.value = true;
     if (import.meta.env.DEV) {
-      console.log('🔧 [MessageDisplayGuarantee] Debug mode enabled');
+      console.log('[MessageDisplayGuarantee] Debug mode enabled');
     }
   }
 
   disableDebugMode() {
     this.debugMode.value = false;
     if (import.meta.env.DEV) {
-      console.log('🔧 [MessageDisplayGuarantee] Debug mode disabled');
+      console.log('[MessageDisplayGuarantee] Debug mode disabled');
     }
   }
 
   temporaryDisable(durationMs = 30000) {
     this.setEnabled(false);
     if (import.meta.env.DEV) {
-      console.log(`🔧 [MessageDisplayGuarantee] Temporarily disabled for ${durationMs}ms`);
+      console.log(`[MessageDisplayGuarantee] Temporarily disabled for ${durationMs}ms`);
     }
     setTimeout(() => {
       this.setEnabled(true);
       if (import.meta.env.DEV) {
-        console.log('🔧 [MessageDisplayGuarantee] Re-enabled after temporary disable');
+        console.log('[MessageDisplayGuarantee] Re-enabled after temporary disable');
       }
     }, durationMs);
   }
@@ -1048,7 +1048,7 @@ export class MessageDisplayGuarantee {
   }
 
   /**
-   * 🔧 NEW: Cleanup method to prevent memory leaks
+   * NEW: Cleanup method to prevent memory leaks
    */
   cleanup() {
     // Clear debounce timer
@@ -1069,7 +1069,7 @@ export class MessageDisplayGuarantee {
   }
 
   /**
-   * 🔧 NEW: Clear tracking contexts for a specific chat
+   * NEW: Clear tracking contexts for a specific chat
    * Called when switching chats to prevent cross-chat interference
    */
   clearTrackingForChat(chatId) {
@@ -1077,7 +1077,7 @@ export class MessageDisplayGuarantee {
     let clearedCount = 0;
     const contextsToGracefullyComplete = [];
 
-    // 🔧 CRITICAL DEBUG: Log detailed context information before clearing
+    // CRITICAL DEBUG: Log detailed context information before clearing
     if (this.debugMode.value) {
       const existingContexts = Array.from(this.verificationQueue.entries()).map(([id, ctx]) => ({
         trackingId: id,
@@ -1093,7 +1093,7 @@ export class MessageDisplayGuarantee {
 
     for (const [trackingId, context] of this.verificationQueue.entries()) {
       if (context.chatId === normalizedChatId) {
-        // 🔧 ENHANCED: Check if context has partial progress that should be gracefully completed
+        // ENHANCED: Check if context has partial progress that should be gracefully completed
         const hasPartialProgress = context.displayedIds.size > 0 && context.displayedIds.size < context.messageIds.size;
         const isRecentContext = (Date.now() - context.fetchTimestamp) < 5000; // Less than 5 seconds old
 
@@ -1126,7 +1126,7 @@ export class MessageDisplayGuarantee {
       }
     }
 
-    // 🔧 NEW: Handle graceful completion of contexts with partial progress
+    // NEW: Handle graceful completion of contexts with partial progress
     if (contextsToGracefullyComplete.length > 0) {
       contextsToGracefullyComplete.forEach(({ trackingId, context, remainingTime }) => {
         // Mark context as being cleared to prevent new display events
@@ -1178,7 +1178,7 @@ export class MessageDisplayGuarantee {
   }
 
   /**
-   * 🔧 NEW: Clear all tracking contexts (for app-level cleanup)
+   * NEW: Clear all tracking contexts (for app-level cleanup)
    */
   clearAllTracking() {
     const clearedCount = this.verificationQueue.size;
@@ -1233,7 +1233,7 @@ export class MessageDisplayGuarantee {
 
   /**
    * Mark temporary message as replaced by real message
-   * 🔧 NEW: Handle temp message to real message transition
+   * NEW: Handle temp message to real message transition
    */
   markMessageReplaced(tempMessageId, realMessageId, chatId) {
     if (!this.isEnabled.value) return;
@@ -1267,7 +1267,7 @@ export class MessageDisplayGuarantee {
           context.displayedIds.add(normalizedRealId);
 
           if (this.debugMode.value) {
-            console.log(`✅ [MessageDisplayGuarantee] Transferred display status from ${normalizedTempId} to ${normalizedRealId} in context ${trackingId}`);
+            console.log(`[MessageDisplayGuarantee] Transferred display status from ${normalizedTempId} to ${normalizedRealId} in context ${trackingId}`);
           }
         }
 
@@ -1292,7 +1292,7 @@ export class MessageDisplayGuarantee {
   }
 }
 
-// 🔧 CRITICAL FIX: Create global instance with proper cleanup
+// CRITICAL FIX: Create global instance with proper cleanup
 export const messageDisplayGuarantee = new MessageDisplayGuarantee();
 
 // Make available globally for debugging with cleanup support

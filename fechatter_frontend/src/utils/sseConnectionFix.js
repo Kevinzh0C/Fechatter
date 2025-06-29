@@ -19,7 +19,7 @@ class SSEConnectionFix {
     const now = Date.now();
     if (this.isFixing || (now - this.lastFixTime) < this.fixDebounceMs) {
       if (import.meta.env.DEV) {
-        console.log('🔧 SSE fix already in progress or too recent, skipping');
+        console.log('SSE fix already in progress or too recent, skipping');
       return false;
     }
 
@@ -28,7 +28,7 @@ class SSEConnectionFix {
 
     try {
       if (import.meta.env.DEV) {
-        console.log('🔧 Starting SSE connection fix...');
+        console.log('Starting SSE connection fix...');
       }
 
       // Step 1: Check if we have a valid token
@@ -37,7 +37,7 @@ class SSEConnectionFix {
 
       if (!tokens.accessToken) {
         if (import.meta.env.DEV) {
-          console.error('❌ No access token available for SSE fix');
+          console.error('ERROR: No access token available for SSE fix');
         return false;
       }
 
@@ -54,11 +54,11 @@ class SSEConnectionFix {
           await tokenManager.refreshToken();
           tokens = tokenManager.getTokens(); // Get fresh tokens
           if (import.meta.env.DEV) {
-            console.log('✅ Token refreshed successfully');
+            console.log('Token refreshed successfully');
           }
         } catch (refreshError) {
           if (import.meta.env.DEV) {
-            console.error('❌ Token refresh failed:', refreshError);
+            console.error('ERROR: Token refresh failed:', refreshError);
           }
 
           // If refresh fails, redirect to login
@@ -88,22 +88,22 @@ class SSEConnectionFix {
           await service.connect(tokens.accessToken);
 
           if (import.meta.env.DEV) {
-            console.log('✅ SSE connection fix completed');
+            console.log('SSE connection fix completed');
           return true;
         } else {
           if (import.meta.env.DEV) {
-            console.log('✅ SSE connection is already healthy');
+            console.log('SSE connection is already healthy');
           return true;
         }
       } else {
         if (import.meta.env.DEV) {
-          console.warn('⚠️ SSE service not available');
+          console.warn('WARNING: SSE service not available');
         return false;
       }
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ SSE connection fix failed:', error);
+        console.error('ERROR: SSE connection fix failed:', error);
       return false;
     } finally {
       this.isFixing = false;
@@ -136,7 +136,7 @@ class SSEConnectionFix {
 
       if (!tokens.accessToken) {
         if (import.meta.env.DEV) {
-          console.error('❌ No token available for SSE test');
+          console.error('ERROR: No token available for SSE test');
         return false;
       }
 
@@ -161,21 +161,21 @@ class SSEConnectionFix {
 
       if (response.status === 200) {
         if (import.meta.env.DEV) {
-          console.log('✅ SSE endpoint test passed');
+          console.log('SSE endpoint test passed');
         return true;
       } else if (response.status === 401) {
         if (import.meta.env.DEV) {
-          console.error('❌ SSE endpoint returned 401 - token issue');
+          console.error('ERROR: SSE endpoint returned 401 - token issue');
         return false;
       } else {
         if (import.meta.env.DEV) {
-          console.warn('⚠️ SSE endpoint returned unexpected status:', response.status);
+          console.warn('WARNING: SSE endpoint returned unexpected status:', response.status);
         return false;
       }
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ SSE endpoint test failed:', error);
+        console.error('ERROR: SSE endpoint test failed:', error);
       return false;
     }
 
@@ -184,7 +184,7 @@ class SSEConnectionFix {
    */
   async autoFix() {
     if (import.meta.env.DEV) {
-      console.log('🔧 Running SSE auto-fix...');
+      console.log('Running SSE auto-fix...');
     }
 
     // Test endpoint first
@@ -192,23 +192,23 @@ class SSEConnectionFix {
 
     if (!endpointOk) {
       if (import.meta.env.DEV) {
-        console.log('🔧 Endpoint test failed, attempting connection fix...');
+        console.log('Endpoint test failed, attempting connection fix...');
       const fixResult = await this.fixSSEConnection();
 
       if (fixResult) {
         // Test again after fix
         const retestResult = await this.testSSEEndpoint();
         if (import.meta.env.DEV) {
-          console.log('🔧 Auto-fix result:', retestResult ? 'SUCCESS' : 'FAILED');
+          console.log('Auto-fix result:', retestResult ? 'SUCCESS' : 'FAILED');
         return retestResult;
       } else {
         if (import.meta.env.DEV) {
-          console.log('🔧 Auto-fix failed');
+          console.log('Auto-fix failed');
         return false;
       }
     } else {
       if (import.meta.env.DEV) {
-        console.log('✅ SSE endpoint is healthy, no fix needed');
+        console.log('SSE endpoint is healthy, no fix needed');
       return true;
     }
 
@@ -228,7 +228,7 @@ class SSEConnectionFix {
           state.connectionState !== 'permanently_failed') {
 
           if (import.meta.env.DEV) {
-            console.log('🔧 SSE monitoring detected issue, auto-fixing...');
+            console.log('SSE monitoring detected issue, auto-fixing...');
           await this.autoFix();
         }
     }, 30000); // 30 seconds
@@ -252,7 +252,7 @@ if (typeof window !== 'undefined') {
   });
 
   if (import.meta.env.DEV) {
-    console.log('🔧 SSE Connection Fix loaded - use window.sseConnectionFix');
+    console.log('SSE Connection Fix loaded - use window.sseConnectionFix');
   }
 
 export default sseConnectionFix; 

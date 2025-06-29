@@ -9,7 +9,7 @@ import { getApiConfig } from '@/utils/configLoader';
  * 验证前端架构配置是否正确
  */
 export async function validateArchitecture() {
-  console.group('🏗️ Fechatter Architecture Validation');
+  console.group('Fechatter Architecture Validation');
 
   const results = {
     passed: 0,
@@ -95,11 +95,11 @@ export async function validateArchitecture() {
     // 6. 生成报告
     const summary = generateSummary(results);
     if (import.meta.env.DEV) {
-      console.log('\n📊 验证摘要:');
+      console.log('\n验证摘要:');
     if (import.meta.env.DEV) {
-      console.log(`❌ 失败: ${results.failed}`);
+      console.log(`ERROR: 失败: ${results.failed}`);
     if (import.meta.env.DEV) {
-      console.log(`⚠️ 警告: ${results.warnings}`);
+      console.log(`WARNING: 警告: ${results.warnings}`);
     }
 
     if (results.failed === 0) {
@@ -111,7 +111,7 @@ export async function validateArchitecture() {
         console.log('\n🚨 架构验证失败！请检查以下问题:');
       results.details.filter(d => d.level === 'error').forEach(detail => {
         if (import.meta.env.DEV) {
-          console.log(`   ❌ ${detail.component}: ${detail.message}`);
+          console.log(`   ERROR: ${detail.component}: ${detail.message}`);
         }
       });
 
@@ -129,7 +129,7 @@ export async function validateArchitecture() {
  * 测试实际连接路径
  */
 export async function testConnectionPaths() {
-  console.group('🔍 Connection Path Testing');
+  console.group('Connection Path Testing');
 
   const tests = [
     {
@@ -171,7 +171,7 @@ export async function testConnectionPaths() {
           message: `${test.description} - 连接成功`
         });
         if (import.meta.env.DEV) {
-          console.log(`   ✅ ${test.name}: 连接成功 (${response.status})`);
+          console.log(`   ${test.name}: 连接成功 (${response.status})`);
         }
       } else {
         results.push({
@@ -181,7 +181,7 @@ export async function testConnectionPaths() {
           message: `${test.description} - HTTP ${response.status}`
         });
         if (import.meta.env.DEV) {
-          console.log(`   ❌ ${test.name}: HTTP ${response.status}`);
+          console.log(`   ERROR: ${test.name}: HTTP ${response.status}`);
         }
     } catch (error) {
       results.push({
@@ -191,7 +191,7 @@ export async function testConnectionPaths() {
         message: `${test.description} - 连接失败: ${error.message}`
       });
       if (import.meta.env.DEV) {
-        console.log(`   ❌ ${test.name}: 连接失败 - ${error.message}`);
+        console.log(`   ERROR: ${test.name}: 连接失败 - ${error.message}`);
       }
 
   console.groupEnd();

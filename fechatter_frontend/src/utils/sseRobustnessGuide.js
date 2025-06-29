@@ -90,7 +90,7 @@ export const SSERobustnessGuide = {
       if (window.sseGlobalManager) {
         const status = window.sseGlobalManager.getStatus();
         if (import.meta.env.DEV) {
-          console.log('📊 SSE Global Manager Status:', {
+          console.log('SSE Global Manager Status:', {
         connections: status.connections.length,
           banned: status.sessionStats.permanentlyBanned.length,
           retries: status.sessionStats.totalRetries
@@ -116,7 +116,7 @@ export const SSERobustnessGuide = {
       if (window.sseGlobalManager) {
         window.sseGlobalManager.reset();
       if (import.meta.env.DEV) {
-        console.log('✅ SSE connections reset');
+        console.log('SSE connections reset');
       }
 };
 

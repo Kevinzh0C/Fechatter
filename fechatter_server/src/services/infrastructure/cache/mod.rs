@@ -223,11 +223,11 @@ impl SyncCacheAdapter {
         // 5-minute TTL
         match serde_json::from_value::<Vec<ChatSidebar>>(cached_json.clone()) {
           Ok(chats) => {
-            debug!("✅ [SYNC_CACHE] Memory HIT for chat_list:{}", user_id);
+            debug!("[SYNC_CACHE] Memory HIT for chat_list:{}", user_id);
             return Some((Arc::new(chats), *timestamp));
           }
           Err(e) => {
-            error!("❌ [SYNC_CACHE] Memory deserialization error: {}", e);
+            error!("ERROR: [SYNC_CACHE] Memory deserialization error: {}", e);
             drop(entry); // Release the reference before removing
             self.memory_cache.remove(&cache_key);
           }
@@ -253,17 +253,17 @@ impl SyncCacheAdapter {
             if let Ok(json_value) = serde_json::to_value(&chats) {
               memory_cache_clone.insert(cache_key_clone, (json_value, Instant::now()));
               debug!(
-                "✅ [SYNC_CACHE] Background populated memory cache for user:{}",
+                "[SYNC_CACHE] Background populated memory cache for user:{}",
                 user_id
               );
             }
           }
           Ok(None) => {
-            debug!("❌ [SYNC_CACHE] Background MISS for chat_list:{}", user_id);
+            debug!("ERROR: [SYNC_CACHE] Background MISS for chat_list:{}", user_id);
           }
           Err(e) => {
             error!(
-              "❌ [SYNC_CACHE] Background ERROR for chat_list:{}: {}",
+              "ERROR: [SYNC_CACHE] Background ERROR for chat_list:{}: {}",
               user_id, e
             );
           }
@@ -273,7 +273,7 @@ impl SyncCacheAdapter {
 
     // 3. Cache miss - return None immediately (non-blocking)
     debug!(
-      "❌ [SYNC_CACHE] MISS for chat_list:{} - background fetch initiated",
+      "ERROR: [SYNC_CACHE] MISS for chat_list:{} - background fetch initiated",
       user_id
     );
     None
@@ -288,7 +288,7 @@ impl SyncCacheAdapter {
       self
         .memory_cache
         .insert(cache_key.clone(), (json_value, Instant::now()));
-      debug!("✅ [SYNC_CACHE] Memory SET for chat_list:{}", user_id);
+      debug!("[SYNC_CACHE] Memory SET for chat_list:{}", user_id);
     }
 
     // 2. Fire-and-forget Redis update (async, non-blocking)
@@ -297,11 +297,11 @@ impl SyncCacheAdapter {
       tokio::task::spawn(async move {
         match cache_clone.set_chat_list(user_id, chats, ttl_seconds).await {
           Ok(_) => debug!(
-            "✅ [SYNC_CACHE] Redis SET for chat_list:{} with TTL:{}",
+            "[SYNC_CACHE] Redis SET for chat_list:{} with TTL:{}",
             user_id, ttl_seconds
           ),
           Err(e) => error!(
-            "❌ [SYNC_CACHE] Redis SET ERROR for chat_list:{}: {}",
+            "ERROR: [SYNC_CACHE] Redis SET ERROR for chat_list:{}: {}",
             user_id, e
           ),
         }
@@ -315,16 +315,16 @@ impl SyncCacheAdapter {
 
     // 1. Immediately remove from memory cache (sync, fast)
     self.memory_cache.remove(&cache_key);
-    debug!("✅ [SYNC_CACHE] Memory REMOVE for chat_list:{}", user_id);
+    debug!("[SYNC_CACHE] Memory REMOVE for chat_list:{}", user_id);
 
     // 2. Fire-and-forget Redis removal (async, non-blocking)
     if let Some(cache) = &self.cache_service {
       let cache_clone = cache.clone();
       tokio::task::spawn(async move {
         match cache_clone.invalidate_chat_list(user_id).await {
-          Ok(_) => debug!("✅ [SYNC_CACHE] Redis REMOVE for chat_list:{}", user_id),
+          Ok(_) => debug!("[SYNC_CACHE] Redis REMOVE for chat_list:{}", user_id),
           Err(e) => error!(
-            "❌ [SYNC_CACHE] Redis REMOVE ERROR for chat_list:{}: {}",
+            "ERROR: [SYNC_CACHE] Redis REMOVE ERROR for chat_list:{}: {}",
             user_id, e
           ),
         }
@@ -430,7 +430,7 @@ impl DistributedLockCacheInvalidator {
 
     let elapsed = start_time.elapsed();
     info!(
-      "✅ [LOCKED] User {} cache invalidation complete: deleted {} keys, took {:?}",
+      "[LOCKED] User {} cache invalidation complete: deleted {} keys, took {:?}",
       user_id, deleted_count, elapsed
     );
 
@@ -540,7 +540,7 @@ impl DistributedLockCacheInvalidator {
           tracing::warn!("Async chat member cache invalidation failed: {}", e);
         } else {
           debug!(
-            "✅ Async chat {} member cache invalidation complete",
+            "Async chat {} member cache invalidation complete",
             chat_id_clone
           );
         }
@@ -549,7 +549,7 @@ impl DistributedLockCacheInvalidator {
 
     let elapsed = start_time.elapsed();
     info!(
-      "✅ [LOCKED] Chat {} message cache invalidation complete: deleted {} keys, new message count: {}, took {:?}",
+      "[LOCKED] Chat {} message cache invalidation complete: deleted {} keys, new message count: {}, took {:?}",
       chat_id, deleted_count, new_message_count, elapsed
     );
 
@@ -630,7 +630,7 @@ impl DistributedLockCacheInvalidator {
 
     let elapsed = start_time.elapsed();
     info!(
-      "✅ [LOCKED] User {} joined chat {} cache update complete: deleted {} keys, new member count: {}, took {:?}",
+      "[LOCKED] User {} joined chat {} cache update complete: deleted {} keys, new member count: {}, took {:?}",
       user_id, chat_id, deleted_count, new_member_count, elapsed
     );
 
@@ -723,7 +723,7 @@ impl DistributedLockCacheInvalidator {
 
     let elapsed = start_time.elapsed();
     info!(
-      "✅ [LOCKED] Chat {} batch cache invalidation complete: deleted {} keys, affected {} users, took {:?}",
+      "[LOCKED] Chat {} batch cache invalidation complete: deleted {} keys, affected {} users, took {:?}",
       chat_id, deleted_count, affected_user_ids.len(), elapsed
     );
 
@@ -786,7 +786,7 @@ impl DistributedLockCacheInvalidator {
       Ok(_) => {
         let elapsed = start_time.elapsed();
         info!(
-          "✅ Successfully invalidated {} cache keys for message updated in {:?} - chat={}, message={}, editor={}, keys={:?}",
+          "Successfully invalidated {} cache keys for message updated in {:?} - chat={}, message={}, editor={}, keys={:?}",
           invalidated_keys.len(),
           elapsed,
           chat_id,
@@ -797,7 +797,7 @@ impl DistributedLockCacheInvalidator {
       }
       Err(e) => {
         error!(
-          "❌ Failed to invalidate caches for message updated - chat={}, message={}, editor={}, error={}, attempted_keys={:?}",
+          "ERROR: Failed to invalidate caches for message updated - chat={}, message={}, editor={}, error={}, attempted_keys={:?}",
           chat_id,
           message_id,
           editor_id,
@@ -887,7 +887,7 @@ impl DistributedLockCacheInvalidator {
       Ok(_) => {
         let elapsed = start_time.elapsed();
         info!(
-          "✅ Successfully invalidated {} cache keys for message deleted in {:?} - chat={}, message={}, deleted_by={}, keys={:?}",
+          "Successfully invalidated {} cache keys for message deleted in {:?} - chat={}, message={}, deleted_by={}, keys={:?}",
           invalidated_keys.len(),
           elapsed,
           chat_id,
@@ -898,7 +898,7 @@ impl DistributedLockCacheInvalidator {
       }
       Err(e) => {
         error!(
-          "❌ Failed to invalidate caches for message deleted - chat={}, message={}, deleted_by={}, error={}, attempted_keys={:?}",
+          "ERROR: Failed to invalidate caches for message deleted - chat={}, message={}, deleted_by={}, error={}, attempted_keys={:?}",
           chat_id,
           message_id,
           deleted_by,
@@ -984,7 +984,7 @@ impl DistributedLockCacheInvalidator {
       Ok(_) => {
         let elapsed = start_time.elapsed();
         info!(
-          "✅ Successfully invalidated {} cache keys for chat updated in {:?} - chat={}, updated_by={}, keys={:?}",
+          "Successfully invalidated {} cache keys for chat updated in {:?} - chat={}, updated_by={}, keys={:?}",
           invalidated_keys.len(),
           elapsed,
           chat_id,
@@ -994,7 +994,7 @@ impl DistributedLockCacheInvalidator {
       }
       Err(e) => {
         error!(
-          "❌ Failed to invalidate caches for chat updated - chat={}, updated_by={}, error={}, attempted_keys={:?}",
+          "ERROR: Failed to invalidate caches for chat updated - chat={}, updated_by={}, error={}, attempted_keys={:?}",
           chat_id,
           updated_by,
           e,
@@ -1062,39 +1062,39 @@ impl CacheWarmupStrategy {
   /// Cache warmup on user login - PRODUCTION IMPLEMENTATION
   pub async fn warmup_on_user_login(&self, user_id: i64, workspace_id: i64) {
     info!(
-      "🚀 [WARMUP] Starting comprehensive cache warmup for user:{}",
+      "[WARMUP] Starting comprehensive cache warmup for user:{}",
       user_id
     );
     let start_time = Instant::now();
 
     // 1. Preload user profile info
     if let Err(e) = self.warmup_user_profile(user_id).await {
-      error!("❌ [WARMUP] Failed to warmup user profile: {}", e);
+      error!("ERROR: [WARMUP] Failed to warmup user profile: {}", e);
     }
 
     // 2. Preload user's chat list
     if let Err(e) = self.warmup_user_chats(user_id).await {
-      error!("❌ [WARMUP] Failed to warmup chat list: {}", e);
+      error!("ERROR: [WARMUP] Failed to warmup chat list: {}", e);
     }
 
     // 3. Preload workspace user list (if workspace exists)
     if let Err(e) = self.warmup_workspace_users(workspace_id).await {
-      error!("❌ [WARMUP] Failed to warmup workspace users: {}", e);
+      error!("ERROR: [WARMUP] Failed to warmup workspace users: {}", e);
     }
 
     // 4. Preload recent messages from active chats
     if let Err(e) = self.warmup_recent_messages(user_id).await {
-      error!("❌ [WARMUP] Failed to warmup recent messages: {}", e);
+      error!("ERROR: [WARMUP] Failed to warmup recent messages: {}", e);
     }
 
     // 5. Preload unread counts
     if let Err(e) = self.warmup_unread_counts(user_id).await {
-      error!("❌ [WARMUP] Failed to warmup unread counts: {}", e);
+      error!("ERROR: [WARMUP] Failed to warmup unread counts: {}", e);
     }
 
     let duration = start_time.elapsed();
     info!(
-      "✅ [WARMUP] Cache warmup completed for user:{} in {:?}",
+      "[WARMUP] Cache warmup completed for user:{} in {:?}",
       user_id, duration
     );
   }
@@ -1106,7 +1106,7 @@ impl CacheWarmupStrategy {
     // Check if already cached
     if self.redis.exists(&key).await? {
       debug!(
-        "✅ [WARMUP] User profile already cached for user:{}",
+        "[WARMUP] User profile already cached for user:{}",
         user_id
       );
       return Ok(());
@@ -1121,7 +1121,7 @@ impl CacheWarmupStrategy {
     });
 
     self.redis.set(&key, &user_profile, 3600).await?; // 1 hour TTL
-    debug!("✅ [WARMUP] User profile cached for user:{}", user_id);
+    debug!("[WARMUP] User profile cached for user:{}", user_id);
     Ok(())
   }
 
@@ -1131,7 +1131,7 @@ impl CacheWarmupStrategy {
 
     // Check if already cached
     if self.redis.exists(&key).await? {
-      debug!("✅ [WARMUP] Chat list already cached for user:{}", user_id);
+      debug!("[WARMUP] Chat list already cached for user:{}", user_id);
       return Ok(());
     }
 
@@ -1157,7 +1157,7 @@ impl CacheWarmupStrategy {
 
     self.redis.set(&key, &chat_list, 300).await?; // 5 minutes TTL
     debug!(
-      "✅ [WARMUP] Chat list cached for user:{} ({} chats)",
+      "[WARMUP] Chat list cached for user:{} ({} chats)",
       user_id,
       chat_list.len()
     );
@@ -1171,7 +1171,7 @@ impl CacheWarmupStrategy {
     // Check if already cached
     if self.redis.exists(&key).await? {
       debug!(
-        "✅ [WARMUP] Workspace users already cached for workspace:{}",
+        "[WARMUP] Workspace users already cached for workspace:{}",
         workspace_id
       );
       return Ok(());
@@ -1195,7 +1195,7 @@ impl CacheWarmupStrategy {
 
     self.redis.set(&key, &workspace_users, 1800).await?; // 30 minutes TTL
     debug!(
-      "✅ [WARMUP] Workspace users cached for workspace:{} ({} users)",
+      "[WARMUP] Workspace users cached for workspace:{} ({} users)",
       workspace_id,
       workspace_users.len()
     );
@@ -1225,7 +1225,7 @@ impl CacheWarmupStrategy {
       })];
 
       self.redis.set(&key, &recent_messages, 1800).await?; // 30 minutes TTL
-      debug!("✅ [WARMUP] Recent messages cached for chat:{}", chat_id);
+      debug!("[WARMUP] Recent messages cached for chat:{}", chat_id);
     }
 
     Ok(())
@@ -1250,7 +1250,7 @@ impl CacheWarmupStrategy {
       if unread_count > 0 {
         self.redis.set(&key, &unread_count, 86400).await?; // 24 hours TTL
         debug!(
-          "✅ [WARMUP] Unread count cached for user:{} chat:{} ({})",
+          "[WARMUP] Unread count cached for user:{} chat:{} ({})",
           user_id, chat_id, unread_count
         );
       }
@@ -1261,7 +1261,7 @@ impl CacheWarmupStrategy {
 
   /// System-wide cache warmup on startup
   pub async fn warmup_system_cache(&self) -> Result<(), AppError> {
-    info!("🚀 [WARMUP] Starting system-wide cache warmup...");
+    info!("[WARMUP] Starting system-wide cache warmup...");
     let start_time = Instant::now();
 
     // 1. Warmup global settings
@@ -1275,7 +1275,7 @@ impl CacheWarmupStrategy {
 
     let duration = start_time.elapsed();
     info!(
-      "✅ [WARMUP] System cache warmup completed in {:?}",
+      "[WARMUP] System cache warmup completed in {:?}",
       duration
     );
     Ok(())
@@ -1293,7 +1293,7 @@ impl CacheWarmupStrategy {
     });
 
     self.redis.set(key, &settings, 3600).await?; // 1 hour TTL
-    debug!("✅ [WARMUP] Global settings cached");
+    debug!("[WARMUP] Global settings cached");
     Ok(())
   }
 
@@ -1313,7 +1313,7 @@ impl CacheWarmupStrategy {
       self.redis.set(&key, &workspace_details, 1800).await?; // 30 minutes TTL
     }
 
-    debug!("✅ [WARMUP] Hot workspaces cached");
+    debug!("[WARMUP] Hot workspaces cached");
     Ok(())
   }
 
@@ -1328,7 +1328,7 @@ impl CacheWarmupStrategy {
     });
 
     self.redis.set(key, &stats, 300).await?; // 5 minutes TTL
-    debug!("✅ [WARMUP] System stats cached");
+    debug!("[WARMUP] System stats cached");
     Ok(())
   }
 }

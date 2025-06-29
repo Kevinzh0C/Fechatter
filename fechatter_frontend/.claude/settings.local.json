@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "WebFetch(domain:www.figma.com)",
+      "Bash(curl:*)"
+    ],
+    "deny": []
+  }
+}

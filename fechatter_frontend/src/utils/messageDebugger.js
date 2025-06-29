@@ -42,10 +42,10 @@ if (import.meta.env.DEV) {
       const chatStore = useChatStore();
       const authStore = useAuthStore();
 
-      console.group('🔍 Message Flow Debug Report');
+      console.group('Message Flow Debug Report');
 
       // 1. Check optimistic messages
-      console.group('📝 Optimistic Messages');
+      console.group('Optimistic Messages');
       if (import.meta.env.DEV) {
         console.log('Pending count:', chatStore.pendingOptimisticMessages?.size || 0);
       }
@@ -64,7 +64,7 @@ if (import.meta.env.DEV) {
       console.groupEnd();
 
       // 2. Check current chat messages
-      console.group('💬 Current Chat Messages');
+      console.group('MESSAGE: Current Chat Messages');
       const currentChatId = chatStore.currentChatId;
       if (import.meta.env.DEV) {
         console.log('Current chat ID:', currentChatId);
@@ -102,7 +102,7 @@ if (import.meta.env.DEV) {
       console.groupEnd();
 
       // 4. Check API errors
-      console.group('❌ Recent API Errors');
+      console.group('ERROR: Recent API Errors');
       // Check localStorage for recent errors
       const recentErrors = JSON.parse(localStorage.getItem('api_errors') || '[]');
       if (recentErrors.length > 0) {
@@ -178,7 +178,7 @@ if (import.meta.env.DEV) {
     window.MessageDebugger = MessageDebugger;
 
     if (import.meta.env.DEV) {
-      console.log('💡 Message debugger loaded. Use window.debugMessage() to debug message flow');
+      console.log('Message debugger loaded. Use window.debugMessage() to debug message flow');
     }
   }
 }

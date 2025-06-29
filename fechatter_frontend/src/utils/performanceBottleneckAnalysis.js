@@ -12,7 +12,7 @@ class PerformanceBottleneckAnalysis {
     this.storeTimes = [];
 
     if (import.meta.env.DEV) {
-      console.log('🔍 Performance Bottleneck Analysis initialized');
+      console.log('Performance Bottleneck Analysis initialized');
     }
 
   /**
@@ -21,7 +21,7 @@ class PerformanceBottleneckAnalysis {
    */
   async analyzeFullChain() {
     if (import.meta.env.DEV) {
-      console.log('\n🔍 COMPREHENSIVE PERFORMANCE BOTTLENECK ANALYSIS');
+      console.log('\nCOMPREHENSIVE PERFORMANCE BOTTLENECK ANALYSIS');
     if (import.meta.env.DEV) {
       console.log('================================================\n');
     }
@@ -58,7 +58,7 @@ class PerformanceBottleneckAnalysis {
     const chatStore = this.getChatStore();
     if (!chatStore) {
       if (import.meta.env.DEV) {
-        console.log('❌ Chat store not available');
+        console.log('ERROR: Chat store not available');
       return;
     }
 
@@ -106,7 +106,7 @@ class PerformanceBottleneckAnalysis {
           chatStore.messages.pop();
 
           if (import.meta.env.DEV) {
-            console.log(`📊 UI Update Time: ${uiTime.toFixed(2)}ms`);
+            console.log(`UI Update Time: ${uiTime.toFixed(2)}ms`);
           this.measurements.push({
             component: 'UI Update',
             time: uiTime,
@@ -202,7 +202,7 @@ class PerformanceBottleneckAnalysis {
       const minTime = Math.min(...times);
 
       if (import.meta.env.DEV) {
-        console.log(`📊 ${api.name} Performance:`);
+        console.log(`${api.name} Performance:`);
       if (import.meta.env.DEV) {
         console.log(`   Average: ${avgTime.toFixed(2)}ms`);
       if (import.meta.env.DEV) {
@@ -227,7 +227,7 @@ class PerformanceBottleneckAnalysis {
 
     if (errors.length > 0) {
       if (import.meta.env.DEV) {
-        console.log(`❌ ${errors.length} errors encountered`);
+        console.log(`ERROR: ${errors.length} errors encountered`);
       }
 
   /**
@@ -243,7 +243,7 @@ class PerformanceBottleneckAnalysis {
     const chatStore = this.getChatStore();
     if (!chatStore) {
       if (import.meta.env.DEV) {
-        console.log('❌ Chat store not available');
+        console.log('ERROR: Chat store not available');
       return;
     }
 
@@ -256,7 +256,7 @@ class PerformanceBottleneckAnalysis {
     });
 
     if (import.meta.env.DEV) {
-      console.log(`📊 Store State Access: ${stateAccessTime.toFixed(2)}ms`);
+      console.log(`Store State Access: ${stateAccessTime.toFixed(2)}ms`);
     }
 
     // Test store method calls
@@ -271,13 +271,13 @@ class PerformanceBottleneckAnalysis {
       });
 
       if (import.meta.env.DEV) {
-        console.log(`📊 Message Normalization: ${normalizeTime.toFixed(2)}ms`);
+        console.log(`Message Normalization: ${normalizeTime.toFixed(2)}ms`);
       }
 
     // Analyze store size
     const storeSize = this.getObjectSize(chatStore);
     if (import.meta.env.DEV) {
-      console.log(`📊 Store Memory Size: ${storeSize}KB`);
+      console.log(`Store Memory Size: ${storeSize}KB`);
     }
 
     this.storeTimes.push({
@@ -308,7 +308,7 @@ class PerformanceBottleneckAnalysis {
     });
 
     if (import.meta.env.DEV) {
-      console.log(`📊 DOM Query Time: ${domQueryTime.toFixed(2)}ms`);
+      console.log(`DOM Query Time: ${domQueryTime.toFixed(2)}ms`);
     }
 
     // Test scroll performance
@@ -322,13 +322,13 @@ class PerformanceBottleneckAnalysis {
       });
 
       if (import.meta.env.DEV) {
-        console.log(`📊 Scroll Performance: ${scrollTime.toFixed(2)}ms`);
+        console.log(`Scroll Performance: ${scrollTime.toFixed(2)}ms`);
       }
 
     // Analyze message count impact
     const messageElements = document.querySelectorAll('[class*="message"]');
     if (import.meta.env.DEV) {
-      console.log(`📊 Current Message Elements: ${messageElements.length}`);
+      console.log(`Current Message Elements: ${messageElements.length}`);
     }
 
     this.renderTimes.push({
@@ -349,13 +349,13 @@ class PerformanceBottleneckAnalysis {
     // DNS resolution test
     const dnsTime = await this.testDNSResolution();
     if (import.meta.env.DEV) {
-      console.log(`📊 DNS Resolution: ${dnsTime.toFixed(2)}ms`);
+      console.log(`DNS Resolution: ${dnsTime.toFixed(2)}ms`);
     }
 
     // Connection establishment
     const connectionTime = await this.testConnectionTime();
     if (import.meta.env.DEV) {
-      console.log(`📊 Connection Time: ${connectionTime.toFixed(2)}ms`);
+      console.log(`Connection Time: ${connectionTime.toFixed(2)}ms`);
     }
 
     // Test with different request sizes
@@ -433,12 +433,12 @@ class PerformanceBottleneckAnalysis {
 
         const time = performance.now() - startTime;
         if (import.meta.env.DEV) {
-          console.log(`📊 ${test.name} Request: ${time.toFixed(2)}ms`);
+          console.log(`${test.name} Request: ${time.toFixed(2)}ms`);
         }
 
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.log(`📊 ${test.name} Request: FAILED (${error.message})`);
+          console.log(`${test.name} Request: FAILED (${error.message})`);
         }
 
   /**
@@ -446,7 +446,7 @@ class PerformanceBottleneckAnalysis {
    */
   generateBottleneckReport() {
     if (import.meta.env.DEV) {
-      console.log('\n📊 BOTTLENECK ANALYSIS REPORT');
+      console.log('\nBOTTLENECK ANALYSIS REPORT');
     if (import.meta.env.DEV) {
       console.log('==============================\n');
     }
@@ -505,11 +505,11 @@ class PerformanceBottleneckAnalysis {
     // Display bottlenecks
     if (bottlenecks.length === 0) {
       if (import.meta.env.DEV) {
-        console.log('✅ No significant bottlenecks detected');
+        console.log('No significant bottlenecks detected');
       }
     } else {
       if (import.meta.env.DEV) {
-        console.log('🔍 Identified Bottlenecks:');
+        console.log('Identified Bottlenecks:');
       }
 
       bottlenecks
@@ -521,7 +521,7 @@ class PerformanceBottleneckAnalysis {
           const emoji = {
             CRITICAL: '🚨',
             HIGH: '⚠️',
-            MEDIUM: '⚡'
+            MEDIUM: ''
           }[bottleneck.severity];
 
           if (import.meta.env.DEV) {
@@ -551,7 +551,7 @@ class PerformanceBottleneckAnalysis {
     if (import.meta.env.DEV) {
       console.log(`🏪 Total Store Time: ${totalStoreTime.toFixed(2)}ms`);
     if (import.meta.env.DEV) {
-      console.log(`🎨 Total Render Time: ${totalRenderTime.toFixed(2)}ms`);
+      console.log(`Total Render Time: ${totalRenderTime.toFixed(2)}ms`);
     }
 
     const estimatedTotal = totalAPITime + totalStoreTime + totalRenderTime;
@@ -569,7 +569,7 @@ class PerformanceBottleneckAnalysis {
 
       if (totalAPITime > 5000) {
         if (import.meta.env.DEV) {
-          console.log('🎯 PRIMARY CAUSE: Backend API Response Time');
+          console.log('PRIMARY CAUSE: Backend API Response Time');
         if (import.meta.env.DEV) {
           console.log('   - Backend is taking >5 seconds to respond');
         if (import.meta.env.DEV) {
@@ -580,7 +580,7 @@ class PerformanceBottleneckAnalysis {
 
       if (totalStoreTime > 1000) {
         if (import.meta.env.DEV) {
-          console.log('🎯 SECONDARY CAUSE: Store Processing Overhead');
+          console.log('SECONDARY CAUSE: Store Processing Overhead');
         if (import.meta.env.DEV) {
           console.log('   - Store operations are taking >1 second');
         if (import.meta.env.DEV) {
@@ -589,7 +589,7 @@ class PerformanceBottleneckAnalysis {
 
       if (totalRenderTime > 500) {
         if (import.meta.env.DEV) {
-          console.log('🎯 TERTIARY CAUSE: DOM Rendering Bottleneck');
+          console.log('TERTIARY CAUSE: DOM Rendering Bottleneck');
         if (import.meta.env.DEV) {
           console.log('   - DOM operations are taking >500ms');
         if (import.meta.env.DEV) {
@@ -597,11 +597,11 @@ class PerformanceBottleneckAnalysis {
         }
 
     if (import.meta.env.DEV) {
-      console.log('\n💡 IMMEDIATE SOLUTION:');
+      console.log('\nIMMEDIATE SOLUTION:');
     if (import.meta.env.DEV) {
       console.log('======================');
     if (import.meta.env.DEV) {
-      console.log('🚀 Activate Ultra-Fast Message System:');
+      console.log('Activate Ultra-Fast Message System:');
     if (import.meta.env.DEV) {
       console.log('   window.ultraFast.init()');
     if (import.meta.env.DEV) {
@@ -609,7 +609,7 @@ class PerformanceBottleneckAnalysis {
     if (import.meta.env.DEV) {
       console.log('');
     if (import.meta.env.DEV) {
-      console.log('✅ This will bypass ALL bottlenecks with:');
+      console.log('This will bypass ALL bottlenecks with:');
     if (import.meta.env.DEV) {
       console.log('   - Instant optimistic updates (0ms UI delay)');
     if (import.meta.env.DEV) {
@@ -675,7 +675,7 @@ if (typeof window !== 'undefined') {
   };
 
   if (import.meta.env.DEV) {
-    console.log('🔍 Performance Bottleneck Analyzer loaded');
+    console.log('Performance Bottleneck Analyzer loaded');
   if (import.meta.env.DEV) {
     console.log('   Commands:');
   if (import.meta.env.DEV) {

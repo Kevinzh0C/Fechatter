@@ -13,7 +13,7 @@ class MessageConfirmationService {
     this.isEnabled = true
     
     if (import.meta.env.DEV) {
-      console.log('📨 Message Confirmation Service initialized')
+      console.log('EVENT: Message Confirmation Service initialized')
     }
   }
 
@@ -36,7 +36,7 @@ class MessageConfirmationService {
     })
 
     if (import.meta.env.DEV) {
-      console.log(`📨 Scheduling delivery confirmation for message ${messageId} in ${delay}ms`)
+      console.log(`EVENT: Scheduling delivery confirmation for message ${messageId} in ${delay}ms`)
     }
 
     // 模拟网络延迟后的SSE确认
@@ -55,7 +55,7 @@ class MessageConfirmationService {
     // 避免重复确认
     if (this.confirmedMessages.has(messageId)) {
       if (import.meta.env.DEV) {
-        console.log(`📨 Message ${messageId} already confirmed, skipping`)
+        console.log(`EVENT: Message ${messageId} already confirmed, skipping`)
       }
       return
     }
@@ -76,15 +76,15 @@ class MessageConfirmationService {
         this.pendingConfirmations.delete(messageId)
 
         if (import.meta.env.DEV) {
-          console.log(`✅ Message ${messageId} delivery confirmed via simulated SSE`)
+          console.log(`Message ${messageId} delivery confirmed via simulated SSE`)
         }
       } else if (import.meta.env.DEV) {
-        console.warn(`⚠️ Could not find message ${messageId} to confirm delivery`)
+        console.warn(`WARNING: Could not find message ${messageId} to confirm delivery`)
       }
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error(`❌ Failed to confirm delivery for message ${messageId}:`, error)
+        console.error(`ERROR: Failed to confirm delivery for message ${messageId}:`, error)
       }
     }
   }
@@ -95,7 +95,7 @@ class MessageConfirmationService {
    */
   manuallyConfirmMessage(messageId, chatId) {
     if (import.meta.env.DEV) {
-      console.log(`🔧 Manually confirming message ${messageId}`)
+      console.log(`Manually confirming message ${messageId}`)
     }
     this.confirmMessageDelivery(messageId, chatId)
   }
@@ -110,7 +110,7 @@ if (typeof window !== 'undefined' && import.meta.env.DEV) {
     confirm: (messageId, chatId) => messageConfirmationService.manuallyConfirmMessage(messageId, chatId),
     stats: () => ({ confirmedMessages: messageConfirmationService.confirmedMessages.size })
   }
-  console.log('📨 Message Confirmation Service available at window.msgConfirm')
+  console.log('EVENT: Message Confirmation Service available at window.msgConfirm')
 }
 
 export default messageConfirmationService

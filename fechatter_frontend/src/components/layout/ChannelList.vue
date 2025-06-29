@@ -393,7 +393,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 🎨 Modern Channel List Design - Inspired by Discord & Linear */
+/* Modern Channel List Design - Inspired by Discord & Linear */
 .channel-list {
   display: flex;
   flex-direction: column;
@@ -484,7 +484,7 @@ onUnmounted(() => {
   margin-left: 4px;
 }
 
-/* 🎯 Header Actions */
+/* Header Actions */
 .header-actions {
   display: flex;
   align-items: center;
@@ -585,7 +585,7 @@ onUnmounted(() => {
   padding: 0 8px;
 }
 
-/* 🎯 Empty State - Minimal & Elegant */
+/* Empty State - Minimal & Elegant */
 .empty-state {
   padding: 16px 16px;
   text-align: center;
@@ -696,7 +696,7 @@ onUnmounted(() => {
     padding: 6px 12px;
   }
 
-  /* 🎯 Touch-friendly enhancements */
+  /* Touch-friendly enhancements */
   @media (hover: none) and (pointer: coarse) {
 
     .section-toggle,
@@ -737,7 +737,7 @@ onUnmounted(() => {
     outline-offset: 2px;
   }
 
-  /* 🎨 High Contrast Mode */
+  /* High Contrast Mode */
   @media (prefers-contrast: high) {
     .section-toggle {
       color: white;

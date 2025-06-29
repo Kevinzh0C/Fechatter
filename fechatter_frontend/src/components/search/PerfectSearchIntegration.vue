@@ -182,7 +182,7 @@ defineExpose({
 </script>
 
 <style scoped>
-/* 🎨 Perfect Search Integration - Elegant & Accessible */
+/* Perfect Search Integration - Elegant & Accessible */
 
 .perfect-search-integration {
   position: relative;

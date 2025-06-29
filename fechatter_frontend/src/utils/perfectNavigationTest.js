@@ -1,5 +1,5 @@
 /**
- * 🎯 Perfect Navigation Controller Test Suite
+ * Perfect Navigation Controller Test Suite
  * 
  * Comprehensive testing for the Perfect Navigation System
  * Validates 95%+ success rate target and all edge cases
@@ -14,7 +14,7 @@ export class PerfectNavigationTest {
   }
 
   /**
-   * 🎯 Run comprehensive Perfect Navigation tests
+   * Run comprehensive Perfect Navigation tests
    */
   async runFullTest() {
     console.log('🧪 [PerfectNavigationTest] Starting comprehensive test suite...')
@@ -66,7 +66,7 @@ export class PerfectNavigationTest {
     }
 
     for (const scenario of testScenarios) {
-      console.log(`\n🎯 [Test] Starting: ${scenario.name}`)
+      console.log(`\n[Test] Starting: ${scenario.name}`)
       const scenarioResult = await this.runScenarioTest(scenario)
       results.scenarios.push(scenarioResult)
       results.totalTests += scenarioResult.attempts
@@ -76,9 +76,9 @@ export class PerfectNavigationTest {
 
     // Generate final report
     const finalReport = this.generateFinalReport(results)
-    console.log('\n📊 [PerfectNavigationTest] Test Suite Complete!')
+    console.log('\n[PerfectNavigationTest] Test Suite Complete!')
     console.table(finalReport.scenarioSummary)
-    console.log('\n🎯 Overall Results:', finalReport.overall)
+    console.log('\nOverall Results:', finalReport.overall)
 
     return finalReport
   }
@@ -121,11 +121,11 @@ export class PerfectNavigationTest {
 
         if (navigationResult.success) {
           results.successes++
-          console.log(`  ✅ Test ${i + 1}: SUCCESS (${duration}ms)`)
+          console.log(`  Test ${i + 1}: SUCCESS (${duration}ms)`)
         } else {
           results.failures++
           results.errors.push(navigationResult.error || 'Unknown error')
-          console.log(`  ❌ Test ${i + 1}: FAILED (${duration}ms) - ${navigationResult.error}`)
+          console.log(`  ERROR: Test ${i + 1}: FAILED (${duration}ms) - ${navigationResult.error}`)
         }
 
         results.details.push({
@@ -159,7 +159,7 @@ export class PerfectNavigationTest {
     results.averageTime = times.reduce((sum, time) => sum + time, 0) / times.length
     results.successRate = (results.successes / attempts * 100).toFixed(1)
 
-    console.log(`📊 Scenario "${scenario.name}": ${results.successRate}% success rate (${results.averageTime.toFixed(0)}ms avg)`)
+    console.log(`Scenario "${scenario.name}": ${results.successRate}% success rate (${results.averageTime.toFixed(0)}ms avg)`)
 
     return results
   }
@@ -259,7 +259,7 @@ export class PerfectNavigationTest {
   }
 
   /**
-   * 🎯 Get current chat ID
+   * Get current chat ID
    */
   getCurrentChatId() {
     const pathMatch = window.location.pathname.match(/\/chat\/(\d+)/)
@@ -267,7 +267,7 @@ export class PerfectNavigationTest {
   }
 
   /**
-   * 📊 Generate comprehensive test report
+   * Generate comprehensive test report
    */
   generateFinalReport(results) {
     const overallSuccessRate = (results.passedTests / results.totalTests * 100).toFixed(1)
@@ -277,8 +277,8 @@ export class PerfectNavigationTest {
       'Success Rate': `${scenario.successRate}%`,
       'Avg Time': `${scenario.averageTime.toFixed(0)}ms`,
       'Tests': `${scenario.successes}/${scenario.attempts}`,
-      'Status': parseFloat(scenario.successRate) >= 90 ? '✅ PASS' :
-        parseFloat(scenario.successRate) >= 75 ? '⚠️ WARN' : '❌ FAIL'
+      'Status': parseFloat(scenario.successRate) >= 90 ? 'PASS' :
+        parseFloat(scenario.successRate) >= 75 ? 'WARNING: WARN' : 'ERROR: FAIL'
     }))
 
     const overall = {
@@ -286,7 +286,7 @@ export class PerfectNavigationTest {
       'Passed': results.passedTests,
       'Failed': results.failedTests,
       'Success Rate': `${overallSuccessRate}%`,
-      'Target Met': parseFloat(overallSuccessRate) >= 95 ? '✅ YES' : '❌ NO',
+      'Target Met': parseFloat(overallSuccessRate) >= 95 ? 'YES' : 'ERROR: NO',
       'Grade': this.calculateGrade(overallSuccessRate)
     }
 
@@ -303,7 +303,7 @@ export class PerfectNavigationTest {
   }
 
   /**
-   * 📊 Calculate performance grade
+   * Calculate performance grade
    */
   calculateGrade(successRate) {
     const rate = parseFloat(successRate)
@@ -316,7 +316,7 @@ export class PerfectNavigationTest {
   }
 
   /**
-   * 💡 Generate improvement recommendations
+   * Generate improvement recommendations
    */
   generateRecommendations(results) {
     const recommendations = []
@@ -339,7 +339,7 @@ export class PerfectNavigationTest {
   }
 
   /**
-   * 💡 Get scenario-specific suggestions
+   * Get scenario-specific suggestions
    */
   getScenarioSuggestion(type) {
     const suggestions = {
@@ -355,14 +355,14 @@ export class PerfectNavigationTest {
   }
 
   /**
-   * ⚡ Quick validation test
+   * Quick validation test
    */
   async quickTest() {
-    console.log('⚡ [PerfectNavigationTest] Running quick validation test...')
+    console.log('[PerfectNavigationTest] Running quick validation test...')
 
     const existingMessage = this.getRandomExistingMessage()
     if (!existingMessage) {
-      console.warn('⚠️ No existing messages found for quick test')
+      console.warn('WARNING: No existing messages found for quick test')
       return { success: false, error: 'No messages available' }
     }
 
@@ -377,12 +377,12 @@ export class PerfectNavigationTest {
     const result = await perfectNavigationController.navigateToMessage(testCase)
     const duration = Date.now() - startTime
 
-    console.log(`⚡ Quick test result: ${result.success ? '✅ PASS' : '❌ FAIL'} (${duration}ms)`)
+    console.log(`Quick test result: ${result.success ? 'PASS' : 'ERROR: FAIL'} (${duration}ms)`)
 
     if (result.success) {
-      console.log('🎯 Perfect Navigation Controller is working correctly!')
+      console.log('Perfect Navigation Controller is working correctly!')
     } else {
-      console.warn('⚠️ Perfect Navigation Controller has issues:', result.error)
+      console.warn('WARNING: Perfect Navigation Controller has issues:', result.error)
     }
 
     return { ...result, duration }
@@ -426,26 +426,26 @@ export class PerfectNavigationTest {
       medianTime: times.sort()[Math.floor(times.length / 2)] + 'ms'
     }
 
-    console.log('📊 Performance Benchmark Results:')
+    console.log('Performance Benchmark Results:')
     console.table(stats)
 
     return stats
   }
 }
 
-// 🌟 Global instance
+// Global instance
 export const perfectNavigationTest = new PerfectNavigationTest()
 
-// 🎯 Console commands for easy testing
+// Console commands for easy testing
 window.testPerfectNavigation = () => perfectNavigationTest.quickTest()
 window.runPerfectNavigationSuite = () => perfectNavigationTest.runFullTest()
 window.benchmarkPerfectNavigation = (iterations) => perfectNavigationTest.benchmarkTest(iterations)
 
-// 📊 Analytics access
+// Analytics access
 window.getPerfectNavigationAnalytics = () => perfectNavigationController.getAnalytics()
 
 console.log('🧪 Perfect Navigation Test Suite loaded!')
-console.log('🎯 Available commands:')
+console.log('Available commands:')
 console.log('  - window.testPerfectNavigation() - Quick test')
 console.log('  - window.runPerfectNavigationSuite() - Full test suite')
 console.log('  - window.benchmarkPerfectNavigation(20) - Performance benchmark')

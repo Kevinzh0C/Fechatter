@@ -28,7 +28,7 @@ async fn test_workspace_creation() -> Result<()> {
   assert_eq!(workspace.owner_id, user.id);
   assert!(!workspace.name.is_empty());
 
-  info!("✅ Workspace creation test passed");
+  info!("Workspace creation test passed");
   Ok(())
 }
 
@@ -78,7 +78,7 @@ async fn test_workspace_members() -> Result<()> {
 
   assert!(members.len() >= 3);
 
-  info!("✅ Workspace members test passed");
+  info!("Workspace members test passed");
   Ok(())
 }
 
@@ -172,7 +172,7 @@ async fn test_workspace_isolation() -> Result<()> {
 
   assert!(!chats.iter().any(|c| c.id == chat.id));
 
-  info!("✅ Workspace isolation test passed");
+  info!("Workspace isolation test passed");
   Ok(())
 }
 
@@ -213,6 +213,6 @@ async fn test_cross_workspace_restrictions() -> Result<()> {
 
   assert!(result.is_err(), "Cross-workspace chat creation should fail");
 
-  info!("✅ Cross-workspace restrictions test passed");
+  info!("Cross-workspace restrictions test passed");
   Ok(())
 }

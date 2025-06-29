@@ -68,7 +68,7 @@ impl AnalyticsPublisher {
             publisher_task.run().await;
         });
 
-        info!("✅ Analytics publisher initialized");
+        info!("Analytics publisher initialized");
         Ok(Self {
             sender,
             config: config_arc,
@@ -155,7 +155,7 @@ impl AnalyticsPublisherTask {
 
     /// Main event processing loop
     async fn run(mut self) {
-        info!("🚀 Analytics publisher task started");
+        info!("Analytics publisher task started");
 
         // Create flush timer
         let mut flush_interval = tokio::time::interval(
@@ -232,7 +232,7 @@ impl AnalyticsPublisherTask {
             .publish(subject.clone(), payload.into())
             .await?;
 
-        debug!("📡 Published protobuf analytics event to subject: {}", subject);
+        debug!("SUBSCRIPTION: Published protobuf analytics event to subject: {}", subject);
         Ok(())
     }
 
@@ -247,17 +247,17 @@ impl AnalyticsPublisherTask {
 
             match async_nats::connect(nats_url).await {
                 Ok(client) => {
-                    info!("✅ Connected to NATS for analytics: {}", nats_url);
+                    info!("Connected to NATS for analytics: {}", nats_url);
                     return Ok(client);
                 }
                 Err(e) => {
                     retries += 1;
                     if retries >= MAX_RETRIES {
-                        error!("❌ Failed to connect to NATS after {} retries: {}", MAX_RETRIES, e);
+                        error!("ERROR: Failed to connect to NATS after {} retries: {}", MAX_RETRIES, e);
                         return Err(e.into());
                     }
                     warn!(
-                        "⚠️ Failed to connect to NATS (attempt {}/{}): {}. Retrying in {:?}",
+                        "WARNING: Failed to connect to NATS (attempt {}/{}): {}. Retrying in {:?}",
                         retries, MAX_RETRIES, e, RETRY_DELAY
                     );
                     tokio::time::sleep(RETRY_DELAY).await;

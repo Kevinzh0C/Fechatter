@@ -82,7 +82,7 @@
             <strong>{{ platformName }}</strong> shortcuts shown
           </span>
           <span class="tip">
-            💡 Tip: Most shortcuts work across all views
+            Tip: Most shortcuts work across all views
           </span>
         </div>
         <div class="footer-actions">
@@ -138,7 +138,7 @@ const categories = computed(() => [
   },
   {
     name: 'Search',
-    icon: '🔍',
+    icon: '',
     keywords: ['search', 'find'],
     shortcuts: props.shortcuts.filter(s => 
       s.action?.includes('search') || s.action?.includes('Search') || s.description?.toLowerCase().includes('search')
@@ -159,7 +159,7 @@ const categories = computed(() => [
   },
   {
     name: 'Quick Actions',
-    icon: '⚡',
+    icon: '',
     keywords: ['create', 'new', 'toggle', 'quick'],
     shortcuts: props.shortcuts.filter(s => 
       s.action?.includes('new') || 

@@ -31,30 +31,30 @@ async fn basic_ai_operations() -> Result<()> {
         ];
         
         match openai.complete(&messages).await {
-            Ok(response) => println!("✅ Chat completion: {}", response),
-            Err(e) => println!("❌ Chat completion failed: {}", e),
+            Ok(response) => println!("Chat completion: {}", response),
+            Err(e) => println!("ERROR: Chat completion failed: {}", e),
         }
         
         // Generate embedding
         match openai.generate_embedding("Hello world").await {
-            Ok(embedding) => println!("✅ Generated embedding with {} dimensions", embedding.len()),
-            Err(e) => println!("❌ Embedding generation failed: {}", e),
+            Ok(embedding) => println!("Generated embedding with {} dimensions", embedding.len()),
+            Err(e) => println!("ERROR: Embedding generation failed: {}", e),
         }
         
         // Content moderation
         match openai.moderate_content("This is a normal message").await {
-            Ok(is_safe) => println!("✅ Content moderation: safe = {}", is_safe),
-            Err(e) => println!("❌ Content moderation failed: {}", e),
+            Ok(is_safe) => println!("Content moderation: safe = {}", is_safe),
+            Err(e) => println!("ERROR: Content moderation failed: {}", e),
         }
     } else {
-        println!("⚠️  OPENAI_API_KEY not found, skipping OpenAI examples");
+        println!("WARNING: OPENAI_API_KEY not found, skipping OpenAI examples");
     }
     
     Ok(())
 }
 
 async fn fechatter_ai_operations() -> Result<()> {
-    println!("\n🎯 Fechatter AI Operations (using adapter)");
+    println!("\nFechatter AI Operations (using adapter)");
     println!("------------------------------------------");
     
     if let Ok(_) = std::env::var("OPENAI_API_KEY") {
@@ -62,7 +62,7 @@ async fn fechatter_ai_operations() -> Result<()> {
         let ai_service = match AiServiceAdapter::from_env() {
             Ok(service) => service,
             Err(e) => {
-                println!("❌ Failed to create AI service: {}", e);
+                println!("ERROR: Failed to create AI service: {}", e);
                 return Ok(());
             }
         };
@@ -80,48 +80,48 @@ async fn fechatter_ai_operations() -> Result<()> {
         ];
         
         match ai_service.chat_completion(chat_messages).await {
-            Ok(response) => println!("✅ Fechatter chat completion: {}", response),
-            Err(e) => println!("❌ Fechatter chat completion failed: {}", e),
+            Ok(response) => println!("Fechatter chat completion: {}", response),
+            Err(e) => println!("ERROR: Fechatter chat completion failed: {}", e),
         }
         
         // Generate summary
         let long_text = "This is a very long conversation that happened in our chat room. Alice said hello, Bob responded with a greeting, Charlie joined and asked about the weather, and then they all discussed their weekend plans. It was a friendly conversation that lasted about 30 minutes.";
         
         match ai_service.generate_summary(long_text).await {
-            Ok(summary) => println!("✅ Summary: {}", summary),
-            Err(e) => println!("❌ Summary generation failed: {}", e),
+            Ok(summary) => println!("Summary: {}", summary),
+            Err(e) => println!("ERROR: Summary generation failed: {}", e),
         }
         
         // Analyze sentiment
         match ai_service.analyze_sentiment("I love this new feature!").await {
-            Ok(sentiment) => println!("✅ Sentiment: {} (score: {})", sentiment.label, sentiment.score),
-            Err(e) => println!("❌ Sentiment analysis failed: {}", e),
+            Ok(sentiment) => println!("Sentiment: {} (score: {})", sentiment.label, sentiment.score),
+            Err(e) => println!("ERROR: Sentiment analysis failed: {}", e),
         }
         
         // Suggest replies
         let context = "User: Hey everyone! Just wanted to share that I got a promotion at work today!";
         match ai_service.suggest_replies(context).await {
             Ok(suggestions) => {
-                println!("✅ Reply suggestions:");
+                println!("Reply suggestions:");
                 for (i, suggestion) in suggestions.iter().enumerate() {
                     println!("   {}. {}", i + 1, suggestion);
                 }
             },
-            Err(e) => println!("❌ Reply suggestions failed: {}", e),
+            Err(e) => println!("ERROR: Reply suggestions failed: {}", e),
         }
         
         // Additional adapter methods (embedding and moderation)
         match ai_service.generate_embedding("test message").await {
-            Ok(embedding) => println!("✅ Adapter embedding with {} dimensions", embedding.len()),
-            Err(e) => println!("❌ Adapter embedding failed: {}", e),
+            Ok(embedding) => println!("Adapter embedding with {} dimensions", embedding.len()),
+            Err(e) => println!("ERROR: Adapter embedding failed: {}", e),
         }
         
         match ai_service.moderate_content("This is appropriate content").await {
-            Ok(is_safe) => println!("✅ Adapter moderation: safe = {}", is_safe),
-            Err(e) => println!("❌ Adapter moderation failed: {}", e),
+            Ok(is_safe) => println!("Adapter moderation: safe = {}", is_safe),
+            Err(e) => println!("ERROR: Adapter moderation failed: {}", e),
         }
     } else {
-        println!("⚠️  OPENAI_API_KEY not found, skipping fechatter examples");
+        println!("WARNING: OPENAI_API_KEY not found, skipping fechatter examples");
     }
     
     Ok(())
@@ -144,7 +144,7 @@ async fn migration_example() -> Result<()> {
     let ai_service = AiServiceAdapter::from_env()?;
     let summary = ai_service.generate_summary("some text").await?;
     
-    println!("✅ Migration complete: {}", summary);
+    println!("Migration complete: {}", summary);
     
     Ok(())
 }

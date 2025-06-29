@@ -11,7 +11,7 @@ class ImageCacheService {
     // ⏰ 缓存过期时间 (30分钟)
     this.CACHE_EXPIRY = 30 * 60 * 1000
 
-    // 📊 缓存统计
+    // 缓存统计
     this.stats = {
       hits: 0,
       misses: 0,
@@ -33,7 +33,7 @@ class ImageCacheService {
   }
 
   /**
-   * 🎯 获取缓存的图片URL (主要接口)
+   * 获取缓存的图片URL (主要接口)
    * @param {string} imageUrl - 原始图片URL
    * @param {object} options - 配置选项
    * @returns {Promise<string>} - Blob URL或原始URL
@@ -45,7 +45,7 @@ class ImageCacheService {
       return null
     }
 
-    // 🚀 对于非API图片，直接返回原始URL
+    // 对于非API图片，直接返回原始URL
     if (!this.isApiImage(imageUrl)) {
       return imageUrl
     }
@@ -53,19 +53,19 @@ class ImageCacheService {
     const cacheKey = this.getCacheKey(imageUrl)
     const cached = this.cache.get(cacheKey)
 
-    // ✅ 缓存命中
+    // 缓存命中
     if (cached && this.isCacheValid(cached)) {
       this.stats.hits++
       cached.lastAccessed = Date.now()
 
       if (this.isDevelopment()) {
-        console.log(`🎯 [ImageCache] Cache hit for: ${this.truncateUrl(imageUrl)}`)
+        console.log(`[ImageCache] Cache hit for: ${this.truncateUrl(imageUrl)}`)
       }
 
       return cached.blobUrl
     }
 
-    // ❌ 缓存未命中，从远端获取
+    // ERROR: 缓存未命中，从远端获取
     this.stats.misses++
 
     try {
@@ -76,7 +76,7 @@ class ImageCacheService {
       const blobUrl = await this.fetchAndCacheImage(imageUrl, options)
       return blobUrl
     } catch (error) {
-      console.error('❌ [ImageCache] Failed to fetch image:', error)
+      console.error('ERROR: [ImageCache] Failed to fetch image:', error)
 
       // 🔄 降级处理：返回原始URL
       return imageUrl
@@ -84,7 +84,7 @@ class ImageCacheService {
   }
 
   /**
-   * 📡 从远端获取图片并缓存
+   * SUBSCRIPTION: 从远端获取图片并缓存
    * @param {string} imageUrl - 图片URL
    * @param {object} options - 请求选项
    * @returns {Promise<string>} - Blob URL
@@ -142,7 +142,7 @@ class ImageCacheService {
   }
 
   /**
-   * 🔍 判断是否为API图片URL
+   * 判断是否为API图片URL
    * @param {string} url - 图片URL
    * @returns {boolean}
    */
@@ -169,7 +169,7 @@ class ImageCacheService {
    */
   async getAuthToken() {
     try {
-      // 🔧 CRITICAL FIX: 使用与api.js相同的token获取逻辑
+      // CRITICAL FIX: 使用与api.js相同的token获取逻辑
 
       // Priority 1: tokenManager (in-memory, fast)
       try {
@@ -183,7 +183,7 @@ class ImageCacheService {
         }
       } catch (error) {
         if (this.isDevelopment()) {
-          console.warn('⚠️ [ImageCache] TokenManager access failed:', error)
+          console.warn('WARNING: [ImageCache] TokenManager access failed:', error)
         }
       }
 
@@ -200,13 +200,13 @@ class ImageCacheService {
         }
       } catch (error) {
         if (this.isDevelopment()) {
-          console.warn('⚠️ [ImageCache] AuthStateManager access failed:', error)
+          console.warn('WARNING: [ImageCache] AuthStateManager access failed:', error)
         }
       }
 
       // Priority 3: Direct localStorage access (fallback)
       try {
-        // 🔧 CRITICAL: Use correct localStorage key from auth.js
+        // CRITICAL: Use correct localStorage key from auth.js
         const authToken = localStorage.getItem('auth_token')
         if (authToken) {
           if (this.isDevelopment()) {
@@ -228,16 +228,16 @@ class ImageCacheService {
         }
       } catch (error) {
         if (this.isDevelopment()) {
-          console.warn('⚠️ [ImageCache] localStorage access failed:', error)
+          console.warn('WARNING: [ImageCache] localStorage access failed:', error)
         }
       }
 
       if (this.isDevelopment()) {
-        console.warn('⚠️ [ImageCache] No authentication token found')
+        console.warn('WARNING: [ImageCache] No authentication token found')
       }
       return null
     } catch (error) {
-      console.error('❌ [ImageCache] Failed to get auth token:', error)
+      console.error('ERROR: [ImageCache] Failed to get auth token:', error)
       return null
     }
   }
@@ -248,7 +248,7 @@ class ImageCacheService {
    * @returns {string}
    */
   getCacheKey(url) {
-    // 🎯 使用URL的hash作为缓存键，忽略query参数
+    // 使用URL的hash作为缓存键，忽略query参数
     try {
       const urlObj = new URL(url, window.location.origin)
       return urlObj.pathname
@@ -277,7 +277,7 @@ class ImageCacheService {
    * @param {number} newItemSize - 新项目大小
    */
   async ensureCacheCapacity(newItemSize) {
-    // 📊 计算当前缓存大小
+    // 计算当前缓存大小
     let currentSize = 0
     for (const item of this.cache.values()) {
       currentSize += item.size || 0
@@ -346,7 +346,7 @@ class ImageCacheService {
   }
 
   /**
-   * 📊 更新统计信息
+   * 更新统计信息
    */
   updateStats() {
     this.stats.cacheSize = this.cache.size
@@ -410,7 +410,7 @@ class ImageCacheService {
   }
 
   /**
-   * 🔍 检查是否为开发环境
+   * 检查是否为开发环境
    * @returns {boolean}
    */
   isDevelopment() {
@@ -447,7 +447,7 @@ class ImageCacheService {
     const preloadPromises = urls
       .filter(url => url && this.isApiImage(url))
       .map(url => this.getCachedImageUrl(url).catch(error => {
-        console.warn(`⚠️ [ImageCache] Preload failed for ${url}:`, error)
+        console.warn(`WARNING: [ImageCache] Preload failed for ${url}:`, error)
       }))
 
     await Promise.allSettled(preloadPromises)
@@ -458,7 +458,7 @@ class ImageCacheService {
   }
 }
 
-// 🎯 创建全局单例
+// 创建全局单例
 const imageCacheService = new ImageCacheService()
 
 export default imageCacheService 

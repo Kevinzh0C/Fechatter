@@ -1,5 +1,5 @@
 /**
- * 🎯 GuaranteedScrollToBottom - 100%可靠的滚动到底部状态机
+ * GuaranteedScrollToBottom - 100%可靠的滚动到底部状态机
  * 
  * 解决第一次进入channel时不能确保滚动到最新消息位置的问题
  * 通过状态机管理整个滚动过程，包含重试和验证机制
@@ -37,12 +37,12 @@ export class GuaranteedScrollToBottom {
     };
 
     if (import.meta.env.DEV) {
-      console.log('🎯 [GuaranteedScrollToBottom] 状态机已初始化');
+      console.log('[GuaranteedScrollToBottom] 状态机已初始化');
     }
   }
 
   /**
-   * 🎯 主入口：启动滚动保证流程
+   * 主入口：启动滚动保证流程
    */
   async guaranteeScrollToBottom({
     chatId,
@@ -55,7 +55,7 @@ export class GuaranteedScrollToBottom {
     // 防止重复调用
     if (this.currentState !== this.states.IDLE && this.currentState !== this.states.COMPLETED && this.currentState !== this.states.FAILED) {
       if (import.meta.env.DEV) {
-        console.warn('🎯 [GuaranteedScrollToBottom] 状态机正在运行，忽略重复调用');
+        console.warn('[GuaranteedScrollToBottom] 状态机正在运行，忽略重复调用');
       }
       return false;
     }
@@ -70,7 +70,7 @@ export class GuaranteedScrollToBottom {
     this.forceSmooth = forceSmooth;
 
     if (import.meta.env.DEV) {
-      console.log(`🎯 [GuaranteedScrollToBottom] 开始为chat ${chatId}保证滚动到底部`);
+      console.log(`[GuaranteedScrollToBottom] 开始为chat ${chatId}保证滚动到底部`);
     }
 
     try {
@@ -114,7 +114,7 @@ export class GuaranteedScrollToBottom {
     // 检查消息是否已存在
     if (messages && messages.length > 0) {
       if (import.meta.env.DEV) {
-        console.log(`✅ [GuaranteedScrollToBottom] 消息已存在 (${messages.length}条)`);
+        console.log(`[GuaranteedScrollToBottom] 消息已存在 (${messages.length}条)`);
       }
       return Promise.resolve();
     }
@@ -132,7 +132,7 @@ export class GuaranteedScrollToBottom {
 
         if (messageElements && messageElements.length > 0) {
           if (import.meta.env.DEV) {
-            console.log(`✅ [GuaranteedScrollToBottom] 检测到${messageElements.length}条消息`);
+            console.log(`[GuaranteedScrollToBottom] 检测到${messageElements.length}条消息`);
           }
           resolve();
         } else if (attempts >= maxAttempts) {
@@ -147,7 +147,7 @@ export class GuaranteedScrollToBottom {
   }
 
   /**
-   * 🏗️ 第二阶段：等待DOM渲染完成
+   * 第二阶段：等待DOM渲染完成
    */
   async waitForDOM() {
     this.transitionTo(this.states.WAITING_FOR_DOM);
@@ -159,7 +159,7 @@ export class GuaranteedScrollToBottom {
           // 额外等待10ms确保浏览器完成所有布局计算
           setTimeout(() => {
             if (import.meta.env.DEV) {
-              console.log('✅ [GuaranteedScrollToBottom] DOM渲染完成');
+              console.log('[GuaranteedScrollToBottom] DOM渲染完成');
             }
             resolve();
           }, 10);
@@ -194,7 +194,7 @@ export class GuaranteedScrollToBottom {
         this.retryCount++;
         if (this.retryCount <= this.maxRetries) {
           if (import.meta.env.DEV) {
-            console.warn(`⚠️ [GuaranteedScrollToBottom] 滚动验证失败，重试 ${this.retryCount}/${this.maxRetries}`);
+            console.warn(`WARNING: [GuaranteedScrollToBottom] 滚动验证失败，重试 ${this.retryCount}/${this.maxRetries}`);
           }
           await this.wait(100); // 等待100ms后重试
         }
@@ -203,7 +203,7 @@ export class GuaranteedScrollToBottom {
         this.retryCount++;
         if (this.retryCount <= this.maxRetries) {
           if (import.meta.env.DEV) {
-            console.warn(`⚠️ [GuaranteedScrollToBottom] 滚动执行失败，重试 ${this.retryCount}/${this.maxRetries}:`, error);
+            console.warn(`WARNING: [GuaranteedScrollToBottom] 滚动执行失败，重试 ${this.retryCount}/${this.maxRetries}:`, error);
           }
           await this.wait(100);
         } else {
@@ -277,7 +277,7 @@ export class GuaranteedScrollToBottom {
   }
 
   /**
-   * ✅ 验证滚动位置
+   * 验证滚动位置
    */
   async verifyScrollPosition() {
     this.transitionTo(this.states.VERIFYING);
@@ -298,7 +298,7 @@ export class GuaranteedScrollToBottom {
         const isAtBottom = Math.abs(scrollTop - maxScrollTop) <= tolerance;
 
         if (import.meta.env.DEV) {
-          console.log(`✅ [GuaranteedScrollToBottom] 验证滚动位置:`, {
+          console.log(`[GuaranteedScrollToBottom] 验证滚动位置:`, {
             scrollTop: Math.round(scrollTop),
             maxScrollTop: Math.round(maxScrollTop),
             difference: Math.round(Math.abs(scrollTop - maxScrollTop)),
@@ -337,7 +337,7 @@ export class GuaranteedScrollToBottom {
   }
 
   /**
-   * 📊 记录成功
+   * 记录成功
    */
   recordSuccess() {
     this.metrics.successfulScrolls++;
@@ -350,7 +350,7 @@ export class GuaranteedScrollToBottom {
   }
 
   /**
-   * 📊 记录失败
+   * 记录失败
    */
   recordFailure() {
     this.metrics.failedScrolls++;
@@ -361,7 +361,7 @@ export class GuaranteedScrollToBottom {
   }
 
   /**
-   * 📊 更新平均时间
+   * 更新平均时间
    */
   updateAverageTime(duration) {
     const totalTime = this.metrics.averageTime * (this.metrics.totalAttempts - 1) + duration;
@@ -404,7 +404,7 @@ export class GuaranteedScrollToBottom {
   }
 
   /**
-   * 📊 获取性能指标
+   * 获取性能指标
    */
   getMetrics() {
     const successRate = this.metrics.totalAttempts > 0
@@ -435,10 +435,10 @@ export class GuaranteedScrollToBottom {
 // 🌍 创建全局单例
 export const guaranteedScrollToBottom = new GuaranteedScrollToBottom();
 
-// 🔧 开发环境调试函数
+// 开发环境调试函数
 if (typeof window !== 'undefined' && import.meta.env.DEV) {
   window.debugGuaranteedScroll = () => {
-    console.log('🎯 [GuaranteedScrollToBottom] 调试信息:', guaranteedScrollToBottom.getMetrics());
+    console.log('[GuaranteedScrollToBottom] 调试信息:', guaranteedScrollToBottom.getMetrics());
   };
 
   window.testGuaranteedScroll = (chatId, container) => {
@@ -446,10 +446,10 @@ if (typeof window !== 'undefined' && import.meta.env.DEV) {
       chatId,
       scrollContainer: container,
       messages: container?.querySelectorAll('[data-message-id]') || [],
-      onComplete: (result) => console.log('✅ 测试滚动成功:', result),
-      onFailed: (result) => console.error('❌ 测试滚动失败:', result)
+      onComplete: (result) => console.log('测试滚动成功:', result),
+      onFailed: (result) => console.error('ERROR: 测试滚动失败:', result)
     });
   };
 
-  console.log('🎯 GuaranteedScrollToBottom调试功能已加载');
+  console.log('GuaranteedScrollToBottom调试功能已加载');
 } 

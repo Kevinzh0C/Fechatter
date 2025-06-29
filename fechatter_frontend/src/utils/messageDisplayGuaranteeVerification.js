@@ -53,13 +53,13 @@ export class MessageDisplayGuaranteeVerification {
 
       // Generate report
       const report = this.generateVerificationReport();
-      console.log('📊 [Verification] Complete Report:', report);
+      console.log('[Verification] Complete Report:', report);
 
       console.groupEnd();
       return report;
 
     } catch (error) {
-      console.error('❌ [Verification] Critical failure:', error);
+      console.error('ERROR: [Verification] Critical failure:', error);
       console.groupEnd();
       return { success: false, error: error.message };
     } finally {
@@ -71,7 +71,7 @@ export class MessageDisplayGuaranteeVerification {
    * Test 1: Verify system health and initialization
    */
   async verifySystemHealth() {
-    console.log('🔍 [Test 1] Verifying System Health...');
+    console.log('[Test 1] Verifying System Health...');
 
     const test = {
       name: 'System Health',
@@ -117,13 +117,13 @@ export class MessageDisplayGuaranteeVerification {
       test.status = allPassed ? 'passed' : 'failed';
       test.endTime = Date.now();
 
-      console.log(`✅ [Test 1] System Health: ${test.status.toUpperCase()}`);
+      console.log(`[Test 1] System Health: ${test.status.toUpperCase()}`);
 
     } catch (error) {
       test.status = 'error';
       test.error = error.message;
       test.endTime = Date.now();
-      console.error('❌ [Test 1] System Health Error:', error);
+      console.error('ERROR: [Test 1] System Health Error:', error);
     }
 
     this.testResults.push(test);
@@ -133,7 +133,7 @@ export class MessageDisplayGuaranteeVerification {
    * Test 2: Verify message fetch integration
    */
   async verifyMessageFetchIntegration() {
-    console.log('🔍 [Test 2] Verifying Message Fetch Integration...');
+    console.log('[Test 2] Verifying Message Fetch Integration...');
 
     const test = {
       name: 'Message Fetch Integration',
@@ -157,7 +157,7 @@ export class MessageDisplayGuaranteeVerification {
           const initialMetrics = messageDisplayGuarantee.getMetrics();
 
           // Fetch messages for this chat
-          console.log(`🎯 [Test 2] Testing chat ${chatId}...`);
+          console.log(`[Test 2] Testing chat ${chatId}...`);
           await chatStore.setCurrentChat(chatId);
 
           // Wait for messages to be fetched
@@ -175,12 +175,12 @@ export class MessageDisplayGuaranteeVerification {
             finalFetched: finalMetrics.totalFetched
           };
 
-          console.log(`${chatTest.status === 'passed' ? '✅' : '❌'} [Test 2] Chat ${chatId}: ${chatTest.status}`);
+          console.log(`${chatTest.status === 'passed' ? '' : '❌'} [Test 2] Chat ${chatId}: ${chatTest.status}`);
 
         } catch (error) {
           chatTest.status = 'error';
           chatTest.error = error.message;
-          console.error(`❌ [Test 2] Chat ${chatId} error:`, error);
+          console.error(`ERROR: [Test 2] Chat ${chatId} error:`, error);
         }
 
         chatTest.endTime = Date.now();
@@ -195,7 +195,7 @@ export class MessageDisplayGuaranteeVerification {
       test.status = 'error';
       test.error = error.message;
       test.endTime = Date.now();
-      console.error('❌ [Test 2] Integration Error:', error);
+      console.error('ERROR: [Test 2] Integration Error:', error);
     }
 
     this.testResults.push(test);
@@ -205,7 +205,7 @@ export class MessageDisplayGuaranteeVerification {
    * Test 3: Verify display tracking
    */
   async verifyDisplayTracking() {
-    console.log('🔍 [Test 3] Verifying Display Tracking...');
+    console.log('[Test 3] Verifying Display Tracking...');
 
     const test = {
       name: 'Display Tracking',
@@ -261,13 +261,13 @@ export class MessageDisplayGuaranteeVerification {
       test.status = allPassed ? 'passed' : 'failed';
       test.endTime = Date.now();
 
-      console.log(`✅ [Test 3] Display Tracking: ${test.status.toUpperCase()}`);
+      console.log(`[Test 3] Display Tracking: ${test.status.toUpperCase()}`);
 
     } catch (error) {
       test.status = 'error';
       test.error = error.message;
       test.endTime = Date.now();
-      console.error('❌ [Test 3] Display Tracking Error:', error);
+      console.error('ERROR: [Test 3] Display Tracking Error:', error);
     }
 
     this.testResults.push(test);
@@ -277,7 +277,7 @@ export class MessageDisplayGuaranteeVerification {
    * Test 4: Verify recovery mechanism
    */
   async verifyRecoveryMechanism() {
-    console.log('🔍 [Test 4] Verifying Recovery Mechanism...');
+    console.log('[Test 4] Verifying Recovery Mechanism...');
 
     const test = {
       name: 'Recovery Mechanism',
@@ -337,13 +337,13 @@ export class MessageDisplayGuaranteeVerification {
       test.status = allPassed ? 'passed' : 'failed';
       test.endTime = Date.now();
 
-      console.log(`✅ [Test 4] Recovery Mechanism: ${test.status.toUpperCase()}`);
+      console.log(`[Test 4] Recovery Mechanism: ${test.status.toUpperCase()}`);
 
     } catch (error) {
       test.status = 'error';
       test.error = error.message;
       test.endTime = Date.now();
-      console.error('❌ [Test 4] Recovery Mechanism Error:', error);
+      console.error('ERROR: [Test 4] Recovery Mechanism Error:', error);
     }
 
     this.testResults.push(test);
@@ -353,7 +353,7 @@ export class MessageDisplayGuaranteeVerification {
    * Test 5: Verify performance metrics
    */
   async verifyPerformanceMetrics() {
-    console.log('🔍 [Test 5] Verifying Performance Metrics...');
+    console.log('[Test 5] Verifying Performance Metrics...');
 
     const test = {
       name: 'Performance Metrics',
@@ -390,13 +390,13 @@ export class MessageDisplayGuaranteeVerification {
       test.status = allPassed ? 'passed' : 'failed';
       test.endTime = Date.now();
 
-      console.log(`✅ [Test 5] Performance Metrics: ${test.status.toUpperCase()}`);
+      console.log(`[Test 5] Performance Metrics: ${test.status.toUpperCase()}`);
 
     } catch (error) {
       test.status = 'error';
       test.error = error.message;
       test.endTime = Date.now();
-      console.error('❌ [Test 5] Performance Metrics Error:', error);
+      console.error('ERROR: [Test 5] Performance Metrics Error:', error);
     }
 
     this.testResults.push(test);
@@ -462,22 +462,22 @@ export class MessageDisplayGuaranteeVerification {
     const failedTests = this.testResults.filter(test => test.status === 'failed');
 
     if (failedTests.length > 0) {
-      recommendations.push('🔧 Some tests failed - investigate specific failure causes');
+      recommendations.push('Some tests failed - investigate specific failure causes');
     }
 
     const metrics = messageDisplayGuarantee.getMetrics();
     const successRate = parseFloat(metrics.successRate);
 
     if (successRate < 95) {
-      recommendations.push('📊 Display success rate below 95% - consider increasing retry attempts');
+      recommendations.push('Display success rate below 95% - consider increasing retry attempts');
     }
 
     if (metrics.failedDisplays > 0) {
-      recommendations.push('⚠️ Some messages failed to display - check UI rendering performance');
+      recommendations.push('WARNING: Some messages failed to display - check UI rendering performance');
     }
 
     if (recommendations.length === 0) {
-      recommendations.push('✅ All tests passed - message display guarantee is working correctly');
+      recommendations.push('All tests passed - message display guarantee is working correctly');
     }
 
     return recommendations;

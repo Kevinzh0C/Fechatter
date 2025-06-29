@@ -175,7 +175,7 @@ const handleImageError = (event) => {
 </script>
 
 <style scoped>
-/* 🎨 Modern Slack-style DM Item */
+/* Modern Slack-style DM Item */
 .dm-item {
   display: flex;
   align-items: center;
@@ -226,7 +226,7 @@ const handleImageError = (event) => {
   flex-shrink: 0;
 }
 
-/* 🎯 统一频道/用户名字体样式 - 支持多语言显示 */
+/* 统一频道/用户名字体样式 - 支持多语言显示 */
 .user-name {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   font-size: 14px;
@@ -276,7 +276,7 @@ const handleImageError = (event) => {
   box-shadow: none;
 }
 
-/* 📝 DM Content - Typography improvements */
+/* DM Content - Typography improvements */
 .dm-content {
   flex: 1;
   min-width: 0;
@@ -448,7 +448,7 @@ const handleImageError = (event) => {
   }
 }
 
-/* 🌟 Online State Enhancement */
+/* Online State Enhancement */
 .dm-item.online .user-avatar {
   box-shadow: 0 0 0 2px rgba(46, 182, 125, 0.3);
 }
@@ -492,7 +492,7 @@ const handleImageError = (event) => {
   }
 }
 
-/* 🎯 High Contrast Mode - Accessibility */
+/* High Contrast Mode - Accessibility */
 @media (prefers-contrast: high) {
   .dm-item {
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -549,12 +549,12 @@ const handleImageError = (event) => {
   background: rgba(255, 255, 255, 0.05);
 }
 
-/* 💡 Enhanced visual feedback */
+/* Enhanced visual feedback */
 .dm-item.active .user-name {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-/* 🎨 Avatar hover effects */
+/* Avatar hover effects */
 .dm-item:hover .avatar-placeholder {
   background: linear-gradient(135deg, #0e4f82, #0a3d67);
 }

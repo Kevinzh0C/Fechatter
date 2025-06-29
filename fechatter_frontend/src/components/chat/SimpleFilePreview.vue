@@ -73,7 +73,7 @@ watch(files, (newFiles) => {
   });
 }, { deep: true, immediate: true });
 
-// 🔧 拖拽上传功能
+// 拖拽上传功能
 onMounted(() => {
   const handleDragEnter = (e) => {
     e.preventDefault();

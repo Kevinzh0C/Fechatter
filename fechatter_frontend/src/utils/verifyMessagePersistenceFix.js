@@ -14,7 +14,7 @@ class MessagePersistenceFixVerification {
    */
   async verifyCoreImplementation() {
     if (import.meta.env.DEV) {
-      console.log('\n🔧 MESSAGE PERSISTENCE CORE FIX VERIFICATION');
+      console.log('\nMESSAGE PERSISTENCE CORE FIX VERIFICATION');
     if (import.meta.env.DEV) {
       console.log('==============================================\n');
     }
@@ -79,7 +79,7 @@ class MessagePersistenceFixVerification {
       msgPersist.cleanup();
 
       if (import.meta.env.DEV) {
-        console.log('✅ Persistence layer: VERIFIED');
+        console.log('Persistence layer: VERIFIED');
       if (import.meta.env.DEV) {
         console.log(`   - Save/Get: Working`);
       if (import.meta.env.DEV) {
@@ -96,7 +96,7 @@ class MessagePersistenceFixVerification {
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Persistence layer: FAILED');
+        console.error('ERROR: Persistence layer: FAILED');
       if (import.meta.env.DEV) {
         console.error(`   Error: ${error.message}`);
       }
@@ -150,7 +150,7 @@ class MessagePersistenceFixVerification {
       }
 
       if (import.meta.env.DEV) {
-        console.log('✅ Chat store integration: VERIFIED');
+        console.log('Chat store integration: VERIFIED');
       if (import.meta.env.DEV) {
         console.log(`   - sendMessage persistence: Integrated`);
       if (import.meta.env.DEV) {
@@ -167,7 +167,7 @@ class MessagePersistenceFixVerification {
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Chat store integration: FAILED');
+        console.error('ERROR: Chat store integration: FAILED');
       if (import.meta.env.DEV) {
         console.error(`   Error: ${error.message}`);
       }
@@ -200,7 +200,7 @@ class MessagePersistenceFixVerification {
       const stats = msgPersist.stats();
       if (stats.totalMessages === 0) {
         if (import.meta.env.DEV) {
-          console.log('⚠️ Instant recovery: NO DATA');
+          console.log('WARNING: Instant recovery: NO DATA');
         if (import.meta.env.DEV) {
           console.log('   No persisted messages to test recovery');
         if (import.meta.env.DEV) {
@@ -219,7 +219,7 @@ class MessagePersistenceFixVerification {
       const currentChatId = chatStore.currentChatId;
       if (!currentChatId) {
         if (import.meta.env.DEV) {
-          console.log('⚠️ Instant recovery: NO ACTIVE CHAT');
+          console.log('WARNING: Instant recovery: NO ACTIVE CHAT');
         if (import.meta.env.DEV) {
           console.log('   Open a chat to test recovery functionality');
         }
@@ -237,7 +237,7 @@ class MessagePersistenceFixVerification {
       const currentMessages = chatStore.messages.length;
 
       if (import.meta.env.DEV) {
-        console.log('✅ Instant recovery: READY FOR TESTING');
+        console.log('Instant recovery: READY FOR TESTING');
       if (import.meta.env.DEV) {
         console.log(`   - Current chat: ${currentChatId}`);
       if (import.meta.env.DEV) {
@@ -268,7 +268,7 @@ class MessagePersistenceFixVerification {
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Instant recovery: FAILED');
+        console.error('ERROR: Instant recovery: FAILED');
       if (import.meta.env.DEV) {
         console.error(`   Error: ${error.message}`);
       }
@@ -305,7 +305,7 @@ class MessagePersistenceFixVerification {
       const statsAfter = msgPersist.stats();
 
       if (import.meta.env.DEV) {
-        console.log('✅ Auto cleanup: VERIFIED');
+        console.log('Auto cleanup: VERIFIED');
       if (import.meta.env.DEV) {
         console.log(`   - Before cleanup: ${statsBefore.totalChats} chats, ${statsBefore.totalMessages} messages`);
       if (import.meta.env.DEV) {
@@ -332,7 +332,7 @@ class MessagePersistenceFixVerification {
 
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('❌ Auto cleanup: FAILED');
+        console.error('ERROR: Auto cleanup: FAILED');
       if (import.meta.env.DEV) {
         console.error(`   Error: ${error.message}`);
       }
@@ -348,7 +348,7 @@ class MessagePersistenceFixVerification {
    */
   generateVerificationReport() {
     if (import.meta.env.DEV) {
-      console.log('\n📊 CORE FIX VERIFICATION REPORT');
+      console.log('\nCORE FIX VERIFICATION REPORT');
     if (import.meta.env.DEV) {
       console.log('===============================\n');
     }
@@ -359,10 +359,10 @@ class MessagePersistenceFixVerification {
     const noData = this.results.filter(r => r.status.includes('NO_DATA')).length;
 
     if (import.meta.env.DEV) {
-      console.log('🔍 Verification Results:');
+      console.log('Verification Results:');
     this.results.forEach(result => {
       const emoji = {
-        'VERIFIED': '✅',
+        'VERIFIED': '',
         'FAILED': '❌',
         'READY_FOR_MANUAL_TEST': '📋',
         'NO_DATA': '📭',
@@ -381,7 +381,7 @@ class MessagePersistenceFixVerification {
     });
 
     if (import.meta.env.DEV) {
-      console.log(`\n📊 Summary: ${verified} verified, ${failed} failed, ${ready} ready for test, ${noData} no data`);
+      console.log(`\nSummary: ${verified} verified, ${failed} failed, ${ready} ready for test, ${noData} no data`);
     }
 
     // Overall assessment
@@ -389,9 +389,9 @@ class MessagePersistenceFixVerification {
       if (import.meta.env.DEV) {
         console.log('\n🎉 CORE FIX STATUS: SUCCESS');
       if (import.meta.env.DEV) {
-        console.log('✅ Message persistence core implementation is working correctly!');
+        console.log('Message persistence core implementation is working correctly!');
       if (import.meta.env.DEV) {
-        console.log('✅ Ready for production use');
+        console.log('Ready for production use');
       }
 
       if (ready > 0) {
@@ -410,17 +410,17 @@ class MessagePersistenceFixVerification {
       if (import.meta.env.DEV) {
         console.log('\n👍 CORE FIX STATUS: GOOD');
       if (import.meta.env.DEV) {
-        console.log('✅ Basic implementation verified');
+        console.log('Basic implementation verified');
       if (import.meta.env.DEV) {
-        console.log('⚠️ Some components need manual testing');
+        console.log('WARNING: Some components need manual testing');
       }
     } else {
       if (import.meta.env.DEV) {
-        console.log('\n⚠️ CORE FIX STATUS: ISSUES DETECTED');
+        console.log('\nWARNING: CORE FIX STATUS: ISSUES DETECTED');
       if (import.meta.env.DEV) {
-        console.log('❌ Some components failed verification');
+        console.log('ERROR: Some components failed verification');
       if (import.meta.env.DEV) {
-        console.log('🔧 Review failed components above');
+        console.log('Review failed components above');
       }
 
     return {
@@ -445,7 +445,7 @@ if (typeof window !== 'undefined') {
   };
 
   if (import.meta.env.DEV) {
-    console.log('🔧 Core Fix Verification loaded');
+    console.log('Core Fix Verification loaded');
   if (import.meta.env.DEV) {
     console.log('   Commands:');
   if (import.meta.env.DEV) {

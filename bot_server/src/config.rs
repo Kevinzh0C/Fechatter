@@ -63,11 +63,11 @@ impl AppConfig {
         println!("📍 Loading from BOT_CONFIG: {}", path);
         match Self::from_file(&path) {
           Ok(config) => {
-            println!("✅ Bot configuration loaded successfully from env var!");
+            println!("Bot configuration loaded successfully from env var!");
             Some(config)
           }
           Err(e) => {
-            eprintln!("❌ Failed to load config from BOT_CONFIG ({}): {}", path, e);
+            eprintln!("ERROR: Failed to load config from BOT_CONFIG ({}): {}", path, e);
             None
           }
         }
@@ -125,11 +125,11 @@ impl AppConfig {
         println!("📁 Found bot config file: {}", path);
         match serde_yaml::from_reader(file) {
           Ok(config) => {
-            println!("✅ Bot configuration loaded successfully from: {}", path);
+            println!("Bot configuration loaded successfully from: {}", path);
             Some(config)
           }
           Err(e) => {
-            eprintln!("⚠️  Parse error in {}: {}", path, e);
+            eprintln!("WARNING: Parse error in {}: {}", path, e);
             None
           }
         }
@@ -146,14 +146,14 @@ impl AppConfig {
 
   /// Show helpful error message with search locations
   fn show_search_error() {
-    eprintln!("\n🔍 Searched for bot configuration in:");
-    eprintln!("   ❌ Environment: BOT_CONFIG");
-    eprintln!("   ❌ Docker paths: /app/config/bot.yml, /app/bot.yml");
-    eprintln!("   ❌ Container paths: /etc/fechatter/bot.yml");
-    eprintln!("   ❌ Current directory: bot.yml");
-    eprintln!("   ❌ System paths: /etc/config/bot.yml");
+    eprintln!("\nSearched for bot configuration in:");
+    eprintln!("   ERROR: Environment: BOT_CONFIG");
+    eprintln!("   ERROR: Docker paths: /app/config/bot.yml, /app/bot.yml");
+    eprintln!("   ERROR: Container paths: /etc/fechatter/bot.yml");
+    eprintln!("   ERROR: Current directory: bot.yml");
+    eprintln!("   ERROR: System paths: /etc/config/bot.yml");
     eprintln!("");
-    eprintln!("💡 To fix this:");
+    eprintln!("To fix this:");
     eprintln!("   1. 📋 Set BOT_CONFIG environment variable");
     eprintln!("   2. 📄 Place bot.yml in current directory");
     eprintln!("   3. 🐳 For Docker: mount config to /app/config/bot.yml");
@@ -217,7 +217,7 @@ impl AppConfig {
           bail!("OpenAI API key appears to be too short (minimum 20 characters)");
         }
         
-        println!("✅ OpenAI API key format validation passed");
+        println!("OpenAI API key format validation passed");
       }
       None => {
         bail!("OpenAI API key is required. Set OPENAI_API_KEY environment variable or add 'api_key' to yml config");
@@ -274,31 +274,31 @@ impl AppConfig {
 
   /// Apply environment variable overrides with highest priority
   fn apply_env_overrides(&mut self) {
-    println!("🔧 Applying environment variable overrides...");
+    println!("Applying environment variable overrides...");
 
     // OpenAI API Key - highest priority from environment
     if let Ok(api_key) = env::var("OPENAI_API_KEY") {
       if !api_key.is_empty() {
-        println!("✅ Found OPENAI_API_KEY environment variable");
+        println!("Found OPENAI_API_KEY environment variable");
         self.bot.openai.api_key = Some(api_key);
       } else {
-        println!("⚠️  OPENAI_API_KEY environment variable is empty");
+        println!("WARNING: OPENAI_API_KEY environment variable is empty");
       }
     } else {
-      println!("ℹ️  OPENAI_API_KEY environment variable not set, using yml config");
+      println!("INFO:  OPENAI_API_KEY environment variable not set, using yml config");
     }
 
     // Optional: Override other OpenAI settings from environment
     if let Ok(model) = env::var("OPENAI_MODEL") {
       if !model.is_empty() {
-        println!("✅ Overriding OpenAI model from environment: {}", model);
+        println!("Overriding OpenAI model from environment: {}", model);
         self.bot.openai.model = model;
       }
     }
 
     if let Ok(embed_model) = env::var("OPENAI_EMBED_MODEL") {
       if !embed_model.is_empty() {
-        println!("✅ Overriding OpenAI embed model from environment: {}", embed_model);
+        println!("Overriding OpenAI embed model from environment: {}", embed_model);
         self.bot.openai.embed_model = embed_model;
       }
     }

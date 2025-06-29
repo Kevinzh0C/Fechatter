@@ -29,7 +29,7 @@ async fn main() -> Result<()> {
     error!("Failed to initialize observability: {}", e);
     warn!("Continuing without Prometheus metrics export");
   } else {
-    info!("📊 Prometheus metrics available at: http://{}/metrics", metrics_addr);
+    info!("Prometheus metrics available at: http://{}/metrics", metrics_addr);
   }
 
   // Load and validate configuration
@@ -59,7 +59,7 @@ async fn main() -> Result<()> {
 
   // Start NATS subscriber if enabled in configuration
   if state.config.is_nats_enabled() {
-    info!("🚀 NATS messaging is enabled, starting subscriber...");
+    info!("NATS messaging is enabled, starting subscriber...");
     let nats_url = state.config.nats().nats_url.clone();
     let state_clone = state.clone();
     
@@ -73,11 +73,11 @@ async fn main() -> Result<()> {
       }
     });
     
-    info!("📡 NATS subscriber started for URL: {} with stream: {}", 
+    info!("SUBSCRIPTION: NATS subscriber started for URL: {} with stream: {}", 
           state.config.nats().nats_url,
           state.config.jetstream().stream_name);
   } else {
-    warn!("⚠️  NATS messaging is disabled in configuration");
+    warn!("WARNING: NATS messaging is disabled in configuration");
   }
 
   // Build application router with all middleware
@@ -100,7 +100,7 @@ async fn main() -> Result<()> {
   info!("OpenAPI docs available at: http://{}/swagger-ui/", addr);
   
   // Log available event ingestion methods
-  info!("📊 Event Ingestion Methods:");
+  info!("Event Ingestion Methods:");
   info!("  - HTTP POST: {}/api/event (protobuf)", addr);
   info!("  - HTTP POST: {}/api/batch (protobuf batch)", addr);
   if state.config.is_nats_enabled() {

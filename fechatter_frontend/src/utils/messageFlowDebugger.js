@@ -27,7 +27,7 @@ class MessageFlowDebugger {
 
     this.flows.set(flowId, flow);
     if (import.meta.env.DEV) {
-      console.log(`🚀 [FLOW_DEBUG] Started flow: ${flowId}`, context);
+      console.log(`[FLOW_DEBUG] Started flow: ${flowId}`, context);
     }
 
     return flowId;
@@ -72,13 +72,13 @@ class MessageFlowDebugger {
     const totalTime = flow.endTime - flow.startTime;
 
     if (import.meta.env.DEV) {
-      console.log(`✅ [FLOW_DEBUG] Completed flow: ${targetFlowId} in ${totalTime}ms`);
+      console.log(`[FLOW_DEBUG] Completed flow: ${targetFlowId} in ${totalTime}ms`);
       this.printFlowSummary(flow);
     }
   }
 
   printFlowSummary(flow) {
-    console.group(`📊 Flow Summary: ${flow.id}`);
+    console.group(`Flow Summary: ${flow.id}`);
     if (import.meta.env.DEV) {
       console.log(`Type: ${flow.type}`);
       console.log(`Total Time: ${flow.endTime - flow.startTime}ms`);
@@ -170,7 +170,7 @@ class MessageFlowDebugger {
   }
 
   traceMessagePath(messageId) {
-    console.group(`🔍 Tracing message path for ID: ${messageId}`);
+    console.group(`Tracing message path for ID: ${messageId}`);
 
     // Find all flows containing this message
     const relevantFlows = [];

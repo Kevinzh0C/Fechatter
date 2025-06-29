@@ -1,5 +1,5 @@
 /**
- * 🎯 Simplified Auth Store - 基于状态机的现代前端设计
+ * Simplified Auth Store - 基于状态机的现代前端设计
  * 
  * 设计原则：
  * - KISS: 保持简单直接
@@ -39,7 +39,7 @@ export const useSimplifiedAuthStore = defineStore('auth-simplified', () => {
   const error = ref(null);
   const lastActivity = ref(Date.now());
 
-  // 🎯 计算属性 (简化的状态检查)
+  // 计算属性 (简化的状态检查)
   const isAuthenticated = computed(() =>
     currentState.value === AUTH_STATES.AUTHENTICATED && !!token.value
   );
@@ -80,11 +80,11 @@ export const useSimplifiedAuthStore = defineStore('auth-simplified', () => {
 
   // 📦 简化的状态设置 (原子操作)
   const setAuthData = (authResult) => {
-    // 🎯 Single operation - 不需要多步验证
+    // Single operation - 不需要多步验证
     token.value = authResult.accessToken;
     user.value = authResult.user;
 
-    // 🔧 简化存储 - 只存储必要数据
+    // 简化存储 - 只存储必要数据
     const authData = {
       token: authResult.accessToken,
       user: authResult.user,
@@ -101,13 +101,13 @@ export const useSimplifiedAuthStore = defineStore('auth-simplified', () => {
     }
   };
 
-  // 🚀 简化的登录流程 (乐观更新)
+  // 简化的登录流程 (乐观更新)
   const login = async (email, password) => {
     if (!canAttemptAuth.value) {
       throw new Error('Cannot attempt login in current state');
     }
 
-    // 🎯 状态转换
+    // 状态转换
     transitionTo(AUTH_STATES.LOGGING_IN);
     error.value = null;
 
@@ -118,12 +118,12 @@ export const useSimplifiedAuthStore = defineStore('auth-simplified', () => {
       // 📦 设置认证数据 (简单、直接)
       setAuthData(authResult);
 
-      // ✅ 转换到已认证状态
+      // 转换到已认证状态
       transitionTo(AUTH_STATES.AUTHENTICATED);
 
       return true;
     } catch (loginError) {
-      // ❌ 转换到错误状态
+      // ERROR: 转换到错误状态
       error.value = loginError.message;
       transitionTo(AUTH_STATES.ERROR);
       throw loginError;
@@ -144,7 +144,7 @@ export const useSimplifiedAuthStore = defineStore('auth-simplified', () => {
         (Date.now() - authData.timestamp) < 24 * 60 * 60 * 1000;
 
       if (isRecent && authData.token && authData.user) {
-        // 🎯 乐观恢复
+        // 乐观恢复
         token.value = authData.token;
         user.value = authData.user;
         transitionTo(AUTH_STATES.AUTHENTICATED);
@@ -168,7 +168,7 @@ export const useSimplifiedAuthStore = defineStore('auth-simplified', () => {
       await authService.validateToken(tokenToValidate);
 
       if (import.meta.env.DEV) {
-        console.log('✅ Token validation successful');
+        console.log('Token validation successful');
       }
     } catch (error) {
       // 🔄 静默刷新尝试
@@ -216,7 +216,7 @@ export const useSimplifiedAuthStore = defineStore('auth-simplified', () => {
     lastActivity.value = Date.now();
   };
 
-  // 🎯 初始化 (简化版)
+  // 初始化 (简化版)
   const initialize = async () => {
     if (currentState.value !== AUTH_STATES.LOGGED_OUT) {
       return isAuthenticated.value;
@@ -226,7 +226,7 @@ export const useSimplifiedAuthStore = defineStore('auth-simplified', () => {
     const recovered = await attemptRecovery();
 
     if (import.meta.env.DEV) {
-      console.log(`🎯 Auth initialized: ${recovered ? 'recovered' : 'logged out'}`);
+      console.log(`Auth initialized: ${recovered ? 'recovered' : 'logged out'}`);
     }
 
     return recovered;

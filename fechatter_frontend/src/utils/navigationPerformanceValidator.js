@@ -35,7 +35,7 @@ class NavigationPerformanceValidator {
     };
 
     if (import.meta.env.DEV) {
-      console.log(`🔍 [PERF_VALIDATOR] Starting validation for chat ${chatId}`);
+      console.log(`[PERF_VALIDATOR] Starting validation for chat ${chatId}`);
     }
 
     // Monitor console logs for our performance indicators
@@ -101,7 +101,7 @@ class NavigationPerformanceValidator {
     };
 
     if (import.meta.env.DEV) {
-      console.log('🔍 [PERF_VALIDATOR] Navigation Performance Report:', report);
+      console.log('[PERF_VALIDATOR] Navigation Performance Report:', report);
     }
 
     return report;

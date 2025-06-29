@@ -102,7 +102,7 @@ impl MetadataFilter {
     filter
   }
 
-  // 将过滤器转换为可用于查询的格式
+  // Convert filter to a format suitable for queries
   pub fn to_query_params(&self) -> BTreeMap<String, String> {
     let mut params = BTreeMap::new();
 

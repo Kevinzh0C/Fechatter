@@ -49,7 +49,7 @@ pub async fn sse_handler(
     .unwrap_or_else(|| "Unknown".to_string());
 
   info!(
-    "👤 User {} (`{}`) connected to SSE",
+    "USER: User {} (`{}`) connected to SSE",
     user.id, user_agent_str
   );
 
@@ -63,14 +63,14 @@ pub async fn sse_handler(
 
   // 2. Register the user to all their chats (critical fix)
   let chat_count = if let Err(e) = state.register_user_to_chats(user_id).await {
-    warn!("❌ Failed to register user {} to chats: {}", user_id.0, e);
+    warn!("ERROR: Failed to register user {} to chats: {}", user_id.0, e);
     0
   } else {
     // Get the number of chats the user is registered to
     state.get_user_chat_count(user_id).await.unwrap_or(0)
   };
 
-  // 🔧 CRITICAL FIX 1: Send immediate SSE connection confirmation event
+  // CRITICAL FIX 1: Send immediate SSE connection confirmation event
   let welcome_notification = json!({
     "type": "connection_confirmed",
     "user_id": user_id.0,
@@ -85,7 +85,7 @@ pub async fn sse_handler(
   if let Err(e) = tx.send(Arc::new(NotifyEvent::Generic(welcome_notification))) {
     warn!("Failed to send welcome notification to user {}: {}", user_id.0, e);
   } else {
-    info!("✅ [SSE] Sent connection confirmation to user {}", user_id.0);
+    info!("[SSE] Sent connection confirmation to user {}", user_id.0);
   }
 
   // 3. Send analytics event for user connection
@@ -95,7 +95,7 @@ pub async fn sse_handler(
     Some(user_agent_str.clone()),
   );
 
-  // 🔧 CRITICAL FIX 2: Start heartbeat mechanism for this user
+  // CRITICAL FIX 2: Start heartbeat mechanism for this user
   let heartbeat_tx = tx.clone();
   let heartbeat_user_id = user_id;
   tokio::spawn(async move {
@@ -114,17 +114,17 @@ pub async fn sse_handler(
       });
       
       if heartbeat_tx.send(Arc::new(NotifyEvent::Generic(heartbeat_event))).is_err() {
-        info!("💓 [SSE] Heartbeat stopped for user {} (connection closed)", heartbeat_user_id.0);
+        info!("HEARTBEAT: [SSE] Heartbeat stopped for user {} (connection closed)", heartbeat_user_id.0);
         break;
       }
       
-      debug!("💓 [SSE] Sent heartbeat #{} to user {}", heartbeat_count, heartbeat_user_id.0);
+      debug!("HEARTBEAT: [SSE] Sent heartbeat #{} to user {}", heartbeat_count, heartbeat_user_id.0);
       heartbeat_count += 1;
     }
   });
 
   info!(
-    "✅ User {} successfully connected to SSE and registered to {} chats",
+    "User {} successfully connected to SSE and registered to {} chats",
     user_id.0, chat_count
   );
 

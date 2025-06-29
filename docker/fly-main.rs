@@ -1,5 +1,5 @@
-// Fly.io 专用单体应用入口
-// 合并所有微服务到一个可执行文件中
+// Fly.io monolithic application entry point
+// Combines all microservices into a single executable
 
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -12,7 +12,7 @@ use axum::{
 };
 use serde_json::json;
 
-// 简化的应用状态
+// Simplified application state
 #[derive(Clone)]
 struct AppState {
     db_url: String,
@@ -21,12 +21,12 @@ struct AppState {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 初始化日志
+    // Initialize logging
     tracing_subscriber::init();
     
-    println!("🚀 Starting Fechatter Demo (Fly.io Single Binary)");
+    println!("Starting Fechatter Demo (Fly.io Single Binary)");
     
-    // 读取环境变量
+    // Read environment variables
     let db_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "sqlite:///data/fechatter.db".to_string());
     let environment = std::env::var("ENVIRONMENT")
@@ -37,31 +37,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         environment,
     };
     
-    // 创建路由
+    // Create routes
     let app = Router::new()
-        // 健康检查
+        // Health checks
         .route("/health", get(health_check))
         .route("/ready", get(readiness_check))
         
-        // API 路由 (简化版)
+        // API routes (simplified)
         .route("/", get(serve_demo_page))
         .route("/api/demo", get(demo_api))
         
-        // 用户相关 API
+        // User-related APIs
         .route("/api/users", get(get_demo_users))
         .route("/api/auth/login", post(demo_login))
         
-        // 聊天相关 API  
+        // Chat-related APIs  
         .route("/api/channels", get(get_demo_channels))
         .route("/api/messages", get(get_demo_messages))
         .route("/api/messages", post(send_demo_message))
         
-        // WebSocket (简化版)
+        // WebSocket (simplified)
         .route("/ws", get(websocket_handler))
         
         .with_state(Arc::new(state));
     
-    // 绑定端口
+    // Bind port
     let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string());
     let addr = format!("0.0.0.0:{}", port);
     
@@ -74,7 +74,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// 健康检查端点
+// Health check endpoint
 async fn health_check() -> Json<serde_json::Value> {
     Json(json!({
         "status": "healthy",
@@ -84,7 +84,7 @@ async fn health_check() -> Json<serde_json::Value> {
     }))
 }
 
-// 就绪检查端点
+// Readiness check endpoint
 async fn readiness_check(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
     Json(json!({
         "status": "ready",
@@ -94,7 +94,7 @@ async fn readiness_check(State(state): State<Arc<AppState>>) -> Json<serde_json:
     }))
 }
 
-// 演示主页
+// Demo homepage
 async fn serve_demo_page() -> Html<&'static str> {
     Html(r#"
     <!DOCTYPE html>
@@ -102,7 +102,7 @@ async fn serve_demo_page() -> Html<&'static str> {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Fechatter Demo - HR展示</title>
+        <title>Fechatter Demo - HR Showcase</title>
         <style>
             body { 
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -126,88 +126,88 @@ async fn serve_demo_page() -> Html<&'static str> {
     <body>
         <div class="container">
             <div class="header">
-                <div class="logo">🚀 Fechatter</div>
-                <div class="subtitle">现代化实时团队协作平台 - HR技术演示</div>
+                <div class="logo">Fechatter</div>
+                <div class="subtitle">Modern Real-time Team Collaboration Platform - HR Technical Demo</div>
             </div>
             
             <div class="status">
-                <strong>✅ 演示环境已就绪</strong> | 
-                部署于 Fly.io Tokyo | 
+                <strong>Demo Environment Ready</strong> | 
+                Deployed on Fly.io Tokyo | 
                 <span id="current-time"></span>
             </div>
             
             <div class="features">
                 <div class="feature">
-                    <h3>🎯 核心功能</h3>
+                    <h3>Core Features</h3>
                     <ul>
-                        <li>实时消息传递</li>
-                        <li>多频道聊天</li>
-                        <li>用户认证系统</li>
-                        <li>消息搜索</li>
+                        <li>Real-time messaging</li>
+                        <li>Multi-channel chat</li>
+                        <li>User authentication system</li>
+                        <li>Message search</li>
                     </ul>
                 </div>
                 <div class="feature">
-                    <h3>⚡ 技术特点</h3>
+                    <h3>Technical Features</h3>
                     <ul>
-                        <li>Rust 高性能后端</li>
-                        <li>Vue.js 现代前端</li>
-                        <li>WebSocket 实时通信</li>
-                        <li>RESTful API 设计</li>
+                        <li>High-performance Rust backend</li>
+                        <li>Modern Vue.js frontend</li>
+                        <li>WebSocket real-time communication</li>
+                        <li>RESTful API design</li>
                     </ul>
                 </div>
                 <div class="feature">
-                    <h3>🌐 部署架构</h3>
+                    <h3>🌐 Deployment Architecture</h3>
                     <ul>
-                        <li>Docker 容器化</li>
-                        <li>云原生设计</li>
-                        <li>自动扩缩容</li>
-                        <li>CI/CD 自动化</li>
+                        <li>Docker containerization</li>
+                        <li>Cloud-native design</li>
+                        <li>Auto-scaling</li>
+                        <li>CI/CD automation</li>
                     </ul>
                 </div>
             </div>
             
             <div class="demo-users">
-                <h3>👥 演示账户</h3>
-                <p>以下账户已预置演示数据，密码均为：<code>demo123</code></p>
+                <h3>👥 Demo Accounts</h3>
+                <p>The following accounts have pre-configured demo data, password for all: <code>demo123</code></p>
                 <div class="user-list">
                     <div class="user">
                         <strong>demo_admin</strong><br>
-                        <small>管理员账户</small>
+                        <small>Administrator</small>
                     </div>
                     <div class="user">
                         <strong>alice_dev</strong><br>
-                        <small>开发工程师</small>
+                        <small>Developer</small>
                     </div>
                     <div class="user">
                         <strong>bob_designer</strong><br>
-                        <small>UI设计师</small>
+                        <small>UI Designer</small>
                     </div>
                     <div class="user">
                         <strong>charlie_pm</strong><br>
-                        <small>产品经理</small>
+                        <small>Product Manager</small>
                     </div>
                     <div class="user">
                         <strong>diana_qa</strong><br>
-                        <small>测试工程师</small>
+                        <small>QA Engineer</small>
                     </div>
                 </div>
             </div>
             
             <div style="text-align: center; margin-top: 2rem;">
-                <a href="/api/demo" class="btn">📊 查看API演示</a>
-                <a href="/api/users" class="btn">👥 用户列表API</a>
-                <a href="/api/channels" class="btn">📢 频道列表API</a>
-                <a href="/health" class="btn">🔍 健康检查</a>
+                <a href="/api/demo" class="btn">View API Demo</a>
+                <a href="/api/users" class="btn">👥 Users API</a>
+                <a href="/api/channels" class="btn">📢 Channels API</a>
+                <a href="/health" class="btn">Health Check</a>
             </div>
             
             <div style="text-align: center; margin-top: 2rem; color: #6b7280; font-size: 0.9rem;">
-                <p>🎯 这是一个技术演示环境，展示现代化聊天应用的核心功能</p>
-                <p>💼 为HR面试准备，演示全栈开发能力和云部署技能</p>
+                <p>This is a technical demo environment showcasing core features of modern chat applications</p>
+                <p>💼 Prepared for HR interviews, demonstrating full-stack development capabilities and cloud deployment skills</p>
             </div>
         </div>
         
         <script>
-            // 显示当前时间
+            // Display current time
             function updateTime() {
                 document.getElementById('current-time').textContent = new Date().toLocaleString('zh-CN', {timeZone: 'Asia/Tokyo'});
             }

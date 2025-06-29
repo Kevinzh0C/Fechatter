@@ -274,27 +274,27 @@ const loadAuthenticatedImage = async (imageUrl) => {
       console.log('🖼️ [EnhancedImageModal] Loading image:', imageUrl)
     }
 
-    // 🔧 SMART: Check if URL is already a blob URL (pre-authenticated)
+    // SMART: Check if URL is already a blob URL (pre-authenticated)
     if (imageUrl.startsWith('blob:')) {
       authenticatedImageUrl.value = imageUrl
       if (import.meta.env.DEV) {
-        console.log('✅ [EnhancedImageModal] Using pre-authenticated blob URL')
+        console.log('[EnhancedImageModal] Using pre-authenticated blob URL')
       }
       loading.value = false
       return
     }
 
-    // 🔧 OPTIMIZATION: Check if we have cached secure URL from message
+    // OPTIMIZATION: Check if we have cached secure URL from message
     if (currentImage.value.secureUrl) {
       authenticatedImageUrl.value = currentImage.value.secureUrl
       if (import.meta.env.DEV) {
-        console.log('✅ [EnhancedImageModal] Using cached secure URL')
+        console.log('[EnhancedImageModal] Using cached secure URL')
       }
       loading.value = false
       return
     }
 
-    // 🔧 FALLBACK: Only authenticate if it's an API URL
+    // FALLBACK: Only authenticate if it's an API URL
     if (imageUrl.startsWith('/api/files/') || imageUrl.startsWith('/files/')) {
       const cachedImageUrl = await imageCacheService.getCachedImageUrl(imageUrl, {
         skipAuthRefresh: false
@@ -303,22 +303,22 @@ const loadAuthenticatedImage = async (imageUrl) => {
       if (cachedImageUrl) {
         authenticatedImageUrl.value = cachedImageUrl
         if (import.meta.env.DEV) {
-          console.log('✅ [EnhancedImageModal] Authenticated API URL successfully')
+          console.log('[EnhancedImageModal] Authenticated API URL successfully')
         }
       } else {
         throw new Error('Failed to authenticate API URL')
       }
     } else {
-      // 🔧 DIRECT: Use URL as-is for non-API URLs
+      // DIRECT: Use URL as-is for non-API URLs
       authenticatedImageUrl.value = imageUrl
       if (import.meta.env.DEV) {
-        console.log('✅ [EnhancedImageModal] Using direct URL')
+        console.log('[EnhancedImageModal] Using direct URL')
       }
       loading.value = false
     }
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('❌ [EnhancedImageModal] Failed to load image:', error)
+      console.error('ERROR: [EnhancedImageModal] Failed to load image:', error)
     }
     error.value = true
   }
@@ -434,7 +434,7 @@ function handleWheel(event) {
 }
 
 function startDrag(event) {
-  // 🔧 ENHANCED: Allow dragging at any zoom level (removed zoom restriction)
+  // ENHANCED: Allow dragging at any zoom level (removed zoom restriction)
   event.preventDefault()
 
   isDragging.value = true
@@ -446,7 +446,7 @@ function startDrag(event) {
     y: clientY - position.value.y
   }
 
-  // 🎯 Enhanced drag experience
+  // Enhanced drag experience
   document.body.style.userSelect = 'none'
   document.body.style.cursor = 'grabbing'
 
@@ -467,7 +467,7 @@ function handleDrag(event) {
   const newX = clientX - dragStart.value.x
   const newY = clientY - dragStart.value.y
 
-  // 🔧 ENHANCED: Smart boundary limiting for better UX
+  // ENHANCED: Smart boundary limiting for better UX
   const container = document.querySelector('.image-container')
   const image = imageElement.value
 
@@ -497,7 +497,7 @@ function handleDrag(event) {
 function stopDrag() {
   isDragging.value = false
 
-  // 🎯 Restore UI state
+  // Restore UI state
   document.body.style.userSelect = ''
   document.body.style.cursor = ''
 
@@ -506,11 +506,11 @@ function stopDrag() {
   document.removeEventListener('touchmove', handleDrag)
   document.removeEventListener('touchend', stopDrag)
 
-  // 🚀 ENHANCED: Auto-snap back if image is dragged too far
+  // ENHANCED: Auto-snap back if image is dragged too far
   snapBackIfNeeded()
 }
 
-// 🚀 NEW: Smart snap back functionality
+// NEW: Smart snap back functionality
 function snapBackIfNeeded() {
   const container = document.querySelector('.image-container')
   const image = imageElement.value
@@ -532,7 +532,7 @@ function snapBackIfNeeded() {
     position.value = { x: 0, y: 0 }
 
     if (import.meta.env.DEV) {
-      console.log('🎯 [EnhancedImageModal] Snapped image back to center')
+      console.log('[EnhancedImageModal] Snapped image back to center')
     }
   }
 }
@@ -544,7 +544,7 @@ function handleImageLoad(event) {
   imageDimensions.value = `${img.naturalWidth} × ${img.naturalHeight}`
 
   if (import.meta.env.DEV) {
-    console.log('✅ [EnhancedImageModal] Image loaded successfully')
+    console.log('[EnhancedImageModal] Image loaded successfully')
   }
 }
 
@@ -554,7 +554,7 @@ function handleImageError() {
   imageDimensions.value = null
 
   if (import.meta.env.DEV) {
-    console.error('❌ [EnhancedImageModal] Image load error')
+    console.error('ERROR: [EnhancedImageModal] Image load error')
   }
 }
 
@@ -588,7 +588,7 @@ async function downloadImage() {
         document.body.removeChild(link)
 
         if (import.meta.env.DEV) {
-          console.log('✅ [EnhancedImageModal] Authenticated download completed')
+          console.log('[EnhancedImageModal] Authenticated download completed')
         }
       } else {
         throw new Error('Failed to get authenticated download URL')
@@ -604,7 +604,7 @@ async function downloadImage() {
       document.body.removeChild(link)
     }
   } catch (error) {
-    console.error('❌ [EnhancedImageModal] Download failed:', error)
+    console.error('ERROR: [EnhancedImageModal] Download failed:', error)
     alert('Failed to download image. Please try again.')
   }
 }

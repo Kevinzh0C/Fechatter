@@ -27,7 +27,7 @@ async fn main() -> Result<(), AppError> {
 
     // Start the server
     let addr = SocketAddr::from(([0, 0, 0, 0], config.server.port));
-    info!("🚀 Server listening on {}", addr);
+    info!("Server listening on {}", addr);
 
     let listener = TcpListener::bind(addr).await?;
     axum::serve(listener, app.into_make_service()).await?;

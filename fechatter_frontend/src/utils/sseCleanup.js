@@ -18,14 +18,14 @@ export function cleanupSSEConnections() {
     // 重置管理器
     window.sseGlobalManager.reset();
     if (import.meta.env.DEV) {
-      console.log('✅ Global manager reset');
+      console.log('Global manager reset');
     }
 
   // 2. 断开当前服务的连接
   if (window.realtimeCommunicationService) {
     window.realtimeCommunicationService.disconnect();
     if (import.meta.env.DEV) {
-      console.log('✅ Current service disconnected');
+      console.log('Current service disconnected');
     }
 
   // 3. 清理所有EventSource实例
@@ -42,7 +42,7 @@ export function cleanupSSEConnections() {
         try {
           conn.close();
           if (import.meta.env.DEV) {
-            console.log(`✅ Closed EventSource connection ${index + 1}`);
+            console.log(`Closed EventSource connection ${index + 1}`);
           }
         } catch (e) {
           if (import.meta.env.DEV) {

@@ -42,7 +42,7 @@ export const useUserStore = defineStore('user', {
           this.error = null;
 
           if (import.meta.env.DEV) {
-            console.log(`✅ [UserStore] Successfully fetched ${users.length} workspace users`);
+            console.log(`[UserStore] Successfully fetched ${users.length} workspace users`);
           }
 
           return users;
@@ -79,13 +79,13 @@ export const useUserStore = defineStore('user', {
             const users = await this.fetchWorkspaceUsers();
             if (users && users.length > 0) {
               if (import.meta.env.DEV) {
-                console.log(`✅ [UserStore] Initialization successful on attempt ${this.initializationAttempts}`);
+                console.log(`[UserStore] Initialization successful on attempt ${this.initializationAttempts}`);
               }
               return true;
             }
           } catch (error) {
             if (import.meta.env.DEV) {
-              console.warn(`⚠️ [UserStore] Attempt ${this.initializationAttempts} failed:`, error.message);
+              console.warn(`WARNING: [UserStore] Attempt ${this.initializationAttempts} failed:`, error.message);
             }
           }
 
@@ -96,7 +96,7 @@ export const useUserStore = defineStore('user', {
         }
 
         if (import.meta.env.DEV) {
-          console.warn(`❌ [UserStore] All ${this.maxInitializationAttempts} initialization attempts failed`);
+          console.warn(`ERROR: [UserStore] All ${this.maxInitializationAttempts} initialization attempts failed`);
         }
         return false;
       } finally {

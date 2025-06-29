@@ -1,5 +1,5 @@
 /**
- * 🔧 FILE UPLOAD DAG FIX: Optimized File Upload Store
+ * FILE UPLOAD DAG FIX: Optimized File Upload Store
  * 
  * 基于DAG结构优化的文件上传状态管理
  * 使用统一验证器和状态机模式
@@ -103,7 +103,7 @@ export const useOptimizedFileUploadStore = defineStore('optimizedFileUpload', ()
   // ================================
 
   /**
-   * 🔧 DAG Entry: Add files with unified validation
+   * DAG Entry: Add files with unified validation
    */
   const addFiles = async (newFiles) => {
     if (!newFiles || newFiles.length === 0) {
@@ -142,7 +142,7 @@ export const useOptimizedFileUploadStore = defineStore('optimizedFileUpload', ()
   };
 
   /**
-   * 🔧 DAG Action: Smart file removal with recovery
+   * DAG Action: Smart file removal with recovery
    */
   const removeFile = (fileId) => {
     const fileData = files.value.get(fileId);
@@ -160,7 +160,7 @@ export const useOptimizedFileUploadStore = defineStore('optimizedFileUpload', ()
   };
 
   /**
-   * 🔧 DAG Action: Auto-recovery for invalid files
+   * DAG Action: Auto-recovery for invalid files
    */
   const executeAutoRecovery = async () => {
     const invalidFiles = fileStats.value.invalidFiles;
@@ -194,7 +194,7 @@ export const useOptimizedFileUploadStore = defineStore('optimizedFileUpload', ()
   };
 
   /**
-   * 🔧 DAG Flow: Upload all valid files
+   * DAG Flow: Upload all valid files
    */
   const uploadAllFiles = async () => {
     const uploadableFiles = fileStats.value.uploadableFiles;
@@ -276,7 +276,7 @@ export const useOptimizedFileUploadStore = defineStore('optimizedFileUpload', ()
   };
 
   /**
-   * 🔧 DAG Cleanup: Clear all files and reset state
+   * DAG Cleanup: Clear all files and reset state
    */
   const clearAll = () => {
     // Cleanup resources

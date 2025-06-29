@@ -143,18 +143,18 @@ export function withPerformanceMonitoring(func, name) {
       const endTime = performance.now();
       const duration = endTime - startTime;
 
-      console.log(`⚡ [Performance] ${name}: ${duration.toFixed(2)}ms`);
+      console.log(`[Performance] ${name}: ${duration.toFixed(2)}ms`);
 
       // Mark performance if function takes too long
       if (duration > 16) { // More than one frame at 60fps
-        console.warn(`⚠️ [Performance] Slow function detected: ${name} (${duration.toFixed(2)}ms)`);
+        console.warn(`WARNING: [Performance] Slow function detected: ${name} (${duration.toFixed(2)}ms)`);
       }
 
       return result;
     } catch (error) {
       const endTime = performance.now();
       const duration = endTime - startTime;
-      console.error(`❌ [Performance] ${name} failed after ${duration.toFixed(2)}ms:`, error);
+      console.error(`ERROR: [Performance] ${name} failed after ${duration.toFixed(2)}ms:`, error);
       throw error;
     }
   };
@@ -251,7 +251,7 @@ export class PerformanceProfiler {
       measurement.endTime = performance.now();
       measurement.duration = measurement.endTime - measurement.startTime;
 
-      console.log(`⚡ [Profiler] ${label}: ${measurement.duration.toFixed(2)}ms`);
+      console.log(`[Profiler] ${label}: ${measurement.duration.toFixed(2)}ms`);
 
       return measurement.duration;
     }

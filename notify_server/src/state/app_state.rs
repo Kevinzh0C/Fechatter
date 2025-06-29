@@ -37,9 +37,9 @@ impl TokenVerifier for AppState {
   type Error = NotifyError;
 
   fn verify_token(&self, token: &str) -> Result<Self::Claims, Self::Error> {
-    debug!("🔍 [NOTIFY] Starting JWT token verification");
-    debug!("🔍 [NOTIFY] Token length: {} chars", token.len());
-    debug!("🔍 [NOTIFY] Token preview: {}...", &token[..std::cmp::min(30, token.len())]);
+    debug!("[NOTIFY] Starting JWT token verification");
+    debug!("[NOTIFY] Token length: {} chars", token.len());
+    debug!("[NOTIFY] Token preview: {}...", &token[..std::cmp::min(30, token.len())]);
     
     match self
       .inner
@@ -47,13 +47,13 @@ impl TokenVerifier for AppState {
       .verify_token(token)
     {
       Ok(claims) => {
-        debug!("✅ [NOTIFY] JWT verification SUCCESS for user {}", claims.id.0);
-        debug!("🔍 [NOTIFY] Claims: email={}, workspace_id={}", claims.email, claims.workspace_id.0);
+        debug!("[NOTIFY] JWT verification SUCCESS for user {}", claims.id.0);
+        debug!("[NOTIFY] Claims: email={}, workspace_id={}", claims.email, claims.workspace_id.0);
         Ok(claims)
       }
       Err(e) => {
-        warn!("❌ [NOTIFY] JWT verification FAILED: {:?}", e);
-        warn!("🔍 [NOTIFY] Token that failed: {}...", &token[..std::cmp::min(50, token.len())]);
+        warn!("ERROR: [NOTIFY] JWT verification FAILED: {:?}", e);
+        warn!("[NOTIFY] Token that failed: {}...", &token[..std::cmp::min(50, token.len())]);
         Err(NotifyError::map_error(e))
       }
     }
@@ -103,7 +103,7 @@ impl AppState {
     
     // Initialize analytics publisher with proper config
     let analytics = AnalyticsPublisher::new(config.analytics.clone()).await?;
-    info!("📊 Analytics publisher initialized: enabled={}", analytics.is_enabled());
+    info!("Analytics publisher initialized: enabled={}", analytics.is_enabled());
 
     Ok(Self {
       inner: Arc::new(AppStateInner {
@@ -151,7 +151,7 @@ impl AppState {
       .collect();
 
     debug!(
-      "📊 User {} is a member of {} chats",
+      "User {} is a member of {} chats",
       user_id.0,
       chat_ids.len()
     );
@@ -170,7 +170,7 @@ impl AppState {
         .await?;
 
     let count = row.get::<i64, _>("count") as usize;
-    debug!("📊 User {} is a member of {} chats", user_id.0, count);
+    debug!("User {} is a member of {} chats", user_id.0, count);
     Ok(count)
   }
 
@@ -191,7 +191,7 @@ impl AppState {
       .map(|row| UserId(row.get::<i64, _>("user_id") as i64))
       .collect();
 
-    debug!("💬 Chat {} has {} members", chat_id.0, user_ids.len());
+    debug!("MESSAGE: Chat {} has {} members", chat_id.0, user_ids.len());
     Ok(user_ids)
   }
 
@@ -238,7 +238,7 @@ impl AppState {
     self.user_chats.insert(user_id, user_chats.clone());
 
     info!(
-      "✅ User {} registered to {} chats",
+      "User {} registered to {} chats",
       user_id.0,
       user_chats.len()
     );
@@ -268,7 +268,7 @@ impl AppState {
       match tx.send(event) {
         Ok(_) => true,
         Err(e) => {
-          warn!("❌ Failed to send event to user {}: {}", user_id.0, e);
+          warn!("ERROR: Failed to send event to user {}: {}", user_id.0, e);
           // Automatically clean up invalid connection
           self.user_connections.remove(&user_id);
           false
@@ -292,7 +292,7 @@ impl AppState {
 
     if sent_count > 0 {
       info!(
-        "📡 Event broadcasted to {} online members in chat {}",
+        "SUBSCRIPTION: Event broadcasted to {} online members in chat {}",
         sent_count, chat_id.0
       );
     }
@@ -311,7 +311,7 @@ impl AppState {
     }
 
     if sent_count > 0 {
-      info!("📡 Event broadcasted to {} users", sent_count);
+      info!("SUBSCRIPTION: Event broadcasted to {} users", sent_count);
     }
 
     sent_count

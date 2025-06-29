@@ -247,22 +247,22 @@ const handleLogout = async () => {
   router.push('/login');
 };
 
-// 🔧 FIXED: Initialize navigation helper in setup()
+// FIXED: Initialize navigation helper in setup()
 const navigationHelper = createNavigationHelper(router, chatStore);
 
 const handleChatClick = async (chatId) => {
   try {
-    // 🔧 FIXED: Use pre-initialized navigation helper
+    // FIXED: Use pre-initialized navigation helper
     await navigationHelper.navigateToChat(chatId);
   } catch (error) {
     console.error('Failed to navigate to chat:', error);
   }
 };
 
-// 🔧 FIXED: Add missing handleChannelSelected function
+// FIXED: Add missing handleChannelSelected function
 const handleChannelSelected = async (channel) => {
   try {
-    console.log('🎯 [Home.vue] Channel selected:', channel);
+    console.log('[Home.vue] Channel selected:', channel);
     await navigationHelper.navigateToChat(channel.id);
   } catch (error) {
     console.error('Failed to navigate to channel:', error);
@@ -345,10 +345,10 @@ minimalSSE.on('status', stats => {
 onMounted(async () => {
   try {
     if (import.meta.env.DEV) {
-      console.log('[Home.vue] 🚀 Component mounted, loading chat data...');
+      console.log('[Home.vue] Component mounted, loading chat data...');
     }
 
-    // 🔧 SIMPLIFIED: Trust router guard authentication
+    // SIMPLIFIED: Trust router guard authentication
     // 路由守卫已经验证了认证状态，无需重复检查
     // 如果能到达这里，说明认证已通过
 
@@ -359,11 +359,11 @@ onMounted(async () => {
 
     if (chatsResult.status === 'fulfilled') {
       if (import.meta.env.DEV) {
-        console.log('[Home.vue] ✅ Chats loaded successfully');
+        console.log('[Home.vue] Chats loaded successfully');
       }
     } else {
       if (import.meta.env.DEV) {
-        console.warn('[Home.vue] ⚠️ Failed to load chats:', chatsResult.reason);
+        console.warn('[Home.vue] WARNING: Failed to load chats:', chatsResult.reason);
       }
 
       // 只有401错误才重定向到登录，其他错误不影响页面显示
@@ -380,7 +380,7 @@ onMounted(async () => {
 
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('[Home.vue] ❌ Unexpected error during mount:', error);
+      console.error('[Home.vue] ERROR: Unexpected error during mount:', error);
     }
 
     // 只有认证相关错误才重定向
@@ -392,7 +392,7 @@ onMounted(async () => {
   // 调试和性能监控代码保持不变
   if (process.env.NODE_ENV === 'development') {
     import('@/utils/messageDebugger').then(() => {
-      // console.log('📨 Message debugger loaded');
+      // console.log('EVENT: Message debugger loaded');
     });
   }
 

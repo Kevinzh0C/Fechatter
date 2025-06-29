@@ -49,7 +49,7 @@ pub async fn get_router(config: AppConfig) -> Result<Router> {
 
   // Setup unified event processing architecture
   if state.config.messaging.enabled {
-    tracing::info!("🚀 NATS event processing is enabled");
+    tracing::info!("NATS event processing is enabled");
 
     // Initialize NATS connection and subscriber for notify events
     let nats_client =
@@ -68,26 +68,26 @@ pub async fn get_router(config: AppConfig) -> Result<Router> {
 
     let state_arc = Arc::new(state.clone());
     for subject in subjects {
-      tracing::info!("📡 [NOTIFY] Subscribing to NATS subject: {}", subject);
+      tracing::info!("SUBSCRIPTION: [NOTIFY] Subscribing to NATS subject: {}", subject);
       let subscriber = nats_client.subscribe(subject).await?;
       let processor = EventProcessor::new(subscriber, state_arc.clone()).await?;
 
       // Spawn event processor for this subject
       tokio::spawn(async move {
         tracing::info!(
-          "🚀 [NOTIFY] Starting event processor for subject: {}",
+          "[NOTIFY] Starting event processor for subject: {}",
           subject
         );
         if let Err(e) = processor.start().await {
-          tracing::error!("❌ [NOTIFY] Event processor failed for {}: {}", subject, e);
+          tracing::error!("ERROR: [NOTIFY] Event processor failed for {}: {}", subject, e);
         }
       });
     }
 
-    tracing::info!("✅ [NOTIFY] All NATS event processors started successfully");
+    tracing::info!("[NOTIFY] All NATS event processors started successfully");
   } else {
     tracing::warn!(
-      "⚠️  NATS messaging is disabled, falling back to PostgreSQL NOTIFY (not recommended)"
+      "WARNING: NATS messaging is disabled, falling back to PostgreSQL NOTIFY (not recommended)"
     );
     // Note: PostgreSQL NOTIFY is deprecated, this is only for backward compatibility
   }
@@ -265,7 +265,7 @@ mod tests {
         assert_eq!(verified_claims.email, user_claims.email);
         assert_eq!(verified_claims.workspace_id, user_claims.workspace_id);
 
-        println!("✅ JWT verification test PASSED!");
+        println!("JWT verification test PASSED!");
         println!("   - Token generated successfully");
         println!("   - Token verified successfully");
         println!("   - User claims match");
@@ -286,7 +286,7 @@ mod tests {
         let result = verify_manager.verify_token(invalid_token);
 
         assert!(result.is_err(), "Invalid token should be rejected");
-        println!("✅ Invalid token rejection test PASSED!");
+        println!("Invalid token rejection test PASSED!");
     }
 
     #[tokio::test]
@@ -323,6 +323,6 @@ mod tests {
 
         let result = verify_manager.verify_token(&token);
         assert!(result.is_err(), "Token signed with different key should be rejected");
-        println!("✅ Wrong key rejection test PASSED!");
+        println!("Wrong key rejection test PASSED!");
     }
 }

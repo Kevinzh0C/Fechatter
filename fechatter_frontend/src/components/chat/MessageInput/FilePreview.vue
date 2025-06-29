@@ -1,11 +1,11 @@
 <template>
   <div class="file-preview-container">
-    <!-- 🎯 统一的文件预览布局 - 适用于所有状态 -->
+    <!-- 统一的文件预览布局 - 适用于所有状态 -->
     <div class="unified-file-preview">
       <div class="file-preview-horizontal">
         <!-- 左侧：文件缩略图和信息（始终保持一致） -->
         <div class="file-thumbnail-section">
-          <!-- 🎯 统一的缩略图容器 -->
+          <!-- 统一的缩略图容器 -->
           <div class="unified-thumbnail-container">
             <img v-if="isImage(file)" :src="getFilePreviewUrl()" :alt="file.name" class="unified-thumbnail">
             <div v-else class="unified-file-icon" :class="getFileTypeClass(file.type)">
@@ -15,7 +15,7 @@
               <span class="unified-file-extension">{{ getFileExtension(file.name) }}</span>
             </div>
 
-            <!-- 🎯 状态覆盖层 -->
+            <!-- 状态覆盖层 -->
             <div v-if="uploadState.status === 'uploading'" class="thumbnail-overlay">
               <div class="upload-progress-overlay">
                 <div class="progress-circle">
@@ -44,7 +44,7 @@
             </div>
           </div>
 
-          <!-- 🎯 统一的文件信息区域 -->
+          <!-- 统一的文件信息区域 -->
           <div class="unified-file-info">
             <h4 class="unified-file-name">{{ file.name }}</h4>
             <div class="unified-file-meta">
@@ -52,7 +52,7 @@
               <span class="file-type">{{ file.type || 'Unknown type' }}</span>
             </div>
 
-            <!-- 🎯 动态状态指示器 -->
+            <!-- 动态状态指示器 -->
             <div class="unified-status-indicator">
               <span v-if="uploadState.status === 'pending'" class="status-badge status-local">
                 📁 Local file selected
@@ -61,14 +61,14 @@
                 📤 Uploading {{ Math.round(uploadState.progress) }}%
               </span>
               <span v-else-if="uploadState.status === 'completed'" class="status-badge status-success">
-                ✅ URL Ready for Send
+                URL Ready for Send
               </span>
               <span v-else-if="uploadState.status === 'failed'" class="status-badge status-error">
-                ❌ Upload Failed
+                ERROR: Upload Failed
               </span>
             </div>
 
-            <!-- 🎯 错误信息显示 -->
+            <!-- 错误信息显示 -->
             <div v-if="uploadState.status === 'failed'" class="error-message-compact">
               {{ uploadState.error }}
             </div>
@@ -81,7 +81,7 @@
 
         <!-- 右侧：动态操作按钮 -->
         <div class="action-buttons-right">
-          <!-- 🎯 根据状态显示不同按钮组合 -->
+          <!-- 根据状态显示不同按钮组合 -->
 
           <!-- 本地预览状态：显示上传按钮 -->
           <template v-if="uploadState.status === 'pending'">
@@ -169,7 +169,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 
-// 🎯 Props - 接收文件对象
+// Props - 接收文件对象
 const props = defineProps({
   file: {
     type: File,
@@ -177,7 +177,7 @@ const props = defineProps({
   }
 });
 
-// 🎯 Events - 与父组件通信
+// Events - 与父组件通信
 const emit = defineEmits([
   'file-uploaded',    // 上传成功
   'upload-error',     // 上传失败  
@@ -197,7 +197,7 @@ const uploadState = ref({
 // 📁 文件预览URL（本地）
 const localPreviewUrl = ref(null);
 
-// 🔧 工具函数
+// 工具函数
 const isImage = (file) => {
   return file.type.startsWith('image/');
 };
@@ -232,7 +232,7 @@ const getFilePreviewUrl = () => {
   return localPreviewUrl.value;
 };
 
-// 🚀 上传到远端
+// 上传到远端
 const startUpload = async () => {
   if (!props.file || uploadState.value.status === 'uploading') {
     return;
@@ -257,7 +257,7 @@ const startUpload = async () => {
       uploadState.value.progress = progress;
     });
 
-    console.log('✅ [FilePreview] Upload completed:', uploadResult);
+    console.log('[FilePreview] Upload completed:', uploadResult);
 
     // 更新状态为成功
     uploadState.value = {
@@ -268,11 +268,11 @@ const startUpload = async () => {
       startTime: uploadState.value.startTime
     };
 
-    // 🎯 通知父组件上传成功
+    // 通知父组件上传成功
     emit('file-uploaded', uploadResult);
 
   } catch (error) {
-    console.error('❌ [FilePreview] Upload failed:', error);
+    console.error('ERROR: [FilePreview] Upload failed:', error);
 
     // 更新状态为失败
     uploadState.value = {
@@ -283,7 +283,7 @@ const startUpload = async () => {
       startTime: uploadState.value.startTime
     };
 
-    // 🎯 通知父组件上传失败
+    // 通知父组件上传失败
     emit('upload-error', error);
   }
 };
@@ -345,7 +345,7 @@ const handleRemoveFile = () => {
   emit('file-removed');
 };
 
-// 🔧 组件生命周期
+// 组件生命周期
 onMounted(() => {
   // 为图片创建本地预览URL
   if (isImage(props.file)) {
@@ -378,7 +378,7 @@ onUnmounted(() => {
   border-color: var(--color-primary);
 }
 
-/* 🎯 统一的文件预览样式 */
+/* 统一的文件预览样式 */
 .unified-file-preview {
   width: 100%;
 }
@@ -393,7 +393,7 @@ onUnmounted(() => {
   border: 1px solid var(--color-border);
 }
 
-/* 🎯 统一的缩略图系统 */
+/* 统一的缩略图系统 */
 .unified-thumbnail-container {
   position: relative;
   flex-shrink: 0;
@@ -440,7 +440,7 @@ onUnmounted(() => {
   text-transform: uppercase;
 }
 
-/* 🎯 状态覆盖层 */
+/* 状态覆盖层 */
 .thumbnail-overlay {
   position: absolute;
   top: 0;
@@ -496,7 +496,7 @@ onUnmounted(() => {
   color: white;
 }
 
-/* 🎯 统一的文件信息 */
+/* 统一的文件信息 */
 .unified-file-info {
   display: flex;
   flex-direction: column;
@@ -527,7 +527,7 @@ onUnmounted(() => {
   margin-bottom: 6px;
 }
 
-/* 🎯 动态状态指示器 */
+/* 动态状态指示器 */
 .unified-status-indicator {
   display: flex;
   justify-content: center;
@@ -582,7 +582,7 @@ onUnmounted(() => {
   }
 }
 
-/* 🎯 紧凑的错误信息 */
+/* 紧凑的错误信息 */
 .error-message-compact {
   font-size: 10px;
   color: var(--color-danger);
@@ -595,7 +595,7 @@ onUnmounted(() => {
   word-break: break-word;
 }
 
-/* 🎯 取消上传按钮 */
+/* 取消上传按钮 */
 .cancel-btn {
   display: flex;
   align-items: center;
@@ -670,7 +670,7 @@ onUnmounted(() => {
   color: var(--color-text-muted);
 }
 
-/* ✅ 上传成功状态 - 简化版 */
+/* 上传成功状态 - 简化版 */
 .upload-success-simple {
   display: flex;
   flex-direction: column;
@@ -887,7 +887,7 @@ onUnmounted(() => {
   text-decoration: underline;
 }
 
-/* ❌ 上传失败状态 */
+/* ERROR: 上传失败状态 */
 .upload-error {
   text-align: center;
 }
@@ -1062,17 +1062,17 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-/* 🎯 操作按钮 - 强制水平排列 */
+/* 操作按钮 - 强制水平排列 */
 .action-buttons {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 8px;
   flex-wrap: nowrap;
-  /* 🔧 强制不换行，保持水平排列 */
+  /* 强制不换行，保持水平排列 */
 }
 
-/* 🎯 右侧按钮区域 - 垂直排列节省空间 */
+/* 右侧按钮区域 - 垂直排列节省空间 */
 .action-buttons-right {
   display: flex;
   flex-direction: column;
@@ -1099,11 +1099,11 @@ onUnmounted(() => {
   transition: all 0.2s ease;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   font-size: 12px;
-  /* 🔧 与其他按钮一致的字体大小 */
+  /* 与其他按钮一致的字体大小 */
   white-space: nowrap;
   min-width: 110px;
   width: 110px;
-  /* 🔧 与其他按钮一致的宽度 */
+  /* 与其他按钮一致的宽度 */
 }
 
 .upload-btn:hover:not(:disabled) {
@@ -1126,9 +1126,9 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  /* 🔧 缩小图标和文字间距 */
+  /* 缩小图标和文字间距 */
   padding: 8px 12px;
-  /* 🔧 调整为更紧凑的padding */
+  /* 调整为更紧凑的padding */
   background: var(--color-background);
   color: var(--color-text);
   border: 1px solid var(--color-border);
@@ -1136,13 +1136,13 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 12px;
-  /* 🔧 稍小的字体 */
+  /* 稍小的字体 */
   white-space: nowrap;
-  /* 🔧 防止文字换行 */
+  /* 防止文字换行 */
   min-width: 110px;
-  /* 🔧 固定最小宽度 */
+  /* 固定最小宽度 */
   width: 110px;
-  /* 🔧 固定宽度使按钮一致 */
+  /* 固定宽度使按钮一致 */
 }
 
 .replace-btn:hover,
@@ -1230,7 +1230,7 @@ onUnmounted(() => {
     font-size: 11px;
   }
 
-  /* 🎯 移动端也保持水平排列，但按钮更紧凑 */
+  /* 移动端也保持水平排列，但按钮更紧凑 */
   .action-buttons {
     justify-content: center;
     gap: 6px;
@@ -1253,7 +1253,7 @@ onUnmounted(() => {
     /* Upload按钮稍大一点 */
   }
 
-  /* 🎯 移动端左右布局调整 */
+  /* 移动端左右布局调整 */
   .file-preview-horizontal {
     flex-direction: column;
     gap: 12px;

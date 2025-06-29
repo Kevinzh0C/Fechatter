@@ -17,7 +17,7 @@ export function useScrollManager(chatId: number) {
   const scrollThreshold = 100 // pixels from bottom to trigger auto-scroll
   const topThreshold = 50 // pixels from top to trigger load more
 
-  // 🔥 NEW: Load more state management
+  // NEW: Load more state management
   const isLoadingMore = ref(false)
   const autoLoadTriggerEnabled = ref(true)
   const loadMoreIndicatorVisible = ref(false)
@@ -32,7 +32,7 @@ export function useScrollManager(chatId: number) {
     }
   }
 
-  // 🔥 NEW: Enhanced scroll handler with auto load more
+  // NEW: Enhanced scroll handler with auto load more
   const handleScroll = debounce((_event?: Event) => {
     if (!scrollContainer.value || isAutoScrolling.value) return
 
@@ -45,7 +45,7 @@ export function useScrollManager(chatId: number) {
     viewportStore.updateScrollPosition(chatId, position)
     viewportStore.setScrolling(true)
 
-    // 🔥 NEW: Check for auto load more trigger
+    // NEW: Check for auto load more trigger
     checkAutoLoadMore(position)
 
     setTimeout(() => {
@@ -53,7 +53,7 @@ export function useScrollManager(chatId: number) {
     }, 150)
   }, 100)
 
-  // 🔥 NEW: Auto load more trigger logic
+  // NEW: Auto load more trigger logic
   function checkAutoLoadMore(position: ScrollPosition) {
     if (!autoLoadTriggerEnabled.value || isLoadingMore.value) return
 
@@ -66,7 +66,7 @@ export function useScrollManager(chatId: number) {
     }
   }
 
-  // 🔥 NEW: Trigger auto load more with indicator
+  // NEW: Trigger auto load more with indicator
   function triggerAutoLoadMore() {
     lastTriggerTime.value = Date.now()
 
@@ -80,7 +80,7 @@ export function useScrollManager(chatId: number) {
     document.dispatchEvent(event)
   }
 
-  // 🔥 NEW: Show load more indicator
+  // NEW: Show load more indicator
   function showLoadMoreIndicator() {
     loadMoreIndicatorVisible.value = true
 
@@ -92,7 +92,7 @@ export function useScrollManager(chatId: number) {
     }, 2000)
   }
 
-  // 🔥 NEW: Hide load more indicator
+  // NEW: Hide load more indicator
   function hideLoadMoreIndicator() {
     loadMoreIndicatorVisible.value = false
   }
@@ -137,19 +137,19 @@ export function useScrollManager(chatId: number) {
     }, 500)
   }
 
-  // 🔥 ENHANCED: Preserve scroll with load more support
+  // ENHANCED: Preserve scroll with load more support
   function preserveScrollPosition(): ScrollPosition | null {
     if (!scrollContainer.value) return null
 
     const position = viewportStore.saveScrollPosition(chatId)
 
-    // 🔥 NEW: Mark as loading more to prevent auto-triggers
+    // NEW: Mark as loading more to prevent auto-triggers
     setLoadingMore(true)
 
     return position
   }
 
-  // 🔥 ENHANCED: Restore scroll with stability guarantee
+  // ENHANCED: Restore scroll with stability guarantee
   function restoreScrollPosition(position?: ScrollPosition) {
     if (!scrollContainer.value) return
 
@@ -157,7 +157,7 @@ export function useScrollManager(chatId: number) {
     isAutoScrolling.value = true
 
     if (position) {
-      // 🔥 NEW: Smart scroll restoration to maintain user reading position
+      // NEW: Smart scroll restoration to maintain user reading position
       const container = scrollContainer.value
       const heightDiff = container.scrollHeight - (position.scrollHeight || 0)
 
@@ -187,7 +187,7 @@ export function useScrollManager(chatId: number) {
     return scrollTop + clientHeight >= scrollHeight - scrollThreshold
   }
 
-  // 🔥 NEW: Check if near top for load more
+  // NEW: Check if near top for load more
   function isNearTop(): boolean {
     if (!scrollContainer.value) return false
 
@@ -204,7 +204,7 @@ export function useScrollManager(chatId: number) {
     }
   }
 
-  // 🔥 NEW: Load more state management
+  // NEW: Load more state management
   function setLoadingMore(value: boolean) {
     isLoadingMore.value = value
 
@@ -226,7 +226,7 @@ export function useScrollManager(chatId: number) {
     autoLoadTriggerEnabled.value = false
   }
 
-  // 🔥 NEW: Computed properties for external state tracking
+  // NEW: Computed properties for external state tracking
   const canAutoLoadMore = computed(() =>
     autoLoadTriggerEnabled.value &&
     !isLoadingMore.value &&
@@ -252,7 +252,7 @@ export function useScrollManager(chatId: number) {
     getScrollInfo,
     isAutoScrolling,
 
-    // 🔥 NEW: Load more functionality
+    // NEW: Load more functionality
     isLoadingMore,
     loadMoreIndicatorVisible,
     canAutoLoadMore,

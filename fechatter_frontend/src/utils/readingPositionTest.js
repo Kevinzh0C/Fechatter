@@ -16,7 +16,7 @@ export function testReadingPositionManager() {
   
   // Test 1: Check initial state
   if (import.meta.env.DEV) {
-    console.log('\n📊 Test 1: Initial State');
+    console.log('\nTest 1: Initial State');
   const isVisited = readingPositionManager.isChannelVisitedInSession(testChatId);
   if (import.meta.env.DEV) {
     console.log('- Channel visited in session:', isVisited);
@@ -29,7 +29,7 @@ export function testReadingPositionManager() {
   
   // Test 2: Mark as visited
   if (import.meta.env.DEV) {
-    console.log('\n📊 Test 2: Mark as Visited');
+    console.log('\nTest 2: Mark as Visited');
   readingPositionManager.markChannelAsVisited(testChatId);
   
   const isVisitedAfter = readingPositionManager.isChannelVisitedInSession(testChatId);
@@ -44,7 +44,7 @@ export function testReadingPositionManager() {
   
   // Test 3: Save reading position
   if (import.meta.env.DEV) {
-    console.log('\n📊 Test 3: Save Reading Position');
+    console.log('\nTest 3: Save Reading Position');
   const testPosition = {
     messageId: 456,
     scrollOffset: 100,
@@ -60,7 +60,7 @@ export function testReadingPositionManager() {
   
   // Test 4: Strategy with saved position
   if (import.meta.env.DEV) {
-    console.log('\n📊 Test 4: Strategy with Saved Position');
+    console.log('\nTest 4: Strategy with Saved Position');
   const strategyWithPosition = readingPositionManager.getLoadingStrategy(testChatId);
   if (import.meta.env.DEV) {
     console.log('- Strategy with saved position:', strategyWithPosition);
@@ -68,14 +68,14 @@ export function testReadingPositionManager() {
   
   // Test 5: Debug info
   if (import.meta.env.DEV) {
-    console.log('\n📊 Test 5: Debug Information');
+    console.log('\nTest 5: Debug Information');
   const debugInfo = readingPositionManager.getDebugInfo();
   if (import.meta.env.DEV) {
     console.log('- Debug info:', debugInfo);
   }
   
   if (import.meta.env.DEV) {
-    console.log('\n✅ Reading Position Manager test completed');
+    console.log('\nReading Position Manager test completed');
   return debugInfo;
 }
 
@@ -123,7 +123,7 @@ export function simulateChannelNavigation() {
   });
   
   if (import.meta.env.DEV) {
-    console.log('\n📊 Final State:');
+    console.log('\nFinal State:');
   if (import.meta.env.DEV) {
     console.log('- Session channels:', [...readingPositionManager.sessionChannels]);
   if (import.meta.env.DEV) {
@@ -131,7 +131,7 @@ export function simulateChannelNavigation() {
   }
   
   if (import.meta.env.DEV) {
-    console.log('\n✅ Channel navigation simulation completed');
+    console.log('\nChannel navigation simulation completed');
   }
 
 export function testScrollPositionSaving() {
@@ -151,7 +151,7 @@ export function testScrollPositionSaving() {
   ];
   
   if (import.meta.env.DEV) {
-    console.log('📝 Mock messages created:', mockMessages.length);
+    console.log('Mock messages created:', mockMessages.length);
   }
   
   // Simulate saving positions for different messages
@@ -174,7 +174,7 @@ export function testScrollPositionSaving() {
   }
   
   if (import.meta.env.DEV) {
-    console.log('\n✅ Scroll position saving test completed');
+    console.log('\nScroll position saving test completed');
   }
 
 export function clearTestData() {
@@ -194,7 +194,7 @@ export function clearTestData() {
   localStorage.removeItem('fechatter_channel_visits');
   
   if (import.meta.env.DEV) {
-    console.log('✅ Test data cleared');
+    console.log('Test data cleared');
   }
 
 // Export for global access in development

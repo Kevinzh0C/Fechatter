@@ -425,11 +425,11 @@ impl AppConfig {
         println!("📍 Loading from ANALYTICS_CONFIG: {}", path);
         match Self::from_file(&path) {
           Ok(config) => {
-            println!("✅ Configuration loaded successfully from env var!");
+            println!("Configuration loaded successfully from env var!");
             Some(config)
           }
           Err(e) => {
-            eprintln!("❌ Failed to load config from ANALYTICS_CONFIG ({}): {}", path, e);
+            eprintln!("ERROR: Failed to load config from ANALYTICS_CONFIG ({}): {}", path, e);
             None
           }
         }
@@ -482,11 +482,11 @@ impl AppConfig {
         println!("📁 Found config file: {}", path);
         match serde_yaml::from_reader(file) {
           Ok(config) => {
-            println!("✅ Analytics configuration loaded successfully from: {}", path);
+            println!("Analytics configuration loaded successfully from: {}", path);
             Some(config)
           }
           Err(e) => {
-            eprintln!("⚠️  Parse error in {}: {}", path, e);
+            eprintln!("WARNING: Parse error in {}: {}", path, e);
             None
           }
         }
@@ -503,14 +503,14 @@ impl AppConfig {
 
   /// Show helpful error message with search locations
   fn show_search_error() {
-    eprintln!("\n🔍 Searched for analytics configuration in:");
-    eprintln!("   ❌ Environment: ANALYTICS_CONFIG");
-    eprintln!("   ❌ Docker paths: /app/config/analytics.yml, /app/analytics.yml");
-    eprintln!("   ❌ Container paths: /etc/fechatter/analytics.yml");
-    eprintln!("   ❌ Current directory: analytics.yml");
-    eprintln!("   ❌ System paths: /etc/config/analytics.yml");
+    eprintln!("\nSearched for analytics configuration in:");
+    eprintln!("   ERROR: Environment: ANALYTICS_CONFIG");
+    eprintln!("   ERROR: Docker paths: /app/config/analytics.yml, /app/analytics.yml");
+    eprintln!("   ERROR: Container paths: /etc/fechatter/analytics.yml");
+    eprintln!("   ERROR: Current directory: analytics.yml");
+    eprintln!("   ERROR: System paths: /etc/config/analytics.yml");
     eprintln!("");
-    eprintln!("💡 To fix this:");
+    eprintln!("To fix this:");
     eprintln!("   1. 📋 Set ANALYTICS_CONFIG environment variable");
     eprintln!("   2. 📄 Place analytics.yml in current directory");
     eprintln!("   3. 🐳 For Docker: mount config to /app/config/analytics.yml");

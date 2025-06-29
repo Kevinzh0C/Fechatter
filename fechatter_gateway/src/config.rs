@@ -88,11 +88,11 @@ impl GatewayConfig {
         println!("📍 Loading from GATEWAY_CONFIG: {}", path);
         match Self::from_file(&path) {
           Ok(config) => {
-            println!("✅ Gateway configuration loaded successfully from env var!");
+            println!("Gateway configuration loaded successfully from env var!");
             Some(config)
           }
           Err(e) => {
-            eprintln!("❌ Failed to load config from GATEWAY_CONFIG ({}): {}", path, e);
+            eprintln!("ERROR: Failed to load config from GATEWAY_CONFIG ({}): {}", path, e);
             None
           }
         }
@@ -139,7 +139,7 @@ impl GatewayConfig {
   fn try_load_from_path(path: &str) -> Option<Self> {
     match Self::from_file(path) {
       Ok(config) => {
-        println!("✅ Gateway configuration loaded successfully from: {}", path);
+        println!("Gateway configuration loaded successfully from: {}", path);
         Some(config)
       }
       Err(_) => None, // File doesn't exist or parse error, continue searching
@@ -148,15 +148,15 @@ impl GatewayConfig {
 
   /// Show helpful error message with search locations
   fn show_search_error() {
-    eprintln!("\n🔍 Searched for gateway configuration in:");
-    eprintln!("   ❌ Environment: GATEWAY_CONFIG");
-    eprintln!("   ❌ Docker paths: /app/config/gateway.yml, /app/gateway.yml");
-    eprintln!("   ❌ Docker service paths: /app/fechatter_gateway/gateway.yml");
-    eprintln!("   ❌ Container paths: /etc/fechatter/gateway.yml");
-    eprintln!("   ❌ Current directory: gateway.yml");
-    eprintln!("   ❌ Service directory: fechatter_gateway/gateway.yml");
+    eprintln!("\nSearched for gateway configuration in:");
+    eprintln!("   ERROR: Environment: GATEWAY_CONFIG");
+    eprintln!("   ERROR: Docker paths: /app/config/gateway.yml, /app/gateway.yml");
+    eprintln!("   ERROR: Docker service paths: /app/fechatter_gateway/gateway.yml");
+    eprintln!("   ERROR: Container paths: /etc/fechatter/gateway.yml");
+    eprintln!("   ERROR: Current directory: gateway.yml");
+    eprintln!("   ERROR: Service directory: fechatter_gateway/gateway.yml");
     eprintln!("");
-    eprintln!("💡 To fix this:");
+    eprintln!("To fix this:");
     eprintln!("   1. 📋 Set GATEWAY_CONFIG environment variable");
     eprintln!("   2. 📄 Place gateway.yml in current directory");
     eprintln!("   3. 🐳 For Docker: mount config to /app/config/gateway.yml");

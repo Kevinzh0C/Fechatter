@@ -18,7 +18,7 @@ class SearchResponseDebugger {
   enable() {
     this.enabled = true;
     if (import.meta.env.DEV) {
-      console.log('🔍 [SearchDebug] Response debugging enabled');
+      console.log('[SearchDebug] Response debugging enabled');
     }
 
   /**
@@ -27,7 +27,7 @@ class SearchResponseDebugger {
   disable() {
     this.enabled = false;
     if (import.meta.env.DEV) {
-      console.log('🔍 [SearchDebug] Response debugging disabled');
+      console.log('[SearchDebug] Response debugging disabled');
     }
 
   /**
@@ -44,7 +44,7 @@ class SearchResponseDebugger {
       // Check if this is a search request
       if (url.includes('search')) {
         if (import.meta.env.DEV) {
-          console.log('🔍 [SearchDebug] Intercepting search request:', {
+          console.log('[SearchDebug] Intercepting search request:', {
           url,
           data,
           config
@@ -56,7 +56,7 @@ class SearchResponseDebugger {
 
           // Log raw response
           if (import.meta.env.DEV) {
-            console.log('🔍 [SearchDebug] RAW RESPONSE:', {
+            console.log('[SearchDebug] RAW RESPONSE:', {
         status: response.status,
             statusText: response.statusText,
             headers: response.headers,
@@ -78,7 +78,7 @@ class SearchResponseDebugger {
           // Also log formatted response
           if (response.data) {
             if (import.meta.env.DEV) {
-              console.log('🔍 [SearchDebug] Response Data Structure:', {
+              console.log('[SearchDebug] Response Data Structure:', {
         hasData: !!response.data,
               dataType: typeof response.data,
               dataKeys: Object.keys(response.data || {}),
@@ -89,7 +89,7 @@ class SearchResponseDebugger {
           return response;
         } catch (error) {
           if (import.meta.env.DEV) {
-            console.error('🔍 [SearchDebug] Request failed:', {
+            console.error('[SearchDebug] Request failed:', {
             url,
             error: error.message,
             response: error.response?.data,
@@ -103,7 +103,7 @@ class SearchResponseDebugger {
     };
 
     if (import.meta.env.DEV) {
-      console.log('🔍 [SearchDebug] Interception activated');
+      console.log('[SearchDebug] Interception activated');
     }
 
   /**
@@ -119,7 +119,7 @@ class SearchResponseDebugger {
   clearResponses() {
     this.responses = [];
     if (import.meta.env.DEV) {
-      console.log('🔍 [SearchDebug] Responses cleared');
+      console.log('[SearchDebug] Responses cleared');
     }
 
   /**
@@ -127,7 +127,7 @@ class SearchResponseDebugger {
    */
   async testSearchDirectly() {
     if (import.meta.env.DEV) {
-      console.log('🔍 [SearchDebug] Testing search API directly...');
+      console.log('[SearchDebug] Testing search API directly...');
     }
 
     try {
@@ -137,13 +137,13 @@ class SearchResponseDebugger {
       };
 
       if (import.meta.env.DEV) {
-        console.log('🔍 [SearchDebug] Request payload:', testPayload);
+        console.log('[SearchDebug] Request payload:', testPayload);
       }
 
       const response = await api.post('/search/messages', testPayload);
 
       if (import.meta.env.DEV) {
-        console.log('🔍 [SearchDebug] Direct test response:', {
+        console.log('[SearchDebug] Direct test response:', {
         status: response.status,
         data: response.data,
         dataType: typeof response.data,
@@ -153,7 +153,7 @@ class SearchResponseDebugger {
       return response.data;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('🔍 [SearchDebug] Direct test failed:', {
+        console.error('[SearchDebug] Direct test failed:', {
         message: error.message,
         response: error.response?.data,
         status: error.response?.status
@@ -166,7 +166,7 @@ class SearchResponseDebugger {
    */
   analyzeResponseFormat(actualResponse) {
     if (import.meta.env.DEV) {
-      console.log('🔍 [SearchDebug] Analyzing response format...');
+      console.log('[SearchDebug] Analyzing response format...');
     }
 
     const expectedFormats = [
@@ -195,14 +195,14 @@ class SearchResponseDebugger {
     for (const format of expectedFormats) {
       if (format.check(actualResponse)) {
         if (import.meta.env.DEV) {
-          console.log(`✅ [SearchDebug] Matches format: ${format.name}`);
+          console.log(`[SearchDebug] Matches format: ${format.name}`);
         return format.extract(actualResponse);
       }
 
     if (import.meta.env.DEV) {
-      console.error('❌ [SearchDebug] No matching format found!');
+      console.error('ERROR: [SearchDebug] No matching format found!');
     if (import.meta.env.DEV) {
-      console.log('🔍 [SearchDebug] Actual response structure:', {
+      console.log('[SearchDebug] Actual response structure:', {
         type: typeof actualResponse,
       keys: Object.keys(actualResponse || {}),
       sample: JSON.stringify(actualResponse).substring(0, 200) + '...'
@@ -229,7 +229,7 @@ if (import.meta.env.DEV) {
   };
 
   if (import.meta.env.DEV) {
-    console.log('🔍 [SearchDebug] Available commands:');
+    console.log('[SearchDebug] Available commands:');
   if (import.meta.env.DEV) {
     console.log('   window.searchDebug.test() - Test search API directly');
   if (import.meta.env.DEV) {

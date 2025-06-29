@@ -530,7 +530,7 @@ class HealthCheckSystem {
       // 只有在真正关键的检查失败时才记录错误，但不抛出异常
       if (check.critical && !result.success && !shouldSkipLogging) {
         if (import.meta.env.DEV) {
-          console.warn(`⚠️ [HEALTH] Critical check failed: ${check.name}`, fullResult.details);
+          console.warn(`WARNING: [HEALTH] Critical check failed: ${check.name}`, fullResult.details);
         }
 
         // 记录错误但不让它导致应用崩溃
@@ -548,13 +548,13 @@ class HealthCheckSystem {
         }
       } else if (!result.success && shouldSkipLogging) {
         // 开发环境的非关键错误，只记录到控制台
-        console.debug(`🔧 [HEALTH] Check ${check.name} failed in development environment:`, result.warning || result.details?.suggestion);
+        console.debug(`[HEALTH] Check ${check.name} failed in development environment:`, result.warning || result.details?.suggestion);
       }
 
       return fullResult;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.warn(`⚠️ [HEALTH] Check ${checkId} failed:`, error.message);
+        console.warn(`WARNING: [HEALTH] Check ${checkId} failed:`, error.message);
       }
 
       const errorResult = {
@@ -594,7 +594,7 @@ class HealthCheckSystem {
 
   async runAllChecks() {
     if (this.isRunning) {
-      console.debug('🔧 [HEALTH] Health checks already running, skipping duplicate request');
+      console.debug('[HEALTH] Health checks already running, skipping duplicate request');
       return this.lastRunResult || {
         results: [],
         summary: {
@@ -667,7 +667,7 @@ class HealthCheckSystem {
       summary,
       results: results.map(r => ({
         ...r,
-        status: r.success ? '✅ PASS' : '❌ FAIL'
+        status: r.success ? 'PASS' : 'ERROR: FAIL'
       })),
       recommendations: this.getRecommendations(results),
       timestamp: new Date().toISOString()
@@ -740,7 +740,7 @@ class HealthCheckSystem {
             // 安全地运行初始健康检查
             this.runAllChecksSafely().catch(error => {
               if (import.meta.env.DEV) {
-                console.warn('⚠️ [HEALTH] Initial health check failed:', error.message);
+                console.warn('WARNING: [HEALTH] Initial health check failed:', error.message);
               }
             });
 
@@ -748,7 +748,7 @@ class HealthCheckSystem {
             this.autoCheckInterval = setInterval(() => {
               this.runAllChecksSafely().catch(error => {
                 if (import.meta.env.DEV) {
-                  console.warn('⚠️ [HEALTH] Scheduled health check failed:', error.message);
+                  console.warn('WARNING: [HEALTH] Scheduled health check failed:', error.message);
                 }
               });
             }, optimizedInterval);
@@ -756,25 +756,25 @@ class HealthCheckSystem {
 
           if (isDev) {
             if (import.meta.env.DEV) {
-              console.log(`🔧 [HEALTH] Health monitoring will start in ${startDelay / 1000}s with ${optimizedInterval / 60000}min intervals`);
+              console.log(`[HEALTH] Health monitoring will start in ${startDelay / 1000}s with ${optimizedInterval / 60000}min intervals`);
             }
           }
         } else if (retryCount < maxRetries) {
           setTimeout(() => checkAppReady(retryCount + 1), 1000);
         } else {
           if (import.meta.env.DEV) {
-            console.warn('⚠️ [HEALTH] Application failed to initialize after maximum retries. Health monitoring disabled.');
+            console.warn('WARNING: [HEALTH] Application failed to initialize after maximum retries. Health monitoring disabled.');
           }
         }
       } catch (error) {
         if (retryCount < maxRetries) {
           if (import.meta.env.DEV) {
-            console.warn(`⚠️ [HEALTH] Error checking app readiness (attempt ${retryCount + 1}/${maxRetries}):`, error.message);
+            console.warn(`WARNING: [HEALTH] Error checking app readiness (attempt ${retryCount + 1}/${maxRetries}):`, error.message);
             setTimeout(() => checkAppReady(retryCount + 1), 1000);
           }
         } else {
           if (import.meta.env.DEV) {
-            console.warn('⚠️ [HEALTH] Failed to start health monitoring after maximum retries:', error.message);
+            console.warn('WARNING: [HEALTH] Failed to start health monitoring after maximum retries:', error.message);
           }
         }
       }

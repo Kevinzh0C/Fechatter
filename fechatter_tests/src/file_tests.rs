@@ -31,7 +31,7 @@ async fn test_file_storage_paths() -> Result<(), Box<dyn std::error::Error>> {
   assert!(url.contains(&user.workspace_id.to_string()));
   assert!(url.ends_with(".txt"));
 
-  info!("✅ File path generation test passed");
+  info!("File path generation test passed");
   info!("   Hash path: {}", hash_path);
   info!("   URL: {}", url);
 
@@ -70,7 +70,7 @@ async fn test_file_content_validation() -> Result<(), Box<dyn std::error::Error>
       .to_string();
     assert_eq!(file_meta.ext, expected_ext);
 
-    info!("✅ File content validation passed for: {}", filename);
+    info!("File content validation passed for: {}", filename);
   }
 
   Ok(())
@@ -112,7 +112,7 @@ async fn test_file_hash_consistency() -> Result<(), Box<dyn std::error::Error>> 
   assert_eq!(path1, path2);
   assert_eq!(path1.replace(".txt", ""), path3.replace(".txt", ""));
 
-  info!("✅ File hash consistency test passed");
+  info!("File hash consistency test passed");
 
   Ok(())
 }
@@ -166,10 +166,10 @@ async fn test_file_path_security() -> Result<(), Box<dyn std::error::Error>> {
     assert!(hash_path.starts_with(&user.workspace_id.to_string()));
     assert!(url.starts_with(&format!("/files/{}", user.workspace_id)));
 
-    info!("✅ Secured malicious filename: {}", filename);
+    info!("Secured malicious filename: {}", filename);
   }
 
-  info!("✅ File path security test passed");
+  info!("File path security test passed");
 
   Ok(())
 }
@@ -215,7 +215,7 @@ async fn test_file_storage_structure() -> Result<(), Box<dyn std::error::Error>>
     // Verify workspace ID
     assert_eq!(parts[0], user.workspace_id.to_string());
 
-    info!("✅ Created file structure: {}", hash_path);
+    info!("Created file structure: {}", hash_path);
     info!("   URL: {}", url);
     info!("   Hash prefix: {}", hash_prefix);
   }
@@ -223,7 +223,7 @@ async fn test_file_storage_structure() -> Result<(), Box<dyn std::error::Error>>
   // Verify all paths are unique
   assert_eq!(created_paths.len(), 5);
 
-  info!("✅ File storage structure test passed");
+  info!("File storage structure test passed");
   info!("   Unique paths created: {}", created_paths.len());
   info!("   Hash prefixes used: {}", hash_prefixes.len());
 
@@ -260,7 +260,7 @@ async fn test_large_file_handling() -> Result<(), Box<dyn std::error::Error>> {
     assert!(!file_meta.hash.is_empty());
 
     info!(
-      "✅ Large file test passed: {} ({} bytes) in {:?}",
+      "Large file test passed: {} ({} bytes) in {:?}",
       filename, size, creation_time
     );
 
@@ -314,7 +314,7 @@ async fn test_concurrent_file_operations() -> Result<(), Box<dyn std::error::Err
 
   assert_eq!(hashes.len(), 10);
 
-  info!("✅ Concurrent file operations test passed");
+  info!("Concurrent file operations test passed");
   info!(
     "   Created {} unique files concurrently",
     created_files.len()

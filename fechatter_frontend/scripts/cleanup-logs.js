@@ -26,7 +26,7 @@ class LogCleanupTool {
     this.cleanupPatterns = [
       // 开发调试日志 (以表情符号开头)
       {
-        pattern: /console\.log\(['"`][🔍📊🚀✅📤📨💡🔧⚡🌐🔄].*?['"`].*?\);?\s*/g,
+        pattern: /console\.log\(['"`][📤📨🌐🔄].*?['"`].*?\);?\s*/g,
         description: '开发调试日志 (表情符号标识)'
       },
       
@@ -168,11 +168,11 @@ class LogCleanupTool {
         
         await fs.promises.writeFile(filePath, modifiedContent);
         this.stats.filesModified++;
-        console.log(`✅ 已更新: ${path.relative(this.srcDir, filePath)}`);
+        console.log(`已更新: ${path.relative(this.srcDir, filePath)}`);
       }
       
     } catch (error) {
-      console.error(`❌ 处理文件失败: ${filePath}`, error.message);
+      console.error(`ERROR: 处理文件失败: ${filePath}`, error.message);
     }
   }
 
@@ -180,10 +180,10 @@ class LogCleanupTool {
    * 生成清理报告
    */
   generateReport() {
-    console.log('\n📊 清理报告:');
+    console.log('\n清理报告:');
     console.log('='.repeat(50));
     console.log(`📁 扫描文件: ${this.stats.filesScanned}`);
-    console.log(`📝 修改文件: ${this.stats.filesModified}`);
+    console.log(`修改文件: ${this.stats.filesModified}`);
     console.log(`🗑️  移除日志: ${this.stats.logsRemoved}`);
     
     if (this.stats.patterns.size > 0) {
@@ -196,7 +196,7 @@ class LogCleanupTool {
     if (this.stats.logsRemoved > 0) {
       console.log(`\n✨ 成功清理 ${this.stats.logsRemoved} 个调试日志！`);
     } else {
-      console.log('\n✅ 没有找到需要清理的日志。');
+      console.log('\n没有找到需要清理的日志。');
     }
   }
 
@@ -227,9 +227,9 @@ class LogCleanupTool {
         JSON.stringify(backupInfo, null, 2)
       );
       
-      console.log('✅ 备份信息已保存');
+      console.log('备份信息已保存');
     } catch (error) {
-      console.warn('⚠️ 备份创建失败:', error.message);
+      console.warn('WARNING: 备份创建失败:', error.message);
     }
   }
 
@@ -242,7 +242,7 @@ class LogCleanupTool {
     console.log('🧹 开始清理生产环境调试日志...\n');
     
     if (dryRun) {
-      console.log('🔍 DRY RUN 模式 - 不会修改文件\n');
+      console.log('DRY RUN 模式 - 不会修改文件\n');
     } else if (backup) {
       await this.createBackup();
     }
@@ -252,7 +252,7 @@ class LogCleanupTool {
     this.generateReport();
     
     if (dryRun) {
-      console.log('\n💡 这是试运行模式。要真正清理，请运行: npm run cleanup-logs');
+      console.log('\n这是试运行模式。要真正清理，请运行: npm run cleanup-logs');
     }
   }
 }

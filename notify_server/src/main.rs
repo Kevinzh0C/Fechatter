@@ -18,7 +18,7 @@ async fn main() -> Result<()> {
 
   // Initialize observability (metrics)
   if let Err(e) = notify_server::observability::init_observability().await {
-    eprintln!("❌ Failed to initialize observability: {}", e);
+    eprintln!("ERROR: Failed to initialize observability: {}", e);
     std::process::exit(1);
   }
 
@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
       // Validate configuration in production environment
       if std::env::var("ENVIRONMENT").unwrap_or_default() == "production" {
         if let Err(e) = config.validate_production_readiness() {
-          eprintln!("❌ Production readiness check failed: {}", e);
+          eprintln!("ERROR: Production readiness check failed: {}", e);
           std::process::exit(1);
         }
       }
@@ -39,8 +39,8 @@ async fn main() -> Result<()> {
       config
     }
     Err(e) => {
-      eprintln!("❌ Failed to load configuration: {}", e);
-      eprintln!("\n💡 Quick fix suggestions:");
+      eprintln!("ERROR: Failed to load configuration: {}", e);
+      eprintln!("\nQuick fix suggestions:");
       eprintln!("   1. Copy notify.yml.example to notify.yml");
       eprintln!("   2. Set NOTIFY_CONFIG=/path/to/your/config.yml");
       eprintln!("   3. Check file permissions (should be 600 or 640)");
@@ -53,7 +53,7 @@ async fn main() -> Result<()> {
 
   let listener = TcpListener::bind(&addr).await?;
 
-  info!("🚀 notify_server listening on: {}", addr);
+  info!("notify_server listening on: {}", addr);
 
   axum::serve(listener, app.into_make_service()).await?;
 

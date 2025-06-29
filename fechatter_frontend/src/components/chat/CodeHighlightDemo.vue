@@ -1,17 +1,17 @@
 <template>
   <div class="code-highlight-demo">
-    <h2 class="demo-title">🎨 Enhanced Code Highlighting</h2>
+    <h2 class="demo-title">Enhanced Code Highlighting</h2>
     <p class="demo-description">Industry-grade syntax highlighting inspired by VS Code, GitHub, and Discord</p>
 
     <div class="demo-section">
       <h3>✨ Features</h3>
       <ul class="feature-list">
         <li>🌈 20+ Programming Languages</li>
-        <li>🎯 Auto Language Detection</li>
+        <li>Auto Language Detection</li>
         <li>📋 One-Click Copy</li>
         <li>🌙 Dark Mode Support</li>
         <li>📱 Responsive Design</li>
-        <li>⚡ Inline Code Support</li>
+        <li>Inline Code Support</li>
       </ul>
     </div>
 
@@ -192,7 +192,7 @@ migration:
 }
 
 .example h4::before {
-  content: "💡";
+  content: "";
   font-size: 1rem;
 }
 

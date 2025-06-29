@@ -1,6 +1,6 @@
 /**
  * UnifiedMessageService Diagnostics
- * 🔧 Comprehensive monitoring and debugging for message service issues
+ * Comprehensive monitoring and debugging for message service issues
  */
 
 class MessageServiceDiagnostics {
@@ -14,7 +14,7 @@ class MessageServiceDiagnostics {
    * Run comprehensive UnifiedMessageService diagnostics
    */
   async runDiagnostics(chatId = null) {
-    console.log('📨 [MessageService Diagnostics] Starting comprehensive message service analysis...');
+    console.log('EVENT: [MessageService Diagnostics] Starting comprehensive message service analysis...');
 
     const startTime = Date.now();
     const result = {
@@ -55,13 +55,13 @@ class MessageServiceDiagnostics {
       const duration = Date.now() - startTime;
       result.duration = duration;
 
-      console.log(`✅ [MessageService Diagnostics] Analysis completed in ${duration}ms`);
+      console.log(`[MessageService Diagnostics] Analysis completed in ${duration}ms`);
       this.displayResults(result);
 
       return result;
 
     } catch (error) {
-      console.error('❌ [MessageService Diagnostics] Error during analysis:', error);
+      console.error('ERROR: [MessageService Diagnostics] Error during analysis:', error);
       result.error = error.message;
       return result;
     }
@@ -460,7 +460,7 @@ class MessageServiceDiagnostics {
    * Auto-fix identified issues
    */
   async autoFixIssues() {
-    console.log('🔧 [MessageService Diagnostics] Starting auto-fix process...');
+    console.log('[MessageService Diagnostics] Starting auto-fix process...');
 
     const fixes = [];
 
@@ -516,7 +516,7 @@ class MessageServiceDiagnostics {
       });
     }
 
-    console.log('✅ [MessageService Diagnostics] Auto-fix completed:', fixes);
+    console.log('[MessageService Diagnostics] Auto-fix completed:', fixes);
     return fixes;
   }
 
@@ -524,7 +524,7 @@ class MessageServiceDiagnostics {
    * Display diagnostic results
    */
   displayResults(result) {
-    console.group('📨 UnifiedMessageService Diagnostics Results');
+    console.group('EVENT: UnifiedMessageService Diagnostics Results');
 
     console.log(`⏱️ Analysis Time: ${result.duration}ms`);
 
@@ -537,18 +537,18 @@ class MessageServiceDiagnostics {
         if (issue.details) console.log(`     Details:`, issue.details);
       });
     } else {
-      console.log('✅ No critical issues found');
+      console.log('No critical issues found');
     }
 
     if (result.recommendations.length > 0) {
-      console.log('\n💡 Recommendations:');
+      console.log('\nRecommendations:');
       result.recommendations.forEach((rec, idx) => {
         console.log(`  ${idx + 1}. [${rec.category}] ${rec.action} (${rec.priority})`);
       });
     }
 
     if (result.autoFixable.length > 0) {
-      console.log('\n🔧 Auto-fixable issues found:', result.autoFixable);
+      console.log('\nAuto-fixable issues found:', result.autoFixable);
       console.log('Run fixDMessageService() to attempt automatic repairs');
     }
 
@@ -562,7 +562,7 @@ class MessageServiceDiagnostics {
     if (this.isMonitoring) return;
 
     this.isMonitoring = true;
-    console.log('📡 [MessageService Diagnostics] Started real-time monitoring');
+    console.log('SUBSCRIPTION: [MessageService Diagnostics] Started real-time monitoring');
 
     // Monitor for errors
     const originalConsoleError = console.error;
@@ -582,7 +582,7 @@ class MessageServiceDiagnostics {
    */
   stopMonitoring() {
     this.isMonitoring = false;
-    console.log('📡 [MessageService Diagnostics] Stopped monitoring');
+    console.log('SUBSCRIPTION: [MessageService Diagnostics] Stopped monitoring');
   }
 
   /**

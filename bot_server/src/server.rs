@@ -16,7 +16,7 @@ use tracing::{info, error, warn, level_filters::LevelFilter};
 use tracing_subscriber::{Layer as _, fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt};
 
 // ================================
-// 🎯 API Data Structures - Matching Frontend Expectations
+// API Data Structures - Matching Frontend Expectations
 // ================================
 
 #[derive(Debug, Serialize)]
@@ -102,7 +102,7 @@ struct ErrorResponse {
 }
 
 // ================================
-// 🎯 Application State
+// Application State
 // ================================
 
 #[derive(Clone)]
@@ -128,7 +128,7 @@ impl AppState {
 }
 
 // ================================
-// 🎯 Translation API Handlers
+// Translation API Handlers
 // ================================
 
 /// GET /api/bot/languages - Get supported languages
@@ -242,7 +242,7 @@ async fn translate_message(
         Ok((translation, source_lang, confidence)) => {
             let processing_time = start_time.elapsed().as_millis() as u64;
             
-            info!("✅ Translation completed in {}ms", processing_time);
+            info!("Translation completed in {}ms", processing_time);
             
             Ok(ResponseJson(TranslateResponse {
                 success: true,
@@ -259,7 +259,7 @@ async fn translate_message(
             }))
         }
         Err(e) => {
-            error!("❌ Translation failed: {}", e);
+            error!("ERROR: Translation failed: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ResponseJson(ErrorResponse {
@@ -413,7 +413,7 @@ async fn get_bot_status(State(state): State<AppState>) -> ResponseJson<BotStatus
 }
 
 // ================================
-// 🎯 Main Application
+// Main Application
 // ================================
 
 #[tokio::main]
@@ -424,21 +424,21 @@ async fn main() -> Result<()> {
 
     // Initialize observability (metrics)
     if let Err(e) = bot_server::observability::init_observability().await {
-        eprintln!("❌ Failed to initialize observability: {}", e);
+        eprintln!("ERROR: Failed to initialize observability: {}", e);
         eprintln!("   Continuing without Prometheus metrics");
     } else {
-        info!("📊 Prometheus metrics available at: http://0.0.0.0:9092/metrics");
+        info!("Prometheus metrics available at: http://0.0.0.0:9092/metrics");
     }
 
     // Load configuration
     let config = match AppConfig::load() {
         Ok(config) => {
-            info!("✅ {}", config.get_summary());
+            info!("{}", config.get_summary());
             config
         }
         Err(e) => {
-            eprintln!("❌ Failed to load bot_server configuration: {}", e);
-            eprintln!("\n💡 Quick fix suggestions:");
+            eprintln!("ERROR: Failed to load bot_server configuration: {}", e);
+            eprintln!("\nQuick fix suggestions:");
             eprintln!("   1. Copy bot.yml.example to bot.yml");
             eprintln!("   2. Set BOT_CONFIG=/path/to/your/config.yml");
             eprintln!("   3. Set OPENAI_API_KEY environment variable");
@@ -459,7 +459,7 @@ async fn main() -> Result<()> {
 
     // Create NATS client for background processing
     let nats_client = if config.messaging.enabled {
-        info!("🚀 Connecting to NATS: {}", config.messaging.nats.url);
+        info!("Connecting to NATS: {}", config.messaging.nats.url);
         
         match async_nats::ConnectOptions::new()
             .connection_timeout(std::time::Duration::from_secs(10))
@@ -472,17 +472,17 @@ async fn main() -> Result<()> {
             .await
         {
             Ok(client) => {
-                info!("✅ Connected to NATS: {}", config.messaging.nats.url);
+                info!("Connected to NATS: {}", config.messaging.nats.url);
                 Some(Arc::new(client))
             }
             Err(e) => {
-                error!("❌ Failed to connect to NATS: {}", e);
-                warn!("⚠️ Bot server will continue without NATS functionality");
+                error!("ERROR: Failed to connect to NATS: {}", e);
+                warn!("WARNING: Bot server will continue without NATS functionality");
                 None
             }
         }
     } else {
-        info!("⚠️ NATS messaging disabled in configuration");
+        info!("WARNING: NATS messaging disabled in configuration");
         None
     };
 
@@ -526,7 +526,7 @@ async fn main() -> Result<()> {
     let addr = "0.0.0.0:6686";
     let listener = TcpListener::bind(addr).await?;
     
-    info!("🚀 Bot server started on http://{}", addr);
+    info!("Bot server started on http://{}", addr);
     info!("📋 Available REST API endpoints:");
     info!("   GET  /api/bot/languages        - Get supported languages");
     info!("   POST /api/bot/translate        - Translate message");
@@ -543,7 +543,7 @@ async fn main() -> Result<()> {
 }
 
 // ================================
-// 🎯 Health Check Handlers
+// Health Check Handlers
 // ================================
 
 /// Health check handler - reuse existing health check logic

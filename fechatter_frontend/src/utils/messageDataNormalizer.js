@@ -270,7 +270,7 @@ export function compareMessageStructures(msg1, msg2) {
 //     normalizeSender
 //   };
 
-//   console.log('🔧 Message Data Normalizer loaded. Available commands:');
+//   console.log('Message Data Normalizer loaded. Available commands:');
 //   console.log('   window.messageNormalizer.normalizeMessage(data)');
 //   console.log('   window.messageNormalizer.normalizeSearchResults(response)');
 //   console.log('   window.messageNormalizer.validateMessageData(msg)');

@@ -6,7 +6,7 @@
         <p>Sign in to continue to Fechatter</p>
       </div>
 
-      <!-- 🎯 简化的登录表单 -->
+      <!-- 简化的登录表单 -->
       <form @submit.prevent="handleLogin" class="login-form">
         <div class="form-group">
           <label for="email">Email</label>
@@ -20,12 +20,12 @@
             @keydown.enter="handleLogin" class="form-input" placeholder="Enter your password" />
         </div>
 
-        <!-- 🎯 简化的错误显示 -->
+        <!-- 简化的错误显示 -->
         <div v-if="authStore.error" class="error-message">
           {{ authStore.error }}
         </div>
 
-        <!-- 🚀 乐观的登录按钮 -->
+        <!-- 乐观的登录按钮 -->
         <button type="submit" :disabled="!canSubmit" class="login-button" :class="{ loading: authStore.isLoading }">
           <span v-if="!authStore.isLoading">Sign In</span>
           <span v-else class="loading-content">
@@ -39,7 +39,7 @@
         </button>
       </form>
 
-      <!-- 🔍 开发模式的状态指示器 -->
+      <!-- 开发模式的状态指示器 -->
       <div v-if="showDebugInfo" class="debug-info">
         <div class="debug-title">Auth State</div>
         <div class="debug-content">
@@ -57,15 +57,15 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useSimplifiedAuthStore } from '@/stores/authSimplified';
 
-// 🎯 组合式API设置
+// 组合式API设置
 const router = useRouter();
 const authStore = useSimplifiedAuthStore();
 
-// 🎯 响应式数据
+// 响应式数据
 const email = ref('');
 const password = ref('');
 
-// 🎯 计算属性 (简化逻辑)
+// 计算属性 (简化逻辑)
 const canSubmit = computed(() => {
   return email.value.trim() &&
     password.value.trim() &&
@@ -77,15 +77,15 @@ const showDebugInfo = computed(() => {
   return import.meta.env.DEV;
 });
 
-// 🚀 简化的登录逻辑 (乐观更新)
+// 简化的登录逻辑 (乐观更新)
 const handleLogin = async () => {
   if (!canSubmit.value) return;
 
   try {
-    // 🎯 直接调用登录，不需要复杂的验证
+    // 直接调用登录，不需要复杂的验证
     await authStore.login(email.value.trim(), password.value);
 
-    // 🚀 乐观导航 - 相信认证状态已正确设置
+    // 乐观导航 - 相信认证状态已正确设置
     router.push('/home');
 
   } catch (error) {
@@ -94,7 +94,7 @@ const handleLogin = async () => {
   }
 };
 
-// 🎯 组件初始化
+// 组件初始化
 onMounted(async () => {
   // 🔄 如果已经认证，直接跳转
   if (authStore.isAuthenticated) {
@@ -112,7 +112,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* 🎨 简化的样式设计 */
+/* 简化的样式设计 */
 .login-simplified {
   min-height: 100vh;
   display: flex;
@@ -247,7 +247,7 @@ onMounted(async () => {
   }
 }
 
-/* 🔍 开发模式调试信息 */
+/* 开发模式调试信息 */
 .debug-info {
   margin-top: 1.5rem;
   padding: 1rem;
@@ -270,7 +270,7 @@ onMounted(async () => {
   line-height: 1.4;
 }
 
-/* 🎯 响应式设计 */
+/* 响应式设计 */
 @media (max-width: 480px) {
   .login-container {
     padding: 1.5rem;
@@ -282,7 +282,7 @@ onMounted(async () => {
   }
 }
 
-/* 🎯 可访问性优化 */
+/* 可访问性优化 */
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;

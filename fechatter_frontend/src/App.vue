@@ -124,13 +124,13 @@ const initializeAuthState = async () => {
     const isInitialized = await authStore.initialize();
 
     if (isInitialized) {
-      // console.log('✅ [APP] Authentication initialized successfully');
+      // console.log('[APP] Authentication initialized successfully');
     } else {
-      // console.log('ℹ️ [APP] No valid authentication found - user will need to login');
+      // console.log('INFO: [APP] No valid authentication found - user will need to login');
     }
 
   } catch (error) {
-    console.error('❌ [APP] Error during auth initialization:', error);
+    console.error('ERROR: [APP] Error during auth initialization:', error);
     hasGlobalError.value = true;
     globalError.value = error.message || 'Authentication initialization failed';
 
@@ -139,7 +139,7 @@ const initializeAuthState = async () => {
       authStore.clearAuth();
       // console.log('🧹 [APP] Cleared corrupted auth state');
     } catch (clearError) {
-      console.error('❌ [APP] Failed to clear auth state:', clearError);
+      console.error('ERROR: [APP] Failed to clear auth state:', clearError);
     }
   } finally {
     isAuthLoading.value = false;
@@ -167,44 +167,44 @@ onUnmounted(() => {
 </script>
 
 <style>
-/* 引入Discord主题系统 */
+/* Import Discord theme system */
 @import './styles/theme.css';
 
-/* 引入Channel List设计系统变量 */
+/* Import Channel List design system variables */
 @import './styles/channel-list-variables.css';
 
-/* 引入增强的代码高亮样式 */
+/* Import enhanced code highlighting styles */
 @import './styles/enhanced-code-highlight.css';
 
-/* 引入自定义CSS */
+/* Import custom CSS */
 @import './style.css';
 
-/* 🎨 应用级别样式重置 */
+/* Application-level style reset */
 #app {
-  height: 100vh;              /* ✅ 恢复固定视口高度 */
+  height: 100vh;              /* Fixed viewport height */
   width: 100vw;
-  overflow: hidden;           /* ✅ 控制总体溢出 */
-  position: fixed;            /* ✅ 固定定位，防止滚动问题 */
+  overflow: hidden;           /* Control overall overflow */
+  position: fixed;            /* Fixed positioning to prevent scroll issues */
   top: 0;
   left: 0;
-  /* 确保应用使用主题系统 */
+  /* Ensure app uses theme system */
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  /* 使用Discord字体 */
+  /* Use Discord fonts */
   font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 16px;
   line-height: 1.375;
-  /* 启用硬件加速 */
+  /* Enable hardware acceleration */
   transform: translateZ(0);
   backface-visibility: hidden;
-  /* 防止用户选择 */
+  /* Prevent user selection */
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
-  /* 阻止页面级滚动 */
+  /* Prevent page-level scrolling */
   overscroll-behavior: none;
 }
 
-/* 🎯 全局滚动条样式 */
+/* Global scrollbar styles */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
@@ -235,7 +235,7 @@ onUnmounted(() => {
   background: var(--scrollbar-track);
 }
 
-/* 🎯 全局选择样式 */
+/* Global selection styles */
 ::selection {
   background: rgba(88, 101, 242, 0.2);
   color: var(--text-primary);
@@ -246,7 +246,7 @@ onUnmounted(() => {
   color: var(--text-primary);
 }
 
-/* 🎯 全局焦点样式 */
+/* Global focus styles */
 *:focus {
   outline: 2px solid var(--border-focus);
   outline-offset: 2px;
@@ -256,14 +256,14 @@ onUnmounted(() => {
   outline: none;
 }
 
-/* 🎯 图片优化 */
+/* Image optimization */
 img {
   max-width: 100%;
   height: auto;
   border-radius: 4px;
 }
 
-/* 🎯 按钮重置 */
+/* Button reset */
 button {
   font-family: inherit;
   font-size: inherit;
@@ -271,7 +271,7 @@ button {
   letter-spacing: inherit;
 }
 
-/* 🎯 链接样式 */
+/* Link styles */
 a {
   color: var(--text-link);
   text-decoration: none;
@@ -281,7 +281,7 @@ a:hover {
   text-decoration: underline;
 }
 
-/* 🎯 表单元素优化 */
+/* Form element optimization */
 input,
 textarea,
 select {
@@ -301,20 +301,20 @@ select:focus {
   box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.2);
 }
 
-/* 🎯 代码元素 */
+/* Code elements */
 code,
 pre {
   font-family: "Consolas", "Andale Mono WT", "Andale Mono", "Lucida Console", "Lucida Sans Typewriter", "DejaVu Sans Mono", "Bitstream Vera Sans Mono", "Liberation Mono", "Nimbus Mono L", "Monaco", "Courier New", Courier, monospace;
 }
 
-/* 🎯 移动端优化 */
+/* Mobile optimization */
 @media (max-width: 768px) {
   #app {
     font-size: 14px;
   }
 }
 
-/* 🎯 打印优化 */
+/* Print optimization */
 @media print {
   #app {
     background: white !important;
@@ -330,14 +330,14 @@ pre {
   }
 }
 
-/* 🎯 高对比度模式 */
+/* High contrast mode */
 @media (prefers-contrast: high) {
   #app {
     border: 1px solid var(--border-primary);
   }
 }
 
-/* 🎯 减少动画模式 */
+/* Reduced motion mode */
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;

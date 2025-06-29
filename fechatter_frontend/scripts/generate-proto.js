@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
 
 async function generateProtobufTypes() {
   try {
-    console.log('🔧 Generating protobuf TypeScript definitions...');
+    console.log('Generating protobuf TypeScript definitions...');
 
     // Load the proto file
     const protoPath = path.join(__dirname, '../src/protos/analytics.proto');
@@ -230,11 +230,11 @@ export function decodeBatchRequest(buffer: Uint8Array): IBatchRecordEventsReques
     // Write the generated code
     fs.writeFileSync(outputPath, code);
 
-    console.log('✅ Successfully generated protobuf TypeScript definitions');
+    console.log('Successfully generated protobuf TypeScript definitions');
     console.log(`📁 Output: ${outputPath}`);
 
   } catch (error) {
-    console.error('❌ Error generating protobuf types:', error);
+    console.error('ERROR: Error generating protobuf types:', error);
     process.exit(1);
   }
 }

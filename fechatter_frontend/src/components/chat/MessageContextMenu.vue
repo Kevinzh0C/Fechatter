@@ -91,7 +91,7 @@ const props = defineProps({
 
 const emit = defineEmits(['reply', 'edit', 'delete', 'forward', 'copy', 'select', 'close']);
 
-// 🔧 修复：动态计算菜单样式和z-index
+// 修复：动态计算菜单样式和z-index
 const getMenuStyle = () => {
   const baseZ = 8000; // 提高基础层级
   const debugPanelZ = 15000; // Debug面板层级

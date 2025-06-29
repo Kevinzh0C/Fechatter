@@ -1,5 +1,5 @@
 /**
- * 🔍 Authentication Flow Diagnostics Tool
+ * Authentication Flow Diagnostics Tool
  * Comprehensive testing and debugging for auth flow fixes
  */
 
@@ -10,7 +10,7 @@ export class AuthFlowDiagnostics {
   }
 
   async runCompleteAuthFlowTest() {
-    console.group('🔍 Authentication Flow Diagnostics');
+    console.group('Authentication Flow Diagnostics');
 
     const tests = [
       this.testAuthStoreState,
@@ -302,7 +302,7 @@ export class AuthFlowDiagnostics {
     });
 
     const statusIcon = {
-      'PASS': '✅',
+      'PASS': '',
       'FAIL': '❌',
       'ERROR': '🚨',
       'SKIP': '⏭️'
@@ -336,7 +336,7 @@ export class AuthFlowDiagnostics {
     const summary = this.generateSummary();
     const totalTime = Date.now() - this.startTime;
 
-    console.log('\n📊 Authentication Flow Diagnostics Summary:');
+    console.log('\nAuthentication Flow Diagnostics Summary:');
     console.log(`   Overall Status: ${summary.overallStatus}`);
     console.log(`   Success Rate: ${summary.successRate}`);
     console.log(`   Tests: ${summary.passed} passed, ${summary.failed} failed, ${summary.errors} errors, ${summary.skipped} skipped`);
@@ -345,7 +345,7 @@ export class AuthFlowDiagnostics {
     if (summary.overallStatus === 'HEALTHY') {
       console.log('🎉 All authentication flow components are working correctly!');
     } else {
-      console.log('⚠️ Issues detected in authentication flow. Check individual test results.');
+      console.log('WARNING: Issues detected in authentication flow. Check individual test results.');
     }
   }
 }

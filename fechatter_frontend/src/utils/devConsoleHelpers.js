@@ -88,7 +88,7 @@ class DevConsoleHelpers {
   debugPerformance() {
     console.clear();
     this.logManager.setLevel(this.logManager.logLevels.WARN);
-    console.log('⚡ Performance mode: Warnings and errors only');
+    console.log('Performance mode: Warnings and errors only');
     return this;
   }
 
@@ -97,7 +97,7 @@ class DevConsoleHelpers {
    */
   status() {
     const stats = this.logManager.getStats();
-    console.group('📊 Current Logging Status');
+    console.group('Current Logging Status');
     console.log('Log Level:', stats.currentLevel);
     console.log('Suppressed Categories:', stats.suppressedCategories);
     console.log('Batched Logs Count:', stats.batchedLogsCount);
@@ -121,7 +121,7 @@ class DevConsoleHelpers {
    * Show help
    */
   help() {
-    console.group('💡 Dev Console Helper Commands');
+    console.group('Dev Console Helper Commands');
     console.log('Quick Presets:');
     console.log('  devHelpers.quiet()        - Only show errors');
     console.log('  devHelpers.normal()       - Show info and above');
@@ -155,6 +155,6 @@ if (import.meta.env.DEV) {
 
   // Auto-show help on first load
   setTimeout(() => {
-    console.log('💡 Use devHelpers.help() to see available console commands for managing logs');
+    console.log('Use devHelpers.help() to see available console commands for managing logs');
   }, 1000);
 } 

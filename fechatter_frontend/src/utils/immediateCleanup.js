@@ -42,14 +42,14 @@ function immediateCleanup() {
 
         // Channel analysis noise
         /📋 ChannelsList Analysis/,
-        /📡 API Response Analysis/,
-        /🔍 Duplicate Detection/,
+        /SUBSCRIPTION: API Response Analysis/,
+        /Duplicate Detection/,
         /🏠 Home\.vue Computed Properties/,
-        /📊 Data Flow Trace/,
+        /Data Flow Trace/,
 
         // Test noise
         /🧪 Test Manager Initialization/,
-        /🔍 Extension Pattern Test/,
+        /Extension Pattern Test/,
         /🧪 Extension Conflict Fix Test/
       ];
 
@@ -58,22 +58,22 @@ function immediateCleanup() {
       });
 
       if (import.meta.env.DEV) {
-        console.log('✅ All noise patterns suppressed');
+        console.log('All noise patterns suppressed');
       }
 
     // 3. Show clean status
     if (import.meta.env.DEV) {
-      console.log('📊 Console Status: CLEAN');
+      console.log('Console Status: CLEAN');
     if (import.meta.env.DEV) {
-      console.log('💡 Use window.quickFix() for comprehensive repair');
+      console.log('Use window.quickFix() for comprehensive repair');
     if (import.meta.env.DEV) {
-      console.log('💡 Use window.logStats() to see suppression statistics');
+      console.log('Use window.logStats() to see suppression statistics');
     }
 
     return true;
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('❌ Immediate cleanup failed:', error);
+      console.error('ERROR: Immediate cleanup failed:', error);
     return false;
   }
 

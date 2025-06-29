@@ -1,5 +1,5 @@
 /**
- * 🔍 Production Search Service - Advanced Multi-Strategy Backend Integration
+ * Production Search Service - Advanced Multi-Strategy Backend Integration
  * 
  * Implements multiple search strategies with backend API support,
  * fallback mechanisms, and performance optimization
@@ -76,12 +76,12 @@ class AdvancedSearchService {
     };
 
     if (import.meta.env.DEV) {
-      console.log('🔍 AdvancedSearchService initialized');
+      console.log('AdvancedSearchService initialized');
     }
   }
 
   /**
-   * 🚀 Advanced Multi-Strategy Search
+   * Advanced Multi-Strategy Search
    * Automatically selects best strategy based on query analysis
    */
   async intelligentSearch(params) {
@@ -108,7 +108,7 @@ class AdvancedSearchService {
 
     for (const strategy of selectedStrategies) {
       try {
-        console.log(`🎯 [AdvancedSearch] Trying strategy: ${strategy}`);
+        console.log(`[AdvancedSearch] Trying strategy: ${strategy}`);
 
         const result = await this.executeSearchStrategy(strategy, {
           query,
@@ -131,7 +131,7 @@ class AdvancedSearchService {
 
         strategiesUsed.push(strategy);
       } catch (error) {
-        console.warn(`⚠️ Strategy ${strategy} failed:`, error.message);
+        console.warn(`WARNING: Strategy ${strategy} failed:`, error.message);
         // Continue with next strategy
       }
     }
@@ -180,7 +180,7 @@ class AdvancedSearchService {
   }
 
   /**
-   * 🎯 Strategy Selection Algorithm
+   * Strategy Selection Algorithm
    */
   selectOptimalStrategies(analysis) {
     const strategies = [];
@@ -218,7 +218,7 @@ class AdvancedSearchService {
   }
 
   /**
-   * 🔧 Execute Specific Search Strategy
+   * Execute Specific Search Strategy
    */
   async executeSearchStrategy(strategy, params) {
     const { query, chatId, filters, limit, offset, queryAnalysis } = params;
@@ -242,7 +242,7 @@ class AdvancedSearchService {
     }
 
     try {
-      // 🔧 FIX: Backend expects parameters in query string for both GET and POST
+      // FIX: Backend expects parameters in query string for both GET and POST
       let response;
 
       if (searchParams.strategy || Object.keys(searchParams).length > 3) {
@@ -266,9 +266,9 @@ class AdvancedSearchService {
     } catch (error) {
       // Enhanced error handling for different backend scenarios
       if (error.response?.status === 404) {
-        console.warn(`⚠️ Strategy ${strategy} not implemented in backend`);
+        console.warn(`WARNING: Strategy ${strategy} not implemented in backend`);
       } else if (error.response?.status === 500) {
-        console.warn(`⚠️ Strategy ${strategy} backend error: ${error.response.data?.error || error.message}`);
+        console.warn(`WARNING: Strategy ${strategy} backend error: ${error.response.data?.error || error.message}`);
       }
 
       throw error;
@@ -279,7 +279,7 @@ class AdvancedSearchService {
    * 🔗 Get Search Endpoint for Strategy - FIXED to match backend routes
    */
   getSearchEndpoint(strategy, chatId = null) {
-    // 🔧 FIX: Use actual backend routes from lib.rs
+    // FIX: Use actual backend routes from lib.rs
     // Backend provides: /chat/{id}/messages/search and /search/messages
 
     if (chatId) {
@@ -292,14 +292,14 @@ class AdvancedSearchService {
   }
 
   /**
-   * 🛠️ Build Search Parameters for Strategy - UPDATED for unified backend endpoint
+   * Build Search Parameters for Strategy - UPDATED for unified backend endpoint
    */
   buildSearchParams(strategy, { query, filters, limit, offset, queryAnalysis }) {
     const baseParams = {
       q: query,
       limit,
       offset,
-      strategy: strategy, // 🔧 FIX: Pass strategy to backend
+      strategy: strategy, // FIX: Pass strategy to backend
       highlight: true
     };
 
@@ -431,7 +431,7 @@ class AdvancedSearchService {
             console.log(`📋 Chat store global: ${messages.length} messages`);
           }
         } catch (storeError) {
-          console.warn('❌ Chat store access failed:', storeError);
+          console.warn('ERROR: Chat store access failed:', storeError);
         }
       }
 
@@ -457,14 +457,14 @@ class AdvancedSearchService {
             }
           }
         } catch (importError) {
-          console.warn('❌ Failed to import UnifiedMessageService:', importError);
+          console.warn('ERROR: Failed to import UnifiedMessageService:', importError);
         }
       }
 
-      console.log(`🔍 Total messages available for search: ${messages.length}`);
+      console.log(`Total messages available for search: ${messages.length}`);
 
       if (messages.length === 0) {
-        console.log('💡 No messages found in any source');
+        console.log('No messages found in any source');
         return {
           hits: [],
           total: 0,
@@ -537,7 +537,7 @@ class AdvancedSearchService {
         strategy_used: 'fallback_local'
       }));
 
-      console.log(`✅ Fallback search completed: ${hits.length} results out of ${total} matches`);
+      console.log(`Fallback search completed: ${hits.length} results out of ${total} matches`);
 
       return {
         hits,
@@ -550,7 +550,7 @@ class AdvancedSearchService {
       };
 
     } catch (error) {
-      console.error('❌ Fallback search failed:', error);
+      console.error('ERROR: Fallback search failed:', error);
       return {
         hits: [],
         total: 0,
@@ -603,7 +603,7 @@ class AdvancedSearchService {
   }
 
   /**
-   * 🎨 Enhanced Search Term Highlighting
+   * Enhanced Search Term Highlighting
    */
   highlightSearchTerm(content, query) {
     if (!content || !query) return content;
@@ -625,7 +625,7 @@ class AdvancedSearchService {
   }
 
   /**
-   * 📊 Update Performance Metrics
+   * Update Performance Metrics
    */
   updateMetrics(responseTime, strategies, resultCount) {
     this.metrics.searchCount++;
@@ -678,7 +678,7 @@ class AdvancedSearchService {
   }
 
   /**
-   * 🔍 Execute search in chat with BACKEND-FIRST strategy
+   * Execute search in chat with BACKEND-FIRST strategy
    * Always search from database, not frontend cache
    */
   async searchInChat(params) {
@@ -686,16 +686,16 @@ class AdvancedSearchService {
     const startTime = Date.now()
 
     if (import.meta.env.DEV) {
-      console.log(`🔍 [SearchService] Starting BACKEND-FIRST search in chat ${chatId} for: "${query}"`)
+      console.log(`[SearchService] Starting BACKEND-FIRST search in chat ${chatId} for: "${query}"`)
     }
 
-    // 🎯 CRITICAL FIX: Always try backend API first, never fallback to frontend cache
+    // CRITICAL FIX: Always try backend API first, never fallback to frontend cache
     try {
       // Strategy 1: Try ChatService backend API
       const ChatService = (await import('@/services/ChatService')).default
 
       if (import.meta.env.DEV) {
-        console.log(`🎯 [SearchService] Attempting backend API search via ChatService`)
+        console.log(`[SearchService] Attempting backend API search via ChatService`)
       }
 
       const backendResults = await ChatService.searchMessages(chatId, query, {
@@ -705,7 +705,7 @@ class AdvancedSearchService {
       })
 
       if (import.meta.env.DEV) {
-        console.log(`✅ [SearchService] Backend search successful: ${backendResults.hits.length} results`)
+        console.log(`[SearchService] Backend search successful: ${backendResults.hits.length} results`)
       }
 
       return {
@@ -730,13 +730,13 @@ class AdvancedSearchService {
 
     } catch (backendError) {
       if (import.meta.env.DEV) {
-        console.warn(`⚠️ [SearchService] Backend API failed: ${backendError.message}`)
+        console.warn(`WARNING: [SearchService] Backend API failed: ${backendError.message}`)
       }
 
       // Strategy 2: Try direct API call
       try {
         if (import.meta.env.DEV) {
-          console.log(`🎯 [SearchService] Attempting direct API call`)
+          console.log(`[SearchService] Attempting direct API call`)
         }
 
         const response = await api.get(`/chat/${chatId}/messages/search`, {
@@ -751,7 +751,7 @@ class AdvancedSearchService {
         const apiData = response.data?.data || response.data || {}
 
         if (import.meta.env.DEV) {
-          console.log(`✅ [SearchService] Direct API search successful: ${apiData.hits?.length || 0} results`)
+          console.log(`[SearchService] Direct API search successful: ${apiData.hits?.length || 0} results`)
         }
 
         return {
@@ -776,9 +776,9 @@ class AdvancedSearchService {
 
       } catch (directApiError) {
         if (import.meta.env.DEV) {
-          console.error(`❌ [SearchService] Direct API also failed: ${directApiError.message}`)
-          console.error(`❌ [SearchService] CRITICAL: Backend search completely unavailable!`)
-          console.error(`❌ [SearchService] This indicates a serious backend connectivity issue`)
+          console.error(`ERROR: [SearchService] Direct API also failed: ${directApiError.message}`)
+          console.error(`ERROR: [SearchService] CRITICAL: Backend search completely unavailable!`)
+          console.error(`ERROR: [SearchService] This indicates a serious backend connectivity issue`)
         }
 
         // 🚨 CRITICAL ERROR: Backend search completely unavailable
@@ -821,7 +821,7 @@ class AdvancedSearchService {
       const apiData = response.data?.data || response.data || {}
 
       if (import.meta.env.DEV) {
-        console.log(`✅ [SearchService] Global search successful: ${apiData.hits?.length || 0} results`)
+        console.log(`[SearchService] Global search successful: ${apiData.hits?.length || 0} results`)
       }
 
       return {
@@ -846,7 +846,7 @@ class AdvancedSearchService {
 
     } catch (globalError) {
       if (import.meta.env.DEV) {
-        console.error(`❌ [SearchService] Global search failed: ${globalError.message}`)
+        console.error(`ERROR: [SearchService] Global search failed: ${globalError.message}`)
       }
 
       // 🚨 CRITICAL: Global search unavailable

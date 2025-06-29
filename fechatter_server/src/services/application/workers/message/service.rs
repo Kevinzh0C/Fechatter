@@ -265,7 +265,7 @@ impl DualStreamDispatcher {
     // Non-persistent publish - prioritize low latency
     match client.publish(subject.clone(), payload.into()).await {
       Ok(_) => {
-        info!("⚡ Realtime event sent to notify-server: {}", subject);
+        info!("Realtime event sent to notify-server: {}", subject);
         Ok(())
       }
       Err(e) => {
@@ -309,18 +309,18 @@ impl EventPublisherTrait for AppStateEventPublisher {
     chat_members: Vec<i64>,
   ) -> Result<(), AppError> {
     info!(
-      "🔍 [DEBUG] AppStateEventPublisher::publish_message_created called for message_id={}",
+      "[DEBUG] AppStateEventPublisher::publish_message_created called for message_id={}",
       message.id
     );
     info!(
-      "🔍 [DEBUG] Publisher available: {}",
+      "[DEBUG] Publisher available: {}",
       self.publisher.is_some()
     );
-    info!("🔍 [DEBUG] Chat members count: {}", chat_members.len());
+    info!("[DEBUG] Chat members count: {}", chat_members.len());
 
     if let Some(publisher) = &self.publisher {
       info!(
-        "🔍 [DEBUG] Publisher type: {}",
+        "[DEBUG] Publisher type: {}",
         std::any::type_name_of_val(publisher.as_ref())
       );
 
@@ -331,8 +331,8 @@ impl EventPublisherTrait for AppStateEventPublisher {
         .map(|&id| fechatter_core::UserId(id))
         .collect();
 
-      info!("🔍 [DEBUG] About to call publish_message_event with MessageLifecycle::Created");
-      info!("🔍 [DEBUG] ChatId: {:?}, UserIds: {:?}", chat_id, user_ids);
+      info!("[DEBUG] About to call publish_message_event with MessageLifecycle::Created");
+      info!("[DEBUG] ChatId: {:?}, UserIds: {:?}", chat_id, user_ids);
 
       let result = publisher
         .publish_message_event(
@@ -342,10 +342,10 @@ impl EventPublisherTrait for AppStateEventPublisher {
         )
         .await;
 
-      info!("🔍 [DEBUG] publish_message_event result: {:?}", result);
+      info!("[DEBUG] publish_message_event result: {:?}", result);
       result
     } else {
-      warn!("🔍 [DEBUG] Event publisher not available, skipping message created event");
+      warn!("[DEBUG] Event publisher not available, skipping message created event");
       Ok(())
     }
   }
@@ -505,26 +505,26 @@ impl DualStreamMessageService {
       .await
       .map_err(AppError::from)?;
 
-    // 🎯 2. MISSING LINK: Publish message created event to NATS JetStream
-    info!("🔍 [DEBUG] About to spawn task for NATS JetStream event publishing");
+    // 2. MISSING LINK: Publish message created event to NATS JetStream
+    info!("[DEBUG] About to spawn task for NATS JetStream event publishing");
     let event_publisher = Arc::clone(&self.event_publisher);
     let jetstream_message = saved_message.clone();
     let jetstream_members = chat_members.clone();
     tokio::spawn(async move {
       info!(
-        "🔍 [DEBUG] Inside event publishing task, calling event_publisher.publish_message_created"
+        "[DEBUG] Inside event publishing task, calling event_publisher.publish_message_created"
       );
       if let Err(e) = event_publisher
         .publish_message_created(&jetstream_message, jetstream_members)
         .await
       {
         warn!(
-          "🔍 [DEBUG] Failed to publish message created event to NATS JetStream: {}",
+          "[DEBUG] Failed to publish message created event to NATS JetStream: {}",
           e
         );
       } else {
         info!(
-          "🔍 [DEBUG] ✅ Message created event published to NATS JetStream: message_id={}",
+          "[DEBUG] Message created event published to NATS JetStream: message_id={}",
           jetstream_message.id
         );
       }

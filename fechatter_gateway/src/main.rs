@@ -66,19 +66,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     process::exit(1);
   }));
 
-  info!("🚀 Starting Fechatter Gateway with auto-environment detection");
+  info!("Starting Fechatter Gateway with auto-environment detection");
 
   // Pre-flight checks
   if args.skip_health_checks {
-    warn!("⚠️  Health checks disabled - running in development mode");
+    warn!("WARNING: Health checks disabled - running in development mode");
   }
 
   if args.production_mode {
-    warn!("⚠️  Production mode enabled - using production HTTP proxy instead of Pingora");
+    warn!("WARNING: Production mode enabled - using production HTTP proxy instead of Pingora");
     return run_production_proxy().await.map_err(|e| e.into());
   }
 
-  // 🔥 macOS compatibility check - default to production mode
+  // macOS compatibility check - default to production mode
   #[cfg(target_os = "macos")]
   {
     warn!("🍎 macOS detected - Pingora has known compatibility issues on macOS");
@@ -93,9 +93,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let gateway = match create_gateway_with_fallback(&args).await {
     Ok(gw) => gw,
     Err(e) => {
-      error!("❌ Pingora gateway creation failed: {:?}", e);
+      error!("ERROR: Pingora gateway creation failed: {:?}", e);
       
-      // 🔥 Smart fallback strategy: don't just bypass, offer options
+      // Smart fallback strategy: don't just bypass, offer options
       warn!("🔄 Gateway creation failed, but this might be a known Pingora 0.5.0 issue");
       warn!("🔄 Options available:");
       warn!("   1. Retry with --production-mode for stable mode");
@@ -108,15 +108,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return match run_production_proxy().await {
           Ok(_) => Ok(()),
           Err(fallback_err) => {
-            error!("❌ Production proxy mode also failed: {:?}", fallback_err);
-            error!("❌ Please check:");
+            error!("ERROR: Production proxy mode also failed: {:?}", fallback_err);
+            error!("ERROR: Please check:");
             error!("   1. Port 8080 is not already in use");
             error!("   2. Sufficient permissions for binding");
             Err(fallback_err.into())
           }
         };
       } else {
-        error!("❌ Please check:");
+        error!("ERROR: Please check:");
         error!("   1. Configuration file exists and is valid");
         error!("   2. Backend services are accessible");
         error!("   3. Ports are not already in use");
@@ -129,10 +129,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Display startup information
   let status = gateway.get_status().await;
-  info!("🎯 Gateway Status:");
-  info!("  📡 Listen Address: {}", status.listen_addr);
+  info!("Gateway Status:");
+  info!("  SUBSCRIPTION: Listen Address: {}", status.listen_addr);
   info!("  🔗 Total Upstreams: {}", status.total_upstreams);
-  info!("  ✅ Healthy Upstreams: {}", status.healthy_upstreams);
+  info!("  Healthy Upstreams: {}", status.healthy_upstreams);
   info!(
     "  🚥 Health Status: {}",
     if status.healthy {
@@ -144,19 +144,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Warn about potential issues
   if status.healthy_upstreams == 0 {
-    warn!("⚠️  No healthy upstreams detected. Gateway will return 503 for all requests.");
-    warn!("⚠️  This is expected in development environments where backend services are not running.");
-    warn!("⚠️  Pingora will still start and be ready to serve requests once backends are available.");
+    warn!("WARNING: No healthy upstreams detected. Gateway will return 503 for all requests.");
+    warn!("WARNING: This is expected in development environments where backend services are not running.");
+    warn!("WARNING: Pingora will still start and be ready to serve requests once backends are available.");
   }
 
   // Run the gateway with enhanced error handling and monitoring
-  info!("🌟 Starting Pingora Gateway server...");
+  info!("Starting Pingora Gateway server...");
   
-  // 🔥 Pre-flight checks before startup
-  info!("🔍 Pre-flight checks:");
-  info!("  📡 Listen Address: {}", status.listen_addr);
+  // Pre-flight checks before startup
+  info!("Pre-flight checks:");
+  info!("  SUBSCRIPTION: Listen Address: {}", status.listen_addr);
   info!("  🔗 Total Upstreams: {}", status.total_upstreams);
-  info!("  ✅ Healthy Upstreams: {}", status.healthy_upstreams);
+  info!("  Healthy Upstreams: {}", status.healthy_upstreams);
   info!(
     "  🚥 Health Status: {}",
     if status.healthy {
@@ -168,12 +168,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Warn about potential issues but continue
   if status.healthy_upstreams == 0 {
-    warn!("⚠️  No healthy upstreams detected. Gateway will return 503 for all requests.");
-    warn!("⚠️  This is expected in development environments where backend services are not running.");
-    warn!("⚠️  Pingora will still start and be ready to serve requests once backends are available.");
+    warn!("WARNING: No healthy upstreams detected. Gateway will return 503 for all requests.");
+    warn!("WARNING: This is expected in development environments where backend services are not running.");
+    warn!("WARNING: Pingora will still start and be ready to serve requests once backends are available.");
   }
   
-  // 🔥 Pingora startup monitoring task
+  // Pingora startup monitoring task
   let gateway_health_monitor = tokio::spawn({
     let listen_addr = status.listen_addr.clone();
     async move {
@@ -182,15 +182,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       
       // Test basic connectivity
       for attempt in 1..=3 {
-        info!("🔍 Health check attempt #{}: Testing Pingora connectivity...", attempt);
+        info!("Health check attempt #{}: Testing Pingora connectivity...", attempt);
         
         match test_pingora_health(&listen_addr).await {
           Ok(_) => {
-            info!("✅ Pingora health check passed - gateway is responding normally");
+            info!("Pingora health check passed - gateway is responding normally");
             return;
           }
           Err(e) => {
-            warn!("⚠️  Health check attempt #{} failed: {}", attempt, e);
+            warn!("WARNING: Health check attempt #{} failed: {}", attempt, e);
             if attempt < 3 {
               tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             }
@@ -198,9 +198,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
       }
       
-      warn!("⚠️  Pingora health checks failed, but server may still be functional");
-      warn!("⚠️  This could be the known Pingora 0.5.0 transmission issue");
-      warn!("⚠️  Try manual testing: curl http://{}/health", listen_addr);
+      warn!("WARNING: Pingora health checks failed, but server may still be functional");
+      warn!("WARNING: This could be the known Pingora 0.5.0 transmission issue");
+      warn!("WARNING: Try manual testing: curl http://{}/health", listen_addr);
     }
   });
   
@@ -214,9 +214,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       
       // Every 5 minutes, log more detailed status
       if check_count % 10 == 0 {
-        info!("📊 Extended health check: Gateway has been running for {} minutes", check_count / 2);
-        info!("📊 If experiencing transmission errors, this is likely the known Pingora 0.5.0 issue");
-        info!("📊 Basic functionality should still work despite these warnings");
+        info!("Extended health check: Gateway has been running for {} minutes", check_count / 2);
+        info!("If experiencing transmission errors, this is likely the known Pingora 0.5.0 issue");
+        info!("Basic functionality should still work despite these warnings");
       }
     }
   });
@@ -232,13 +232,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     result = gateway.run() => {
       match result {
         Ok(_) => {
-          info!("✅ Pingora gateway shut down gracefully");
+          info!("Pingora gateway shut down gracefully");
           Ok(())
         }
         Err(e) => {
-          error!("❌ Pingora gateway error: {:?}", e);
+          error!("ERROR: Pingora gateway error: {:?}", e);
           
-          // 🔥 Analyze error type and provide suggestions
+          // Analyze error type and provide suggestions
           if e.to_string().contains("panic") || e.to_string().contains("internal") {
             error!("🚨 This appears to be the known Pingora 0.5.0 internal issue");
             error!("🚨 Recommendations:");
@@ -253,7 +253,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       }
     }
     _ = shutdown_handle => {
-      info!("✅ Graceful shutdown initiated by user");
+      info!("Graceful shutdown initiated by user");
       Ok(())
     }
   };
@@ -262,7 +262,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   monitor_handle.abort();
   gateway_health_monitor.abort();
   
-  // 🔥 Final status report
+  // Final status report
   match gateway_result {
     Ok(_) => {
       info!("🎉 Gateway session completed successfully");
@@ -271,11 +271,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Err(e) => {
       error!("💥 Gateway session ended with error: {:?}", e);
       error!("📋 Troubleshooting summary:");
-      error!("   ✅ Backend creation: FIXED (all {} upstreams created)", status.total_upstreams);
-      error!("   ✅ Configuration loading: WORKING");
-      error!("   ✅ Service startup: WORKING");
-      error!("   ⚠️  Pingora runtime: ISSUE (known 0.5.0 problem)");
-      error!("   💡 Solution: Use --production-mode or --debug for development");
+      error!("   Backend creation: FIXED (all {} upstreams created)", status.total_upstreams);
+      error!("   Configuration loading: WORKING");
+      error!("   Service startup: WORKING");
+      error!("   WARNING: Pingora runtime: ISSUE (known 0.5.0 problem)");
+      error!("   Solution: Use --production-mode or --debug for development");
       Err(e.into())
     }
   }
@@ -284,50 +284,50 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// Create gateway with multiple fallback strategies
 async fn create_gateway_with_fallback(args: &Args) -> Result<PingoraGateway> {
   // Strategy 1: Enhanced configuration loading with Docker container support
-  info!("🔍 Strategy 1: Enhanced configuration loading with Docker container support");
+  info!("Strategy 1: Enhanced configuration loading with Docker container support");
   match PingoraGateway::new_from_enhanced_config().await {
     Ok(gw) => {
-      info!("✅ Gateway created successfully with enhanced Docker-aware configuration loading");
+      info!("Gateway created successfully with enhanced Docker-aware configuration loading");
       return Ok(gw);
     }
     Err(e) => {
-      warn!("⚠️  Enhanced configuration loading failed: {}", e);
-      warn!("⚠️  This might be due to service address resolution issues or Pingora compatibility");
+      warn!("WARNING: Enhanced configuration loading failed: {}", e);
+      warn!("WARNING: This might be due to service address resolution issues or Pingora compatibility");
     }
   }
 
   // Strategy 2: Explicit config file
   if !args.config.is_empty() && args.config != "gateway.yml" {
-    info!("🔍 Strategy 2: Explicit config file: {}", args.config);
+    info!("Strategy 2: Explicit config file: {}", args.config);
     match PingoraGateway::new(&args.config).await {
       Ok(gw) => {
-        info!("✅ Gateway created with explicit config: {}", args.config);
+        info!("Gateway created with explicit config: {}", args.config);
         return Ok(gw);
       }
       Err(e) => {
-        warn!("⚠️  Explicit config failed: {}", e);
+        warn!("WARNING: Explicit config failed: {}", e);
       }
     }
   }
 
   // Strategy 3: Auto-detection fallback
-  info!("🔍 Strategy 3: Auto-detection fallback from current directory");
+  info!("Strategy 3: Auto-detection fallback from current directory");
   match PingoraGateway::new_auto().await {
     Ok(gw) => {
-      info!("✅ Gateway created successfully with auto-detection fallback");
+      info!("Gateway created successfully with auto-detection fallback");
       return Ok(gw);
     }
     Err(e) => {
-      warn!("⚠️  Auto-detection fallback failed: {}", e);
+      warn!("WARNING: Auto-detection fallback failed: {}", e);
     }
   }
 
   // Strategy 4: Production proxy fallback
-  warn!("🔍 Strategy 4: Pingora failed, switching to production proxy mode");
-  warn!("⚠️  This will provide stable service but without Pingora-specific optimizations");
+  warn!("Strategy 4: Pingora failed, switching to production proxy mode");
+  warn!("WARNING: This will provide stable service but without Pingora-specific optimizations");
   
   if let Err(e) = run_production_proxy().await {
-    error!("❌ Production proxy mode also failed: {}", e);
+    error!("ERROR: Production proxy mode also failed: {}", e);
     return Err(anyhow::anyhow!("All gateway creation strategies failed: Pingora incompatible, Production proxy failed: {}", e));
   }
   
@@ -357,7 +357,7 @@ async fn test_pingora_health(listen_addr: &str) -> Result<()> {
     Ok(response) => {
       if response.status().is_success() {
         let body = response.text().await.unwrap_or_default();
-        info!("✅ Pingora health check success: {} bytes received", body.len());
+        info!("Pingora health check success: {} bytes received", body.len());
         Ok(())
       } else {
         Err(anyhow::anyhow!("Health check returned status: {}", response.status()))
@@ -366,8 +366,8 @@ async fn test_pingora_health(listen_addr: &str) -> Result<()> {
     Err(e) => {
       // Check if this is a transmission error but basic functionality is OK
       if e.to_string().contains("incomplete") || e.to_string().contains("transfer") {
-        warn!("⚠️  Detected transmission issue (likely Pingora 0.5.0 known issue)");
-        warn!("⚠️  This usually means basic functionality works but has transfer problems");
+        warn!("WARNING: Detected transmission issue (likely Pingora 0.5.0 known issue)");
+        warn!("WARNING: This usually means basic functionality works but has transfer problems");
         Ok(()) // Not considered fatal
       } else {
         Err(anyhow::anyhow!("Health check network error: {}", e))
@@ -383,11 +383,11 @@ async fn run_production_proxy() -> Result<()> {
   // Load configuration using enhanced method
   let config = match fechatter_gateway::GatewayConfig::load() {
     Ok(cfg) => {
-      info!("✅ Production proxy configuration loaded successfully");
+      info!("Production proxy configuration loaded successfully");
       std::sync::Arc::new(cfg)
     }
     Err(e) => {
-      error!("❌ Failed to load configuration for production proxy: {}", e);
+      error!("ERROR: Failed to load configuration for production proxy: {}", e);
       return Err(anyhow::anyhow!("Configuration load failed: {}", e));
     }
   };
@@ -395,11 +395,11 @@ async fn run_production_proxy() -> Result<()> {
   // Create and run production proxy
   match ProductionProxy::new(config).await {
     Ok(proxy) => {
-      info!("✅ Production proxy created successfully");
+      info!("Production proxy created successfully");
       proxy.run().await
     }
     Err(e) => {
-      error!("❌ Failed to create production proxy: {}", e);
+      error!("ERROR: Failed to create production proxy: {}", e);
       Err(anyhow::anyhow!("Production proxy creation failed: {}", e))
     }
   }

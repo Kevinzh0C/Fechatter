@@ -74,7 +74,7 @@ pub async fn verify_chat_membership_middleware(
   // TODO: Re-enable proper membership check once service layer is fixed
   let user_id = i64::from(auth_user.id); // Fix type conversion
   
-  info!("🔍 [CHAT_MIDDLEWARE] SIMPLIFIED: Allowing access for user {} to chat {} (membership check disabled)", user_id, chat_id);
+  info!("[CHAT_MIDDLEWARE] SIMPLIFIED: Allowing access for user {} to chat {} (membership check disabled)", user_id, chat_id);
   
   let req = Request::from_parts(parts, body);
   next.run(req).await
@@ -83,12 +83,12 @@ pub async fn verify_chat_membership_middleware(
   /*
   match state.ensure_user_is_chat_member(chat_id, user_id).await {
     Ok(true) => {
-      info!("✅ User {} is member of chat {}, proceeding", user_id, chat_id);
+      info!("User {} is member of chat {}, proceeding", user_id, chat_id);
       let req = Request::from_parts(parts, body);
       next.run(req).await
     }
     Ok(false) => {
-      warn!("❌ Permission denied: User {} is not a member of chat {}", user_id, chat_id);
+      warn!("ERROR: Permission denied: User {} is not a member of chat {}", user_id, chat_id);
       AppError::PermissionDenied(format!(
         "User {} is not a member of chat {}",
         user_id, chat_id
