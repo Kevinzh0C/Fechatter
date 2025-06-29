@@ -7,7 +7,7 @@
     <strong>Efficient, enterprise-ready real-time chat platform powered by Rust</strong>
   </p>
 
-<p>
+  <p>
     <a href="README.md">🇺🇸 English</a> •
     <a href="README.zh-CN.md">🇨🇳 中文</a> •
     <a href="README.ja.md">🇯🇵 日本語</a>
@@ -50,14 +50,14 @@ Fechatter is a **modern, comprehensive chat platform** that combines the **effic
 
 ## 🎯 Features
 
-- 💬 **Real-time Messaging** - Send and receive messages instantly using Server-Sent Events (SSE)
-- 🤖 **AI Chat Bot** - Integrated ChatGPT-powered assistant for conversations
-- 🔍 **Message Search** - Full-text search capabilities powered by Meilisearch
-- 🏢 **Workspace Support** - Organize chats and users in separate workspaces
-- 📁 **File Sharing** - Upload and share files within conversations
-- 🔐 **JWT Authentication** - Secure token-based authentication system
-- 📊 **Analytics Integration** - Track usage metrics with ClickHouse and Apache Superset
-- 🏗️ **Microservices Architecture** - Modular design with separate services for different functions
+- **Real-time Messaging** - Send and receive messages instantly using Server-Sent Events (SSE)
+- **AI Chat Bot** - Integrated ChatGPT-powered assistant for conversations
+- **Message Search** - Full-text search capabilities powered by Meilisearch
+- **Workspace Support** - Organize chats and users in separate workspaces
+- **File Sharing** - Upload and share files within conversations
+- **JWT Authentication** - Secure token-based authentication system
+- **Analytics Integration** - Track usage metrics with ClickHouse and Apache Superset
+- **Microservices Architecture** - Modular design with separate services for different functions
 
 ## 🚀 Getting Started
 
