@@ -10,6 +10,9 @@ use utoipa::ToSchema;
 use fechatter_core::error::{ChatValidationError, CoreError, ErrorMapper};
 use thiserror::Error;
 
+use axum::extract::multipart::MultipartError;
+use validator::ValidationErrors;
+
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ErrorOutput {
   pub code: u16,
@@ -159,6 +162,12 @@ pub enum AppError {
 
   #[error("Not implemented: {0}")]
   NotImplemented(String),
+
+  #[error("Multipart request error: {0}")]
+  MultipartError(String),
+
+  #[error("File upload error: {0}")]
+  FileUploadError(String),
 }
 
 /// Error types for event transport operations - Centralized Error Management
@@ -318,6 +327,8 @@ impl IntoResponse for AppError {
       AppError::TooManyRequests(_) => StatusCode::TOO_MANY_REQUESTS,
       AppError::SecurityThreatDetected(_) => StatusCode::FORBIDDEN,
       AppError::NotImplemented(_) => StatusCode::NOT_IMPLEMENTED,
+      AppError::MultipartError(_) => StatusCode::BAD_REQUEST,
+      AppError::FileUploadError(_) => StatusCode::INTERNAL_SERVER_ERROR,
     };
 
     let code = status.as_u16();
@@ -633,4 +644,10 @@ pub fn membership_status_to_app_error(
   );
 
   app_error
+}
+
+impl From<MultipartError> for AppError {
+  fn from(err: MultipartError) -> Self {
+    AppError::MultipartError(err.to_string())
+  }
 }

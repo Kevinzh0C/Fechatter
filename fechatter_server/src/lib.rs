@@ -22,14 +22,15 @@ pub mod utils;
 // ============================================================================
 
 use axum::{
-  extract::{Extension, Request},
+  extract::{Request},
   middleware::Next,
   response::Response,
   routing::{get, post},
   Router,
 };
 use std::{fmt, ops::Deref, sync::Arc};
-use tracing::{debug, warn};
+use tracing::{debug, warn, info};
+use tower_http::services::ServeDir;
 
 // Import AuthUser and other necessary types
 use fechatter_core::models::AuthUser;
@@ -265,46 +266,11 @@ async fn route_debug_middleware(req: Request, next: Next) -> Response {
   response
 }
 
-/// 🎯 PURE EXTENSION ARCHITECTURE: Create the main application router
-///
+
 /// This implementation uses ONLY Extension-based middleware to avoid Axum 0.7.9 with_state() bugs
 /// All handlers use Extension<AppState> instead of State<AppState>
 /// Returns Router<()> for complete type unification
 pub async fn get_router(state: AppState) -> Result<Router, AppError> {
-  use crate::handlers::{
-    auth::{
-      logout_all_handler, logout_handler, refresh_token_handler, signin_handler, signup_handler,
-    },
-    cache_stats::{get_cache_config_handler, get_cache_stats_handler},
-    chat::{
-      create_chat_handler, delete_chat_handler, get_chat_handler, list_chats_handler,
-      update_chat_handler,
-    },
-    chat_members::{
-      add_chat_members_handler as add_chat_members_to_chat_handler, list_chat_members_handler,
-    },
-    files::{file_handler, fix_file_storage_handler, upload_handler, upload_single_file_handler},
-    health::{health_check, simple_health_check},
-    messages::{
-      get_all_unread_counts_handler, get_unread_count_handler, list_messages_handler, send_message_handler,
-      get_message_mentions_handler, get_unread_mentions_handler, get_detailed_message_receipts_handler,
-      mark_message_read_enhanced_handler,
-    },
-    realtime::{
-      get_message_receipts, get_typing_users, mark_message_read, start_typing, stop_typing,
-      update_presence,
-    },
-    search::{
-      get_search_suggestions, global_search_messages, reindex_chat_messages,
-      search_messages_in_chat, simple_search_messages_in_chat,
-    },
-    users::{
-      get_user_profile, get_user_profile_by_id, update_user_profile, update_user_profile_by_id,
-      change_password_handler, list_workspace_users_handler,
-    },
-  };
-
-  // Use the factory functions for guaranteed type unification
   use crate::middlewares::builder_old::builder::{
     create_extension_middleware_builder, create_stateless_router_with_routes,
   };
@@ -314,9 +280,9 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
   // ============================================================================
   let public_routes = create_stateless_router_with_routes(|router| {
     router
-      .route("/signup", post(signup_handler))
-      .route("/signin", post(signin_handler))
-      .route("/refresh", post(refresh_token_handler))
+      .route("/signup", post(handlers::auth::signup_handler))
+      .route("/signin", post(handlers::auth::signin_handler))
+      .route("/refresh", post(handlers::auth::refresh_token_handler))
   });
 
   let public_routes = create_extension_middleware_builder(public_routes, state.clone())
@@ -328,26 +294,27 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
   // ============================================================================
   let auth_routes = create_stateless_router_with_routes(|router| {
     router
-      .route("/logout", post(logout_handler))
-      .route("/logout-all", post(logout_all_handler))
-      .route("/cache/stats", get(get_cache_stats_handler))
-      .route("/cache/config", get(get_cache_config_handler))
+      .route("/logout", post(handlers::auth::logout_handler))
+      .route("/logout-all", post(handlers::auth::logout_all_handler))
+      .route("/cache/stats", get(handlers::cache_stats::get_cache_stats_handler))
+      .route("/cache/config", get(handlers::cache_stats::get_cache_config_handler))
       // File management routes
-      .route("/upload", post(upload_handler))
-      .route("/files/single", post(upload_single_file_handler))
-      .route("/files/{workspace_id}/{file_id}", get(file_handler))
-      .route("/workspaces/{workspace_id}/files/fix", post(fix_file_storage_handler))
+      .route("/files/single", post(handlers::files::upload_single_file_handler))
+      .route("/files/download/{file_id}", get(handlers::files::download_file_handler))
       // Global search routes
-      .route("/search/messages", post(global_search_messages))
-      .route("/search/suggestions", get(get_search_suggestions))
+      .route("/search/messages", post(handlers::search::global_search_messages))
       // Simplified chat search route (only requires auth, not chat membership)
-      .route("/search/chat/{chat_id}/messages", get(simple_search_messages_in_chat))
+      .route("/search/chat/{chat_id}/messages", get(handlers::search::simple_search_messages_in_chat))
       // Realtime presence routes (user-level)
-      .route("/realtime/presence", post(update_presence))
+      .route("/realtime/presence", post(handlers::realtime::update_presence))
       // Unread counts routes
-      .route("/unread-counts", get(get_all_unread_counts_handler))
+      .route("/unread-counts", get(handlers::messages::get_all_unread_counts_handler))
       // Mentions routes
-      .route("/mentions/unread", get(get_unread_mentions_handler))
+      .route("/mentions/unread", get(handlers::messages::get_unread_mentions_handler))
+      // Bot routes (require authentication and quota check)
+      .route("/bot/translate", post(handlers::bot::translate_message_handler))
+      .route("/bot/languages", get(handlers::bot::get_supported_languages_handler))
+      .route("/bot/detect-language", post(handlers::bot::detect_language_handler))
   });
 
   let auth_routes = create_extension_middleware_builder(auth_routes, state.clone())
@@ -362,16 +329,16 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
     router
       .route(
         "/workspace/chats",
-        get(list_chats_handler).post(create_chat_handler),
+        get(handlers::chat::list_chats_handler).post(handlers::chat::create_chat_handler),
       )
       // User routes
-      .route("/users", get(list_workspace_users_handler))
-      .route("/users/profile", get(get_user_profile).put(update_user_profile))
-      .route("/users/{user_id}/profile", get(get_user_profile_by_id).put(update_user_profile_by_id))
+      .route("/users", get(handlers::users::list_workspace_users_handler))
+      .route("/users/profile", get(handlers::users::get_user_profile).put(handlers::users::update_user_profile))
+      .route("/users/{user_id}/profile", get(handlers::users::get_user_profile_by_id).put(handlers::users::update_user_profile_by_id))
       // Presence status (alias for workspace users)
-      .route("/presence/status", get(list_workspace_users_handler))
+      .route("/presence/status", get(handlers::users::list_workspace_users_handler))
       // Password management
-      .route("/users/change-password", post(change_password_handler))
+      .route("/users/change-password", post(handlers::users::change_password_handler))
   });
 
   let workspace_routes = create_extension_middleware_builder(workspace_routes, state.clone())
@@ -387,40 +354,40 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
     router
       // Chat basic operations
       .route("/chat/{id}", 
-        get(get_chat_handler)
-          .patch(update_chat_handler)
-          .delete(delete_chat_handler)
+        get(handlers::chat::get_chat_handler)
+          .patch(handlers::chat::update_chat_handler)
+          .delete(handlers::chat::delete_chat_handler)
       )
       // Chat members operations
       .route("/chat/{id}/members", 
-        get(list_chat_members_handler)
-        .post(add_chat_members_to_chat_handler)
+        get(handlers::chat_members::list_chat_members_handler)
+        .post(handlers::chat_members::add_chat_members_handler)
       )
       // Chat messages operations
       .route("/chat/{id}/messages", 
-        get(list_messages_handler)
-        .post(send_message_handler)
+        get(handlers::messages::list_messages_handler)
+        .post(handlers::messages::send_message_handler)
       )
       // Chat search operations
       .route("/chat/{id}/messages/search", 
-        get(simple_search_messages_in_chat)
-        .post(search_messages_in_chat)
+        get(handlers::search::simple_search_messages_in_chat)
+        .post(handlers::search::search_messages_in_chat)
       )
       // Realtime operations (require chat membership)
-      .route("/chat/{id}/typing/start", post(start_typing))
-      .route("/chat/{id}/typing/stop", post(stop_typing))
-      .route("/chat/{id}/typing/users", get(get_typing_users))
-      .route("/chat/{id}/messages/{message_id}/read", post(mark_message_read))
-      .route("/messages/{message_id}/receipts", get(get_message_receipts))
+      .route("/chat/{id}/typing/start", post(handlers::realtime::start_typing))
+      .route("/chat/{id}/typing/stop", post(handlers::realtime::stop_typing))
+      .route("/chat/{id}/typing/users", get(handlers::realtime::get_typing_users))
+      .route("/chat/{id}/messages/{message_id}/read", post(handlers::realtime::mark_message_read))
+      .route("/messages/{message_id}/receipts", get(handlers::realtime::get_message_receipts))
       // Enhanced message operations
-      .route("/messages/{message_id}/mentions", get(get_message_mentions_handler))
-      .route("/messages/{message_id}/receipts/detailed", get(get_detailed_message_receipts_handler))
-      .route("/chat/{chat_id}/messages/{message_id}/read/enhanced", post(mark_message_read_enhanced_handler))
+      .route("/messages/{message_id}/mentions", get(handlers::messages::get_message_mentions_handler))
+      .route("/messages/{message_id}/receipts/detailed", get(handlers::messages::get_detailed_message_receipts_handler))
+      .route("/chat/{chat_id}/messages/{message_id}/read/enhanced", post(handlers::messages::mark_message_read_enhanced_handler))
       // Unread count for specific chat
-      .route("/chat/{id}/unread", get(get_unread_count_handler))
+      .route("/chat/{id}/unread", get(handlers::messages::get_unread_count_handler))
       // Admin operations
       .route("/admin/chat/{id}/reindex", 
-        post(reindex_chat_messages)
+        post(handlers::search::reindex_chat_messages)
       )
   });
 
@@ -435,8 +402,8 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
   // Health Routes (use State for simplicity - infrastructure level)
   // ============================================================================
   let health_routes = Router::new()
-    .route("/health", get(health_check))
-    .route("/health/readiness", get(simple_health_check))
+    .route("/health", get(handlers::health::health_check))
+    .route("/health/readiness", get(handlers::health::simple_health_check))
     .with_state(state.clone());
 
   // ============================================================================
@@ -448,10 +415,48 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
     .merge(workspace_routes)
     .merge(chat_routes);
 
+  // ============================================================================
+  // Static Files Service - Use config storage path
+  // ============================================================================
+  let storage_path = &state.config.storage.path;
+  let url_prefix = &state.config.storage.url_prefix;
+  
+  info!("🗂️ [STATIC_FILES] Configuring file service:");
+  info!("🗂️ [STATIC_FILES] - Storage path: {}", storage_path);
+  info!("🗂️ [STATIC_FILES] - URL prefix: {}", url_prefix);
+  
+  // Verify storage directory exists
+  if !std::path::Path::new(storage_path).exists() {
+    warn!("⚠️ [STATIC_FILES] Storage directory does not exist: {}", storage_path);
+    warn!("⚠️ [STATIC_FILES] Attempting to create directory...");
+    if let Err(e) = std::fs::create_dir_all(storage_path) {
+      return Err(AppError::ChatFileError(format!(
+        "Failed to create storage directory {}: {}", storage_path, e
+      )));
+    }
+    info!("✅ [STATIC_FILES] Created storage directory: {}", storage_path);
+  } else {
+    info!("✅ [STATIC_FILES] Storage directory exists: {}", storage_path);
+    
+    // Log directory contents for debugging
+    if let Ok(entries) = std::fs::read_dir(storage_path) {
+      let count = entries.count();
+      debug!("🗂️ [STATIC_FILES] Directory contains {} items", count);
+    }
+  }
+  
+  let files_service = ServeDir::new(storage_path)
+    .append_index_html_on_directories(false);
+
+  // Initialize symlinks for existing files
+  crate::handlers::files::initialize_file_symlinks(storage_path).await
+    .map_err(|e| AppError::ChatFileError(format!("Failed to initialize file symlinks: {}", e)))?;
+
   // Build final application - NO with_state() calls!
   let app = Router::new()
     .nest("/api", api_routes)
     .merge(health_routes)
+    .nest_service("/files", files_service)
     .layer(axum::middleware::from_fn(route_debug_middleware));
 
   Ok(app)

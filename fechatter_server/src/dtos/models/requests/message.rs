@@ -6,7 +6,11 @@ use validator::Validate;
 /// 发送消息请求
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct SendMessageRequest {
-  #[validate(length(max = 4000, message = "Message content cannot exceed 4000 characters"))]
+  #[validate(length(
+    min = 1,
+    max = 4000,
+    message = "Message content must be between 1 and 4000 characters"
+  ))]
   #[schema(example = "Hello, this is a test message!")]
   pub content: String,
 

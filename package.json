@@ -1,5 +1,13 @@
 {
+  "scripts": {
+    "dev": "./run-dev.sh",
+    "frontend": "cd fechatter_frontend && yarn dev",
+    "build": "cd fechatter_frontend && yarn build"
+  },
   "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "shiki": "^3.6.0",
     "vue-i18n": "^11.1.5"
   },
   "devDependencies": {

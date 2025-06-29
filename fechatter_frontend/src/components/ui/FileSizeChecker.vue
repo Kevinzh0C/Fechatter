@@ -160,9 +160,9 @@ const validateFile = (file) => {
   if (file.size > maxSize) {
     const fileSize = formatFileSize(file.size);
     const maxSizeFormatted = formatFileSize(maxSize);
-    errors.push(`File exceeds 2MB limit (${fileSize} > ${maxSizeFormatted})`);
+    errors.push(`File exceeds 100MB limit (${fileSize} > ${maxSizeFormatted})`);
   } else if (file.size > maxSize * 0.9) {
-    warnings.push('File is close to 2MB limit');
+    warnings.push('File is close to 100MB limit');
   }
 
   // Type check

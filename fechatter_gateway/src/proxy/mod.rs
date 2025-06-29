@@ -43,7 +43,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 use audit::{AuditEventType, GatewayAuditLogger};
 use cache::{CacheConfig, GatewayCache};
-use http::HeaderMap;
 use pingora_core::upstreams::peer::HttpPeer;
 use pingora_http::{RequestHeader, ResponseHeader};
 use pingora_proxy::{ProxyHttp, Session};

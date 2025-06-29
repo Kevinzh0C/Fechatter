@@ -3,8 +3,8 @@
 
 # Server configuration
 server:
-  port: 7788
-  db_url: "postgresql://fechatter_user:fechatter_pass@postgres:5432/fechatter_db"
+  port: 6687
+  db_url: "postgresql://fechatter:fechatter_password@postgres:5432/fechatter"
   request_timeout_ms: 30000
 
 # JWT Authentication
@@ -113,8 +113,11 @@ notification:
 analytics:
   enabled: true
   endpoint: "http://analytics-server:9091"
+  nats_url: "nats://nats:4222"
+  subject_prefix: "fechatter.analytics"
   batch_size: 100
   flush_interval_seconds: 30
+  flush_interval_ms: 30000
   timeout_seconds: 10
   use_grpc: false
 

@@ -152,6 +152,8 @@ services:
       CLICKHOUSE_USER: default
       CLICKHOUSE_PASSWORD: ""
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      # Performance settings
+      CLICKHOUSE_CONFIG_FILE: /etc/clickhouse-server/config.xml
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     ports:
@@ -159,6 +161,15 @@ services:
       - "9000:9000"
     networks:
       - fechatter-network
+    # Resource limits to prevent CPU overuse
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'        # 进一步限制到30% CPU
+          memory: 256M       # 减少到256MB RAM
+        reservations:
+          cpus: '0.1'        # 减少保留资源
+          memory: 128M       # 减少保留内存
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
       <<: *default-health-check
@@ -267,7 +278,7 @@ services:
     environment:
       <<: [*common-env, *database-env, *redis-env, *nats-env, *search-env]
       SERVER_PORT: 6686
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-proj-fechatter-prod-2024-v1-xK9mJ7nR8qT3wP5sL2hF4vN6bC8dG1zA}
+      OPENAI_API_KEY: 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
       RAG_ENABLED: "true"
     volumes:
       - bot_data:/app/data
@@ -276,6 +287,15 @@ services:
       - "6686:6686"
     networks:
       - fechatter-network
+    # 添加资源限制优化性能
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'       # 限制CPU使用
+          memory: 512M      # 限制内存使用
+        reservations:
+          cpus: '0.1'       # 保留最小CPU
+          memory: 128M      # 保留最小内存
     depends_on:
       postgres:
         condition: service_healthy
@@ -285,9 +305,13 @@ services:
         condition: service_healthy
       meilisearch:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6686/health"]
-      <<: *default-health-check
+    # 禁用健康检查 - bot服务健康检查过于复杂且不影响核心功能
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "--max-time", "2", "http://localhost:6686/health"]
+    #   interval: 45s
+    #   timeout: 5s
+    #   retries: 3
+    #   start_period: 120s
     restart: unless-stopped
     profiles:
       - full

@@ -702,8 +702,8 @@ class ChatService {
     const config = RequestConfigInferrer.inferUploadConfig(file);
 
     // Validate file size
-    if (file.size > 2 * 1024 * 1024) {
-      throw new Error(`File size ${Math.round(file.size / 1024 / 1024 * 100) / 100}MB exceeds 2MB limit`);
+    if (file.size > 100 * 1024 * 1024) {
+      throw new Error(`File size ${Math.round(file.size / 1024 / 1024 * 100) / 100}MB exceeds 100MB limit`);
     }
 
     // Prepare FormData (browser auto-sets Content-Type with boundary)

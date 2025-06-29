@@ -3,7 +3,7 @@
 
 # Server configuration
 server:
-  port: 9091
+  port: 6690
   base_dir: "/app/data"
   request_timeout_ms: 30000
   max_concurrent_requests: 100
@@ -13,8 +13,8 @@ server:
     host: "clickhouse"
     port: 8123
     database: "fechatter_analytics"
-    user: "fechatter_analytics_user"
-    password: "fechatter_analytics_pass"
+    user: "default"
+    password: ""
     http_url: "http://clickhouse:8123"
     native_url: "tcp://clickhouse:9000"
 

@@ -26,7 +26,7 @@ function constructHashUrl(filename, workspaceId) {
   }
 
   if (isHashPath(filename)) {
-    return '/files/' + workspaceId + '/' + filename;
+    return '/api/files/' + workspaceId + '/' + filename;
   }
   const cleanFilename = filename.replace(/^.*\//, '');
 
@@ -41,9 +41,9 @@ function constructHashUrl(filename, workspaceId) {
     const hash2 = cleanFilename.substring(3, 6);
     // 🚨 CRITICAL FIX: Remove hash prefix to match actual storage format
     const finalFilename = cleanFilename.substring(6); // Remove hash1+hash2 prefix
-    return '/files/' + workspaceId + '/' + hash1 + '/' + hash2 + '/' + finalFilename;
+    return '/api/files/' + workspaceId + '/' + hash1 + '/' + hash2 + '/' + finalFilename;
   }
-  return '/files/' + workspaceId + '/' + cleanFilename;
+  return '/api/files/' + workspaceId + '/' + cleanFilename;
 }
 
 function normalizeUrlString(url, workspaceId) {
@@ -64,7 +64,7 @@ function normalizeUrlString(url, workspaceId) {
       const hash2 = filename.substring(3, 6);
       // 🚨 CRITICAL FIX: Remove hash prefix from filename to match actual storage
       const cleanFilename = filename.substring(6); // Remove first 6 chars (hash1+hash2)
-      const fixedUrl = '/files/' + workspaceId + '/' + hash1 + '/' + hash2 + '/' + cleanFilename;
+      const fixedUrl = '/api/files/' + workspaceId + '/' + hash1 + '/' + hash2 + '/' + cleanFilename;
       console.log('🔧 [FileUrlHandler] Fixed URL (removed hash prefix):', fixedUrl);
       return fixedUrl;
     }
@@ -76,39 +76,39 @@ function normalizeUrlString(url, workspaceId) {
   const isFiles = url.startsWith('/files/');
   const hasWorkspace = url.includes(workspacePattern);
 
-  // 🔧 CORRECTED: Convert /api/files/ to /files/ (let api client add /api/)
+  // 🔧 CORRECTED: /api/files/ format is already correct
   if (isApiFiles && hasWorkspace) {
-    const converted = url.replace('/api/files/', '/files/');
-    console.log('🔧 [FileUrlHandler] Converted /api/files/ to /files/:', url, '→', converted);
-    return converted;
+    console.log('🔧 [FileUrlHandler] Already correct /api/files/ format:', url);
+    return url;
   }
 
-  // 🔧 CORRECTED: /files/ format is already correct
+  // 🔧 CORRECTED: Convert /files/ to /api/files/
   if (isFiles && hasWorkspace) {
-    console.log('🔧 [FileUrlHandler] Already correct /files/ format:', url);
-    return url;
+    const converted = url.replace('/files/', '/api/files/');
+    console.log('🔧 [FileUrlHandler] Converted /files/ to /api/files/:', url, '→', converted);
+    return converted;
   }
 
   if (isApiFiles) {
     const pathPart = url.substring(11);
-    const result = '/files/' + workspaceId + '/' + pathPart;
-    console.log('🔧 [FileUrlHandler] Added workspace, removed /api/ prefix:', url, '→', result);
+    const result = '/api/files/' + workspaceId + '/' + pathPart;
+    console.log('🔧 [FileUrlHandler] Added workspace:', url, '→', result);
     return result;
   }
 
   if (isFiles) {
     const parts = url.split('/');
     if (parts.length >= 3) {
-      const filename = parts.slice(3).join('/');
+      const filename = parts.slice(2).join('/');
       return constructHashUrl(filename, workspaceId);
     }
   }
   if (isHashPath(url)) {
-    return '/files/' + workspaceId + '/' + url;
+    return '/api/files/' + workspaceId + '/' + url;
   }
   if (url.includes('/app/data/')) {
     const cleanPath = url.replace(/^.*\/app\/data\//, '');
-    return '/files/' + workspaceId + '/' + cleanPath;
+    return '/api/files/' + workspaceId + '/' + cleanPath;
   }
   if (isSimpleFilename(url)) {
     return constructHashUrl(url, workspaceId);
@@ -172,14 +172,14 @@ export function getStandardFileUrl(fileInput, options = {}) {
           const hash1 = filename.substring(0, 3);
           const hash2 = filename.substring(3, 6);
           const cleanFilename = filename.substring(6);
-          result = '/files/' + workspaceId + '/' + hash1 + '/' + hash2 + '/' + cleanFilename;
+          result = '/api/files/' + workspaceId + '/' + hash1 + '/' + hash2 + '/' + cleanFilename;
           console.log('🔧 EMERGENCY FIX applied:', result);
         }
       }
     }
 
     // 🚨 VALIDATION: Ensure filename doesn't contain hash prefix
-    if (result && result.includes('/files/')) {
+    if (result && result.includes('/api/files/')) {
       const parts = result.split('/');
       if (parts.length >= 6) {
         const filename = parts[5];
@@ -188,7 +188,7 @@ export function getStandardFileUrl(fileInput, options = {}) {
 
         if (filename.startsWith(hash1 + hash2)) {
           const cleanFilename = filename.substring(6);
-          result = '/files/' + workspaceId + '/' + hash1 + '/' + hash2 + '/' + cleanFilename;
+          result = '/api/files/' + workspaceId + '/' + hash1 + '/' + hash2 + '/' + cleanFilename;
           console.log('🔧 HASH PREFIX FIX applied:', result);
         }
       }
@@ -202,7 +202,7 @@ export function getStandardFileUrl(fileInput, options = {}) {
   }
 }
 
-export function debugFileUrl(fileInput, options = {}) {
+export function debugFileUrlHandler(fileInput, options = {}) {
   console.group('🔍 [FileUrlHandler] URL Debug');
   console.log('Input:', fileInput);
   const result = getStandardFileUrl(fileInput, options);
@@ -217,7 +217,7 @@ export class FileUrlHandler {
   }
 
   debugUrlConversion(fileInput, options = {}) {
-    return debugFileUrl(fileInput, options);
+    return debugFileUrlHandler(fileInput, options);
   }
 }
 

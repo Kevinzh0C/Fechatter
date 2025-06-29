@@ -3,6 +3,10 @@ name = "fechatter_core"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "jwt_diagnosis"
+path = "src/bin/jwt_diagnosis.rs"
+
 [dependencies]
 futures = { workspace = true }
 argon2 = { workspace = true }

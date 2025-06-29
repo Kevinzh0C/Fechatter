@@ -7,7 +7,7 @@ use clap::Parser;
 use fechatter_gateway::{proxy::ProductionProxy, PingoraGateway};
 use std::panic;
 use std::process;
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 #[derive(Parser, Debug)]

@@ -126,7 +126,7 @@ strip = true
 
 [profile.dev]
 # Development profile with faster compilation
-opt-level = 0
+opt-level = 1
 debug = true
 incremental = true
 
@@ -134,3 +134,6 @@ incremental = true
 # Test profile optimizations
 opt-level = 1
 debug = true
+
+[workspace.lints.clippy]
+unused_async = "allow"

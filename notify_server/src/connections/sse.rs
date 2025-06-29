@@ -15,6 +15,9 @@ use std::{
 use tokio::sync::{broadcast, mpsc::Sender};
 use tokio_stream::wrappers::BroadcastStream;
 use tracing::{debug, info, warn};
+use serde_json::json;
+use chrono::Utc;
+use std::sync::Arc;
 
 use crate::{events::types::NotifyEvent, state::AppState};
 use fechatter_core::{AuthUser, UserId};
@@ -56,11 +59,33 @@ pub async fn sse_handler(
 
   // 1. Create the user's SSE connection
   let (tx, rx) = broadcast::channel(CHANNEL_CAPACITY);
-  state.user_connections.insert(user_id, tx);
+  state.user_connections.insert(user_id, tx.clone());
 
   // 2. Register the user to all their chats (critical fix)
-  if let Err(e) = state.register_user_to_chats(user_id).await {
+  let chat_count = if let Err(e) = state.register_user_to_chats(user_id).await {
     warn!("❌ Failed to register user {} to chats: {}", user_id.0, e);
+    0
+  } else {
+    // Get the number of chats the user is registered to
+    state.get_user_chat_count(user_id).await.unwrap_or(0)
+  };
+
+  // 🔧 CRITICAL FIX 1: Send immediate SSE connection confirmation event
+  let welcome_notification = json!({
+    "type": "connection_confirmed",
+    "user_id": user_id.0,
+    "connection_id": connection_id,
+    "connected_chats": chat_count,
+    "timestamp": Utc::now(),
+    "server_time": Utc::now().timestamp(),
+    "message": "SSE connection established successfully"
+  });
+
+  // Send welcome event immediately
+  if let Err(e) = tx.send(Arc::new(NotifyEvent::Generic(welcome_notification))) {
+    warn!("Failed to send welcome notification to user {}: {}", user_id.0, e);
+  } else {
+    info!("✅ [SSE] Sent connection confirmation to user {}", user_id.0);
   }
 
   // 3. Send analytics event for user connection
@@ -70,9 +95,37 @@ pub async fn sse_handler(
     Some(user_agent_str.clone()),
   );
 
+  // 🔧 CRITICAL FIX 2: Start heartbeat mechanism for this user
+  let heartbeat_tx = tx.clone();
+  let heartbeat_user_id = user_id;
+  tokio::spawn(async move {
+    let mut interval = tokio::time::interval(Duration::from_secs(30));
+    let mut heartbeat_count = 1;
+    
+    loop {
+      interval.tick().await;
+      
+      let heartbeat_event = json!({
+        "type": "heartbeat",
+        "user_id": heartbeat_user_id.0,
+        "heartbeat_id": heartbeat_count,
+        "timestamp": Utc::now(),
+        "server_time": Utc::now().timestamp()
+      });
+      
+      if heartbeat_tx.send(Arc::new(NotifyEvent::Generic(heartbeat_event))).is_err() {
+        info!("💓 [SSE] Heartbeat stopped for user {} (connection closed)", heartbeat_user_id.0);
+        break;
+      }
+      
+      debug!("💓 [SSE] Sent heartbeat #{} to user {}", heartbeat_count, heartbeat_user_id.0);
+      heartbeat_count += 1;
+    }
+  });
+
   info!(
-    "✅ User {} successfully connected to SSE and registered to chats",
-    user_id.0
+    "✅ User {} successfully connected to SSE and registered to {} chats",
+    user_id.0, chat_count
   );
 
   // 4. Create the SSE stream, including cleanup logic on disconnect
@@ -113,8 +166,9 @@ pub async fn sse_handler(
 
       let v = serde_json::to_string(&v).expect("Failed to serialize event");
       debug!(
-        "📤 Sending event {} to user {}: {:?}",
-        event_type, user_id.0, v
+        "📤 [SSE] Sending event {} to user {}: {}",
+        event_type, user_id.0, 
+        if v.len() > 100 { format!("{}...", &v[..100]) } else { v.clone() }
       );
       Ok(Event::default().data(v).event(event_type))
     })
@@ -128,6 +182,8 @@ pub async fn sse_handler(
       tokio::spawn(async move {
         // Calculate connection duration
         let connection_duration = final_connection_start.elapsed().as_millis() as u64;
+        
+        info!("🔌 [SSE] User {} disconnected after {}ms", cleanup_user_id.0, connection_duration);
         
         // Send analytics event for user disconnection
         state_cleanup.analytics.user_disconnected(
@@ -143,6 +199,7 @@ pub async fn sse_handler(
       });
     });
 
+  // Enhanced keep-alive with more frequent pings
   Sse::new(stream).keep_alive(
     axum::response::sse::KeepAlive::new()
       .interval(Duration::from_secs(25))

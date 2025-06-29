@@ -1,0 +1,46 @@
+# Bot Server Dockerfile - x86_64 musl静态链接版本
+# 生产级别容器，包含OpenAI翻译API和NATS事件处理
+
+FROM alpine:3.19
+
+WORKDIR /app
+
+# 安装运行时依赖
+RUN apk add --no-cache \
+    ca-certificates \
+    postgresql-client \
+    curl \
+    tzdata
+
+# 创建应用用户以提高安全性
+RUN addgroup -g 1001 -S fechatter && \
+    adduser -u 1001 -S fechatter -G fechatter
+
+# 复制预编译的bot_server二进制文件
+COPY docker/binaries/x86_64/bot_server/bot_server /app/bot_server
+
+# 复制配置文件
+COPY bot_server/bot.yml ./
+COPY docker/configs/ ./config/
+
+# 设置权限
+RUN chmod +x /app/bot_server && \
+    chown -R fechatter:fechatter /app
+
+# 切换到非root用户
+USER fechatter
+
+# 设置环境变量
+ENV RUST_LOG=info
+ENV ENVIRONMENT=production
+ENV BOT_CONFIG=/app/bot.yml
+
+# 暴露端口 - bot_server使用6686端口
+EXPOSE 6686
+
+# 健康检查 - 使用bot_server的健康检查端点
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:6686/health || exit 1
+
+# 启动命令
+CMD ["/app/bot_server"] 

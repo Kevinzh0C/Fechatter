@@ -1,0 +1,4 @@
+./fechatter_frontend/scripts/cleanup-logs.js
+./fechatter_frontend/src/utils/messageFlowDebugger.js
+./fechatter_frontend/src/utils/debugSearchNow.js
+./fechatter_frontend/src/utils/debugDuplicateChannels.js

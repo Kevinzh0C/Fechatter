@@ -1,14 +1,12 @@
-use fechatter_protos::fechatter::v1::*;
 use axum::{
   Extension,
   extract::{Query, State},
   response::Json,
-  http::StatusCode,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use tracing::{error, info};
+use tracing::info;
 
 use crate::{error::NotifyError, state::AppState};
 use fechatter_core::{AuthUser, ChatId, UserId, WorkspaceId};

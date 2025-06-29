@@ -16,6 +16,7 @@
 
 // === Core Framework ===
 pub mod core;
+pub mod bot;
 
 // === Legacy Modules (under refactoring) ===
 pub mod mappers;

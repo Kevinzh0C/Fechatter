@@ -12,9 +12,11 @@ export function setupGlobalRouterErrorHandling(router) {
   router.onError((error) => {
     console.error('[Router Error]:', error);
 
-    // Handle specific error types
-    if (error.name === 'NavigationDuplicated') {
-      // Ignore duplicate navigation errors
+    // 🔧 CRITICAL FIX: 忽略更多常见的无害错误
+    if (error.name === 'NavigationDuplicated' ||
+      error.message?.includes('redundant navigation') ||
+      error.message?.includes('Avoided redundant')) {
+      console.log('[Router] Ignoring redundant navigation error');
       return;
     }
 
@@ -28,13 +30,21 @@ export function setupGlobalRouterErrorHandling(router) {
       return;
     }
 
-    // For other errors, redirect to error page if not already there
-    if (!router.currentRoute.value.path.startsWith('/error')) {
-      router.push('/error/500').catch(() => {
-        // Fallback if error page navigation also fails
-        console.error('[Router] Failed to navigate to error page');
-      });
+    // 🔧 CRITICAL FIX: 只在真正严重的错误时重定向
+    if (error.name === 'ChunkLoadError' ||
+      error.message?.includes('Loading chunk') ||
+      error.message?.includes('Loading CSS chunk')) {
+      console.error('[Router] Chunk load error, redirecting to error page');
+      if (!router.currentRoute.value.path.startsWith('/error')) {
+        router.push('/error/500').catch(() => {
+          console.error('[Router] Failed to navigate to error page');
+        });
+      }
+      return;
     }
+
+    // 🔧 对于其他错误，仅记录，不强制重定向
+    console.warn('[Router] Non-critical error, continuing:', error.message);
   });
 
   // Setup navigation timeout handling

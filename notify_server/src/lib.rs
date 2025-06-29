@@ -182,3 +182,147 @@ async fn liveness_check() -> impl IntoResponse {
 pub async fn health() -> &'static str {
   "OK"
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fechatter_core::models::jwt::{TokenConfigProvider, TokenManager, UserClaims};
+    use fechatter_core::models::{UserId, UserStatus, WorkspaceId};
+    use fechatter_core::TokenService;
+    use chrono::Utc;
+
+    // Test configuration that matches the attached config
+    struct TestAuthConfig {
+        sk: String,
+        pk: String,
+    }
+
+    impl TokenConfigProvider for TestAuthConfig {
+        fn get_encoding_key_pem(&self) -> &str {
+            &self.sk
+        }
+
+        fn get_decoding_key_pem(&self) -> &str {
+            &self.pk
+        }
+
+        fn get_jwt_audience(&self) -> Option<&str> {
+            Some("fechatter-web")
+        }
+
+        fn get_jwt_issuer(&self) -> Option<&str> {
+            Some("fechatter-server")
+        }
+
+        fn get_jwt_leeway(&self) -> u64 {
+            60
+        }
+    }
+
+    #[tokio::test]
+    async fn test_jwt_verification_with_attached_config_keys() {
+        // Use the exact keys from the attached config
+        let config = TestAuthConfig {
+            sk: "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIP/S+etN7RQJctehWKkdjgnrtQ0AUDIMkCnYS4Zk8RFR\n-----END PRIVATE KEY-----".to_string(),
+            pk: "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAMnnmEdL53E3O5UTdVW/VEs9qT6To/48iU7jWpKuVb2c=\n-----END PUBLIC KEY-----".to_string(),
+        };
+
+        // Create TokenManager for signing (fechatter-server behavior)
+        let signing_manager = TokenManager::new(&config).expect("Failed to create signing TokenManager");
+
+        // Create test user claims
+        let user_claims = UserClaims {
+            id: UserId::new(2),
+            workspace_id: WorkspaceId::new(2),
+            fullname: "Super User".to_string(),
+            email: "super@test.com".to_string(),
+            status: UserStatus::Active,
+            created_at: Utc::now(),
+        };
+
+        // Generate JWT token (fechatter-server behavior)
+        let token = signing_manager.generate_token(&user_claims)
+            .expect("Failed to generate token");
+
+        println!("Generated token: {}...", &token[0..50]);
+
+        // Create verification-only config (notify-server behavior)
+        let verify_config = TestAuthConfig {
+            sk: "".to_string(), // Empty for verification-only mode
+            pk: config.pk.clone(),
+        };
+
+        // Create TokenManager for verification (notify-server behavior)
+        let verify_manager = TokenManager::new(&verify_config)
+            .expect("Failed to create verification TokenManager");
+
+        // Verify the token (notify-server behavior)
+        let verified_claims = verify_manager.verify_token(&token)
+            .expect("JWT verification should succeed");
+
+        // Assertions
+        assert_eq!(verified_claims.id, user_claims.id);
+        assert_eq!(verified_claims.email, user_claims.email);
+        assert_eq!(verified_claims.workspace_id, user_claims.workspace_id);
+
+        println!("✅ JWT verification test PASSED!");
+        println!("   - Token generated successfully");
+        println!("   - Token verified successfully");
+        println!("   - User claims match");
+    }
+
+    #[tokio::test]
+    async fn test_invalid_token_rejection() {
+        let config = TestAuthConfig {
+            sk: "".to_string(),
+            pk: "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAMnnmEdL53E3O5UTdVW/VEs9qT6To/48iU7jWpKuVb2c=\n-----END PUBLIC KEY-----".to_string(),
+        };
+
+        let verify_manager = TokenManager::new(&config)
+            .expect("Failed to create verification TokenManager");
+
+        // Test with invalid token
+        let invalid_token = "invalid.token.here";
+        let result = verify_manager.verify_token(invalid_token);
+
+        assert!(result.is_err(), "Invalid token should be rejected");
+        println!("✅ Invalid token rejection test PASSED!");
+    }
+
+    #[tokio::test]
+    async fn test_wrong_key_rejection() {
+        // Generate token with one key
+        let config1 = TestAuthConfig {
+            sk: "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIP/S+etN7RQJctehWKkdjgnrtQ0AUDIMkCnYS4Zk8RFR\n-----END PRIVATE KEY-----".to_string(),
+            pk: "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAMnnmEdL53E3O5UTdVW/VEs9qT6To/48iU7jWpKuVb2c=\n-----END PUBLIC KEY-----".to_string(),
+        };
+
+        let signing_manager = TokenManager::new(&config1)
+            .expect("Failed to create signing TokenManager");
+
+        let user_claims = UserClaims {
+            id: UserId::new(1),
+            workspace_id: WorkspaceId::new(1),
+            fullname: "Test User".to_string(),
+            email: "test@example.com".to_string(),
+            status: UserStatus::Active,
+            created_at: Utc::now(),
+        };
+
+        let token = signing_manager.generate_token(&user_claims)
+            .expect("Failed to generate token");
+
+        // Try to verify with different key
+        let config2 = TestAuthConfig {
+            sk: "".to_string(),
+            pk: "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAjunpb6apXoyeOmBrwdcYDb+uyAxQbZjSkOqKbfhmZAs=\n-----END PUBLIC KEY-----".to_string(),
+        };
+
+        let verify_manager = TokenManager::new(&config2)
+            .expect("Failed to create verification TokenManager");
+
+        let result = verify_manager.verify_token(&token);
+        assert!(result.is_err(), "Token signed with different key should be rejected");
+        println!("✅ Wrong key rejection test PASSED!");
+    }
+}

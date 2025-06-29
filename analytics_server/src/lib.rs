@@ -3,6 +3,7 @@ mod error;
 mod events;
 mod extractors;
 mod handlers;
+mod json_handlers;
 pub mod nats_subscriber;
 pub mod observability;
 mod openapi;
@@ -16,6 +17,7 @@ pub use events::*;
 use anyhow::Context;
 use clickhouse::Client;
 use handlers::{create_event_handler, create_batch_events_handler, health_check_handler};
+use json_handlers::{create_json_event_handler, create_json_batch_events_handler};
 use openapi::OpenApiRouter as _;
 use std::{fmt, ops::Deref, sync::Arc, time::Duration};
 use tokio::fs;
@@ -105,6 +107,8 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
   let api = Router::new()
     .route("/event", post(create_event_handler))
     .route("/batch", post(create_batch_events_handler))
+    .route("/event/json", post(create_json_event_handler))
+    .route("/batch/json", post(create_json_batch_events_handler))
     .layer(CompressionLayer::new())
     .layer(trace_layer)
     .layer(cors)

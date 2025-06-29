@@ -3,7 +3,7 @@
 
 # Server configuration
 server:
-  db_url: "postgresql://fechatter_user:fechatter_pass@postgres:5432/fechatter_db"
+  db_url: "postgresql://fechatter:fechatter_password@postgres:5432/fechatter"
 
 # NATS messaging configuration
 messaging:

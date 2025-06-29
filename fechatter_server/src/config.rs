@@ -20,6 +20,7 @@ pub struct AppConfig {
   pub server: ServerConfig,
   pub auth: AuthConfig,
   pub features: FeatureConfig,
+  pub storage: StorageConfig,
 }
 
 /// Server and database configuration
@@ -541,6 +542,13 @@ pub struct ObservabilityConfig {
   pub service_name: String,
   pub service_version: String,
   pub environment: String,
+}
+
+/// Storage configuration
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct StorageConfig {
+  pub path: String,
+  pub url_prefix: String,
 }
 
 // ============================================================================

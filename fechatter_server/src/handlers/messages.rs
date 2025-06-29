@@ -10,6 +10,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
+use validator::Validate;
 
 use crate::dtos::core::ApiResponse;
 use crate::dtos::models::requests::message::{EditMessageRequest, SendMessageRequest};
@@ -108,6 +109,18 @@ pub async fn send_message_handler(
   Path(chat_id): Path<i64>,
   Json(request): Json<SendMessageRequest>,
 ) -> Result<Json<ApiResponse<MessageResponse>>, AppError> {
+
+  // VALIDATION: Validate request data
+  request
+    .validate()
+    .map_err(|e| AppError::InvalidInput(format!("Message validation failed: {}", e)))?;
+
+  // Additional business logic validation
+  if request.content.trim().is_empty() && request.files.as_ref().map_or(true, |f| f.is_empty()) {
+    return Err(AppError::InvalidInput(
+      "Message must contain either text content or files".to_string(),
+    ));
+  }
 
   let create_message = CreateMessage::from(request.clone());
   let message_service = state.application_services().message_service();

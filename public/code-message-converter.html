@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔧 Code Message Converter</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 40px;
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .converter-section {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+    }
+
+    .input-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #fbbf24;
+    }
+
+    .input-group textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: 15px;
+      border: none;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.3);
+      color: white;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      resize: vertical;
+    }
+
+    .input-group select {
+      width: 200px;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.3);
+      color: white;
+      font-size: 14px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      color: white;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: white;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .preview {
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 20px;
+      border: 2px solid #34d399;
+    }
+
+    .preview h4 {
+      color: #34d399;
+      margin-bottom: 15px;
+    }
+
+    .code-block {
+      background: #1f2937;
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 15px 0;
+      border: 1px solid #374151;
+    }
+
+    .code-header {
+      background: #374151;
+      padding: 10px 15px;
+      display: flex;
+      justify-content: between;
+      align-items: center;
+      border-bottom: 1px solid #4b5563;
+    }
+
+    .code-lang {
+      background: #ef4444;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .code-content {
+      padding: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #e5e7eb;
+      overflow-x: auto;
+    }
+
+    .instructions {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 25px;
+    }
+
+    .steps {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 25px;
+    }
+
+    .steps ol {
+      margin-left: 20px;
+    }
+
+    .steps li {
+      margin-bottom: 10px;
+    }
+
+    .quick-examples {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 25px;
+    }
+
+    .example-card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .example-card h4 {
+      color: #fbbf24;
+      margin-bottom: 10px;
+    }
+
+    .example-code {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 10px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    .copy-btn {
+      background: #374151;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .copy-btn:hover {
+      background: #4b5563;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔧 Code Message Converter</h1>
+      <p>Convert plain text code messages into properly formatted code blocks</p>
+    </div>
+
+    <div class="instructions">
+      <h3>📝 How to Fix Your Code Message</h3>
+      <p>Your Rust code message isn't showing as a code block because it lacks proper markdown formatting. Use this tool
+        to convert it!</p>
+    </div>
+
+    <div class="steps">
+      <h3>🚀 Quick Fix Steps</h3>
+      <ol>
+        <li><strong>Copy your code</strong> from the chat message</li>
+        <li><strong>Paste it below</strong> in the input area</li>
+        <li><strong>Select language</strong> (Rust is pre-selected)</li>
+        <li><strong>Click Convert</strong> to generate the proper format</li>
+        <li><strong>Copy the result</strong> and edit your message in chat</li>
+      </ol>
+    </div>
+
+    <div class="converter-section">
+      <div class="input-group">
+        <label for="rawCode">📝 Raw Code Content:</label>
+        <textarea id="rawCode" placeholder="Paste your code here...">fn find_max(numbers: &[i32]) -> Option<i32> {
+    numbers.iter().max().copied()
+}</textarea>
+      </div>
+
+      <div class="input-group">
+        <label for="language">🔤 Programming Language:</label>
+        <select id="language">
+          <option value="rust" selected>Rust</option>
+          <option value="javascript">JavaScript</option>
+          <option value="typescript">TypeScript</option>
+          <option value="python">Python</option>
+          <option value="java">Java</option>
+          <option value="cpp">C++</option>
+          <option value="c">C</option>
+          <option value="go">Go</option>
+          <option value="php">PHP</option>
+          <option value="ruby">Ruby</option>
+          <option value="swift">Swift</option>
+          <option value="kotlin">Kotlin</option>
+          <option value="sql">SQL</option>
+          <option value="bash">Bash</option>
+          <option value="json">JSON</option>
+          <option value="yaml">YAML</option>
+          <option value="xml">XML</option>
+          <option value="html">HTML</option>
+          <option value="css">CSS</option>
+          <option value="plaintext">Plain Text</option>
+        </select>
+      </div>
+
+      <div class="button-group">
+        <button class="btn btn-primary" onclick="convertToCodeBlock()">🔄 Convert to Code Block</button>
+        <button class="btn btn-success" onclick="copyResult()">📋 Copy Result</button>
+        <button class="btn btn-warning" onclick="clearAll()">🧹 Clear All</button>
+      </div>
+
+      <div id="preview" class="preview" style="display: none;">
+        <h4>✅ Converted Result:</h4>
+        <div class="code-block">
+          <div class="code-header">
+            <span id="previewLang" class="code-lang">RUST</span>
+            <span style="color: #34d399; font-size: 12px;">Ready to paste!</span>
+          </div>
+          <div id="previewContent" class="code-content"></div>
+        </div>
+        <textarea id="resultText"
+          style="width: 100%; height: 100px; margin-top: 10px; padding: 10px; border-radius: 4px; background: rgba(0,0,0,0.3); color: white; border: none; font-family: 'Courier New', monospace;"></textarea>
+      </div>
+    </div>
+
+    <div class="quick-examples">
+      <div class="example-card">
+        <h4>🦀 Rust Example</h4>
+        <div class="example-code">```rust
+          fn main() {
+          println!("Hello, world!");
+          }</div>
+        <button class="copy-btn" onclick="useExample('rust')">Use This Example</button>
+      </div>
+
+      <div class="example-card">
+        <h4>🟨 JavaScript Example</h4>
+        <div class="example-code">```javascript
+          function greet(name) {
+          return `Hello, ${name}!`;
+          }</div>
+        <button class="copy-btn" onclick="useExample('javascript')">Use This Example</button>
+      </div>
+
+      <div class="example-card">
+        <h4>🐍 Python Example</h4>
+        <div class="example-code">```python
+          def fibonacci(n):
+          if n <= 1: return n return fibonacci(n-1) + fibonacci(n-2)</div>
+            <button class="copy-btn" onclick="useExample('python')">Use This Example</button>
+        </div>
+
+        <div class="example-card">
+          <h4>☕ Java Example</h4>
+          <div class="example-code">```java
+            public class Main {
+            public static void main(String[] args) {
+            System.out.println("Hello World");
+            }
+            }</div>
+          <button class="copy-btn" onclick="useExample('java')">Use This Example</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function convertToCodeBlock() {
+        const rawCode = document.getElementById('rawCode').value.trim();
+        const language = document.getElementById('language').value;
+
+        if (!rawCode) {
+          alert('Please enter some code to convert!');
+          return;
+        }
+
+        // Create the markdown code block format
+        const codeBlock = `\`\`\`${language}\n${rawCode}\n\`\`\``;
+
+        // Update preview
+        document.getElementById('previewLang').textContent = language.toUpperCase();
+        document.getElementById('previewContent').textContent = rawCode;
+        document.getElementById('resultText').value = codeBlock;
+        document.getElementById('preview').style.display = 'block';
+
+        // Show success message
+        console.log('Code block converted successfully!');
+      }
+
+      function copyResult() {
+        const resultText = document.getElementById('resultText');
+        if (!resultText.value) {
+          alert('Please convert your code first!');
+          return;
+        }
+
+        resultText.select();
+        document.execCommand('copy');
+
+        // Visual feedback
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = '✅ Copied!';
+        btn.style.background = '#10b981';
+
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.style.background = '';
+        }, 2000);
+      }
+
+      function clearAll() {
+        document.getElementById('rawCode').value = '';
+        document.getElementById('language').value = 'rust';
+        document.getElementById('preview').style.display = 'none';
+      }
+
+      function useExample(lang) {
+        const examples = {
+          rust: `fn find_max(numbers: &[i32]) -> Option<i32> {
+    numbers.iter().max().copied()
+}`,
+          javascript: `function greet(name) {
+    return \`Hello, \${name}!\`;
+}`,
+          python: `def fibonacci(n):
+    if n <= 1:
+        return n
+    return fibonacci(n-1) + fibonacci(n-2)`,
+          java: `public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello World");
+    }
+}`
+        };
+
+        document.getElementById('rawCode').value = examples[lang] || examples.rust;
+        document.getElementById('language').value = lang;
+        convertToCodeBlock();
+      }
+
+      // Auto-load the Rust example on page load
+      document.addEventListener('DOMContentLoaded', function () {
+        console.log('🔧 Code Message Converter loaded');
+        console.log('Pre-loaded with your Rust function example');
+      });
+    </script>
+</body>
+
+</html>

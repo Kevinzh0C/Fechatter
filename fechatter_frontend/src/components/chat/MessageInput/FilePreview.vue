@@ -74,7 +74,7 @@
             </div>
 
             <div class="file-size-limit">
-              <span class="size-limit-text">📏 Max file size: 2MB</span>
+              <span class="size-limit-text">📏 Max file size: 100MB</span>
             </div>
           </div>
         </div>

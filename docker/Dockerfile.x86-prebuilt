@@ -23,15 +23,15 @@ WORKDIR /app
 # Copy precompiled x86_64 binaries
 # The binaries are expected to be in docker/binaries/x86_64/
 ARG SERVICE_NAME
-COPY binaries/x86_64/${SERVICE_NAME}/${SERVICE_NAME} /usr/local/bin/service
+COPY docker/binaries/x86_64/${SERVICE_NAME}/${SERVICE_NAME} /usr/local/bin/service
 
 # Alternative: Copy all binaries if building a unified container
-# COPY binaries/x86_64/fechatter_server/fechatter_server /usr/local/bin/
-# COPY binaries/x86_64/analytics_server/analytics_server /usr/local/bin/
-# COPY binaries/x86_64/notify_server/notify_server /usr/local/bin/
-# COPY binaries/x86_64/fechatter_gateway/fechatter_gateway /usr/local/bin/
-# COPY binaries/x86_64/bot_server/bot /usr/local/bin/
-# COPY binaries/x86_64/bot_server/indexer /usr/local/bin/
+# COPY docker/binaries/x86_64/fechatter_server/fechatter_server /usr/local/bin/
+# COPY docker/binaries/x86_64/analytics_server/analytics_server /usr/local/bin/
+# COPY docker/binaries/x86_64/notify_server/notify_server /usr/local/bin/
+# COPY docker/binaries/x86_64/fechatter_gateway/fechatter_gateway /usr/local/bin/
+# COPY docker/binaries/x86_64/bot_server/bot /usr/local/bin/
+# COPY docker/binaries/x86_64/bot_server/indexer /usr/local/bin/
 
 # Copy configuration files (if needed)
 COPY config/ ./config/
