@@ -7,6 +7,12 @@
     <strong>Efficient, enterprise-ready real-time chat platform powered by Rust</strong>
   </p>
 
+<p>
+    <a href="README.md">🇺🇸 English</a> •
+    <a href="README.zh-CN.md">🇨🇳 中文</a> •
+    <a href="README.ja.md">🇯🇵 日本語</a>
+  </p>
+
   <p>
     <a href="https://github.com/Kevinzh0C/Fechatter/blob/master/LICENSE">
       <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License">
