@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = { workspace = true }
-async-nats = "0.38.0"
+async-nats = "0.42.0"
 axum = { workspace = true }
 axum-extra = { workspace = true }
 chrono = { workspace = true }
@@ -14,7 +14,7 @@ fechatter_core = { workspace = true }
 fechatter_protos = { workspace = true }
 futures = { workspace = true }
 jsonwebtoken = { workspace = true }
-prost = "0.13.3"
+prost = "0.14.1"
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -32,4 +32,4 @@ uuid = { workspace = true }
 # Metrics
 metrics = "0.24.0"
 metrics-exporter-prometheus = "0.17.0"
-metrics-util = "0.17.0"
+metrics-util = "0.20.0"
