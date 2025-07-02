@@ -8,14 +8,14 @@ mod service;
 
 // Re-export service components
 pub use service::{
-  AppStateEventPublisher, AsyncIndexEvent, DualStreamDispatcher, DualStreamMessageService,
-  IndexOperation, MessageApplicationService, RealtimeEvent, create_message_service,
+    create_message_service, AppStateEventPublisher, AsyncIndexEvent, DualStreamDispatcher,
+    DualStreamMessageService, IndexOperation, MessageApplicationService, RealtimeEvent,
 };
 
 // Re-export models from fechatter_core for backward compatibility
 pub use fechatter_core::models::message::MessageView;
 
 pub use consistency_monitor::{
-  ConsistencyCheckResult, MessageConsistencyMonitor, MessageConsistencyMonitorImpl,
-  create_consistency_monitor,
+    create_consistency_monitor, ConsistencyCheckResult, MessageConsistencyMonitor,
+    MessageConsistencyMonitorImpl,
 };

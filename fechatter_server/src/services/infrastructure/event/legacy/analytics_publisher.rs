@@ -1,5 +1,5 @@
 //! Unified Analytics Event Publisher
-//! 
+//!
 //! Provides analytics event publishing through NATS with protobuf format
 //! Replaces HTTP/gRPC analytics clients with NATS-based approach
 
@@ -11,10 +11,10 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
-use analytics_server::pb::*;
 use crate::error::AppError;
 use crate::services::infrastructure::event::EventTransport;
 use crate::services::infrastructure::event::NatsTransport;
+use analytics_server::pb::*;
 
 /// Analytics publisher configuration
 #[derive(Debug, Clone)]
@@ -47,7 +47,7 @@ impl<T: EventTransport + 'static> AnalyticsEventPublisher<T> {
     /// Create new analytics publisher
     pub fn new(transport: Arc<T>, config: AnalyticsConfig) -> Self {
         let (sender, receiver) = mpsc::unbounded_channel();
-        
+
         if config.enabled {
             // Start background batch processing task
             let transport_clone = transport.clone();
@@ -71,9 +71,8 @@ impl<T: EventTransport + 'static> AnalyticsEventPublisher<T> {
         mut receiver: mpsc::UnboundedReceiver<AnalyticsEvent>,
     ) {
         let mut event_buffer = Vec::new();
-        let mut flush_interval = tokio::time::interval(
-            std::time::Duration::from_millis(config.flush_interval_ms)
-        );
+        let mut flush_interval =
+            tokio::time::interval(std::time::Duration::from_millis(config.flush_interval_ms));
 
         loop {
             tokio::select! {
@@ -82,7 +81,7 @@ impl<T: EventTransport + 'static> AnalyticsEventPublisher<T> {
                     match event {
                         Some(event) => {
                             event_buffer.push(event);
-                            
+
                             // Flush if buffer is full
                             if event_buffer.len() >= config.batch_size {
                                 Self::flush_events(&transport, &config, &mut event_buffer).await;
@@ -140,13 +139,19 @@ impl<T: EventTransport + 'static> AnalyticsEventPublisher<T> {
                     debug!("📤 Published analytics event: {}", event_type_name);
                 }
                 Err(e) => {
-                    error!("ERROR: Failed to publish analytics event {}: {}", event_type_name, e);
+                    error!(
+                        "ERROR: Failed to publish analytics event {}: {}",
+                        event_type_name, e
+                    );
                 }
             }
         }
 
         if success_count > 0 {
-            info!("📤 Successfully flushed {}/{} analytics events", success_count, event_count);
+            info!(
+                "📤 Successfully flushed {}/{} analytics events",
+                success_count, event_count
+            );
         }
     }
 
@@ -158,17 +163,20 @@ impl<T: EventTransport + 'static> AnalyticsEventPublisher<T> {
     ) -> Result<()> {
         // Determine subject based on event type
         let subject = Self::determine_subject(config, &event);
-        
+
         // Encode as protobuf
         let payload = event.encode_to_vec();
-        
+
         // Publish to NATS
         transport
             .publish(&subject, Bytes::from(payload))
             .await
             .map_err(|e| anyhow::anyhow!("Failed to publish to NATS: {}", e))?;
 
-        debug!("SUBSCRIPTION: Published analytics event to subject: {}", subject);
+        debug!(
+            "SUBSCRIPTION: Published analytics event to subject: {}",
+            subject
+        );
         Ok(())
     }
 
@@ -214,12 +222,21 @@ impl<T: EventTransport + 'static> AnalyticsEventPublisher<T> {
             _ => "unknown",
         };
 
-        debug!("Queuing analytics event: {} for user: {}", 
-               event_type_name, 
-               event.context.as_ref().map(|c| &c.user_id).unwrap_or(&"unknown".to_string()));
+        debug!(
+            "Queuing analytics event: {} for user: {}",
+            event_type_name,
+            event
+                .context
+                .as_ref()
+                .map(|c| &c.user_id)
+                .unwrap_or(&"unknown".to_string())
+        );
 
         self.sender.send(event).map_err(|e| {
-            error!("ERROR: Failed to queue analytics event {}: {}", event_type_name, e);
+            error!(
+                "ERROR: Failed to queue analytics event {}: {}",
+                event_type_name, e
+            );
             AppError::Internal(format!("Failed to queue analytics event: {}", e))
         })?;
 
@@ -236,16 +253,49 @@ impl<T: EventTransport + 'static> AnalyticsEventPublisher<T> {
 /// Trait for analytics tracking with convenient methods
 #[async_trait]
 pub trait AnalyticsTracking {
-    async fn track_user_login(&self, user_id: String, email: String, method: String) -> Result<(), AppError>;
-    async fn track_message_sent(&self, user_id: String, chat_id: String, message_type: String, size: i32) -> Result<(), AppError>;
-    async fn track_chat_created(&self, user_id: String, chat_id: String, chat_type: String, members_count: i32) -> Result<(), AppError>;
-    async fn track_error(&self, user_id: Option<String>, error_type: String, error_message: String) -> Result<(), AppError>;
-    async fn track_bot_response(&self, bot_id: String, chat_id: String, response_type: String, success: bool) -> Result<(), AppError>;
+    async fn track_user_login(
+        &self,
+        user_id: String,
+        email: String,
+        method: String,
+    ) -> Result<(), AppError>;
+    async fn track_message_sent(
+        &self,
+        user_id: String,
+        chat_id: String,
+        message_type: String,
+        size: i32,
+    ) -> Result<(), AppError>;
+    async fn track_chat_created(
+        &self,
+        user_id: String,
+        chat_id: String,
+        chat_type: String,
+        members_count: i32,
+    ) -> Result<(), AppError>;
+    async fn track_error(
+        &self,
+        user_id: Option<String>,
+        error_type: String,
+        error_message: String,
+    ) -> Result<(), AppError>;
+    async fn track_bot_response(
+        &self,
+        bot_id: String,
+        chat_id: String,
+        response_type: String,
+        success: bool,
+    ) -> Result<(), AppError>;
 }
 
 #[async_trait]
 impl<T: EventTransport + 'static> AnalyticsTracking for AnalyticsEventPublisher<T> {
-    async fn track_user_login(&self, user_id: String, email: String, method: String) -> Result<(), AppError> {
+    async fn track_user_login(
+        &self,
+        user_id: String,
+        email: String,
+        method: String,
+    ) -> Result<(), AppError> {
         let event = AnalyticsEvent {
             context: Some(EventContext {
                 client_id: format!("fechatter_server_{}", uuid::Uuid::new_v4()),
@@ -271,11 +321,17 @@ impl<T: EventTransport + 'static> AnalyticsTracking for AnalyticsEventPublisher<
                 login_method: method,
             })),
         };
-        
+
         self.publish(event)
     }
 
-    async fn track_message_sent(&self, user_id: String, chat_id: String, message_type: String, size: i32) -> Result<(), AppError> {
+    async fn track_message_sent(
+        &self,
+        user_id: String,
+        chat_id: String,
+        message_type: String,
+        size: i32,
+    ) -> Result<(), AppError> {
         let event = AnalyticsEvent {
             context: Some(EventContext {
                 client_id: format!("fechatter_server_{}", uuid::Uuid::new_v4()),
@@ -305,11 +361,17 @@ impl<T: EventTransport + 'static> AnalyticsTracking for AnalyticsEventPublisher<
                 has_links: false,
             })),
         };
-        
+
         self.publish(event)
     }
 
-    async fn track_chat_created(&self, user_id: String, chat_id: String, chat_type: String, members_count: i32) -> Result<(), AppError> {
+    async fn track_chat_created(
+        &self,
+        user_id: String,
+        chat_id: String,
+        chat_type: String,
+        members_count: i32,
+    ) -> Result<(), AppError> {
         let event = AnalyticsEvent {
             context: Some(EventContext {
                 client_id: format!("fechatter_server_{}", uuid::Uuid::new_v4()),
@@ -336,11 +398,16 @@ impl<T: EventTransport + 'static> AnalyticsTracking for AnalyticsEventPublisher<
                 initial_members_count: members_count,
             })),
         };
-        
+
         self.publish(event)
     }
 
-    async fn track_error(&self, user_id: Option<String>, error_type: String, error_message: String) -> Result<(), AppError> {
+    async fn track_error(
+        &self,
+        user_id: Option<String>,
+        error_type: String,
+        error_message: String,
+    ) -> Result<(), AppError> {
         let event = AnalyticsEvent {
             context: Some(EventContext {
                 client_id: format!("fechatter_server_{}", uuid::Uuid::new_v4()),
@@ -361,19 +428,27 @@ impl<T: EventTransport + 'static> AnalyticsTracking for AnalyticsEventPublisher<
                 }),
                 geo: None,
             }),
-            event_type: Some(analytics_event::EventType::ErrorOccurred(ErrorOccurredEvent {
-                error_type,
-                error_code: "500".to_string(),
-                error_message,
-                stack_trace: String::new(),
-                context: String::new(),
-            })),
+            event_type: Some(analytics_event::EventType::ErrorOccurred(
+                ErrorOccurredEvent {
+                    error_type,
+                    error_code: "500".to_string(),
+                    error_message,
+                    stack_trace: String::new(),
+                    context: String::new(),
+                },
+            )),
         };
-        
+
         self.publish(event)
     }
 
-    async fn track_bot_response(&self, bot_id: String, chat_id: String, response_type: String, success: bool) -> Result<(), AppError> {
+    async fn track_bot_response(
+        &self,
+        bot_id: String,
+        chat_id: String,
+        response_type: String,
+        success: bool,
+    ) -> Result<(), AppError> {
         let event = AnalyticsEvent {
             context: Some(EventContext {
                 client_id: format!("fechatter_server_{}", uuid::Uuid::new_v4()),
@@ -401,10 +476,14 @@ impl<T: EventTransport + 'static> AnalyticsTracking for AnalyticsEventPublisher<
                 response_time_ms: 0,
                 tokens_used: 0,
                 success,
-                error_message: if success { String::new() } else { "Unknown error".to_string() },
+                error_message: if success {
+                    String::new()
+                } else {
+                    "Unknown error".to_string()
+                },
             })),
         };
-        
+
         self.publish(event)
     }
 }
@@ -418,4 +497,4 @@ impl NatsAnalyticsPublisher {
         let transport = Arc::new(NatsTransport::new(client));
         Self::new(transport, config)
     }
-} 
+}

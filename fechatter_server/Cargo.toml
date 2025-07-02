@@ -1,6 +1,6 @@
 [package]
 name = "fechatter_server"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [features]
@@ -127,5 +127,24 @@ rayon = "1.10.0"
 # huggingface-hub = { version = "0.3", optional = true }
 # tokenizers = { version = "0.20", optional = true }
 
+# Concurrency - crossbeam for lock-free data structures
+crossbeam = "0.8"
+
 [dev-dependencies]
 tempfile = "3.3"
+# Performance testing
+criterion = { version = "0.5", features = ["html_reports"] }
+pprof = { version = "0.13", features = ["flamegraph", "criterion"] }
+cargo-flamegraph = "0.6"
+
+[[bench]]
+name = "message_processing"
+harness = false
+
+[[bench]]
+name = "cache_operations"
+harness = false
+
+[[bench]]
+name = "database_queries"
+harness = false

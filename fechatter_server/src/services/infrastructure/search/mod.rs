@@ -25,11 +25,11 @@ pub use meilisearch::MeilisearchClient;
 
 /// Infrastructure layer search service implementation (avoiding naming conflicts with application layer)
 pub use search_service::{
-  MeilisearchBackend,
-  SearchBackend,
-  SearchFilters,
-  SearchService as InfraSearchService, // Renamed to avoid conflicts
-  SearchServiceBuilder,
-  create_search_service,
-  create_search_service_with_batch_size,
+    create_search_service,
+    create_search_service_with_batch_size,
+    MeilisearchBackend,
+    SearchBackend,
+    SearchFilters,
+    SearchService as InfraSearchService, // Renamed to avoid conflicts
+    SearchServiceBuilder,
 };

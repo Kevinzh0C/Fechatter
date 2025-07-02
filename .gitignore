@@ -76,6 +76,8 @@ config/docker/docker-compose.vcr.yml
 # Scripts and development tools
 # ============================================================================
 /scripts/
+/output/
+scripts/output/
 *.sh
 *.py
 dev-tools/

@@ -4,26 +4,26 @@
 //! **Principle**: Production-ready, secure file handling.
 
 use crate::{
-    error::{AppError, ErrorOutput},
-    AppState,
     dtos::core::ApiResponse,
     dtos::models::responses::UploadResponse,
+    error::{AppError, ErrorOutput},
     services::infrastructure::storage::{LocalStorage, StorageService},
+    AppState,
 };
 use axum::{
-    extract::{multipart::Multipart, Extension, Path as ExtractPath},
-    response::{Response, IntoResponse, Json},
-    http::{StatusCode, header},
     body::Body,
+    extract::{multipart::Multipart, Extension, Path as ExtractPath},
+    http::{header, StatusCode},
+    response::{IntoResponse, Json, Response},
 };
 use chrono;
 use fechatter_core::models::AuthUser;
 use mime_guess;
 use serde::Serialize;
 use std::path::Path;
-use utoipa::ToSchema;
 use tokio::fs;
-use tracing::{debug, warn, error, info};
+use tracing::{debug, error, info, warn};
+use utoipa::ToSchema;
 
 /// **Production-grade File Upload Handler**
 ///
@@ -55,7 +55,10 @@ pub async fn upload_single_file_handler(
         let data = field.bytes().await?;
         let file_size = data.len() as u64;
 
-        debug!("📤 [FILE_UPLOAD] Received file: {} ({} bytes)", filename, file_size);
+        debug!(
+            "📤 [FILE_UPLOAD] Received file: {} ({} bytes)",
+            filename, file_size
+        );
 
         // Validate file size
         if file_size == 0 {
@@ -64,44 +67,64 @@ pub async fn upload_single_file_handler(
         }
 
         if file_size > app_state.config.server.max_upload_size {
-            warn!("ERROR: [FILE_UPLOAD] File too large: {} ({} bytes > {} bytes)", 
-                  filename, file_size, app_state.config.server.max_upload_size);
+            warn!(
+                "ERROR: [FILE_UPLOAD] File too large: {} ({} bytes > {} bytes)",
+                filename, file_size, app_state.config.server.max_upload_size
+            );
             return Err(AppError::BadRequest(format!(
-                "File too large: {} bytes (max: {} bytes)", 
-                file_size, 
-                app_state.config.server.max_upload_size
+                "File too large: {} bytes (max: {} bytes)",
+                file_size, app_state.config.server.max_upload_size
             )));
         }
 
         // Access storage config and create LocalStorage instance
         let storage_config = &app_state.config.storage;
-        debug!("📤 [FILE_UPLOAD] Using storage config - path: {}, prefix: {}", 
-               storage_config.path, storage_config.url_prefix);
+        debug!(
+            "📤 [FILE_UPLOAD] Using storage config - path: {}, prefix: {}",
+            storage_config.path, storage_config.url_prefix
+        );
 
-        let storage = LocalStorage::new(&storage_config.path, &storage_config.url_prefix)
-            .map_err(|e| {
-                error!("ERROR: [FILE_UPLOAD] Failed to create storage instance: {}", e);
+        let storage =
+            LocalStorage::new(&storage_config.path, &storage_config.url_prefix).map_err(|e| {
+                error!(
+                    "ERROR: [FILE_UPLOAD] Failed to create storage instance: {}",
+                    e
+                );
                 e
             })?;
 
         // Upload file using storage service
-        let file_url = storage.upload(filename.clone(), data.to_vec()).await
+        let file_url = storage
+            .upload(filename.clone(), data.to_vec())
+            .await
             .map_err(|e| {
-                error!("ERROR: [FILE_UPLOAD] Storage upload failed for {}: {}", filename, e);
+                error!(
+                    "ERROR: [FILE_UPLOAD] Storage upload failed for {}: {}",
+                    filename, e
+                );
                 e
             })?;
 
-        info!("[FILE_UPLOAD] File uploaded successfully: {} -> {}", filename, file_url);
+        info!(
+            "[FILE_UPLOAD] File uploaded successfully: {} -> {}",
+            filename, file_url
+        );
 
         // Extract hash.ext from file_url for symlink creation
         if let Some(file_id) = file_url.strip_prefix(&format!("{}/", storage_config.url_prefix)) {
             debug!("📤 [FILE_UPLOAD] Creating symlink for file_id: {}", file_id);
             if let Err(e) = create_symlink_for_file(&storage_config.path, file_id).await {
-                warn!("WARNING: [FILE_UPLOAD] Symlink creation failed (non-critical): {}", e);
+                warn!(
+                    "WARNING: [FILE_UPLOAD] Symlink creation failed (non-critical): {}",
+                    e
+                );
                 // Don't fail the upload for symlink issues
             }
         } else {
-            warn!("WARNING: [FILE_UPLOAD] Could not extract file_id from URL: {}", file_url);
+            warn!(
+                "WARNING: [FILE_UPLOAD] Could not extract file_id from URL: {}",
+                file_url
+            );
         }
 
         // Guess MIME type from filename extension
@@ -109,7 +132,10 @@ pub async fn upload_single_file_handler(
             .first_or_octet_stream()
             .to_string();
 
-        debug!("📤 [FILE_UPLOAD] Detected MIME type: {} for file: {}", mime_type, filename);
+        debug!(
+            "📤 [FILE_UPLOAD] Detected MIME type: {} for file: {}",
+            mime_type, filename
+        );
 
         let resp = UploadResponse {
             id: file_url.clone(),
@@ -119,60 +145,80 @@ pub async fn upload_single_file_handler(
             size: file_size,
             created_at: chrono::Utc::now().to_rfc3339(),
         };
-        
-        info!("[FILE_UPLOAD] Upload completed successfully for {}", filename);
-        return Ok(Json(ApiResponse::success(resp, "File uploaded successfully".to_string())));
+
+        info!(
+            "[FILE_UPLOAD] Upload completed successfully for {}",
+            filename
+        );
+        return Ok(Json(ApiResponse::success(
+            resp,
+            "File uploaded successfully".to_string(),
+        )));
     }
 
     warn!("ERROR: [FILE_UPLOAD] No file found in multipart request");
-    Err(AppError::BadRequest("No file found in multipart request".to_string()))
+    Err(AppError::BadRequest(
+        "No file found in multipart request".to_string(),
+    ))
 }
 
 /// Create symlink in root directory for ServeDir compatibility
 async fn create_symlink_for_file(storage_path: &str, file_id: &str) -> Result<(), AppError> {
     use std::os::unix::fs::symlink;
-    
+
     // Parse file_id to extract hash and extension
     let parts: Vec<&str> = file_id.split('.').collect();
     if parts.len() != 2 {
         return Ok(()); // Skip if invalid format
     }
-    
+
     let hash = parts[0];
     let extension = parts[1];
-    
+
     // Generate hash directory path
     let (part1, part2) = hash.split_at(3);
     let (part2, part3) = part2.split_at(3);
-    let hash_path = format!("{}/{}/{}/{}.{}", storage_path, part1, part2, part3, extension);
+    let hash_path = format!(
+        "{}/{}/{}/{}.{}",
+        storage_path, part1, part2, part3, extension
+    );
     let symlink_path = format!("{}/{}", storage_path, file_id);
-    
+
     // Create relative symlink path
     let relative_target = format!("./{}/{}/{}.{}", part1, part2, part3, extension);
-    
+
     // Remove existing symlink if it exists
     if std::path::Path::new(&symlink_path).exists() {
         let _ = tokio::fs::remove_file(&symlink_path).await;
     }
-    
+
     // Create symlink using blocking task
     let symlink_path_clone = symlink_path.clone();
     let relative_str_clone = relative_target.clone();
     let filename_clone = file_id.to_string();
-    
-    match tokio::task::spawn_blocking(move || {
-        symlink(&relative_str_clone, &symlink_path_clone)
-    }).await {
+
+    match tokio::task::spawn_blocking(move || symlink(&relative_str_clone, &symlink_path_clone))
+        .await
+    {
         Ok(Ok(_)) => {
-            debug!("🔗 [SYMLINK] Created: {} -> {}", filename_clone, relative_target);
+            debug!(
+                "🔗 [SYMLINK] Created: {} -> {}",
+                filename_clone, relative_target
+            );
             Ok(())
         }
         Ok(Err(e)) => {
-            warn!("WARNING: [SYMLINK] Failed to create symlink for {}: {}", filename_clone, e);
+            warn!(
+                "WARNING: [SYMLINK] Failed to create symlink for {}: {}",
+                filename_clone, e
+            );
             Ok(()) // Don't fail upload for symlink issues
         }
         Err(e) => {
-            warn!("WARNING: [SYMLINK] Task error for {}: {}", filename_clone, e);
+            warn!(
+                "WARNING: [SYMLINK] Task error for {}: {}",
+                filename_clone, e
+            );
             Ok(()) // Don't fail upload for symlink issues
         }
     }
@@ -199,7 +245,7 @@ pub async fn download_file_handler(
     ExtractPath(file_id): ExtractPath<String>,
 ) -> Result<Response<Body>, AppError> {
     debug!("📥 [FILE_DOWNLOAD] Starting download for file: {}", file_id);
-    
+
     // Validate file_id format
     if file_id.is_empty() {
         warn!("ERROR: [FILE_DOWNLOAD] Empty file_id provided");
@@ -209,30 +255,47 @@ pub async fn download_file_handler(
     // Check file_id format (should be hash.extension)
     let parts: Vec<&str> = file_id.split('.').collect();
     if parts.len() != 2 {
-        warn!("ERROR: [FILE_DOWNLOAD] Invalid file_id format: {} (expected: hash.extension)", file_id);
-        return Err(AppError::BadRequest(format!("Invalid file ID format: {}", file_id)));
+        warn!(
+            "ERROR: [FILE_DOWNLOAD] Invalid file_id format: {} (expected: hash.extension)",
+            file_id
+        );
+        return Err(AppError::BadRequest(format!(
+            "Invalid file ID format: {}",
+            file_id
+        )));
     }
 
     let hash = parts[0];
     let extension = parts[1];
-    
+
     if hash.len() < 6 {
-        warn!("ERROR: [FILE_DOWNLOAD] Hash too short in file_id: {}", file_id);
+        warn!(
+            "ERROR: [FILE_DOWNLOAD] Hash too short in file_id: {}",
+            file_id
+        );
         return Err(AppError::BadRequest("Invalid file hash".to_string()));
     }
 
-    debug!("📥 [FILE_DOWNLOAD] Parsed file_id - hash: {}, extension: {}", hash, extension);
+    debug!(
+        "📥 [FILE_DOWNLOAD] Parsed file_id - hash: {}, extension: {}",
+        hash, extension
+    );
 
     let storage_config = &app_state.config.storage;
-    debug!("📥 [FILE_DOWNLOAD] Using storage config - path: {}, prefix: {}", 
-           storage_config.path, storage_config.url_prefix);
+    debug!(
+        "📥 [FILE_DOWNLOAD] Using storage config - path: {}, prefix: {}",
+        storage_config.path, storage_config.url_prefix
+    );
 
-    let storage = LocalStorage::new(&storage_config.path, &storage_config.url_prefix)
-        .map_err(|e| {
-            error!("ERROR: [FILE_DOWNLOAD] Failed to create storage instance: {}", e);
+    let storage =
+        LocalStorage::new(&storage_config.path, &storage_config.url_prefix).map_err(|e| {
+            error!(
+                "ERROR: [FILE_DOWNLOAD] Failed to create storage instance: {}",
+                e
+            );
             AppError::ChatFileError(format!("Storage initialization failed: {}", e))
         })?;
-    
+
     // Check if file exists first
     match storage.exists(&file_id).await {
         Ok(true) => {
@@ -240,51 +303,76 @@ pub async fn download_file_handler(
         }
         Ok(false) => {
             warn!("ERROR: [FILE_DOWNLOAD] File not found: {}", file_id);
-            return Err(AppError::NotFound(vec![format!("File not found: {}", file_id)]));
+            return Err(AppError::NotFound(vec![format!(
+                "File not found: {}",
+                file_id
+            )]));
         }
         Err(e) => {
-            error!("ERROR: [FILE_DOWNLOAD] Error checking file existence: {}", e);
-            return Err(AppError::ChatFileError(format!("File existence check failed: {}", e)));
+            error!(
+                "ERROR: [FILE_DOWNLOAD] Error checking file existence: {}",
+                e
+            );
+            return Err(AppError::ChatFileError(format!(
+                "File existence check failed: {}",
+                e
+            )));
         }
     }
-    
+
     // Download file data
     match storage.download(&file_id).await {
         Ok(file_data) => {
             let file_size = file_data.len();
-            info!("[FILE_DOWNLOAD] File read successfully: {} ({} bytes)", file_id, file_size);
-            
+            info!(
+                "[FILE_DOWNLOAD] File read successfully: {} ({} bytes)",
+                file_id, file_size
+            );
+
             // Guess MIME type from file extension
-            let mime_type = mime_guess::from_path(&file_id)
-                .first_or_octet_stream();
-            
-            debug!("📥 [FILE_DOWNLOAD] Detected MIME type: {} for file: {}", mime_type, file_id);
-            
+            let mime_type = mime_guess::from_path(&file_id).first_or_octet_stream();
+
+            debug!(
+                "📥 [FILE_DOWNLOAD] Detected MIME type: {} for file: {}",
+                mime_type, file_id
+            );
+
             // Build response with appropriate headers
             let response = Response::builder()
                 .status(StatusCode::OK)
                 .header(header::CONTENT_TYPE, mime_type.as_ref())
                 .header(header::CONTENT_LENGTH, file_size)
                 .header(header::CACHE_CONTROL, "public, max-age=31536000") // Cache for 1 year
-                .header(header::CONTENT_DISPOSITION, format!("inline; filename=\"{}\"", file_id))
+                .header(
+                    header::CONTENT_DISPOSITION,
+                    format!("inline; filename=\"{}\"", file_id),
+                )
                 .body(Body::from(file_data))
                 .map_err(|e| {
-                    error!("ERROR: [FILE_DOWNLOAD] Failed to build HTTP response: {}", e);
+                    error!(
+                        "ERROR: [FILE_DOWNLOAD] Failed to build HTTP response: {}",
+                        e
+                    );
                     AppError::ChatFileError(format!("Failed to build response: {}", e))
                 })?;
-            
-            debug!("[FILE_DOWNLOAD] Response built successfully for: {}", file_id);
+
+            debug!(
+                "[FILE_DOWNLOAD] Response built successfully for: {}",
+                file_id
+            );
             Ok(response)
         }
         Err(e) => {
-            error!("ERROR: [FILE_DOWNLOAD] Failed to read file {}: {:?}", file_id, e);
+            error!(
+                "ERROR: [FILE_DOWNLOAD] Failed to read file {}: {:?}",
+                file_id, e
+            );
             match e {
-                AppError::NotFound(_) => {
-                    Err(AppError::NotFound(vec![format!("File not found: {}", file_id)]))
-                }
-                _ => {
-                    Err(AppError::ChatFileError(format!("File read failed: {}", e)))
-                }
+                AppError::NotFound(_) => Err(AppError::NotFound(vec![format!(
+                    "File not found: {}",
+                    file_id
+                )])),
+                _ => Err(AppError::ChatFileError(format!("File read failed: {}", e))),
             }
         }
     }
@@ -292,21 +380,36 @@ pub async fn download_file_handler(
 
 /// Initialize symlinks for existing files
 pub async fn initialize_file_symlinks(storage_path: &str) -> Result<(), AppError> {
-    info!("🔗 [INIT_SYMLINKS] Initializing symlinks for existing files in: {}", storage_path);
-    
+    info!(
+        "🔗 [INIT_SYMLINKS] Initializing symlinks for existing files in: {}",
+        storage_path
+    );
+
     let storage_dir = std::path::Path::new(storage_path);
     if !storage_dir.exists() {
-        warn!("WARNING: [INIT_SYMLINKS] Storage directory does not exist: {}", storage_path);
+        warn!(
+            "WARNING: [INIT_SYMLINKS] Storage directory does not exist: {}",
+            storage_path
+        );
         return Ok(());
     }
-    
+
     let mut created_count = 0;
     let mut skipped_count = 0;
-    
+
     // Use async recursive function to scan directories
-    scan_directory_recursive(storage_dir, storage_dir, &mut created_count, &mut skipped_count).await?;
-    
-    info!("[INIT_SYMLINKS] Completed: {} created, {} skipped", created_count, skipped_count);
+    scan_directory_recursive(
+        storage_dir,
+        storage_dir,
+        &mut created_count,
+        &mut skipped_count,
+    )
+    .await?;
+
+    info!(
+        "[INIT_SYMLINKS] Completed: {} created, {} skipped",
+        created_count, skipped_count
+    );
     Ok(())
 }
 
@@ -317,62 +420,82 @@ async fn scan_directory_recursive(
     created_count: &mut i32,
     skipped_count: &mut i32,
 ) -> Result<(), AppError> {
-    let mut entries = tokio::fs::read_dir(current_dir).await
+    let mut entries = tokio::fs::read_dir(current_dir)
+        .await
         .map_err(|e| AppError::ChatFileError(format!("Failed to read directory: {}", e)))?;
-    
-    while let Some(entry) = entries.next_entry().await
-        .map_err(|e| AppError::ChatFileError(format!("Failed to read entry: {}", e)))? {
-        
+
+    while let Some(entry) = entries
+        .next_entry()
+        .await
+        .map_err(|e| AppError::ChatFileError(format!("Failed to read entry: {}", e)))?
+    {
         let path = entry.path();
-        
+
         if path.is_dir() {
             // Skip if this is the root directory to avoid infinite recursion
             if path != storage_root {
-                Box::pin(scan_directory_recursive(&path, storage_root, created_count, skipped_count)).await?;
+                Box::pin(scan_directory_recursive(
+                    &path,
+                    storage_root,
+                    created_count,
+                    skipped_count,
+                ))
+                .await?;
             }
         } else if path.is_file() && !path.is_symlink() {
             // Skip files in root directory (already accessible)
             if path.parent() == Some(storage_root) {
                 continue;
             }
-            
+
             // Extract filename
             if let Some(filename) = path.file_name().and_then(|f| f.to_str()) {
                 let symlink_path = storage_root.join(filename);
-                
+
                 // Skip if symlink already exists
                 if symlink_path.exists() {
                     *skipped_count += 1;
                     continue;
                 }
-                
+
                 // Calculate relative path from storage root to file
                 if let Ok(relative_path) = path.strip_prefix(storage_root) {
                     let relative_str = format!("./{}", relative_path.display());
-                    
+
                     // Create symlink using blocking task
                     let symlink_path_clone = symlink_path.clone();
                     let relative_str_clone = relative_str.clone();
                     let filename_clone = filename.to_string();
-                    
+
                     match tokio::task::spawn_blocking(move || {
                         std::os::unix::fs::symlink(&relative_str_clone, &symlink_path_clone)
-                    }).await {
+                    })
+                    .await
+                    {
                         Ok(Ok(_)) => {
-                            debug!("🔗 [INIT_SYMLINKS] Created: {} -> {}", filename_clone, relative_str);
+                            debug!(
+                                "🔗 [INIT_SYMLINKS] Created: {} -> {}",
+                                filename_clone, relative_str
+                            );
                             *created_count += 1;
                         }
                         Ok(Err(e)) => {
-                            warn!("WARNING: [INIT_SYMLINKS] Failed to create symlink for {}: {}", filename_clone, e);
+                            warn!(
+                                "WARNING: [INIT_SYMLINKS] Failed to create symlink for {}: {}",
+                                filename_clone, e
+                            );
                         }
                         Err(e) => {
-                            warn!("WARNING: [INIT_SYMLINKS] Task error for {}: {}", filename_clone, e);
+                            warn!(
+                                "WARNING: [INIT_SYMLINKS] Task error for {}: {}",
+                                filename_clone, e
+                            );
                         }
                     }
                 }
             }
         }
     }
-    
+
     Ok(())
 }

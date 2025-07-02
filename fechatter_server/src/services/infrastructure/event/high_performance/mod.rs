@@ -7,8 +7,7 @@ pub mod high_performance_publisher;
 
 // Re-export main components
 pub use high_performance_publisher::{
-    HighPerformancePublisher, PublisherConfig, EventData, EventPriority,
-    FastMessageEvent, FastChatMemberEvent, PublishResult,
-    CircuitBreakerConfig, RetryConfig, BackpressureConfig,
-    PublisherMetrics, EventMetadata,
+    BackpressureConfig, CircuitBreakerConfig, EventData, EventMetadata, EventPriority,
+    FastChatMemberEvent, FastMessageEvent, HighPerformancePublisher, PublishResult,
+    PublisherConfig, PublisherMetrics, RetryConfig,
 };

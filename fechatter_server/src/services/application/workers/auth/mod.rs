@@ -11,18 +11,18 @@ pub mod service;
 
 // Re-export core types for backward compatibility
 pub use service::{
-  AuthServiceBuilder,
-  AuthServiceConfig,
-  AuthServiceMetrics,
-  // Basic service
-  AuthUserService,
-  // High availability service
-  HighAvailabilityAuthService,
+    create_auth_user_service,
 
-  // Production service
-  ProductionAuthService,
-  create_auth_user_service,
+    create_custom_auth_service,
+    create_production_auth_service,
+    AuthServiceBuilder,
+    AuthServiceConfig,
+    AuthServiceMetrics,
+    // Basic service
+    AuthUserService,
+    // High availability service
+    HighAvailabilityAuthService,
 
-  create_custom_auth_service,
-  create_production_auth_service,
+    // Production service
+    ProductionAuthService,
 };

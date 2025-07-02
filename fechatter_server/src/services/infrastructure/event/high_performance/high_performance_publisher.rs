@@ -1,5 +1,5 @@
 // High-Performance NATS Event Publisher with Zero-Cost Abstractions
-// 
+//
 // This module implements a production-ready, high-performance event publishing system
 // using idiomatic Rust patterns, tokio mspc channels, and zero-cost abstractions.
 
@@ -20,8 +20,8 @@ use tokio::{
 use tracing::{debug, error, info, instrument, warn};
 
 use crate::error::{AppError, EventTransportError};
-use uuid;
 use serde::{Deserialize, Serialize};
+use uuid;
 
 // =====================================================================================
 // CORE TRAITS AND ZERO-COST ABSTRACTIONS
@@ -31,13 +31,13 @@ use serde::{Deserialize, Serialize};
 pub trait EventData: Send + Sync + 'static {
     /// Get the subject for this event
     fn subject(&self) -> &str;
-    
+
     /// Serialize to bytes with zero-copy optimization where possible
     fn serialize(&self) -> Result<Bytes, AppError>;
-    
+
     /// Get event metadata for tracing and monitoring
     fn metadata(&self) -> EventMetadata;
-    
+
     /// Get priority for backpressure handling
     fn priority(&self) -> EventPriority {
         EventPriority::Normal
@@ -80,23 +80,23 @@ pub struct PublishResult {
 pub struct PublisherConfig {
     /// Buffer size for the internal channel (affects memory usage)
     pub buffer_size: usize,
-    
+
     /// Maximum number of concurrent publish operations
     pub max_concurrent: usize,
-    
+
     /// Batch size for bulk operations
     pub batch_size: usize,
-    
+
     /// Maximum time to wait before sending a partial batch
     #[serde(with = "duration_serde")]
     pub batch_timeout: Duration,
-    
+
     /// Circuit breaker configuration
     pub circuit_breaker: CircuitBreakerConfig,
-    
+
     /// Retry configuration
     pub retry: RetryConfig,
-    
+
     /// Backpressure configuration
     pub backpressure: BackpressureConfig,
 }
@@ -208,7 +208,7 @@ impl CircuitBreaker {
 
     async fn is_request_allowed(&self) -> bool {
         let state = *self.state.read().await;
-        
+
         match state {
             CircuitState::Closed => true,
             CircuitState::Open => {
@@ -231,7 +231,7 @@ impl CircuitBreaker {
 
     async fn record_success(&self) {
         let state = *self.state.read().await;
-        
+
         match state {
             CircuitState::Closed => {
                 self.failure_count.store(0, Ordering::SeqCst);
@@ -251,7 +251,7 @@ impl CircuitBreaker {
 
     async fn record_failure(&self) {
         let failure_count = self.failure_count.fetch_add(1, Ordering::SeqCst) + 1;
-        
+
         if failure_count >= self.config.failure_threshold {
             let mut state_guard = self.state.write().await;
             *state_guard = CircuitState::Open;
@@ -302,12 +302,12 @@ pub struct PublisherMetrics {
 impl PublisherMetrics {
     pub fn record_publish_success(&self, latency: Duration) {
         self.total_published.fetch_add(1, Ordering::Relaxed);
-        
+
         // Update rolling average latency
         let latency_us = latency.as_micros() as u64;
         let current_avg = self.average_latency_us.load(Ordering::Relaxed);
         let total_published = self.total_published.load(Ordering::Relaxed);
-        
+
         if total_published > 1 {
             let new_avg = (current_avg * (total_published - 1) + latency_us) / total_published;
             self.average_latency_us.store(new_avg, Ordering::Relaxed);
@@ -329,7 +329,8 @@ impl PublisherMetrics {
     }
 
     pub fn record_backpressure_drop(&self) {
-        self.total_backpressure_drops.fetch_add(1, Ordering::Relaxed);
+        self.total_backpressure_drops
+            .fetch_add(1, Ordering::Relaxed);
     }
 
     pub fn update_queue_size(&self, size: usize) {
@@ -338,15 +339,16 @@ impl PublisherMetrics {
 
     pub fn record_batch(&self, batch_size: usize) {
         self.batch_count.fetch_add(1, Ordering::Relaxed);
-        
+
         let current_avg = self.avg_batch_size.load(Ordering::Relaxed);
         let total_batches = self.batch_count.load(Ordering::Relaxed);
-        
+
         if total_batches > 1 {
             let new_avg = (current_avg * (total_batches - 1) + batch_size as u64) / total_batches;
             self.avg_batch_size.store(new_avg, Ordering::Relaxed);
         } else {
-            self.avg_batch_size.store(batch_size as u64, Ordering::Relaxed);
+            self.avg_batch_size
+                .store(batch_size as u64, Ordering::Relaxed);
         }
     }
 }
@@ -364,21 +366,14 @@ pub struct HighPerformancePublisher {
 
 impl HighPerformancePublisher {
     /// Create a new high-performance publisher
-    pub fn new(
-        nats_client: async_nats::Client,
-        config: PublisherConfig,
-    ) -> Result<Self, AppError> {
+    pub fn new(nats_client: async_nats::Client, config: PublisherConfig) -> Result<Self, AppError> {
         let (request_tx, request_rx) = mpsc::channel(config.buffer_size);
         let metrics = Arc::new(PublisherMetrics::default());
-        
+
         // Start the background processing task
-        let processor = PublisherProcessor::new(
-            nats_client,
-            config.clone(),
-            metrics.clone(),
-            request_rx,
-        );
-        
+        let processor =
+            PublisherProcessor::new(nats_client, config.clone(), metrics.clone(), request_rx);
+
         tokio::spawn(async move {
             if let Err(e) = processor.run().await {
                 error!("Publisher processor failed: {}", e);
@@ -405,7 +400,9 @@ impl HighPerformancePublisher {
                 success: false,
                 latency: Duration::ZERO,
                 retry_count: 0,
-                error: Some(EventTransportError::Publish("Load shedding activated".to_string())),
+                error: Some(EventTransportError::Publish(
+                    "Load shedding activated".to_string(),
+                )),
             });
         }
 
@@ -420,13 +417,15 @@ impl HighPerformancePublisher {
         match timeout(
             Duration::from_millis(100),
             self.request_tx.send(InternalRequest::Single(request)),
-        ).await {
-            Ok(Ok(())) => {
-                response_rx.await.map_err(|_| {
-                    AppError::EventPublishError("Publisher processor disconnected".to_string())
-                })
-            }
-            Ok(Err(_)) => Err(AppError::EventPublishError("Request queue full".to_string())),
+        )
+        .await
+        {
+            Ok(Ok(())) => response_rx.await.map_err(|_| {
+                AppError::EventPublishError("Publisher processor disconnected".to_string())
+            }),
+            Ok(Err(_)) => Err(AppError::EventPublishError(
+                "Request queue full".to_string(),
+            )),
             Err(_) => Err(AppError::EventPublishError("Request timeout".to_string())),
         }
     }
@@ -444,17 +443,25 @@ impl HighPerformancePublisher {
         // Check backpressure
         if self.should_shed_load().await {
             self.metrics.record_backpressure_drop();
-            return Ok(events.into_iter().map(|_| PublishResult {
-                success: false,
-                latency: Duration::ZERO,
-                retry_count: 0,
-                error: Some(EventTransportError::Publish("Load shedding activated".to_string())),
-            }).collect());
+            return Ok(events
+                .into_iter()
+                .map(|_| PublishResult {
+                    success: false,
+                    latency: Duration::ZERO,
+                    retry_count: 0,
+                    error: Some(EventTransportError::Publish(
+                        "Load shedding activated".to_string(),
+                    )),
+                })
+                .collect());
         }
 
         let (response_tx, response_rx) = oneshot::channel();
         let request = BatchPublishRequest {
-            events: events.into_iter().map(|e| Box::new(e) as Box<dyn EventData>).collect(),
+            events: events
+                .into_iter()
+                .map(|e| Box::new(e) as Box<dyn EventData>)
+                .collect(),
             response_tx,
             enqueued_at: Instant::now(),
         };
@@ -462,13 +469,15 @@ impl HighPerformancePublisher {
         match timeout(
             Duration::from_millis(500), // Longer timeout for batch
             self.request_tx.send(InternalRequest::Batch(request)),
-        ).await {
-            Ok(Ok(())) => {
-                response_rx.await.map_err(|_| {
-                    AppError::EventPublishError("Publisher processor disconnected".to_string())
-                })
-            }
-            Ok(Err(_)) => Err(AppError::EventPublishError("Request queue full".to_string())),
+        )
+        .await
+        {
+            Ok(Ok(())) => response_rx.await.map_err(|_| {
+                AppError::EventPublishError("Publisher processor disconnected".to_string())
+            }),
+            Ok(Err(_)) => Err(AppError::EventPublishError(
+                "Request queue full".to_string(),
+            )),
             Err(_) => Err(AppError::EventPublishError("Request timeout".to_string())),
         }
     }
@@ -485,7 +494,7 @@ impl HighPerformancePublisher {
         }
 
         let queue_size = self.metrics.queue_size.load(Ordering::Relaxed);
-        
+
         if queue_size >= self.config.backpressure.high_water_mark {
             // Use probabilistic load shedding
             use rand::Rng;
@@ -498,7 +507,9 @@ impl HighPerformancePublisher {
 
     /// Graceful shutdown
     pub async fn shutdown(&self) -> Result<(), AppError> {
-        self.request_tx.send(InternalRequest::Shutdown).await
+        self.request_tx
+            .send(InternalRequest::Shutdown)
+            .await
             .map_err(|_| AppError::EventPublishError("Failed to send shutdown signal".to_string()))
     }
 }
@@ -551,9 +562,9 @@ impl PublisherProcessor {
                             if batch_buffer.len() >= self.config.batch_size {
                                 self.flush_batch(&mut batch_buffer, &mut batch_deadline).await;
                             }
-                            
+
                             batch_buffer.push(req);
-                            
+
                             if batch_deadline.is_none() {
                                 batch_deadline = Some(Box::pin(sleep(self.config.batch_timeout)));
                             }
@@ -563,7 +574,7 @@ impl PublisherProcessor {
                             if !batch_buffer.is_empty() {
                                 self.flush_batch(&mut batch_buffer, &mut batch_deadline).await;
                             }
-                            
+
                             // Process batch request immediately
                             self.handle_batch_request(req).await;
                         }
@@ -577,7 +588,7 @@ impl PublisherProcessor {
                         None => break, // Channel closed
                     }
                 }
-                
+
                 // Handle batch timeout
                 _ = async {
                     if let Some(deadline) = &mut batch_deadline {
@@ -610,10 +621,10 @@ impl PublisherProcessor {
         *batch_deadline = None;
 
         self.metrics.record_batch(batch_size);
-        
+
         // Process batch concurrently with semaphore for backpressure
         let mut futures = FuturesUnordered::new();
-        
+
         for request in batch {
             let permit = self.semaphore.clone().acquire_owned().await;
             if let Ok(permit) = permit {
@@ -621,7 +632,7 @@ impl PublisherProcessor {
                 let nats_client = &self.nats_client;
                 let config = &self.config;
                 let metrics = &self.metrics;
-                
+
                 futures.push(async move {
                     let result = Self::publish_single_with_retry(
                         nats_client,
@@ -629,14 +640,15 @@ impl PublisherProcessor {
                         circuit_breaker,
                         request.event_data,
                         request.enqueued_at,
-                    ).await;
-                    
+                    )
+                    .await;
+
                     if result.success {
                         metrics.record_publish_success(result.latency);
                     } else {
                         metrics.record_publish_failure();
                     }
-                    
+
                     let _ = request.response_tx.send(result);
                     drop(permit); // Release semaphore
                 });
@@ -646,7 +658,9 @@ impl PublisherProcessor {
                     success: false,
                     latency: Duration::ZERO,
                     retry_count: 0,
-                    error: Some(EventTransportError::Publish("Semaphore acquisition failed".to_string())),
+                    error: Some(EventTransportError::Publish(
+                        "Semaphore acquisition failed".to_string(),
+                    )),
                 };
                 let _ = request.response_tx.send(result);
             }
@@ -659,12 +673,12 @@ impl PublisherProcessor {
     async fn handle_batch_request(&self, request: BatchPublishRequest) {
         let batch_size = request.events.len();
         let mut results = Vec::with_capacity(batch_size);
-        
+
         self.metrics.record_batch(batch_size);
-        
+
         // Process all events concurrently with semaphore
         let mut futures = FuturesUnordered::new();
-        
+
         for event_data in request.events {
             let permit = self.semaphore.clone().acquire_owned().await;
             if let Ok(permit) = permit {
@@ -673,7 +687,7 @@ impl PublisherProcessor {
                 let config = &self.config;
                 let metrics = &self.metrics;
                 let enqueued_at = request.enqueued_at;
-                
+
                 futures.push(async move {
                     let result = Self::publish_single_with_retry(
                         nats_client,
@@ -681,14 +695,15 @@ impl PublisherProcessor {
                         circuit_breaker,
                         event_data,
                         enqueued_at,
-                    ).await;
-                    
+                    )
+                    .await;
+
                     if result.success {
                         metrics.record_publish_success(result.latency);
                     } else {
                         metrics.record_publish_failure();
                     }
-                    
+
                     drop(permit);
                     result
                 });
@@ -697,7 +712,9 @@ impl PublisherProcessor {
                     success: false,
                     latency: Duration::ZERO,
                     retry_count: 0,
-                    error: Some(EventTransportError::Publish("Semaphore acquisition failed".to_string())),
+                    error: Some(EventTransportError::Publish(
+                        "Semaphore acquisition failed".to_string(),
+                    )),
                 });
             }
         }
@@ -706,7 +723,7 @@ impl PublisherProcessor {
         while let Some(result) = futures.next().await {
             results.push(result);
         }
-        
+
         let _ = request.response_tx.send(results);
     }
 
@@ -719,14 +736,16 @@ impl PublisherProcessor {
     ) -> PublishResult {
         let start_time = Instant::now();
         let total_latency = start_time.duration_since(enqueued_at);
-        
+
         // Check circuit breaker
         if !circuit_breaker.is_request_allowed().await {
             return PublishResult {
                 success: false,
                 latency: total_latency,
                 retry_count: 0,
-                error: Some(EventTransportError::Publish("Circuit breaker open".to_string())),
+                error: Some(EventTransportError::Publish(
+                    "Circuit breaker open".to_string(),
+                )),
             };
         }
 
@@ -738,7 +757,10 @@ impl PublisherProcessor {
                     success: false,
                     latency: total_latency,
                     retry_count: 0,
-                    error: Some(EventTransportError::Publish(format!("Serialization failed: {}", e))),
+                    error: Some(EventTransportError::Publish(format!(
+                        "Serialization failed: {}",
+                        e
+                    ))),
                 };
             }
         };
@@ -796,7 +818,7 @@ impl PublisherProcessor {
         let base = config.initial_backoff.as_millis() as u64;
         let exponential = base * 2u64.pow(attempt.saturating_sub(1));
         let capped = exponential.min(config.max_backoff.as_millis() as u64);
-        
+
         let final_backoff = if config.jitter {
             use rand::Rng;
             let jitter = rand::thread_rng().gen_range(0.8..=1.2);
@@ -837,19 +859,19 @@ impl EventData for FastMessageEvent {
     fn subject(&self) -> &str {
         match self.event_type.as_str() {
             "created" => "fechatter.messages.created.v2",
-            "updated" => "fechatter.messages.updated.v2", 
+            "updated" => "fechatter.messages.updated.v2",
             "deleted" => "fechatter.messages.deleted.v2",
             _ => "fechatter.messages.unknown.v2",
         }
     }
-    
+
     fn serialize(&self) -> Result<Bytes, AppError> {
         // Use efficient binary serialization for performance
-        let data = serde_json::to_vec(self)
-            .map_err(|e| AppError::SerializationError(e.to_string()))?;
+        let data =
+            serde_json::to_vec(self).map_err(|e| AppError::SerializationError(e.to_string()))?;
         Ok(Bytes::from(data))
     }
-    
+
     fn metadata(&self) -> EventMetadata {
         EventMetadata {
             event_type: format!("message.{}", self.event_type),
@@ -858,7 +880,7 @@ impl EventData for FastMessageEvent {
             created_at: Instant::now(),
         }
     }
-    
+
     fn priority(&self) -> EventPriority {
         match self.event_type.as_str() {
             "deleted" => EventPriority::High,
@@ -885,22 +907,25 @@ impl EventData for FastChatMemberEvent {
             _ => "fechatter.chat.member.unknown.v2",
         }
     }
-    
+
     fn serialize(&self) -> Result<Bytes, AppError> {
-        let data = serde_json::to_vec(self)
-            .map_err(|e| AppError::SerializationError(e.to_string()))?;
+        let data =
+            serde_json::to_vec(self).map_err(|e| AppError::SerializationError(e.to_string()))?;
         Ok(Bytes::from(data))
     }
-    
+
     fn metadata(&self) -> EventMetadata {
         EventMetadata {
             event_type: format!("chat.member.{}", self.event_type),
-            event_id: format!("chat_{}_{}_{}_{}", self.chat_id, self.user_id, self.event_type, self.timestamp),
+            event_id: format!(
+                "chat_{}_{}_{}_{}",
+                self.chat_id, self.user_id, self.event_type, self.timestamp
+            ),
             trace_id: None,
             created_at: Instant::now(),
         }
     }
-    
+
     fn priority(&self) -> EventPriority {
         EventPriority::Normal
     }
@@ -921,7 +946,7 @@ mod tests {
         assert_eq!(config.batch_size, 50);
     }
 
-    #[tokio::test] 
+    #[tokio::test]
     async fn test_circuit_breaker_state_transitions() {
         let config = CircuitBreakerConfig {
             failure_threshold: 2,
@@ -936,14 +961,14 @@ mod tests {
         // Record failures
         cb.record_failure().await;
         assert!(cb.is_request_allowed().await);
-        
+
         cb.record_failure().await;
         assert!(!cb.is_request_allowed().await); // Now open
-        
+
         // Wait for timeout and verify half-open
         sleep(Duration::from_millis(150)).await;
         assert!(cb.is_request_allowed().await); // Should be half-open
-        
+
         // Record success to close
         cb.record_success().await;
         assert!(cb.is_request_allowed().await); // Should be closed

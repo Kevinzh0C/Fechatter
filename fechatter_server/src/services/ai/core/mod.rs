@@ -8,4 +8,6 @@ pub mod ai_service_adapter;
 pub use ai_service_adapter::AiServiceAdapter;
 
 /// Re-export ai_sdk types for convenience
-pub use ai_sdk::{AiAdapter, AiService, Message as AiMessage, Role as AiRole, OpenaiAdapter, OllamaAdapter};
+pub use ai_sdk::{
+    AiAdapter, AiService, Message as AiMessage, OllamaAdapter, OpenaiAdapter, Role as AiRole,
+};

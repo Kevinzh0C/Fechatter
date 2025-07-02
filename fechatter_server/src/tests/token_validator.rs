@@ -1,126 +1,126 @@
 #[cfg(test)]
 mod tests {
-  use chrono::Utc;
-  use std::sync::Arc;
+    use chrono::Utc;
+    use std::sync::Arc;
 
-  use sqlx::PgPool;
-  use sqlx_db_tester::TestPg;
+    use sqlx::PgPool;
+    use sqlx_db_tester::TestPg;
 
-  use crate::{
-    AppError, AppState,
-    config::AppConfig,
-    domains::auth::RefreshTokenRepositoryImpl,
-    models::{User, UserClaims, UserStatus, jwt::TokenManager},
-    services::{EventPublisher, service_provider::ServiceProvider},
-    verify_token,
-  };
-  use fechatter_core::{TokenService, middlewares::TokenVerifier};
-
-  #[tokio::test]
-  async fn token_parser_trait_should_work() -> Result<(), AppError> {
-    let config = AppConfig::load()?;
-    // Create a mock repository
-    let pool = sqlx::PgPool::connect_lazy(&config.server.db_url).unwrap();
-    let refresh_token_repo = Arc::new(RefreshTokenRepositoryImpl::new(Arc::new(pool)));
-    let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo)?;
-
-    let user = User {
-      id: fechatter_core::UserId(1),
-      fullname: "John Doe".to_string(),
-      email: "john.doe@example.com".to_string(),
-      password_hash: Default::default(),
-      status: UserStatus::Active,
-      created_at: Utc::now(),
-      workspace_id: fechatter_core::WorkspaceId(1),
+    use crate::{
+        config::AppConfig,
+        domains::auth::RefreshTokenRepositoryImpl,
+        models::{jwt::TokenManager, User, UserClaims, UserStatus},
+        services::{service_provider::ServiceProvider, EventPublisher},
+        verify_token, AppError, AppState,
     };
+    use fechatter_core::{middlewares::TokenVerifier, TokenService};
 
-    // Create user claims from user
-    let user_claims = fechatter_core::models::jwt::UserClaims {
-      id: user.id,
-      workspace_id: user.workspace_id.into(),
-      fullname: user.fullname.clone(),
-      email: user.email.clone(),
-      status: user.status,
-      created_at: user.created_at,
-    };
+    #[tokio::test]
+    async fn token_parser_trait_should_work() -> Result<(), AppError> {
+        let config = AppConfig::load()?;
+        // Create a mock repository
+        let pool = sqlx::PgPool::connect_lazy(&config.server.db_url).unwrap();
+        let refresh_token_repo = Arc::new(RefreshTokenRepositoryImpl::new(Arc::new(pool)));
+        let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo)?;
 
-    // Generate token using TokenService trait - 使用完全限定语法
-    let token = <TokenManager as TokenService>::generate_token(&token_manager, &user_claims)?;
+        let user = User {
+            id: fechatter_core::UserId(1),
+            fullname: "John Doe".to_string(),
+            email: "john.doe@example.com".to_string(),
+            password_hash: Default::default(),
+            status: UserStatus::Active,
+            created_at: Utc::now(),
+            workspace_id: fechatter_core::WorkspaceId(1),
+        };
 
-    // Parse token using TokenService trait explicitly - 使用完全限定语法
-    let parsed_claims = <TokenManager as TokenService>::verify_token(&token_manager, &token)?;
+        // Create user claims from user
+        let user_claims = fechatter_core::models::jwt::UserClaims {
+            id: user.id,
+            workspace_id: user.workspace_id.into(),
+            fullname: user.fullname.clone(),
+            email: user.email.clone(),
+            status: user.status,
+            created_at: user.created_at,
+        };
 
-    assert_eq!(parsed_claims.id, user.id);
-    assert_eq!(parsed_claims.email, user.email);
-    assert_eq!(parsed_claims.fullname, user.fullname);
+        // Generate token using TokenService trait - 使用完全限定语法
+        let token = <TokenManager as TokenService>::generate_token(&token_manager, &user_claims)?;
 
-    Ok(())
-  }
+        // Parse token using TokenService trait explicitly - 使用完全限定语法
+        let parsed_claims = <TokenManager as TokenService>::verify_token(&token_manager, &token)?;
 
-  #[tokio::test]
-  async fn token_validator_trait_should_work() -> Result<(), AppError> {
-    let config = AppConfig::load()?;
-    // Create a mock repository
-    let pool = sqlx::PgPool::connect_lazy(&config.server.db_url).unwrap();
-    let refresh_token_repo = Arc::new(RefreshTokenRepositoryImpl::new(Arc::new(pool)));
-    let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo)?;
+        assert_eq!(parsed_claims.id, user.id);
+        assert_eq!(parsed_claims.email, user.email);
+        assert_eq!(parsed_claims.fullname, user.fullname);
 
-    let user = User {
-      id: fechatter_core::UserId(1),
-      fullname: "John Doe".to_string(),
-      email: "john.doe@example.com".to_string(),
-      password_hash: Default::default(),
-      status: UserStatus::Active,
-      created_at: Utc::now(),
-      workspace_id: fechatter_core::WorkspaceId(1),
-    };
+        Ok(())
+    }
 
-    // Create user claims from user
-    let user_claims = fechatter_core::models::jwt::UserClaims {
-      id: user.id,
-      workspace_id: user.workspace_id.into(),
-      fullname: user.fullname.clone(),
-      email: user.email.clone(),
-      status: user.status,
-      created_at: user.created_at,
-    };
+    #[tokio::test]
+    async fn token_validator_trait_should_work() -> Result<(), AppError> {
+        let config = AppConfig::load()?;
+        // Create a mock repository
+        let pool = sqlx::PgPool::connect_lazy(&config.server.db_url).unwrap();
+        let refresh_token_repo = Arc::new(RefreshTokenRepositoryImpl::new(Arc::new(pool)));
+        let token_manager = TokenManager::from_config(&config.auth, refresh_token_repo)?;
 
-    // Generate token using TokenService trait - 使用完全限定语法
-    let token = <TokenManager as TokenService>::generate_token(&token_manager, &user_claims)?;
+        let user = User {
+            id: fechatter_core::UserId(1),
+            fullname: "John Doe".to_string(),
+            email: "john.doe@example.com".to_string(),
+            password_hash: Default::default(),
+            status: UserStatus::Active,
+            created_at: Utc::now(),
+            workspace_id: fechatter_core::WorkspaceId(1),
+        };
 
-    // Validate token using TokenVerifier trait explicitly
-    let validated_claims = <TokenManager as TokenVerifier>::verify_token(&token_manager, &token)?;
+        // Create user claims from user
+        let user_claims = fechatter_core::models::jwt::UserClaims {
+            id: user.id,
+            workspace_id: user.workspace_id.into(),
+            fullname: user.fullname.clone(),
+            email: user.email.clone(),
+            status: user.status,
+            created_at: user.created_at,
+        };
 
-    assert_eq!(validated_claims.id, user.id);
-    assert_eq!(validated_claims.email, user.email);
-    assert_eq!(validated_claims.fullname, user.fullname);
+        // Generate token using TokenService trait - 使用完全限定语法
+        let token = <TokenManager as TokenService>::generate_token(&token_manager, &user_claims)?;
 
-    Ok(())
-  }
+        // Validate token using TokenVerifier trait explicitly
+        let validated_claims =
+            <TokenManager as TokenVerifier>::verify_token(&token_manager, &token)?;
 
-  #[tokio::test]
-  async fn test_verify_token_macro() -> Result<(), anyhow::Error> {
-    let config = AppConfig::load()?;
-    let app_state = AppState::try_new(config).await?;
+        assert_eq!(validated_claims.id, user.id);
+        assert_eq!(validated_claims.email, user.email);
+        assert_eq!(validated_claims.fullname, user.fullname);
 
-    let user_claims = UserClaims {
-      id: fechatter_core::UserId(1),
-      workspace_id: fechatter_core::WorkspaceId(1),
-      fullname: "Test User".to_string(),
-      email: "test@example.com".to_string(),
-      status: fechatter_core::UserStatus::Active,
-      created_at: chrono::Utc::now(),
-    };
+        Ok(())
+    }
 
-    let token =
+    #[tokio::test]
+    async fn test_verify_token_macro() -> Result<(), anyhow::Error> {
+        let config = AppConfig::load()?;
+        let app_state = AppState::try_new(config).await?;
+
+        let user_claims = UserClaims {
+            id: fechatter_core::UserId(1),
+            workspace_id: fechatter_core::WorkspaceId(1),
+            fullname: "Test User".to_string(),
+            email: "test@example.com".to_string(),
+            status: fechatter_core::UserStatus::Active,
+            created_at: chrono::Utc::now(),
+        };
+
+        let token =
       <fechatter_core::models::jwt::TokenManager as fechatter_core::TokenService>::generate_token(
         app_state.token_manager(),
         &user_claims,
       )?;
 
-    let result = verify_token!(app_state, &token)?;
-    assert_eq!(result.id, user_claims.id);
+        let result = verify_token!(app_state, &token)?;
+        assert_eq!(result.id, user_claims.id);
 
-    Ok(())
-  }
+        Ok(())
+    }
 }

@@ -50,13 +50,13 @@ pub use vector_db::PlaceholderVectorDb;
 
 // Enhanced event publisher exports from unified event system
 pub use event::{
-  CompleteMessageData, EnhancedEventPublisher, NotifyMessageEvent, NotifyChatMemberEvent, 
-  NotifyReadReceiptEvent, message_to_complete_data, create_enhanced_publisher_for_notify_server,
+    create_enhanced_publisher_for_notify_server, message_to_complete_data, CompleteMessageData,
+    EnhancedEventPublisher, NotifyChatMemberEvent, NotifyMessageEvent, NotifyReadReceiptEvent,
 };
 
 // Legacy flows (complex business workflows)
 pub use flows::{
-  RealtimeStreamService, DomainEventService, NotificationFlowService, InstantMessagingService
+    DomainEventService, InstantMessagingService, NotificationFlowService, RealtimeStreamService,
 };
 
 // Legacy event publisher (DEPRECATED - use event::EnhancedEventPublisher instead)

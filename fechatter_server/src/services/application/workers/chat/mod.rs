@@ -1,6 +1,6 @@
 pub mod service;
 
 pub use service::{
-  ChatApplicationService, ChatBusinessRules, ChatDetailView, ChatService, ChatServiceTrait,
-  CreateChatInput,
+    ChatApplicationService, ChatBusinessRules, ChatDetailView, ChatService, ChatServiceTrait,
+    CreateChatInput,
 };

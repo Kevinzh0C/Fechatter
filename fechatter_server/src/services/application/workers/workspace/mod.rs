@@ -7,6 +7,6 @@ pub mod service;
 
 // Simplified exports - no unnecessary abstractions
 pub use service::{
-  AddMembersCommand, InviteUserCommand, UpdateWorkspaceCommand, UserSummaryView, WorkspaceService,
-  WorkspaceView, create_workspace_application_service,
+    create_workspace_application_service, AddMembersCommand, InviteUserCommand,
+    UpdateWorkspaceCommand, UserSummaryView, WorkspaceService, WorkspaceView,
 };

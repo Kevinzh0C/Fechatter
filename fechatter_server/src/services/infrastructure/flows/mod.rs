@@ -37,67 +37,68 @@ pub mod typing_indicator;
 
 // Real-time stream exports
 pub use realtime_stream::{
-  InstantMessagingService,
-  MessagingService,
-  // Backward compatibility
-  NatsRealtimeStreamPublisher,
-  RealtimeStreamEvent,
-  RealtimeStreamPublisher,
-  RealtimeStreamService,
-  RealtimeStreamSubjects,
-  create_instant_messaging_service,
-  create_messaging_service,
-  create_realtime_stream_service,
-  create_realtime_stream_service_with_nats,
+    create_instant_messaging_service,
+    create_messaging_service,
+    create_realtime_stream_service,
+    create_realtime_stream_service_with_nats,
+    InstantMessagingService,
+    MessagingService,
+    // Backward compatibility
+    NatsRealtimeStreamPublisher,
+    RealtimeStreamEvent,
+    RealtimeStreamPublisher,
+    RealtimeStreamService,
+    RealtimeStreamSubjects,
 };
 
 // Domain event stream exports
 pub use domain_events::{
-  // Backward compatibility
-  CacheInvalidationEvent,
-  ChatDomainEvent,
-  DomainEvent,
-  DomainEventService,
-  DomainEventSubjects,
-  MessageDomainEvent,
-  SimplifiedEventPublisher,
-  SystemDomainEvent,
-  UserDomainEvent,
-  create_domain_event_service,
-  create_domain_event_service_with_nats,
-  create_simplified_publisher,
+    create_domain_event_service,
+    create_domain_event_service_with_nats,
+    create_simplified_publisher,
+    // Backward compatibility
+    CacheInvalidationEvent,
+    ChatDomainEvent,
+    DomainEvent,
+    DomainEventService,
+    DomainEventSubjects,
+    MessageDomainEvent,
+    SimplifiedEventPublisher,
+    SystemDomainEvent,
+    UserDomainEvent,
 };
 
 // Notification stream exports
 pub use notifications::{
-  // New notification stream based on event infrastructure
-  NotificationFlowEvent,
-  NotificationFlowService,
-  NotificationFlowSubjects,
-  // Backward compatibility
-  NotificationService,
-  NotificationServiceTrait,
-  SimpleNotificationType,
-  create_notification_flow_service,
-  create_notification_flow_service_with_nats,
-  create_notification_service,
+    create_notification_flow_service,
+    create_notification_flow_service_with_nats,
+    create_notification_service,
+    // New notification stream based on event infrastructure
+    NotificationFlowEvent,
+    NotificationFlowService,
+    NotificationFlowSubjects,
+    // Backward compatibility
+    NotificationService,
+    NotificationServiceTrait,
+    SimpleNotificationType,
 };
 
 // Re-export notification types directly from domain (public access)
 pub use crate::domains::notification::{NotificationPriority, NotificationType};
 
 // Typing indicator exports
-pub use typing_indicator::{TypingIndicatorService, TypingUser, create_typing_indicator_service};
+pub use typing_indicator::{create_typing_indicator_service, TypingIndicatorService, TypingUser};
 
 // Events module exports (legacy compatibility)
 pub use events::{
-  CacheInvalidationEvent as EventsCacheInvalidationEvent, ChatDomainEvent as EventsChatDomainEvent,
-  DomainEvent as EventsDomainEvent, DomainEventPublisher,
-  DomainEventService as EventsDomainEventService, MessageDomainEvent as EventsMessageDomainEvent,
-  NatsDomainEventPublisher, SimplifiedEventPublisher as EventsSimplifiedEventPublisher,
-  SystemDomainEvent as EventsSystemDomainEvent, UserDomainEvent as EventsUserDomainEvent,
-  create_domain_event_service as events_create_domain_event_service,
-  create_simplified_publisher as events_create_simplified_publisher,
+    create_domain_event_service as events_create_domain_event_service,
+    create_simplified_publisher as events_create_simplified_publisher,
+    CacheInvalidationEvent as EventsCacheInvalidationEvent,
+    ChatDomainEvent as EventsChatDomainEvent, DomainEvent as EventsDomainEvent,
+    DomainEventPublisher, DomainEventService as EventsDomainEventService,
+    MessageDomainEvent as EventsMessageDomainEvent, NatsDomainEventPublisher,
+    SimplifiedEventPublisher as EventsSimplifiedEventPublisher,
+    SystemDomainEvent as EventsSystemDomainEvent, UserDomainEvent as EventsUserDomainEvent,
 };
 
 // ── Refactoring Notes ────────────────────────────────────────────────────────────
@@ -152,7 +153,7 @@ pub use events::{
 /// - OCP (Open/Closed Principle): Support for extending new transport layers
 /// - DIP (Dependency Inversion Principle): Depend on abstractions not implementations
 pub mod architecture_notes {
-  //! Architecture refactoring technical notes
+    //! Architecture refactoring technical notes
 }
 
 // Architecture: UnifiedEventInfrastructure | Pattern: StrategyPattern

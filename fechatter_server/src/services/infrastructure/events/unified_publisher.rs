@@ -1,7 +1,7 @@
 //! # DEPRECATED: Use enhanced_publisher instead
 //!
 //! **🚨 This module is DEPRECATED and will be removed in future versions**
-//! 
+//!
 //! **Migration Guide:**
 //! - Use `crate::services::infrastructure::event::enhanced_publisher` instead
 //! - New enhanced_publisher provides notify_server compatibility
@@ -12,7 +12,7 @@
 //! ```rust
 //! // OLD (deprecated):
 //! use crate::services::infrastructure::events::UnifiedEventPublisher;
-//! 
+//!
 //! // NEW (recommended):
 //! use crate::services::infrastructure::event::EnhancedEventPublisher;
 //! ```
@@ -162,4 +162,4 @@ pub struct DuplicateMessageEvent {
     pub sender_id: i64,
     pub attempted_at: DateTime<Utc>,
     pub original_message_id: Option<i64>,
-} 
+}

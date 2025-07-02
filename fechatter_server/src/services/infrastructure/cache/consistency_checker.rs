@@ -1,16 +1,16 @@
 //! # 缓存一致性风险评估和防护系统
-//! 
+//!
 //! 这个模块识别并解决缓存一致性问题，确保系统更加可靠
 
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use tracing::{warn, error, info, debug};
-use serde::{Serialize, Deserialize};
+use tracing::{debug, error, info, warn};
 
-use crate::AppError;
 use super::RedisCacheService;
+use crate::AppError;
 
 /// 缓存一致性风险类型
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -111,23 +111,23 @@ impl CacheConsistencyChecker {
         info!("开始缓存一致性检查");
 
         let mut risks = Vec::new();
-        
+
         // 1. 检查竞态条件风险
         risks.extend(self.check_race_condition_risks().await?);
-        
+
         // 2. 检查部分失败风险
         risks.extend(self.check_partial_failure_risks().await?);
-        
+
         // 3. 检查事件丢失风险
         risks.extend(self.check_event_loss_risks().await?);
-        
+
         // 4. 检查缓存键覆盖完整性
         risks.extend(self.check_invalidation_completeness().await?);
 
         let report = self.generate_report(risks).await;
-        
+
         info!("缓存一致性检查完成: {} 个风险项目", report.total_risks);
-        
+
         Ok(report)
     }
 
@@ -185,12 +185,13 @@ impl CacheConsistencyChecker {
         let mut risks = Vec::new();
 
         let stats = self.operation_stats.read().await;
-        
+
         for (operation, stat) in stats.iter() {
             if stat.partial_failures > 0 {
                 let failure_rate = stat.partial_failures as f64 / stat.total_operations as f64;
-                
-                if failure_rate > 0.01 { // 超过1%的部分失败率
+
+                if failure_rate > 0.01 {
+                    // 超过1%的部分失败率
                     let severity = if failure_rate > 0.05 {
                         RiskSeverity::High
                     } else if failure_rate > 0.02 {
@@ -271,7 +272,7 @@ impl CacheConsistencyChecker {
         // 检查可能遗漏的缓存键模式
         let known_patterns = vec![
             "user:profile:*",
-            "user:settings:*", 
+            "user:settings:*",
             "user:permissions:*",
             "chat_list:*",
             "chat:detail:*",
@@ -296,7 +297,7 @@ impl CacheConsistencyChecker {
         // 检查是否有新的模式需要考虑
         if let Ok(all_keys) = self.redis.scan_keys("*").await {
             let sample_keys: Vec<_> = all_keys.into_iter().take(100).collect(); // 采样检查
-            
+
             for key in sample_keys {
                 let pattern = self.extract_pattern(&key);
                 if !known_patterns.contains(&pattern.as_str()) {
@@ -328,13 +329,16 @@ impl CacheConsistencyChecker {
         let parts: Vec<&str> = key.split(':').collect();
         if parts.len() >= 2 {
             // 将数字ID替换为*
-            let pattern_parts: Vec<String> = parts.iter().map(|part| {
-                if part.parse::<i64>().is_ok() {
-                    "*".to_string()
-                } else {
-                    part.to_string()
-                }
-            }).collect();
+            let pattern_parts: Vec<String> = parts
+                .iter()
+                .map(|part| {
+                    if part.parse::<i64>().is_ok() {
+                        "*".to_string()
+                    } else {
+                        part.to_string()
+                    }
+                })
+                .collect();
             pattern_parts.join(":")
         } else {
             key.to_string()
@@ -394,14 +398,14 @@ impl CacheConsistencyChecker {
     pub async fn record_operation(&self, operation: &str, success: bool, partial_failure: bool) {
         let mut stats = self.operation_stats.write().await;
         let entry = stats.entry(operation.to_string()).or_default();
-        
+
         entry.total_operations += 1;
-        
+
         if !success {
             entry.failed_operations += 1;
             entry.last_failure = Some(Instant::now());
         }
-        
+
         if partial_failure {
             entry.partial_failures += 1;
         }
@@ -440,7 +444,7 @@ pub struct CacheConsistencyGuardian {
 
 impl CacheConsistencyGuardian {
     pub fn new(
-        checker: Arc<CacheConsistencyChecker>, 
+        checker: Arc<CacheConsistencyChecker>,
         check_interval: Duration,
         alert_threshold: usize,
     ) -> Self {
@@ -459,26 +463,25 @@ impl CacheConsistencyGuardian {
 
         tokio::spawn(async move {
             let mut interval_timer = tokio::time::interval(interval);
-            
+
             loop {
                 interval_timer.tick().await;
-                
+
                 match checker.perform_consistency_check().await {
                     Ok(report) => {
                         if report.high_risks >= threshold {
                             error!(
-                                "🚨 缓存一致性警告: 发现 {} 个高风险项目!", 
+                                "🚨 缓存一致性警告: 发现 {} 个高风险项目!",
                                 report.high_risks
                             );
-                            
+
                             for recommendation in &report.recommendations {
                                 warn!("建议: {}", recommendation);
                             }
                         } else {
                             debug!(
-                                "缓存一致性检查正常: {} 个总风险, {} 个高风险", 
-                                report.total_risks, 
-                                report.high_risks
+                                "缓存一致性检查正常: {} 个总风险, {} 个高风险",
+                                report.total_risks, report.high_risks
                             );
                         }
                     }

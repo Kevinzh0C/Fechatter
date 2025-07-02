@@ -58,4 +58,4 @@ pub struct Language {
 pub struct SupportedLanguagesResponse {
     /// List of supported languages
     pub languages: Vec<Language>,
-} 
+}

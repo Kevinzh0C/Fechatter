@@ -1,7 +1,7 @@
 //! # Enhanced Event Publisher - notify_server Integration
 //!
 //! **Production-grade NATS Event Publishing with notify_server compatibility**
-//! 
+//!
 //! **Key Features:**
 //! - Compatible with notify_server SSE broadcasting
 //! - Complete message content delivery for real-time notifications  
@@ -119,7 +119,8 @@ impl EnhancedEventPublisher {
         };
 
         // Use notify_server expected subject pattern
-        self.publish_to_notify_server("fechatter.message.new", event).await
+        self.publish_to_notify_server("fechatter.message.new", event)
+            .await
     }
 
     /// Publish message edited event for notify_server
@@ -140,7 +141,8 @@ impl EnhancedEventPublisher {
             workspace_id,
         };
 
-        self.publish_to_notify_server("fechatter.message.edited", event).await
+        self.publish_to_notify_server("fechatter.message.edited", event)
+            .await
     }
 
     /// Publish message deleted event for notify_server
@@ -164,7 +166,8 @@ impl EnhancedEventPublisher {
             workspace_id,
         };
 
-        self.publish_to_notify_server("fechatter.message.deleted", event).await
+        self.publish_to_notify_server("fechatter.message.deleted", event)
+            .await
     }
 
     /// Publish read receipt event for notify_server realtime updates
@@ -182,7 +185,8 @@ impl EnhancedEventPublisher {
             read_at: Utc::now(),
         };
 
-        self.publish_to_notify_server("fechatter.realtime.read_receipts", event).await
+        self.publish_to_notify_server("fechatter.realtime.read_receipts", event)
+            .await
     }
 
     /// Publish chat member joined event for notify_server
@@ -200,7 +204,8 @@ impl EnhancedEventPublisher {
             timestamp: Utc::now(),
         };
 
-        self.publish_to_notify_server("fechatter.chat.member_joined", event).await
+        self.publish_to_notify_server("fechatter.chat.member_joined", event)
+            .await
     }
 
     /// Publish chat member left event for notify_server
@@ -218,7 +223,8 @@ impl EnhancedEventPublisher {
             timestamp: Utc::now(),
         };
 
-        self.publish_to_notify_server("fechatter.chat.member_left", event).await
+        self.publish_to_notify_server("fechatter.chat.member_left", event)
+            .await
     }
 
     // =============================================================================
@@ -227,9 +233,9 @@ impl EnhancedEventPublisher {
 
     /// Publish event to NATS for notify_server consumption
     async fn publish_to_notify_server<T: Serialize>(
-        &self, 
-        subject: &str, 
-        event: T
+        &self,
+        subject: &str,
+        event: T,
     ) -> Result<(), AppError> {
         // Check if NATS is available
         let Some(nats_client) = &self.nats_client else {
@@ -247,15 +253,24 @@ impl EnhancedEventPublisher {
         };
 
         // Publish to NATS
-        match nats_client.publish(subject.to_string(), payload_bytes.into()).await {
+        match nats_client
+            .publish(subject.to_string(), payload_bytes.into())
+            .await
+        {
             Ok(_) => {
                 debug!("Successfully published event to notify_server: {}", subject);
-                info!("SUBSCRIPTION: notify_server event: {} -> SSE broadcasting", subject);
+                info!(
+                    "SUBSCRIPTION: notify_server event: {} -> SSE broadcasting",
+                    subject
+                );
                 Ok(())
             }
             Err(e) => {
                 error!("ERROR: Failed to publish event to notify_server: {}", e);
-                Err(AppError::Internal(format!("notify_server NATS publish error: {}", e)))
+                Err(AppError::Internal(format!(
+                    "notify_server NATS publish error: {}",
+                    e
+                )))
             }
         }
     }
@@ -298,13 +313,19 @@ pub async fn create_enhanced_publisher_for_notify_server(
 ) -> Result<EnhancedEventPublisher, AppError> {
     match async_nats::connect(nats_url).await {
         Ok(client) => {
-            info!("Enhanced publisher connected to NATS for notify_server: {}", nats_url);
+            info!(
+                "Enhanced publisher connected to NATS for notify_server: {}",
+                nats_url
+            );
             Ok(EnhancedEventPublisher::new(Some(client)))
         }
         Err(e) => {
-            warn!("WARNING: Failed to connect enhanced publisher to NATS: {}", e);
+            warn!(
+                "WARNING: Failed to connect enhanced publisher to NATS: {}",
+                e
+            );
             info!("📄 Creating disabled enhanced publisher");
             Ok(EnhancedEventPublisher::disabled())
         }
     }
-} 
+}

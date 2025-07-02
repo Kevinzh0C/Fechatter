@@ -16,5 +16,5 @@ pub use chat::{ChatDetailView, ChatService, CreateChatInput};
 pub use message::{MessageApplicationService, MessageView};
 pub use search::{MessageSearchResults, SearchApplicationService};
 pub use workspace::{
-  InviteUserCommand, UpdateWorkspaceCommand, UserSummaryView, WorkspaceService, WorkspaceView,
+    InviteUserCommand, UpdateWorkspaceCommand, UserSummaryView, WorkspaceService, WorkspaceView,
 };

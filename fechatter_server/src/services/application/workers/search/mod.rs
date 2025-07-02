@@ -28,20 +28,20 @@ pub mod cache;
 // ================================================================================================
 
 pub use query_processor::{
-  OptimizedQuery, QueryIntent, QueryProcessor, QueryType, SearchSuggestionGenerator,
-  create_legacy_query_processor, create_optimized_query_processor,
-  create_query_processor_with_config,
+    create_legacy_query_processor, create_optimized_query_processor,
+    create_query_processor_with_config, OptimizedQuery, QueryIntent, QueryProcessor, QueryType,
+    SearchSuggestionGenerator,
 };
 
 pub use service::{
-  MessageSearchResults, SearchApplicationService, SearchApplicationServiceTrait, SearchPage,
-  SearchableMessage, create_search_application_service,
-  create_search_application_service_from_config,
+    create_search_application_service, create_search_application_service_from_config,
+    MessageSearchResults, SearchApplicationService, SearchApplicationServiceTrait, SearchPage,
+    SearchableMessage,
 };
 
 pub use cache::{
-  SearchCacheConfig, SearchCacheService, SearchCacheStats, create_high_performance_search_cache,
-  create_search_cache_service,
+    create_high_performance_search_cache, create_search_cache_service, SearchCacheConfig,
+    SearchCacheService, SearchCacheStats,
 };
 
 pub use search_adapter::SearchServiceAdapter;

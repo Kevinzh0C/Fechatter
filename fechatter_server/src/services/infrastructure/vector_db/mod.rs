@@ -4,7 +4,7 @@ pub mod pinecone;
 
 // Re-export types from fechatter_core with explicit paths
 pub use fechatter_core::models::vector_db::{
-  MessageChunk, MetadataFilter, VectorDatabase, VectorSearchResult,
+    MessageChunk, MetadataFilter, VectorDatabase, VectorSearchResult,
 };
 
 // Re-export implementations
@@ -15,7 +15,7 @@ pub use pinecone::PineconeClient;
 pub struct PlaceholderVectorDb;
 
 impl PlaceholderVectorDb {
-  pub fn new() -> Self {
-    Self
-  }
+    pub fn new() -> Self {
+        Self
+    }
 }

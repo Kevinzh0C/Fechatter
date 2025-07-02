@@ -15,21 +15,29 @@ pub use analytics_publisher::{
 };
 
 pub use enhanced_publisher::{
-    CompleteMessageData, EnhancedEventPublisher, NotifyMessageEvent, NotifyChatMemberEvent,
-    NotifyReadReceiptEvent, message_to_complete_data, create_enhanced_publisher_for_notify_server,
+    create_enhanced_publisher_for_notify_server, message_to_complete_data, CompleteMessageData,
+    EnhancedEventPublisher, NotifyChatMemberEvent, NotifyMessageEvent, NotifyReadReceiptEvent,
 };
 
 pub use event_publisher::{
-    ChatInfo, ChatMemberJoined, ChatMemberLeft, DynEventPublisher, EventPublisher, MsgLifecycle,
-    NatsEventPublisher, RetryConfig, SearchEvent, SearchOp, Signable,
+    unified_subjects,
+    ChatInfo,
+    ChatMemberJoined,
+    ChatMemberLeft,
+    DynEventPublisher,
+    EnhancedChatMemberEvent,
     // Enhanced unified architecture exports
-    EnhancedMessageEvent, EnhancedChatMemberEvent, unified_subjects,
+    EnhancedMessageEvent,
+    EventPublisher,
+    MsgLifecycle,
+    NatsEventPublisher,
+    RetryConfig,
+    SearchEvent,
+    SearchOp,
+    Signable,
 };
 
-pub use event_subscriber::{
-    CacheEventSubscriber,
-    CacheInvalidationConfig,
-};
+pub use event_subscriber::{CacheEventSubscriber, CacheInvalidationConfig};
 
 // Re-export core event types
 pub use fechatter_core::contracts::events::{DuplicateMessageEvent, MessageEvent};

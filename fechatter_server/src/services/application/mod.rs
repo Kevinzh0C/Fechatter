@@ -38,48 +38,48 @@ pub mod legacy;
 
 // 工作者导出 - 简化版本，无traits
 pub use workers::{
-  // 认证工作者
-  auth::AuthUserService,
-  // 聊天工作者
-  chat::{ChatDetailView, ChatService, CreateChatInput},
-  // 消息工作者
-  message::{MessageApplicationService, MessageView},
-  // 搜索工作者
-  search::{MessageSearchResults, SearchApplicationService},
-  // 工作空间工作者
-  workspace::{
-    AddMembersCommand, InviteUserCommand, UpdateWorkspaceCommand, UserSummaryView,
-    WorkspaceService, WorkspaceView, create_workspace_application_service,
-  },
+    // 认证工作者
+    auth::AuthUserService,
+    // 聊天工作者
+    chat::{ChatDetailView, ChatService, CreateChatInput},
+    // 消息工作者
+    message::{MessageApplicationService, MessageView},
+    // 搜索工作者
+    search::{MessageSearchResults, SearchApplicationService},
+    // 工作空间工作者
+    workspace::{
+        create_workspace_application_service, AddMembersCommand, InviteUserCommand,
+        UpdateWorkspaceCommand, UserSummaryView, WorkspaceService, WorkspaceView,
+    },
 };
 
 // 流动导出 - 从 infrastructure/flows 重新导出
 pub use crate::services::infrastructure::flows::{
-  ChatDomainEvent,
-  DomainEvent,
-  DomainEventService,
-  MessageDomainEvent,
-  // 通知流
-  NotificationFlowService,
-  NotificationPriority,
-  NotificationService,
-  NotificationType,
-  RealtimeStreamEvent,
-  // 实时流
-  RealtimeStreamService,
-  SimpleNotificationType,
-  // 事件流 - 导出实际存在的类型
-  SimplifiedEventPublisher,
-  SystemDomainEvent,
-  UserDomainEvent,
+    ChatDomainEvent,
+    DomainEvent,
+    DomainEventService,
+    MessageDomainEvent,
+    // 通知流
+    NotificationFlowService,
+    NotificationPriority,
+    NotificationService,
+    NotificationType,
+    RealtimeStreamEvent,
+    // 实时流
+    RealtimeStreamService,
+    SimpleNotificationType,
+    // 事件流 - 导出实际存在的类型
+    SimplifiedEventPublisher,
+    SystemDomainEvent,
+    UserDomainEvent,
 };
 
 // 存储导出
 pub use stores::{
-  CacheDataType,
-  // 缓存存储
-  CacheStrategyService,
-  InvalidationPattern,
+    CacheDataType,
+    // 缓存存储
+    CacheStrategyService,
+    InvalidationPattern,
 };
 
 // ============================================================================
@@ -108,64 +108,64 @@ pub use legacy::*;
 
 /// 认证服务兼容导出
 pub mod auth {
-  pub use crate::services::application::workers::auth::*;
+    pub use crate::services::application::workers::auth::*;
 }
 
 /// 聊天服务兼容导出
 pub mod chat {
-  pub use crate::services::application::workers::chat::*;
+    pub use crate::services::application::workers::chat::*;
 }
 
 /// 消息服务兼容导出
 pub mod message {
-  pub use crate::services::application::workers::message::*;
-  pub mod models {
-    // Deprecated models - use fechatter_core models instead
-    // pub use crate::services::application::stores::models::*;
-  }
+    pub use crate::services::application::workers::message::*;
+    pub mod models {
+        // Deprecated models - use fechatter_core models instead
+        // pub use crate::services::application::stores::models::*;
+    }
 }
 
 /// 搜索服务兼容导出
 pub mod search {
-  pub use crate::services::application::workers::search::*;
+    pub use crate::services::application::workers::search::*;
 }
 
 /// 工作空间服务兼容导出
 pub mod workspace {
-  pub use crate::services::application::workers::workspace::{
-    WorkspaceService, create_workspace_application_service,
-  };
+    pub use crate::services::application::workers::workspace::{
+        create_workspace_application_service, WorkspaceService,
+    };
 }
 
 /// 缓存服务兼容导出
 pub mod cache {
-  pub use crate::services::application::stores::*;
+    pub use crate::services::application::stores::*;
 }
 
 /// 事件服务兼容导出
 pub mod events {
-  pub use crate::services::infrastructure::flows::*;
+    pub use crate::services::infrastructure::flows::*;
 }
 
 /// 消息传递服务兼容导出
 pub mod messaging {
-  pub use crate::services::infrastructure::flows::*;
+    pub use crate::services::infrastructure::flows::*;
 }
 
 /// 核心服务兼容导出
 pub mod core {
-  pub mod service_provider {
-    // 需要从实际位置重新导出
-    // TODO: 实现服务提供者
-  }
+    pub mod service_provider {
+        // 需要从实际位置重新导出
+        // TODO: 实现服务提供者
+    }
 
-  // ApplicationServiceProvider 别名
-  pub type ApplicationServiceProvider = (); // TODO: 实现具体类型
+    // ApplicationServiceProvider 别名
+    pub type ApplicationServiceProvider = (); // TODO: 实现具体类型
 }
 
 pub mod events_prelude {
-  // ... existing code ...
+    // ... existing code ...
 
-  // Deprecated models - use fechatter_core models instead
-  // pub use crate::services::application::stores::models::*;
+    // Deprecated models - use fechatter_core models instead
+    // pub use crate::services::application::stores::models::*;
 }

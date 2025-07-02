@@ -1,7 +1,7 @@
 //! # Enhanced Event Publisher - Production-grade NATS Event Publishing
 //!
 //! **INTEGRATED with notify_server compatibility**
-//! 
+//!
 //! **Key Features:**
 //! - Compatible with notify_server SSE broadcasting
 //! - Complete message content delivery for real-time notifications
@@ -151,7 +151,8 @@ impl EnhancedEventPublisher {
             event_id: Uuid::new_v4().to_string(),
         };
 
-        self.publish_event(&self.config.subjects.message_events, event).await
+        self.publish_event(&self.config.subjects.message_events, event)
+            .await
     }
 
     /// Publish message edited event for notify_server
@@ -164,7 +165,7 @@ impl EnhancedEventPublisher {
         let mut enhanced_message = message.clone();
         // Add edit metadata
         enhanced_message.content = format!("EDITED: {}", message.content);
-        
+
         let event = NotifyCompatibleMessageEvent {
             event_type: "message_edited".to_string(),
             chat_id: message.chat_id,
@@ -176,7 +177,8 @@ impl EnhancedEventPublisher {
             event_id: Uuid::new_v4().to_string(),
         };
 
-        self.publish_event(&self.config.subjects.message_events, event).await
+        self.publish_event(&self.config.subjects.message_events, event)
+            .await
     }
 
     /// Publish message deleted event for notify_server
@@ -210,7 +212,8 @@ impl EnhancedEventPublisher {
             event_id: Uuid::new_v4().to_string(),
         };
 
-        self.publish_event(&self.config.subjects.message_events, event).await
+        self.publish_event(&self.config.subjects.message_events, event)
+            .await
     }
 
     /// Publish read receipt event for notify_server
@@ -229,7 +232,8 @@ impl EnhancedEventPublisher {
             read_at: Utc::now(),
         };
 
-        self.publish_event(&self.config.subjects.realtime_events, event).await
+        self.publish_event(&self.config.subjects.realtime_events, event)
+            .await
     }
 
     /// Publish chat member joined event for notify_server
@@ -251,7 +255,8 @@ impl EnhancedEventPublisher {
             timestamp: Utc::now(),
         };
 
-        self.publish_event(&self.config.subjects.chat_events, event).await
+        self.publish_event(&self.config.subjects.chat_events, event)
+            .await
     }
 
     /// Publish event to NATS with error handling
@@ -272,10 +277,16 @@ impl EnhancedEventPublisher {
         };
 
         // Publish to NATS
-        match nats_client.publish(subject.to_string(), payload_bytes.into()).await {
+        match nats_client
+            .publish(subject.to_string(), payload_bytes.into())
+            .await
+        {
             Ok(_) => {
                 debug!("Successfully published event to subject: {}", subject);
-                info!("SUBSCRIPTION: Event published to notify_server: {}", subject);
+                info!(
+                    "SUBSCRIPTION: Event published to notify_server: {}",
+                    subject
+                );
                 Ok(())
             }
             Err(e) => {
@@ -325,12 +336,18 @@ pub async fn create_enhanced_publisher_with_nats(
 ) -> Result<EnhancedEventPublisher, AppError> {
     match async_nats::connect(nats_url).await {
         Ok(client) => {
-            info!("Connected to NATS for notify_server integration: {}", nats_url);
+            info!(
+                "Connected to NATS for notify_server integration: {}",
+                nats_url
+            );
             Ok(EnhancedEventPublisher::new(Some(client), config))
         }
         Err(e) => {
-            warn!("WARNING: Failed to connect to NATS, creating disabled publisher: {}", e);
+            warn!(
+                "WARNING: Failed to connect to NATS, creating disabled publisher: {}",
+                e
+            );
             Ok(EnhancedEventPublisher::disabled())
         }
     }
-} 
+}

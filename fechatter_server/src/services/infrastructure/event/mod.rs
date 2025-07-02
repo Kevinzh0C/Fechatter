@@ -4,71 +4,114 @@
 // backend implementations and intelligent auto-degradation capabilities.
 
 // Submodules organized by functionality
-pub mod auto_degradation;  // Adaptive publisher with auto-degradation
-pub mod high_performance;  // High-performance zero-cost abstraction publisher
-pub mod legacy;           // Traditional reliable publisher (fallback)
-pub mod shared;           // Shared components (transport, utilities)
+pub mod auto_degradation; // Adaptive publisher with auto-degradation
+pub mod high_performance; // High-performance zero-cost abstraction publisher
+pub mod legacy; // Traditional reliable publisher (fallback)
+pub mod shared; // Shared components (transport, utilities)
 
 // Re-export main components for easy access
 
 // Auto-degradation system (recommended for production)
 pub use auto_degradation::{
-    AdaptivePublisher, AdaptivePublisherConfig, PublisherBackend,
-    HealthMonitor, HealthStatus, DegradationReason,
-    PublisherFactory, PublisherMetrics, PublisherHealthStatus,
-    
-    // Convenience functions
-    publish_message_created, publish_message_updated, publish_message_deleted,
-    publish_chat_member_joined, publish_chat_member_left, publish_message_events_batch,
-    get_publisher_metrics, publisher_health_check,
-    
-    // Backend switching
-    switch_publisher_backend, clear_manual_override, get_current_backend,
-    
+    clear_manual_override,
+    get_current_backend,
+
+    get_publisher_metrics,
     // Initialization helpers
-    initialize_default_publisher, initialize_production_publisher, 
+    initialize_default_publisher,
     initialize_development_publisher,
-    
+
+    initialize_production_publisher,
+    initialize_with_migration_config,
+    publish_chat_member_joined,
+    publish_chat_member_left,
+    // Convenience functions
+    publish_message_created,
+    publish_message_deleted,
+    publish_message_events_batch,
+    publish_message_updated,
+    publisher_health_check,
+
+    // Backend switching
+    switch_publisher_backend,
+    validate_migration_config,
+    AdaptivePublisher,
+    AdaptivePublisherConfig,
+    DegradationReason,
     // Migration config (legacy compatibility)
-    EventPublisherMigrationConfig, HighPerformanceConfig as MigrationHighPerformanceConfig,
-    MigrationSafetyConfig, PublisherMigrationManager, MigrationConfigLoader, 
-    MigrationStatus, initialize_with_migration_config, validate_migration_config,
+    EventPublisherMigrationConfig,
+    HealthMonitor,
+    HealthStatus,
+    HighPerformanceConfig as MigrationHighPerformanceConfig,
+    MigrationConfigLoader,
+    MigrationSafetyConfig,
+    MigrationStatus,
+    PublisherBackend,
+    PublisherFactory,
+    PublisherHealthStatus,
+
+    PublisherMetrics,
+    PublisherMigrationManager,
 };
 
 // High-performance system (for direct usage)
 pub use high_performance::{
-    HighPerformancePublisher, PublisherConfig, EventData, EventPriority,
-    FastMessageEvent, FastChatMemberEvent, PublishResult,
-    CircuitBreakerConfig, RetryConfig, BackpressureConfig,
-    PublisherMetrics as HighPerformanceMetrics, EventMetadata,
+    BackpressureConfig, CircuitBreakerConfig, EventData, EventMetadata, EventPriority,
+    FastChatMemberEvent, FastMessageEvent, HighPerformancePublisher, PublishResult,
+    PublisherConfig, PublisherMetrics as HighPerformanceMetrics, RetryConfig,
 };
 
 // Legacy system (for fallback and compatibility)
 pub use legacy::{
-    // Event publisher
-    EventPublisher as LegacyEventPublisher, NatsEventPublisher,
-    ChatInfo, ChatMemberJoined, ChatMemberLeft, DynEventPublisher,
-    MsgLifecycle, RetryConfig as LegacyRetryConfig, SearchEvent, SearchOp, Signable,
-    EnhancedMessageEvent, EnhancedChatMemberEvent, unified_subjects,
-    
+    create_enhanced_publisher_for_notify_server,
+
+    message_to_complete_data,
+    unified_subjects,
+
     // Analytics and enhanced publishers
-    AnalyticsConfig, AnalyticsEventPublisher, AnalyticsTracking, NatsAnalyticsPublisher,
-    CompleteMessageData, EnhancedEventPublisher, NotifyMessageEvent, NotifyChatMemberEvent,
-    NotifyReadReceiptEvent, message_to_complete_data, create_enhanced_publisher_for_notify_server,
-    
+    AnalyticsConfig,
+    AnalyticsEventPublisher,
+    AnalyticsTracking,
     // Event subscriber
-    CacheEventSubscriber, CacheInvalidationConfig,
-    
+    CacheEventSubscriber,
+    CacheInvalidationConfig,
+
+    ChatInfo,
+    ChatMemberJoined,
+    ChatMemberLeft,
+    CompleteMessageData,
     // Core event types
-    DuplicateMessageEvent, MessageEvent,
+    DuplicateMessageEvent,
+    DynEventPublisher,
+    EnhancedChatMemberEvent,
+    EnhancedEventPublisher,
+    EnhancedMessageEvent,
+    // Event publisher
+    EventPublisher as LegacyEventPublisher,
+    MessageEvent,
+    MsgLifecycle,
+    NatsAnalyticsPublisher,
+    NatsEventPublisher,
+    NotifyChatMemberEvent,
+    NotifyMessageEvent,
+    NotifyReadReceiptEvent,
+    RetryConfig as LegacyRetryConfig,
+    SearchEvent,
+    SearchOp,
+    Signable,
 };
 
 // Shared components
 pub use shared::{
     // Transport abstractions
-    EventTransport, InMemoryTransport, KafkaConfig, KafkaSecurityConfig, KafkaTransport,
-    NatsTransport, TransportConfig, TransportFactory,
-    
+    EventTransport,
+    InMemoryTransport,
+    KafkaConfig,
+    KafkaSecurityConfig,
+    KafkaTransport,
+    NatsTransport,
+    TransportConfig,
+    TransportFactory,
 };
 
 // Re-export error types
@@ -76,8 +119,8 @@ pub use crate::error::EventTransportError;
 
 // Re-export core event types from fechatter_core
 pub use fechatter_core::contracts::events::{
-    MessageLifecycle, EventVersion, HmacSha256Verifier, SignatureVerifier,
-    ChatMemberJoinedEvent, ChatMemberLeftEvent, subjects,
+    subjects, ChatMemberJoinedEvent, ChatMemberLeftEvent, EventVersion, HmacSha256Verifier,
+    MessageLifecycle, SignatureVerifier,
 };
 
 // Deprecated unified publisher (use auto_degradation instead)
@@ -89,7 +132,7 @@ pub use shared::unified_publisher::*;
 // =====================================================================================
 
 /// Recommended initialization for production systems
-/// 
+///
 /// This function sets up the adaptive publisher with production-optimized settings:
 /// - High-performance backend preferred
 /// - Automatic degradation enabled
@@ -102,7 +145,7 @@ pub async fn initialize_recommended_production(
 }
 
 /// Recommended initialization for development systems
-/// 
+///
 /// This function sets up the adaptive publisher with development-friendly settings:
 /// - High-performance backend preferred but more lenient thresholds
 /// - Automatic degradation enabled with relaxed triggers
@@ -114,7 +157,7 @@ pub async fn initialize_recommended_development(
 }
 
 /// Initialize with environment variables
-/// 
+///
 /// Reads configuration from environment variables:
 /// - `FECHATTER_PREFERRED_BACKEND`: "high_performance" or "legacy"
 /// - `FECHATTER_ENABLE_AUTO_DEGRADATION`: "true" or "false"
@@ -132,7 +175,7 @@ pub async fn initialize_from_environment(
 // =====================================================================================
 
 /// Migrate from legacy publisher setup to adaptive publisher
-/// 
+///
 /// This function helps migrate existing code that uses legacy publishers
 /// to the new adaptive system while maintaining compatibility.
 pub async fn migrate_from_legacy(
@@ -140,18 +183,18 @@ pub async fn migrate_from_legacy(
     preferred_backend: Option<PublisherBackend>,
 ) -> Result<(), crate::error::AppError> {
     let mut config = AdaptivePublisherConfig::default();
-    
+
     if let Some(backend) = preferred_backend {
         config.preferred_backend = backend;
     }
-    
+
     // Enable auto-degradation for safety during migration
     config.enable_auto_degradation = true;
-    
+
     // Use more conservative thresholds during migration
     config.degradation_thresholds.max_error_rate = 0.01; // 1%
     config.recovery_delay = std::time::Duration::from_secs(120); // 2 minutes
-    
+
     PublisherFactory::initialize_global(nats_client, Some(config)).await
 }
 
@@ -160,16 +203,16 @@ pub async fn migrate_from_legacy(
 // =====================================================================================
 
 /// Get comprehensive system health status
-/// 
+///
 /// Returns detailed health information for monitoring and alerting systems
 pub async fn system_health_status() -> Result<SystemHealthStatus, crate::error::AppError> {
     let publisher_health = publisher_health_check().await?;
     let current_backend = get_current_backend().await?;
     let metrics = get_publisher_metrics().await?;
-    
+
     // Clone publisher_health to avoid borrow after move
     let health_for_recommendations = publisher_health.clone();
-    
+
     Ok(SystemHealthStatus {
         overall_healthy: publisher_health.is_healthy,
         current_backend: current_backend.clone(),
@@ -190,31 +233,35 @@ pub struct SystemHealthStatus {
 
 async fn generate_recommendations(health: &PublisherHealthStatus) -> Vec<String> {
     let mut recommendations = Vec::new();
-    
+
     if health.success_rate < 0.95 {
         recommendations.push("Consider investigating the cause of publish failures".to_string());
     }
-    
+
     if health.average_latency_ms > 500.0 {
         recommendations.push("High latency detected, consider scaling NATS resources".to_string());
     }
-    
+
     if health.consecutive_failures > 5 {
-        recommendations.push("Multiple consecutive failures detected, manual intervention may be needed".to_string());
+        recommendations.push(
+            "Multiple consecutive failures detected, manual intervention may be needed".to_string(),
+        );
     }
-    
+
     if health.total_degradations > 10 {
-        recommendations.push("Frequent degradations occurring, review system stability".to_string());
+        recommendations
+            .push("Frequent degradations occurring, review system stability".to_string());
     }
-    
+
     if health.manual_override {
-        recommendations.push("Manual override is active, consider returning to automatic mode".to_string());
+        recommendations
+            .push("Manual override is active, consider returning to automatic mode".to_string());
     }
-    
+
     if recommendations.is_empty() {
         recommendations.push("System is operating normally".to_string());
     }
-    
+
     recommendations
 }
 

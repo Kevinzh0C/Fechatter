@@ -16,7 +16,9 @@ async fn main() -> Result<(), AppError> {
     // Initialize tracing
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())
-        .with(tracing_subscriber::EnvFilter::new(&config.features.observability.log_level))
+        .with(tracing_subscriber::EnvFilter::new(
+            &config.features.observability.log_level,
+        ))
         .init();
 
     // Create AppState

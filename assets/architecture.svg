@@ -1,42 +1,37 @@
-<svg viewBox="0 0 1400 1000"
-    xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg">
     <defs>
         <style>
-      .layer-box { fill: #2d3748; stroke: #4a5568; stroke-width: 2; }
-      .service-box { fill: #1a202c; stroke: #718096; stroke-width: 1; }
-      .client-box { fill: #2b6cb0; stroke: #3182ce; stroke-width: 1; }
-      .gateway-box { fill: #2d3e50; stroke: #34495e; stroke-width: 1; }
-      .core-box { fill: #16a085; stroke: #1abc9c; stroke-width: 1; }
-      .data-box { fill: #8b4513; stroke: #d2691e; stroke-width: 1; }
-      .external-box { fill: #7b68ee; stroke: #9370db; stroke-width: 1; }
-      .shared-box { fill: #708090; stroke: #778899; stroke-width: 1; }
+      .layer-box { fill: #2d3748; }
+      .service-box { fill: #1a202c; }
+      .client-box { fill: #2b6cb0; }
+      .gateway-box { fill: #2d3e50; }
+      .core-box { fill: #16a085; }
+      .data-box { fill: #8b4513; }
+      .external-box { fill: #7b68ee; }
+      .shared-box { fill: #708090; }
       .text { fill: white; font-family: Arial, sans-serif; }
       .title { font-size: 18px; font-weight: bold; }
       .service-text { font-size: 14px; }
       .port-text { font-size: 12px; fill: #cbd5e0; }
-      .arrow { stroke: #718096; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
-      .data-flow { stroke: #48bb78; stroke-width: 1; fill: none; stroke-dasharray: 5,5; }
+      .layer-label { font-size: 14px; fill: #a0aec0; font-style: italic; }
         </style>
-        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="#718096" />
-        </marker>
     </defs>
 
     <!-- Background -->
-    <rect width="1400" height="1000" fill="#0f1419"/>
+    <rect width="1400" height="900" fill="#0f1419"/>
 
     <!-- Client Layer -->
     <g id="client-layer">
         <rect x="50" y="20" width="1300" height="100" class="layer-box" rx="5"/>
         <text x="700" y="45" class="text title" text-anchor="middle">Client Layer</text>
 
-        <rect x="400" y="50" width="200" height="50" class="client-box" rx="3"/>
-        <text x="500" y="70" class="text service-text" text-anchor="middle">fechatter_frontend</text>
-        <text x="500" y="85" class="text port-text" text-anchor="middle">Vue 3 + TypeScript :3000</text>
+        <rect x="400" y="55" width="200" height="50" class="client-box" rx="3"/>
+        <text x="500" y="75" class="text service-text" text-anchor="middle">fechatter_frontend</text>
+        <text x="500" y="90" class="text port-text" text-anchor="middle">Vue 3 + TypeScript :3000</text>
 
-        <rect x="800" y="50" width="200" height="50" class="client-box" rx="3"/>
-        <text x="900" y="70" class="text service-text" text-anchor="middle">Client Applications</text>
-        <text x="900" y="85" class="text port-text" text-anchor="middle">(Web/Mobile/API)</text>
+        <rect x="800" y="55" width="200" height="50" class="client-box" rx="3"/>
+        <text x="900" y="75" class="text service-text" text-anchor="middle">Client Applications</text>
+        <text x="900" y="90" class="text port-text" text-anchor="middle">(Web/Mobile/API)</text>
     </g>
 
     <!-- Gateway Layer -->
@@ -44,147 +39,108 @@
         <rect x="50" y="140" width="1300" height="80" class="layer-box" rx="5"/>
         <text x="700" y="165" class="text title" text-anchor="middle">Gateway Layer</text>
 
-        <rect x="550" y="160" width="300" height="50" class="gateway-box" rx="3"/>
-        <text x="700" y="180" class="text service-text" text-anchor="middle">fechatter_gateway</text>
-        <text x="700" y="195" class="text port-text" text-anchor="middle">Pingora Proxy :8080</text>
+        <rect x="550" y="165" width="300" height="45" class="gateway-box" rx="3"/>
+        <text x="700" y="183" class="text service-text" text-anchor="middle">fechatter_gateway</text>
+        <text x="700" y="198" class="text port-text" text-anchor="middle">Pingora Proxy :8080</text>
     </g>
 
     <!-- Core Services Layer -->
     <g id="core-services">
-        <rect x="50" y="240" width="1300" height="140" class="layer-box" rx="5"/>
+        <rect x="50" y="240" width="1300" height="120" class="layer-box" rx="5"/>
         <text x="700" y="265" class="text title" text-anchor="middle">Core Services</text>
 
         <!-- Services evenly distributed -->
-        <rect x="150" y="280" width="200" height="70" class="core-box" rx="3"/>
-        <text x="250" y="305" class="text service-text" text-anchor="middle">fechatter_server</text>
-        <text x="250" y="325" class="text port-text" text-anchor="middle">Axum + SQLx</text>
-        <text x="250" y="340" class="text port-text" text-anchor="middle">:6688</text>
+        <rect x="150" y="275" width="200" height="65" class="core-box" rx="3"/>
+        <text x="250" y="298" class="text service-text" text-anchor="middle">fechatter_server</text>
+        <text x="250" y="318" class="text port-text" text-anchor="middle">Axum + SQLx</text>
+        <text x="250" y="333" class="text port-text" text-anchor="middle">:6688</text>
 
-        <rect x="450" y="280" width="200" height="70" class="core-box" rx="3"/>
-        <text x="550" y="305" class="text service-text" text-anchor="middle">notify_server</text>
-        <text x="550" y="325" class="text port-text" text-anchor="middle">Tokio + SSE</text>
-        <text x="550" y="340" class="text port-text" text-anchor="middle">:6687</text>
+        <rect x="450" y="275" width="200" height="65" class="core-box" rx="3"/>
+        <text x="550" y="298" class="text service-text" text-anchor="middle">notify_server</text>
+        <text x="550" y="318" class="text port-text" text-anchor="middle">Tokio + SSE</text>
+        <text x="550" y="333" class="text port-text" text-anchor="middle">:6687</text>
 
-        <rect x="750" y="280" width="200" height="70" class="core-box" rx="3"/>
-        <text x="850" y="305" class="text service-text" text-anchor="middle">bot_server</text>
-        <text x="850" y="325" class="text port-text" text-anchor="middle">OpenAI SDK</text>
-        <text x="850" y="340" class="text port-text" text-anchor="middle">:6686</text>
+        <rect x="750" y="275" width="200" height="65" class="core-box" rx="3"/>
+        <text x="850" y="298" class="text service-text" text-anchor="middle">bot_server</text>
+        <text x="850" y="318" class="text port-text" text-anchor="middle">OpenAI SDK</text>
+        <text x="850" y="333" class="text port-text" text-anchor="middle">:6686</text>
 
-        <rect x="1050" y="280" width="200" height="70" class="core-box" rx="3"/>
-        <text x="1150" y="305" class="text service-text" text-anchor="middle">analytics_server</text>
-        <text x="1150" y="325" class="text port-text" text-anchor="middle">ClickHouse Client</text>
-        <text x="1150" y="340" class="text port-text" text-anchor="middle">:6690</text>
+        <rect x="1050" y="275" width="200" height="65" class="core-box" rx="3"/>
+        <text x="1150" y="298" class="text service-text" text-anchor="middle">analytics_server</text>
+        <text x="1150" y="318" class="text port-text" text-anchor="middle">ClickHouse Client</text>
+        <text x="1150" y="333" class="text port-text" text-anchor="middle">:6690</text>
     </g>
 
     <!-- Data Layer -->
     <g id="data-layer">
-        <rect x="50" y="400" width="1300" height="200" class="layer-box" rx="5"/>
-        <text x="700" y="425" class="text title" text-anchor="middle">Data Layer</text>
+        <rect x="50" y="380" width="1300" height="180" class="layer-box" rx="5"/>
+        <text x="700" y="405" class="text title" text-anchor="middle">Data Layer</text>
 
         <!-- First row of data stores -->
-        <rect x="100" y="450" width="140" height="60" class="data-box" rx="3"/>
-        <text x="170" y="475" class="text service-text" text-anchor="middle">PostgreSQL</text>
-        <text x="170" y="495" class="text port-text" text-anchor="middle">Primary DB</text>
+        <rect x="100" y="430" width="180" height="55" class="data-box" rx="3"/>
+        <text x="190" y="453" class="text service-text" text-anchor="middle">PostgreSQL</text>
+        <text x="190" y="473" class="text port-text" text-anchor="middle">Primary Database</text>
 
-        <rect x="280" y="450" width="140" height="60" class="data-box" rx="3"/>
-        <text x="350" y="475" class="text service-text" text-anchor="middle">Redis</text>
-        <text x="350" y="495" class="text port-text" text-anchor="middle">Cache/Sessions</text>
+        <rect x="320" y="430" width="180" height="55" class="data-box" rx="3"/>
+        <text x="410" y="453" class="text service-text" text-anchor="middle">Redis</text>
+        <text x="410" y="473" class="text port-text" text-anchor="middle">Cache & Sessions</text>
 
-        <rect x="460" y="450" width="140" height="60" class="data-box" rx="3"/>
-        <text x="530" y="475" class="text service-text" text-anchor="middle">Meilisearch</text>
-        <text x="530" y="495" class="text port-text" text-anchor="middle">Full-text Search</text>
+        <rect x="540" y="430" width="180" height="55" class="data-box" rx="3"/>
+        <text x="630" y="453" class="text service-text" text-anchor="middle">Meilisearch</text>
+        <text x="630" y="473" class="text port-text" text-anchor="middle">Full-text Search</text>
 
-        <rect x="640" y="450" width="140" height="60" class="data-box" rx="3"/>
-        <text x="710" y="475" class="text service-text" text-anchor="middle">NATS</text>
-        <text x="710" y="495" class="text port-text" text-anchor="middle">JetStream</text>
+        <rect x="760" y="430" width="180" height="55" class="data-box" rx="3"/>
+        <text x="850" y="453" class="text service-text" text-anchor="middle">NATS JetStream</text>
+        <text x="850" y="473" class="text port-text" text-anchor="middle">Message Queue</text>
 
-        <rect x="820" y="450" width="140" height="60" class="data-box" rx="3"/>
-        <text x="890" y="475" class="text service-text" text-anchor="middle">S3 Storage</text>
-        <text x="890" y="495" class="text port-text" text-anchor="middle">Files/Media</text>
+        <rect x="980" y="430" width="180" height="55" class="data-box" rx="3"/>
+        <text x="1070" y="453" class="text service-text" text-anchor="middle">S3 Storage</text>
+        <text x="1070" y="473" class="text port-text" text-anchor="middle">Files & Media</text>
 
-        <rect x="1000" y="450" width="140" height="60" class="data-box" rx="3"/>
-        <text x="1070" y="475" class="text service-text" text-anchor="middle">ClickHouse</text>
-        <text x="1070" y="495" class="text port-text" text-anchor="middle">Analytics DB</text>
+        <rect x="1200" y="430" width="180" height="55" class="data-box" rx="3"/>
+        <text x="1290" y="453" class="text service-text" text-anchor="middle">ClickHouse</text>
+        <text x="1290" y="473" class="text port-text" text-anchor="middle">Analytics Database</text>
     </g>
 
     <!-- External Services -->
     <g id="external-services">
-        <rect x="50" y="620" width="1300" height="100" class="layer-box" rx="5"/>
-        <text x="700" y="645" class="text title" text-anchor="middle">External Services</text>
+        <rect x="50" y="580" width="1300" height="100" class="layer-box" rx="5"/>
+        <text x="700" y="605" class="text title" text-anchor="middle">External Services</text>
 
-        <rect x="750" y="660" width="180" height="45" class="external-box" rx="3"/>
-        <text x="840" y="678" class="text service-text" text-anchor="middle">OpenAI API</text>
-        <text x="840" y="693" class="text port-text" text-anchor="middle">External Service</text>
+        <rect x="450" y="615" width="200" height="50" class="external-box" rx="3"/>
+        <text x="550" y="635" class="text service-text" text-anchor="middle">OpenAI API</text>
+        <text x="550" y="653" class="text port-text" text-anchor="middle">AI Service Provider</text>
 
-        <rect x="970" y="660" width="180" height="45" class="external-box" rx="3"/>
-        <text x="1060" y="678" class="text service-text" text-anchor="middle">Apache Superset</text>
-        <text x="1060" y="693" class="text port-text" text-anchor="middle">:8088</text>
+        <rect x="750" y="615" width="200" height="50" class="external-box" rx="3"/>
+        <text x="850" y="635" class="text service-text" text-anchor="middle">Apache Superset</text>
+        <text x="850" y="653" class="text port-text" text-anchor="middle">BI Dashboard :8088</text>
     </g>
 
     <!-- Shared Infrastructure -->
     <g id="shared-infrastructure">
-        <rect x="50" y="740" width="1300" height="100" class="layer-box" rx="5"/>
-        <text x="700" y="765" class="text title" text-anchor="middle">Shared Infrastructure</text>
+        <rect x="50" y="700" width="1300" height="100" class="layer-box" rx="5"/>
+        <text x="700" y="725" class="text title" text-anchor="middle">Shared Infrastructure</text>
 
-        <rect x="350" y="780" width="200" height="45" class="shared-box" rx="3"/>
-        <text x="450" y="798" class="text service-text" text-anchor="middle">fechatter_core</text>
-        <text x="450" y="813" class="text port-text" text-anchor="middle">Common Types</text>
+        <rect x="350" y="735" width="200" height="50" class="shared-box" rx="3"/>
+        <text x="450" y="755" class="text service-text" text-anchor="middle">fechatter_core</text>
+        <text x="450" y="773" class="text port-text" text-anchor="middle">Common Types & Utils</text>
 
-        <rect x="600" y="780" width="200" height="45" class="shared-box" rx="3"/>
-        <text x="700" y="798" class="text service-text" text-anchor="middle">fechatter_protos</text>
-        <text x="700" y="813" class="text port-text" text-anchor="middle">Protocol Buffers</text>
+        <rect x="600" y="735" width="200" height="50" class="shared-box" rx="3"/>
+        <text x="700" y="755" class="text service-text" text-anchor="middle">fechatter_protos</text>
+        <text x="700" y="773" class="text port-text" text-anchor="middle">Protocol Buffers</text>
 
-        <rect x="850" y="780" width="200" height="45" class="shared-box" rx="3"/>
-        <text x="950" y="798" class="text service-text" text-anchor="middle">ai_sdk</text>
-        <text x="950" y="813" class="text port-text" text-anchor="middle">AI Integrations</text>
+        <rect x="850" y="735" width="200" height="50" class="shared-box" rx="3"/>
+        <text x="950" y="755" class="text service-text" text-anchor="middle">ai_sdk</text>
+        <text x="950" y="773" class="text port-text" text-anchor="middle">AI Integrations</text>
     </g>
 
-    <!-- Arrows showing data flow - organized to avoid crossing -->
-    <g id="arrows">
-        <!-- Client to Gateway -->
-        <line x1="500" y1="100" x2="600" y2="160" class="arrow"/>
-        <line x1="900" y1="100" x2="800" y2="160" class="arrow"/>
-
-        <!-- Gateway to Core Services - straight down fan out -->
-        <line x1="700" y1="210" x2="250" y2="280" class="arrow"/>
-        <line x1="700" y1="210" x2="550" y2="280" class="arrow"/>
-        <line x1="700" y1="210" x2="850" y2="280" class="arrow"/>
-        <line x1="700" y1="210" x2="1150" y2="280" class="arrow"/>
-
-        <!-- Core Services to Data Layer - organized connections -->
-        <!-- fechatter_server connections -->
-        <line x1="250" y1="350" x2="170" y2="450" class="arrow"/>
-        <line x1="250" y1="350" x2="350" y2="450" class="arrow"/>
-        <line x1="250" y1="350" x2="530" y2="450" class="arrow"/>
-        <line x1="250" y1="350" x2="710" y2="450" class="arrow"/>
-        <line x1="250" y1="350" x2="890" y2="450" class="arrow"/>
-
-        <!-- notify_server connections -->
-        <line x1="550" y1="350" x2="350" y2="450" class="arrow"/>
-        <line x1="550" y1="350" x2="710" y2="450" class="arrow"/>
-
-        <!-- bot_server connections -->
-        <line x1="850" y1="350" x2="350" y2="450" class="arrow"/>
-        <line x1="850" y1="350" x2="840" y2="660" class="arrow"/>
-
-        <!-- analytics_server connections -->
-        <line x1="1150" y1="350" x2="710" y2="450" class="arrow"/>
-        <line x1="1150" y1="350" x2="1070" y2="450" class="arrow"/>
-
-        <!-- ClickHouse to Superset -->
-        <line x1="1070" y1="510" x2="1060" y2="660" class="arrow"/>
-
-        <!-- Shared Infrastructure connections (dotted lines) -->
-        <line x1="250" y1="350" x2="450" y2="780" class="data-flow"/>
-        <line x1="550" y1="350" x2="700" y2="780" class="data-flow"/>
-        <line x1="850" y1="350" x2="950" y2="780" class="data-flow"/>
-    </g>
-
-    <!-- Data flow annotations -->
-    <g id="annotations">
-        <text x="700" y="125" class="text port-text" text-anchor="middle">HTTP/WebSocket</text>
-        <text x="700" y="230" class="text port-text" text-anchor="middle">Load Balancing</text>
-        <text x="700" y="390" class="text port-text" text-anchor="middle">Data Operations</text>
-        <text x="700" y="610" class="text port-text" text-anchor="middle">External APIs</text>
+    <!-- Layer flow indicators -->
+    <g id="flow-indicators">
+        <text x="700" y="130" class="text layer-label" text-anchor="middle">↓ User Requests</text>
+        <text x="700" y="230" class="text layer-label" text-anchor="middle">↓ Load Balancing & Routing</text>
+        <text x="700" y="370" class="text layer-label" text-anchor="middle">↓ Business Logic Processing</text>
+        <text x="700" y="570" class="text layer-label" text-anchor="middle">↓ Data Persistence & Messaging</text>
+        <text x="700" y="690" class="text layer-label" text-anchor="middle">↓ External Integrations</text>
+        <text x="700" y="820" class="text layer-label" text-anchor="middle">↑ Shared Libraries & Types</text>
     </g>
 </svg>

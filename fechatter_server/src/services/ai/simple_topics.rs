@@ -19,7 +19,7 @@ impl SimpleTopicExtractor {
     pub fn new(openai_client: std::sync::Arc<crate::services::ai::openai::OpenAIClient>) -> Self {
         Self { openai_client }
     }
-    
+
     /// Extract topics - let LLM do all the heavy lifting
     pub async fn extract_topics(
         &self,
@@ -31,12 +31,13 @@ impl SimpleTopicExtractor {
         }
 
         // Prepare message content for LLM
-        let messages_text = messages.iter()
+        let messages_text = messages
+            .iter()
             .take(50) // Limit for API efficiency
             .map(|(id, content)| format!("{}: {}", id, content))
             .collect::<Vec<_>>()
             .join("\n");
-        
+
         let prompt = format!(
             "Analyze these chat messages and extract {} main topics. Return ONLY a JSON array with this exact format:
 [
@@ -49,16 +50,18 @@ Messages:
 
 JSON:", max_topics, messages_text
         );
-        
+
         // Let OpenAI analyze topics
         let response = fechatter_core::contracts::infrastructure::AIService::chat_completion(
             &*self.openai_client,
             vec![fechatter_core::contracts::infrastructure::ChatMessage {
                 role: "user".to_string(),
                 content: prompt,
-            }]
-        ).await.map_err(|e| AppError::AnyError(anyhow::anyhow!("Topic extraction failed: {}", e)))?;
-        
+            }],
+        )
+        .await
+        .map_err(|e| AppError::AnyError(anyhow::anyhow!("Topic extraction failed: {}", e)))?;
+
         // Try to parse JSON response
         match serde_json::from_str::<Vec<serde_json::Value>>(&response) {
             Ok(topics_json) => {
@@ -67,18 +70,16 @@ JSON:", max_topics, messages_text
                     if let (Some(name), Some(keywords_json), Some(message_ids_json)) = (
                         topic_json.get("name").and_then(|v| v.as_str()),
                         topic_json.get("keywords").and_then(|v| v.as_array()),
-                        topic_json.get("message_ids").and_then(|v| v.as_array())
+                        topic_json.get("message_ids").and_then(|v| v.as_array()),
                     ) {
                         let keywords: Vec<String> = keywords_json
                             .iter()
                             .filter_map(|v| v.as_str().map(|s| s.to_string()))
                             .collect();
-                            
-                        let message_ids: Vec<i64> = message_ids_json
-                            .iter()
-                            .filter_map(|v| v.as_i64())
-                            .collect();
-                        
+
+                        let message_ids: Vec<i64> =
+                            message_ids_json.iter().filter_map(|v| v.as_i64()).collect();
+
                         topics.push(TopicCluster {
                             name: name.to_string(),
                             keywords,
@@ -88,7 +89,7 @@ JSON:", max_topics, messages_text
                     }
                 }
                 Ok(topics)
-            },
+            }
             Err(_) => {
                 // Fallback: simple keyword-based clustering
                 tracing::warn!("LLM topic extraction failed, using fallback");
@@ -96,7 +97,7 @@ JSON:", max_topics, messages_text
             }
         }
     }
-    
+
     /// Simple fallback topic extraction
     async fn fallback_topic_extraction(
         &self,
@@ -104,7 +105,7 @@ JSON:", max_topics, messages_text
         max_topics: usize,
     ) -> Result<Vec<TopicCluster>, AppError> {
         let mut word_counts = std::collections::HashMap::new();
-        
+
         // Count words
         for (msg_id, content) in messages {
             let words: Vec<&str> = content
@@ -112,7 +113,7 @@ JSON:", max_topics, messages_text
                 .filter(|w| w.len() > 3)
                 .take(10) // Limit words per message
                 .collect();
-            
+
             for word in words {
                 let word_lower = word.to_lowercase();
                 let entry = word_counts.entry(word_lower).or_insert((0, Vec::new()));
@@ -122,11 +123,11 @@ JSON:", max_topics, messages_text
                 }
             }
         }
-        
+
         // Create topics from most frequent words
         let mut word_vec: Vec<(String, (usize, Vec<i64>))> = word_counts.into_iter().collect();
-        word_vec.sort_by(|a, b| b.1.0.cmp(&a.1.0));
-        
+        word_vec.sort_by(|a, b| b.1 .0.cmp(&a.1 .0));
+
         let topics: Vec<TopicCluster> = word_vec
             .into_iter()
             .take(max_topics)
@@ -135,10 +136,11 @@ JSON:", max_topics, messages_text
                 name: format!("Topic: {}", word),
                 keywords: vec![word],
                 message_ids: msg_ids,
-                importance_score: (count as f32 / messages.len() as f32).min(1.0) - (i as f32 * 0.1),
+                importance_score: (count as f32 / messages.len() as f32).min(1.0)
+                    - (i as f32 * 0.1),
             })
             .collect();
-        
+
         Ok(topics)
     }
 }
