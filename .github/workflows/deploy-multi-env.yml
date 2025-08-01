@@ -53,7 +53,7 @@ jobs:
           type=raw,value=latest,enable={{is_default_branch}}
 
     - name: Build and push Docker image
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         context: .
         file: ${{ matrix.dockerfile }}
@@ -112,7 +112,7 @@ jobs:
         aws-region: ap-northeast-1
 
     - name: Install kubectl
-      uses: azure/setup-kubectl@v3
+      uses: azure/setup-kubectl@v4
 
     - name: Deploy to AWS EKS
       run: |
